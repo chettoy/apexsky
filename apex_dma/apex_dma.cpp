@@ -8,6 +8,7 @@
 #include <cfloat>
 #include "Game.h"
 #include <thread>
+
 //this is a test, with seconds
 Memory apex_mem;
 Memory client_mem;
@@ -43,6 +44,14 @@ bool shooting = false;
 float glowr = 0.0f; //Red 0-255, higher is brighter color.
 float glowg = 120.0f; //Green 0-255, higher is brighter color.
 float glowb = 120.0f; //Blue 0-255, higher is brighter color.
+//visable
+float glowrviz = 0.0f; //Red 0-255, higher is brighter color.
+float glowgviz = 120.0f; //Green 0-255, higher is brighter color.
+float glowbviz = 120.0f; //Blue 0-255, higher is brighter color.
+//knocked
+float glowrknocked = 0.0f; //Red 0-255, higher is brighter color.
+float glowgknocked = 120.0f; //Green 0-255, higher is brighter color.
+float glowbknocked = 120.0f; //Blue 0-255, higher is brighter color.
 
 
 //Removed but not all the way, dont edit.
@@ -182,6 +191,7 @@ bool valid = false;
 bool lock = false;
 
 
+
 //Player Definitions, dont edit unless you know what you are doing.
 typedef struct player
 {
@@ -224,6 +234,40 @@ int tmp_all_spec = 0, allied_spectators = 0;
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
+{
+	if (player_glow >= 1)
+	{
+		
+		
+			if (!Target.isGlowing() || (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
+				float currentEntityTime = 5000.f;
+				if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
+					GColor color;
+					if (!(firing_range) && (Target.isKnocked() || !Target.isAlive()))
+					{
+						color = { glowrknocked, glowgknocked, glowbknocked };
+					}
+					else if (Target.lastVisTime() > lastvis_aim[index] || (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f))
+					{
+						color = { glowrviz, glowgviz, glowbviz };
+					}
+					else 
+					{
+						color = { glowr, glowg, glowb };
+					}
+
+					Target.enableGlow(color);
+				}
+			}
+		
+		else if((player_glow == 0) && Target.isGlowing())
+		{
+			Target.disableGlow();
+		}
+	}
+}
 
 
 void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int index)
@@ -287,6 +331,8 @@ void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int ind
 			tmp_aimentity = target.ptr;
 		}
 	}
+	
+	SetPlayerGlow(LPlayer, target, index);
 	lastvis_aim[index] = target.lastVisTime();
 }
 
@@ -369,14 +415,7 @@ void DoActions()
 						continue;
 					}
 
-					if(player_glow && !Target.isGlowing())
-					{
-						Target.enableGlow();
-					}
-					else if(!player_glow && Target.isGlowing())
-					{
-						Target.disableGlow();
-					}
+					
 
 					ProcessPlayer(LPlayer, Target, entitylist, c);
 					c++;
@@ -405,14 +444,7 @@ void DoActions()
 						continue;
 					}
 
-					if(player_glow && !Target.isGlowing())
-					{
-						Target.enableGlow();
-					}
-					else if(!player_glow && Target.isGlowing())
-					{
-						Target.disableGlow();
-					}
+					
 				}
 			}
 
@@ -913,8 +945,28 @@ static void set_vars(uint64_t add_addr)
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*90, aimdist_addr);
 	uint64_t itemglowbrightness_addr = 0;
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*91, itemglowbrightness_addr);
+	//glow visable
+	uint64_t glowrviz_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*92, glowrviz_addr);
+	uint64_t glowgviz_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*93, glowgviz_addr);
+	uint64_t glowbviz_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*94, glowbviz_addr);
+	//knocked
+	uint64_t glowrknocked_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*95, glowrknocked_addr);
+	uint64_t glowgknocked_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*96, glowgknocked_addr);
+	uint64_t glowbknocked_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*97, glowbknocked_addr);
 	
-	//good god 91 of em.. why
+	
+	
+	
+
+	
+	
+	//good god 97 of em.. why
 	
 
 	uint32_t check = 0;
@@ -1029,6 +1081,18 @@ static void set_vars(uint64_t add_addr)
 			client_mem.Read<bool>(weapon_car_smg_addr, weapon_car_smg);
 			client_mem.Read<float>(aimdist_addr, aimdist);
 			client_mem.Read<int>(itemglowbrightness_addr, itemglowbrightness);
+			//glow visable
+			client_mem.Read<float>(glowrviz_addr, glowrviz);
+			client_mem.Read<float>(glowgviz_addr, glowgviz);
+			client_mem.Read<float>(glowbviz_addr, glowbviz);
+			//knocked
+			client_mem.Read<float>(glowrknocked_addr, glowrknocked);
+			client_mem.Read<float>(glowgknocked_addr, glowgknocked);
+			client_mem.Read<float>(glowbknocked_addr, glowbknocked);
+			
+		
+			
+	
 
 
 			if(esp && next2)
@@ -1053,9 +1117,7 @@ static void set_vars(uint64_t add_addr)
 }
 
 // Item Glow Stuff
-struct GlowMode {
-	int8_t GeneralGlowMode, BorderGlowMode, BorderSize, TransparentLevel;
-};
+
  
 static void item_glow_t()
 {
@@ -1809,7 +1871,7 @@ static void item_glow_t()
 				}
 				k=1;
 				//Change the 60 ms to lower to make the death boxes filker less.
-				std::this_thread::sleep_for(std::chrono::milliseconds(60));
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			}
 			else
 			{		
@@ -1852,7 +1914,7 @@ int main(int argc, char *argv[])
 	//const char* ap_proc = "EasyAntiCheat_launcher.exe";
 
 	//Client "add" offset
-	uint64_t add_off = 0x1409a0; //todo make this auto update..
+	uint64_t add_off = 0x137a00; //todo make this auto update..
 
 	std::thread aimbot_thr;
 	std::thread esp_thr;

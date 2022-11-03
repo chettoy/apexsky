@@ -44,6 +44,17 @@ unsigned int radarcolorr = 0; //Red Value
 unsigned int radarcolorg = 0; //Green Value
 unsigned int radarcolorb = 0; //Blue Value
 extern float radarcolor[3];
+//more glow stuff
+//glow visable
+extern float glowrviz;
+extern float glowgviz;
+extern float glowbviz;
+extern float glowcolorviz[3];
+//knocked
+extern float glowrknocked;
+extern float glowgknocked;
+extern float glowbknocked;
+extern float glowcolorknocked[3];
 //Main Map Radar
 extern bool mainradarmap;
 int mainmapradardotsize1 = 5;
@@ -264,19 +275,6 @@ void Overlay::RenderMenu()
 					ImGui::TextColored(GREEN, "%.f meters", aimdist / 39.62);
 					ImGui::SliderFloat(XorStr("##Aim Distance"), &aimdist, 10.0f * 39.62, 1600.0f * 39.62, "##");
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
-
-
-					ImGui::Text(XorStr("Set Dynamic Fov:"));
-					ImGui::SameLine();
-					ImGui::TextColored(GREEN, "%.f Fov", dynamicfov);
-					ImGui::SliderFloat(XorStr("##Dynamic Fov Max"), &dynamicfov, 5.0f, 150.0f, "##");
-					ImGui::Text(XorStr("Set Dynamic Fov Max Distance:"));
-					ImGui::SameLine();
-					ImGui::TextColored(GREEN, "%.f meters", dynamicfovmax);
-					ImGui::SliderFloat(XorStr("##Dynamic Fov"), &dynamicfovmax, 5.0f, 50.0f, "##");					
-					ImGui::Dummy(ImVec2(0.0f, 10.0f));
-
-
 					ImGui::Text(XorStr("Aiming Keys:"));
 					ImGui::RadioButton("Left Mouse", &e, 1); ImGui::SameLine();
 					ImGui::RadioButton("Right Mouse ", &e, 2); ImGui::SameLine();
@@ -317,7 +315,7 @@ void Overlay::RenderMenu()
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Aiming Bone:"));
 					ImGui::Text(XorStr("0=Head, 1=Neck, 2=Chest, 3=Stomach"));
-					ImGui::SliderInt(XorStr("##bone slider"), &bone, 0, 3);
+					ImGui::SliderInt(XorStr("##bone slider"), &bone, 0, 30);
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("ESP Options:"));
 					ImGui::Sliderbox(XorStr("Distance"), &v.distance);
@@ -326,12 +324,28 @@ void Overlay::RenderMenu()
 					ImGui::SameLine();
 					ImGui::Sliderbox(XorStr("Shield bar"), &v.shieldbar);					
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
-					ImGui::Text(XorStr("Player Glow Color:"));
-					ImGui::ColorEdit3("##Glow Color Picker", glowcolor);
+					ImGui::Text(XorStr("Player Glow Visable:"));
+					ImGui::ColorEdit3("##Glow Color Picker Visable", glowcolorviz);
+					{
+						glowrviz = glowcolorviz[0] * 250;
+						glowgviz = glowcolorviz[1] * 250;
+						glowbviz = glowcolorviz[2] * 250;
+					}
+					ImGui::Dummy(ImVec2(0.0f, 10.0f));
+					ImGui::Text(XorStr("Player Glow Not Visable:"));
+					ImGui::ColorEdit3("##Glow Color Not Visable", glowcolor);
 					{
 						glowr = glowcolor[0] * 250;
 						glowg = glowcolor[1] * 250;
 						glowb = glowcolor[2] * 250;
+					}
+					ImGui::Dummy(ImVec2(0.0f, 10.0f));
+					ImGui::Text(XorStr("Player Glow Knocked:"));
+					ImGui::ColorEdit3("##Glow Color Knocked", glowcolorknocked);
+					{
+						glowrknocked = glowcolorknocked[0] * 250;
+						glowgknocked = glowcolorknocked[1] * 250;
+						glowbknocked = glowcolorknocked[2] * 250;
 					}
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Saving and Loading. Need to Save Once to make the file."));
@@ -449,7 +463,21 @@ void Overlay::RenderMenu()
 							config << mainmapradardotsize2 << "\n";
 							config << dynamicfov << "\n";
 							config << dynamicfovmax << "\n";
-							config << max_fov2;
+							config << max_fov2 << "\n";
+							//glow visable
+							config << glowrviz << "\n";
+							config << glowgviz << "\n";
+							config << glowbviz << "\n";
+							config << glowcolorviz[0] << "\n";
+							config << glowcolorviz[1] << "\n";
+							config << glowcolorviz[2] << "\n";
+							//glow knocked
+							config << glowrknocked << "\n";
+							config << glowgknocked << "\n";
+							config << glowbknocked << "\n";
+							config << glowcolorknocked[0] << "\n";
+							config << glowcolorknocked[1] << "\n";
+							config << glowcolorknocked[2];
 							config.close();
 						}
 					}
@@ -568,6 +596,20 @@ void Overlay::RenderMenu()
 							config >> dynamicfov;
 							config >> dynamicfovmax;
 							config >> max_fov2;
+							//glow visable
+							config >> glowrviz;
+							config >> glowgviz;
+							config >> glowbviz;
+							config >> glowcolorviz[0];
+							config >> glowcolorviz[1];
+							config >> glowcolorviz[2];
+							//glow knocked
+							config >> glowrknocked;
+							config >> glowgknocked;
+							config >> glowbknocked;
+							config >> glowcolorknocked[0];
+							config >> glowcolorknocked[1];
+							config >> glowcolorknocked[2];
 							config.close();
 
 						}

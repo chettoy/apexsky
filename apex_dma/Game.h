@@ -1,6 +1,7 @@
 #include "Math.h"
 #include "offsets.h"
 #include "memory.h"
+#include "glowmode.h"
 
 #define NUM_ENT_ENTRIES			(1 << 12)
 #define ENT_ENTRY_MASK			(NUM_ENT_ENTRIES - 1)
@@ -14,6 +15,19 @@ typedef struct Bone
 	uint8_t pad3[0xC];
 	float z;
 }Bone;
+
+struct GColor 
+{
+    float r, g, b;
+};
+
+
+
+struct Fade 
+{
+    int a, b;
+    float c, d, e, f;
+};
 
 class Entity
 {
@@ -40,8 +54,7 @@ public:
 	QAngle GetRecoil();
 	Vector GetViewAnglesV();
 	float GetYaw();
-
-	void enableGlow();
+	void enableGlow(GColor color);
 	void disableGlow();
 	void SetViewAngles(SVector angles);
 	void SetViewAngles(QAngle& angles);
