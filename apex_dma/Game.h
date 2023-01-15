@@ -76,6 +76,7 @@ public:
 	bool isGlowing();
 	void enableGlow();
 	void disableGlow();
+	void BlueGlow();
 };
 
 
