@@ -19,6 +19,9 @@ extern bool use_nvidia;
 extern float max_dist;
 extern float smooth;
 
+extern float smoothpred;
+extern float smoothpred2;
+
 //Dynamic Fov
 extern float dynamicfov;
 extern float dynamicfovmax;
@@ -129,6 +132,7 @@ extern bool weapon_bow;
 extern bool weapon_3030_repeater;
 extern bool weapon_rampage;
 extern bool weapon_car_smg;
+extern bool weapon_nemesis;
 //Aim Dist check
 extern float aimdist;
 //item glow brightness
@@ -301,6 +305,7 @@ void Overlay::RenderMenu()
 					ImGui::TextColored(GREEN,"%d meters", (int)(max_dist / 40));
 					ImGui::SliderFloat(XorStr("##1"), &max_dist, 100.0f * 40, 3800.0f * 40, "##");
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
 					ImGui::Text(XorStr("Smooth Aim Value:"));
 					ImGui::SameLine();
 					ImGui::TextColored(GREEN, "%.f", smooth);
@@ -308,6 +313,27 @@ void Overlay::RenderMenu()
 					ImGui::SameLine();
 					ImGui::Text(XorStr("85 To 100 Is Safe"));
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
+					
+
+
+					ImGui::Text(XorStr("Smooth Preditcion Speed:"));
+					ImGui::SameLine();
+					ImGui::TextColored(GREEN, "%.2f", smoothpred);
+					ImGui::SliderFloat(XorStr("##55"), &smoothpred, -10.58f, 5.80f, "##");
+					ImGui::SameLine();
+					ImGui::Text(XorStr("Default is 0.08"));
+					ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+
+					ImGui::Text(XorStr("Smooth Preditcion Gravity:"));
+					ImGui::SameLine();
+					ImGui::TextColored(GREEN, "%.2f", smoothpred2);
+					ImGui::SliderFloat(XorStr("##57"), &smoothpred2, -10.55f, 5.90f, "##");
+					ImGui::SameLine();
+					ImGui::Text(XorStr("Default is 0.05"));
+					ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+
 					ImGui::Text(XorStr("Max FOV:"));
 					ImGui::SameLine();
 					ImGui::TextColored(GREEN, "%.f", max_fov);
@@ -477,7 +503,10 @@ void Overlay::RenderMenu()
 							config << glowbknocked << "\n";
 							config << glowcolorknocked[0] << "\n";
 							config << glowcolorknocked[1] << "\n";
-							config << glowcolorknocked[2];
+							config << glowcolorknocked[2] << "\n";
+							config << smoothpred << "\n";
+							config << smoothpred2 << "\n";
+							config << std::boolalpha << weapon_nemesis;
 							config.close();
 						}
 					}
@@ -610,6 +639,9 @@ void Overlay::RenderMenu()
 							config >> glowcolorknocked[0];
 							config >> glowcolorknocked[1];
 							config >> glowcolorknocked[2];
+							config >> smoothpred;
+							config >> smoothpred2;
+							config >> weapon_nemesis;
 							config.close();
 
 						}
@@ -791,6 +823,8 @@ void Overlay::RenderMenu()
 					ImGui::Sliderbox(XorStr("Devotion "), &weapon_devotion);
 					ImGui::SameLine();
 					ImGui::Sliderbox(XorStr("HAVOC"), &weapon_havoc);
+					ImGui::Sliderbox(XorStr("Nemesis"), &weapon_nemesis);
+					
 					//Shotgun Weapons
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::TextColored(RED, "Shotgun Weapons");

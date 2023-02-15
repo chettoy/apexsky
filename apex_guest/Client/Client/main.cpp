@@ -58,6 +58,9 @@ float max_fov = 15.0f; //15 is the sweetspot for 1080p
 float dynamicfov = 10;
 float dynamicfovmax = 15.0f;
 
+float smoothpred = 0.08;
+float smoothpred2 = 0.05;
+
 int bone = 2; //0 Head, 1 Neck, 2 Body, 3 Stomace, 4 Nuts
 //Player Glow Color and Brightness
 float glowr = 120.0f; //Red Value
@@ -159,6 +162,7 @@ bool weapon_bow = false;
 bool weapon_3030_repeater = false;
 bool weapon_rampage = false;
 bool weapon_car_smg = false;
+bool weapon_nemesis = false;
 // Aim distance check
 float aimdist = 9905.0f;
 //item glow brightness
@@ -171,7 +175,7 @@ int allied_spectators = 0; //write
 bool valid = true; //write
 bool next2 = true; //read write
 
-uint64_t add[98];
+uint64_t add[101];
 
 bool k_f5 = 0;
 bool k_f6 = 0;
@@ -999,9 +1003,13 @@ int main(int argc, char** argv)
 	add[95] = (uintptr_t)&glowrknocked;
 	add[96] = (uintptr_t)&glowgknocked;
 	add[97] = (uintptr_t)&glowbknocked;
+	add[98] = (uintptr_t)&smoothpred;
+	add[99] = (uintptr_t)&smoothpred2;
+	add[100] = (uintptr_t)&weapon_nemesis;
+	
 
 	
-	printf(XorStr("Game Version v3.0.15.37 |-| Stuff |-| Add me offset: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
+	printf(XorStr("GameVersion v3.0.25.21 || 2-15-2023 || |-| Stuff |-| Add me offset: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
 
 	Overlay ov1 = Overlay();
 	ov1.Start();
@@ -1157,6 +1165,9 @@ int main(int argc, char** argv)
 				config >> glowcolorknocked[0];
 				config >> glowcolorknocked[1];
 				config >> glowcolorknocked[2];
+				config >> smoothpred;
+				config >> smoothpred2;
+				config >> weapon_nemesis;
 				config.close();
 			}
 		}

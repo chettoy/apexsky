@@ -33,6 +33,8 @@ bool aiming = false;
 extern float smooth;
 extern int bone;
 bool thirdperson = false;
+float smoothpred = 0.08;
+float smoothpred2 = 0.05;
 
 
 //chargerifle hack, removed but not all the way, dont edit.
@@ -137,6 +139,7 @@ bool weapon_mozambique  = false;
 
 //Energy weapons
 bool weapon_lstar = false;
+bool weapon_nemesis = false;
 bool weapon_havoc = false;
 bool weapon_devotion = false;
 bool weapon_triple_take = false;
@@ -959,6 +962,15 @@ static void set_vars(uint64_t add_addr)
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*96, glowgknocked_addr);
 	uint64_t glowbknocked_addr = 0;
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*97, glowbknocked_addr);
+	uint64_t smoothpred_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*98, smoothpred_addr);
+	uint64_t smoothpred2_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*99, smoothpred2_addr);
+	//new weap nemesis
+	uint64_t weapon_nemesis_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*100, weapon_nemesis_addr);
+	
+
 	
 	
 	
@@ -1089,6 +1101,12 @@ static void set_vars(uint64_t add_addr)
 			client_mem.Read<float>(glowrknocked_addr, glowrknocked);
 			client_mem.Read<float>(glowgknocked_addr, glowgknocked);
 			client_mem.Read<float>(glowbknocked_addr, glowbknocked);
+			client_mem.Read<float>(smoothpred_addr, smoothpred);
+			client_mem.Read<float>(smoothpred2_addr, smoothpred2);
+			//new weapon, nemesis
+			
+			client_mem.Read<bool>(weapon_nemesis_addr, weapon_nemesis);
+			
 			
 		
 			
@@ -1201,11 +1219,17 @@ static void item_glow_t()
 					//item id would help so much here, cant make them all the same color so went with loba glow for body shield and helmet
 					if (shieldupgrade && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_body.rmdl")) 
 					{
-					item.enableGlow();
+						apex_mem.Write<int>(centity + OFFSET_GLOW_T1, 16256);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_T2, 1193322764);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 7);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 					}
 					if (shieldupgradehead && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_head.rmdl")) 
 					{
-					item.enableGlow();
+						apex_mem.Write<int>(centity + OFFSET_GLOW_T1, 16256);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_T2, 1193322764);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 7);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 					}
 					if (accelerant && strstr(glowName, "mdl/weapons_r5/loot/w_loot_wep_iso_ultimate_accelerant.rmdl")) 
 					{
@@ -1388,7 +1412,10 @@ static void item_glow_t()
 					}
 					if (stocksniper && strstr(glowName, "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_sniper.rmdl")) 
 					{
-					item.enableGlow();
+						apex_mem.Write<int>(centity + OFFSET_GLOW_T1, 16256);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_T2, 1193322764);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 7);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 					}
 					if (stockregular && strstr(glowName, "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_regular.rmdl")) 
 					{
@@ -1613,6 +1640,18 @@ static void item_glow_t()
 						apex_mem.Write<float>(centity + GLOW_COLOR_G, 205 / itemglowbrightness); // g
 						apex_mem.Write<float>(centity + GLOW_COLOR_B, 50 / itemglowbrightness); // b
 					}
+					//new gun, nemesis
+					if (weapon_nemesis && strstr(glowName, "mdl/techart/mshop/weapons/class/assault/nemesis/nemesis_base_w.rmdl")) 
+					{
+					apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(centity + GLOW_START_TIME, { 101,101,99,90 });
+ 
+						apex_mem.Write<float>(centity + GLOW_COLOR_R, 154 / itemglowbrightness); // r
+						apex_mem.Write<float>(centity + GLOW_COLOR_G, 205 / itemglowbrightness); // g
+						apex_mem.Write<float>(centity + GLOW_COLOR_B, 50 / itemglowbrightness); // b
+					}
+										
 					if (weapon_havoc && strstr(glowName, "mdl/Weapons/beam_ar/w_beam_ar.rmdl")) 
 					{
 					apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 1);
@@ -1914,7 +1953,7 @@ int main(int argc, char *argv[])
 	//const char* ap_proc = "EasyAntiCheat_launcher.exe";
 
 	//Client "add" offset
-	uint64_t add_off = 0x137a00; //todo make this auto update..
+	uint64_t add_off = 0x139a00; //todo make this auto update..
 
 	std::thread aimbot_thr;
 	std::thread esp_thr;
