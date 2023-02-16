@@ -154,6 +154,7 @@ bool weapon_hemlock  = false;
 bool weapon_3030_repeater = false; 
 bool weapon_rampage  = false;
 bool weapon_car_smg  = false;
+bool weapon_rampage_lmg = true;
 
 
 //Light weapons
@@ -1000,6 +1001,8 @@ static void set_vars(uint64_t add_addr)
 	//new map radar
 	uint64_t mapradartest_addr = 0;
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*101, mapradartest_addr);
+	uint64_t weapon_rampage_lmg_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*102, weapon_rampage_lmg_addr);
 	
 	
 
@@ -1140,6 +1143,8 @@ static void set_vars(uint64_t add_addr)
 			client_mem.Read<bool>(weapon_nemesis_addr, weapon_nemesis);
 			//new map radar test
 			client_mem.Read<bool>(mapradartest_addr, mapradartest);
+			client_mem.Read<bool>(weapon_rampage_lmg_addr, weapon_rampage_lmg);
+			
 		
 			
 	
@@ -1524,7 +1529,19 @@ static void item_glow_t()
 						apex_mem.Write<float>(centity + GLOW_COLOR_G, 205 / itemglowbrightness); // g
 						apex_mem.Write<float>(centity + GLOW_COLOR_B, 50 / itemglowbrightness); // b
 					}
-										
+					
+					if (weapon_rampage_lmg && strstr(glowName, "mdl/techart/mshop/weapons/class/lmg/dragon/dragon_base_w.rmdl")) 
+					{
+					apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(centity + GLOW_START_TIME, { 101,101,99,90 });
+ 
+						apex_mem.Write<float>(centity + GLOW_COLOR_R, 0 / itemglowbrightness); // r
+						apex_mem.Write<float>(centity + GLOW_COLOR_G, 250 / itemglowbrightness); // g
+						apex_mem.Write<float>(centity + GLOW_COLOR_B, 154 / itemglowbrightness); // b
+					}
+
+					
 					if (weapon_havoc && strstr(glowName, "mdl/Weapons/beam_ar/w_beam_ar.rmdl")) 
 					{
 					apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 1);

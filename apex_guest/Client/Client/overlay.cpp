@@ -133,6 +133,7 @@ extern bool weapon_3030_repeater;
 extern bool weapon_rampage;
 extern bool weapon_car_smg;
 extern bool weapon_nemesis;
+extern bool weapon_rampage_lmg;
 //Aim Dist check
 extern float aimdist;
 //item glow brightness
@@ -506,7 +507,8 @@ void Overlay::RenderMenu()
 							config << glowcolorknocked[2] << "\n";
 							config << smoothpred << "\n";
 							config << smoothpred2 << "\n";
-							config << std::boolalpha << weapon_nemesis;
+							config << weapon_nemesis << "\n";
+							config << weapon_rampage_lmg;
 							config.close();
 						}
 					}
@@ -642,6 +644,7 @@ void Overlay::RenderMenu()
 							config >> smoothpred;
 							config >> smoothpred2;
 							config >> weapon_nemesis;
+							config >> weapon_rampage_lmg;
 							config.close();
 
 						}
@@ -811,6 +814,8 @@ void Overlay::RenderMenu()
 					ImGui::Sliderbox(XorStr("Prowler "), &weapon_prowler);
 					ImGui::SameLine();
 					ImGui::Sliderbox(XorStr("30-30"), &weapon_3030_repeater);
+					ImGui::SameLine();
+					ImGui::Sliderbox(XorStr("Rampage"), &weapon_rampage_lmg);
 					//Energy Weapons
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::TextColored(YELLOW, "Energy Weapons");

@@ -165,6 +165,7 @@ bool weapon_3030_repeater = false;
 bool weapon_rampage = false;
 bool weapon_car_smg = false;
 bool weapon_nemesis = false;
+bool weapon_rampage_lmg = true;
 // Aim distance check
 float aimdist = 9905.0f;
 //item glow brightness
@@ -177,7 +178,7 @@ int allied_spectators = 0; //write
 bool valid = true; //write
 bool next2 = true; //read write
 
-uint64_t add[102];
+uint64_t add[103];
 
 bool k_f5 = 0;
 bool k_f6 = 0;
@@ -1009,6 +1010,7 @@ int main(int argc, char** argv)
 	add[99] = (uintptr_t)&smoothpred2;
 	add[100] = (uintptr_t)&weapon_nemesis;
 	add[101] = (uintptr_t)&mapradartest;
+	add[102] = (uintptr_t)&weapon_rampage_lmg;
 	
 
 	
@@ -1172,6 +1174,7 @@ int main(int argc, char** argv)
 				config >> smoothpred;
 				config >> smoothpred2;
 				config >> weapon_nemesis;
+				config >> weapon_rampage_lmg;
 				config.close();
 			}
 		}
