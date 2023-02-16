@@ -1,7 +1,7 @@
 
 #define VERSION STEAM
-//Date 1/10/2023
-//GameVersion v3.0.25.21
+//Date 2/16/2023
+//GameVersion=v3.0.26.26
 
 #if VERSION == STEAM
 
@@ -42,7 +42,7 @@
 #define OFFSET_OBSERVING_TARGET 0x34e0 //m_hObserverTarget
 
 #define OFFSET_MATRIX 0x11a210 //ViewMatrix
-#define OFFSET_RENDER 0x7677280 //ViewRender
+#define OFFSET_RENDER 0x7677288 //ViewRender
 
 #define OFFSET_WEAPON 0x1a1c //m_latestPrimaryWeapons
 #define OFFSET_BULLET_SPEED 0x1f18 //CWeaponX!m_flProjectileSpeed

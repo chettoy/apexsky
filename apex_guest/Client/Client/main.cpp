@@ -165,7 +165,7 @@ bool weapon_3030_repeater = false;
 bool weapon_rampage = false;
 bool weapon_car_smg = false;
 bool weapon_nemesis = false;
-bool weapon_rampage_lmg = true;
+bool weapon_rampage_lmg = false;
 // Aim distance check
 float aimdist = 9905.0f;
 //item glow brightness
