@@ -92,6 +92,8 @@ bool kingscanyon = false; //Set for map, ONLY ONE THO
 bool stormpoint = true; //Set for map, ONLY ONE THO
 extern int mainmapradardotsize1;
 extern int mainmapradardotsize2;
+//New Radar test
+bool mapradartest = false;
 //Ha think i was done ?
 //Item Filter Brute Force!
 bool lightbackpack = false;
@@ -175,7 +177,7 @@ int allied_spectators = 0; //write
 bool valid = true; //write
 bool next2 = true; //read write
 
-uint64_t add[101];
+uint64_t add[102];
 
 bool k_f5 = 0;
 bool k_f6 = 0;
@@ -1006,6 +1008,7 @@ int main(int argc, char** argv)
 	add[98] = (uintptr_t)&smoothpred;
 	add[99] = (uintptr_t)&smoothpred2;
 	add[100] = (uintptr_t)&weapon_nemesis;
+	add[101] = (uintptr_t)&mapradartest;
 	
 
 	
@@ -1027,6 +1030,7 @@ int main(int argc, char** argv)
 	{
 		ready = true;
 		printf(XorStr("Ready To Bring The Pain\n"));
+
 	}
 
 	while (active)
@@ -1195,7 +1199,7 @@ int main(int argc, char** argv)
 			k_f6 = 0;
 		}
 		//Main Map Radar, Needs Manual Setting of cords
-		if (IsKeyDown(0x4D) && mainradartoggle == 0)
+		/*if (IsKeyDown(0x4D) && mainradartoggle == 0)
 		{
 			mainradartoggle = 1;
 			switch (mainradarmap)
@@ -1214,6 +1218,20 @@ int main(int argc, char** argv)
 		{
 			mainradartoggle = 0;
 		}
+		*/
+		//New Radar test
+
+		if (IsKeyDown(VK_END))
+		{
+			
+			mapradartest = true;
+			Sleep(300);
+			mapradartest = false;
+			
+
+		}
+
+
 		
 		if (IsKeyDown(aim_key) && toggleaim)
 		{
