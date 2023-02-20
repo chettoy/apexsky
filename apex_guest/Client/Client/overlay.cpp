@@ -143,6 +143,9 @@ int menu1 = 0;
 int menu2 = 0;
 int menu3 = 0;
 int menu4 = 0;
+//headshot mode
+extern int snipereq;
+extern int bowheadshotmode;
 
 
 
@@ -317,22 +320,7 @@ void Overlay::RenderMenu()
 					
 
 
-					ImGui::Text(XorStr("Smooth Preditcion Speed:"));
-					ImGui::SameLine();
-					ImGui::TextColored(GREEN, "%.2f", smoothpred);
-					ImGui::SliderFloat(XorStr("##55"), &smoothpred, -10.58f, 5.80f, "##");
-					ImGui::SameLine();
-					ImGui::Text(XorStr("Default is 0.08"));
-					ImGui::Dummy(ImVec2(0.0f, 10.0f));
-
-
-					ImGui::Text(XorStr("Smooth Preditcion Gravity:"));
-					ImGui::SameLine();
-					ImGui::TextColored(GREEN, "%.2f", smoothpred2);
-					ImGui::SliderFloat(XorStr("##57"), &smoothpred2, -10.55f, 5.90f, "##");
-					ImGui::SameLine();
-					ImGui::Text(XorStr("Default is 0.05"));
-					ImGui::Dummy(ImVec2(0.0f, 10.0f));
+	
 
 
 					ImGui::Text(XorStr("Max FOV:"));
@@ -883,31 +871,76 @@ void Overlay::RenderMenu()
 void Overlay::RenderInfo()
 {	
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
-	ImGui::SetNextWindowSize(ImVec2(250, 25));
+	ImGui::SetNextWindowSize(ImVec2(900, 25));
 	ImGui::Begin(XorStr("##info"), (bool*)true, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
-	DrawLine(ImVec2(1, 5), ImVec2(250, 5), RED, 2);
-	ImGui::TextColored(RED, "%d", spectators);
+	DrawLine(ImVec2(1, 5), ImVec2(900, 5), RED, 2);
+	ImGui::TextColored(RED, "Enemy Spec:");
+	ImGui::SameLine();
+	ImGui::TextColored(WHITE, "%d", spectators);
 	ImGui::SameLine();
 	ImGui::Text("--");
 	ImGui::SameLine();
-	ImGui::TextColored(GREEN, "%d", allied_spectators);
+	ImGui::TextColored(GREEN, "Allied Spec:");
+	ImGui::SameLine();
+	ImGui::TextColored(WHITE, "%d", allied_spectators);
 	ImGui::SameLine();
 	ImGui::Text("--");
 	ImGui::SameLine();
-	ImGui::TextColored(WHITE, "%.f", max_fov);
+	ImGui::TextColored(WHITE, "FOV: %.f", max_fov);
+	ImGui::SameLine();
+	ImGui::Text("--");
+	ImGui::SameLine();
+	ImGui::TextColored(WHITE, "Bone: %d", bone);
 	ImGui::SameLine();
 	ImGui::Text("--");
 	ImGui::SameLine();
 	//Aim is on = 2, On but No Vis Check = 1, Off = 0
 	if (aim == 2)
 	{
-		ImGui::TextColored(GREEN, "Aim On %d", aim);
+		ImGui::TextColored(GREEN, "Aim With Vis Check", aim);
+	}
+	else if (aim == 1)
+	{
+		ImGui::TextColored(WHITE, "Aim Without Vis Check", aim);
 	}
 	else
 	{
-		ImGui::TextColored(RED, "Aim Off %d", aim);
+		ImGui::TextColored(RED, "Aim Off", aim);
 	}
+	ImGui::SameLine();
+	ImGui::Text("--");
+	ImGui::SameLine();
 
+	
+	if (snipereq ==1)
+	{
+		ImGui::TextColored(GREEN, "Sniper Mode Enabled");
+		bone = 0;
+	}
+	else
+	{
+		ImGui::TextColored(RED, "Sniper Mode Disabled");
+		bone = 2;
+	}
+	
+	ImGui::SameLine();
+	ImGui::Text("--");
+	ImGui::SameLine();
+	
+	if (bowheadshotmode == 1)
+	{
+		ImGui::TextColored(GREEN, "Bow Mode Enabled");
+		smoothpred = 5.0;
+		smoothpred2 = 1.0;
+	}
+	else
+	{
+		ImGui::TextColored(RED, "Bow Mode Disabled");
+		 smoothpred = 0.08;
+		 smoothpred2 = 0.05;
+	}
+	
+	
 	ImGui::End();
 }
 

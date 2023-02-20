@@ -170,6 +170,9 @@ bool weapon_rampage_lmg = false;
 float aimdist = 9905.0f;
 //item glow brightness
 int itemglowbrightness = 10;
+//headshot mode
+int snipereq = 0;
+int bowheadshotmode = 0;
 
 
 bool thirdperson = false;
@@ -178,7 +181,7 @@ int allied_spectators = 0; //write
 bool valid = true; //write
 bool next2 = true; //read write
 
-uint64_t add[103];
+uint64_t add[105];
 
 bool k_f5 = 0;
 bool k_f6 = 0;
@@ -1011,6 +1014,9 @@ int main(int argc, char** argv)
 	add[100] = (uintptr_t)&weapon_nemesis;
 	add[101] = (uintptr_t)&mapradartest;
 	add[102] = (uintptr_t)&weapon_rampage_lmg;
+	add[103] = (uintptr_t)&snipereq;
+	add[104] = (uintptr_t)&bowheadshotmode;
+	
 	
 
 	

@@ -36,6 +36,9 @@ bool thirdperson = false;
 float smoothpred = 0.08;
 float smoothpred2 = 0.05;
 bool mapradartest = false;
+//headshot mode
+int snipereq = 0;
+int bowheadshotmode = 0;
 
 
 //chargerifle hack, removed but not all the way, dont edit.
@@ -1003,6 +1006,12 @@ static void set_vars(uint64_t add_addr)
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*101, mapradartest_addr);
 	uint64_t weapon_rampage_lmg_addr = 0;
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*102, weapon_rampage_lmg_addr);
+	//headshot stuff
+	uint64_t snipereq_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*103, snipereq_addr);
+	uint64_t bowheadshotmode_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*104, bowheadshotmode_addr);
+	
 	
 	
 
@@ -1144,6 +1153,11 @@ static void set_vars(uint64_t add_addr)
 			//new map radar test
 			client_mem.Read<bool>(mapradartest_addr, mapradartest);
 			client_mem.Read<bool>(weapon_rampage_lmg_addr, weapon_rampage_lmg);
+			//headshot stuff
+			client_mem.Write<int>(snipereq_addr, snipereq);
+			client_mem.Write<int>(bowheadshotmode_addr, bowheadshotmode);
+			
+			
 			
 		
 			
@@ -1172,8 +1186,16 @@ static void set_vars(uint64_t add_addr)
 }
 
 // Item Glow Stuff
+//testing
 
- 
+
+
+//done testing
+
+
+
+
+
 static void item_glow_t()
 {
 	item_t = true;
@@ -1194,7 +1216,291 @@ static void item_glow_t()
 					apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
 					if (centity == 0) continue;
 					Item item = getItem(centity);
+					//testing
+					uint64_t LocalPlayer = 0;
+					apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+					/*
+					// CREDITS to Rikkie https://www.unknowncheats.me/forum/members/169606.html
+					// for all the weapon ids and item ids code, you are a life saver!
+					//Floor Item ID's
+					ulong pEntityList = g_Base + OFFSET_ENTITYLIST; // 0x1b37938
+					for (int i = 100; i < 16000; i++)
+					{
+					
+					ulong pEntity;
+					apex_mem.Read<uint64_t>(pEntityList + (i * 0x20), pEntity);
+					
+					uint32_t itemID;
+					apex_mem.Read<uint32_t>(pEntity + OFFSET_M_CUSTOMSCRIPTINT, itemID); // 0x1648
+					if (itemID < 1 || itemID > 300 )
+					continue;
+
+					if (heavybackpack && itemID == 190) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 255 / itemglowbrightness); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 215 / itemglowbrightness); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 0 / itemglowbrightness); // b
+					
+					}
+					if (heavybackpack && itemID == 189) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 160 / itemglowbrightness); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 32 / itemglowbrightness); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 240 / itemglowbrightness); // b
+					
+					}
+					//Rare shield
+					if (shieldupgrade && itemID == 174) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 0 ); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 0 ); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 255 ); // b
+					}
+					//Epic shield
+					if (shieldupgrade && itemID == 175) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 160 / itemglowbrightness); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 32 / itemglowbrightness); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 240 / itemglowbrightness); // b
+					}
+					//Legend shield
+					if (shieldupgrade && itemID == 176) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 255 / itemglowbrightness); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 215 / itemglowbrightness); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 0 / itemglowbrightness); // b
+					}
+					//HEIRLOOM shield
+					if (shieldupgrade && itemID == 181) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 255); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 0); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 0); // b
+					}
+					if (shieldupgradehead && itemID == 170)
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 0 ); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 0 ); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 255 ); // b
+					}
+					if (shieldupgradehead && itemID == 171)
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 160 / itemglowbrightness); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 32 / itemglowbrightness); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 240 / itemglowbrightness); // b
+					}
+					if (shieldupgradehead && itemID == 172)
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 255 / itemglowbrightness); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 215 / itemglowbrightness); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 0 / itemglowbrightness); // b
+					}
+					if (accelerant && itemID == 163)
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 160 / itemglowbrightness); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 32 / itemglowbrightness); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 240 / itemglowbrightness); // b
+					}
+					
+					//Nades
+					if (grenade_frag && itemID == 193) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 255 / itemglowbrightness); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 255 / itemglowbrightness); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 255 / itemglowbrightness); // b
+					}
+					
+					if (grenade_thermite && itemID == 192) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 255); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 0); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 0); // b
+					}
+					if (grenade_arc_star && itemID == 194) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 0 ); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 0 ); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 255 ); // b
+					}
+					//Barrel Stabilizer 2 rare
+					if (suppressor &&  itemID == 206) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 0 ); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 0 ); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 255 ); // b
+					}
+					//Barrel Stabilizer 3 epic
+					if (suppressor &&  itemID == 207) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 160 / itemglowbrightness); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 32 / itemglowbrightness); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 240 / itemglowbrightness); // b
+					}
+					//Barrel Stabilizer 4
+					if (suppressor &&  itemID == 208) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 255 / itemglowbrightness); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 215 / itemglowbrightness); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 0 / itemglowbrightness); // b
+					}
+					//Med Backpack
+					if (medbackpack &&  itemID == 188)  
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 2); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
  
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 0); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 0); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 255 / itemglowbrightness); // b
+					
+					}
+					if (shieldbattlarge &&  itemID == 167) 
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+ 
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 0); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 0); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 225); // b
+					}
+				
+				
+					//printf("Item ID: %i\n", itemID);
+					if (itemID == 194)
+					{
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_ENABLE, 1);
+						apex_mem.Write<int>(pEntity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
+						apex_mem.Write<GlowMode>(pEntity + GLOW_START_TIME, { 101,101,99,90 });
+ 
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_R, 0 / itemglowbrightness); // r
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_G, 0 / itemglowbrightness); // g
+						apex_mem.Write<float>(pEntity + GLOW_COLOR_B, 255 / itemglowbrightness); // b
+					}
+					
+					}
+					
+						
+					
+					
+					
+					
+					*/
+					//Weapon ID in hand.
+					
+					// CREDITS to Rikkie https://www.unknowncheats.me/forum/members/169606.html
+					// for all the weapon ids and item ids code, you are a life saver!
+					ulong ehWeaponHandle;
+					apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON, ehWeaponHandle); // 0x1a1c
+					ehWeaponHandle &= 0xFFFF; // eHandle
+					ulong pWeapon;
+					apex_mem.Read<uint64_t>(entitylist + (ehWeaponHandle * 0x20), pWeapon);
+					
+					uint32_t weaponID;
+					apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME, weaponID); //0x1844
+					//printf("%d\n", weaponID);
+					
+					if (weaponID == 113 || weaponID == 1 || weaponID == 129 || weaponID == 111 || weaponID == 119 || weaponID == 2 || weaponID == 117 || weaponID == 131 || weaponID == 128 || weaponID == 19)
+					{
+					//printf("Snipers EQ: %d\n", weaponID);	
+						snipereq = 1;
+					}
+					else if (weaponID != 113 || weaponID != 1 || weaponID != 129 || weaponID != 111 || weaponID != 119 || weaponID != 2 || weaponID != 117 || weaponID != 131 || weaponID != 128 || weaponID != 19)
+					{
+						snipereq = 0;
+					}
+					
+					if (weaponID == 2)
+					{
+						bowheadshotmode = 1;
+						//printf("Bow EQ: %d\n", weaponID);	
+						
+					}
+					else if (weaponID != 2)
+					{
+						bowheadshotmode = 0;
+						
+					}
+					
+					
+					
+
+					
+					
+					
+					//done testing
+					
+					
+
+				
+
+					
+					
 					
 					
 					
@@ -1843,7 +2149,7 @@ int main(int argc, char *argv[])
 	//const char* ap_proc = "EasyAntiCheat_launcher.exe";
 
 	//Client "add" offset
-	uint64_t add_off = 0x139a00; //todo make this auto update..
+	uint64_t add_off = 0x138a10; //todo make this auto update..
 
 	std::thread aimbot_thr;
 	std::thread esp_thr;
