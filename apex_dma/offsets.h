@@ -78,6 +78,6 @@
 //triggerbot?
 #define CROSSHAIRSTART				0x1a74 // 	crosshairTargetStartTime
 #define CROSSHAIR_TARGET_TIME				0x1a78 // 	lastCrosshairTargetTime
-
+#define OFFSET_GAMEMODE 			0x01f21a70 //mp_gamemode
 
 #endif

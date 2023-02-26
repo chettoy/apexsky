@@ -15,6 +15,8 @@ void Math::NormalizeAngles(QAngle& angle)
 		angle.y += 360.f;
 }
 
+
+
 QAngle Math::CalcAngle(const Vector& src, const Vector& dst)
 {
 	QAngle angle = QAngle();

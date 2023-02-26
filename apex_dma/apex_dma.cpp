@@ -8,6 +8,7 @@
 #include <cfloat>
 #include "Game.h"
 #include <thread>
+#include <chrono>
 
 //this is a test, with seconds
 Memory apex_mem;
@@ -220,6 +221,7 @@ typedef struct player
 	Vector EntityPosition;
 	Vector LocalPlayerPosition;
 	QAngle localviewangle;
+	float targetyaw = 0;
 	char name[33] = { 0 };
 }player;
 
@@ -525,6 +527,8 @@ void DoActions()
 
 player players[toRead];
 
+
+
 //ESP loop.. this helps right?
 static void EspLoop()
 {
@@ -694,7 +698,11 @@ static void EspLoop()
 						{	
 							continue;
 						}
-
+						
+						
+						
+						
+						
 						Vector bs = Vector();
 						//Change res to your res here, default is 1080p but can copy paste 1440p here
 						WorldToScreen(EntityPosition, m.matrix, 1920, 1080, bs); //2560, 1440
@@ -714,6 +722,7 @@ static void EspLoop()
 							Vector EntityPosition = Target.getPosition();
 							Vector LocalPlayerPosition = LPlayer.getPosition();
 							QAngle localviewangle = LPlayer.GetViewAngles();
+							float targetyaw = Target.GetYaw();
 							players[i] = 
 							{
 								dist,
@@ -732,7 +741,8 @@ static void EspLoop()
 								armortype,
 								EntityPosition,
 								LocalPlayerPosition,
-								localviewangle
+								localviewangle,
+								targetyaw
 							};
 							Target.get_name(g_Base, i-1, &players[i].name[0]);
 							lastvis_esp[i] = Target.lastVisTime();
@@ -1201,11 +1211,11 @@ static void item_glow_t()
 	item_t = true;
 	while(item_t)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		//std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		int k = 0;
 		while(g_Base!=0 && c_Base!=0)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			//std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
 			if (item_glow)
 			{
@@ -1465,12 +1475,12 @@ static void item_glow_t()
 					apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME, weaponID); //0x1844
 					//printf("%d\n", weaponID);
 					
-					if (weaponID == 113 || weaponID == 1 || weaponID == 129 || weaponID == 111 || weaponID == 119 || weaponID == 2 || weaponID == 117 || weaponID == 131 || weaponID == 128 || weaponID == 19)
+					if (weaponID == 113 || weaponID == 1 || weaponID == 129 || weaponID == 111 || weaponID == 119 || weaponID == 2 || weaponID == 117 || weaponID == 131 || weaponID == 128 || weaponID == 118 || weaponID == 19)
 					{
 					//printf("Snipers EQ: %d\n", weaponID);	
 						snipereq = 1;
 					}
-					else if (weaponID != 113 || weaponID != 1 || weaponID != 129 || weaponID != 111 || weaponID != 119 || weaponID != 2 || weaponID != 117 || weaponID != 131 || weaponID != 128 || weaponID != 19)
+					else if (weaponID != 113 || weaponID != 1 || weaponID != 129 || weaponID != 111 || weaponID != 119 || weaponID != 2 || weaponID != 117 || weaponID != 131 || weaponID != 128 || weaponID != 118 || weaponID != 118)
 					{
 						snipereq = 0;
 					}
@@ -2106,7 +2116,7 @@ static void item_glow_t()
 				}
 				k=1;
 				//Change the 60 ms to lower to make the death boxes filker less.
-				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				//std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			}
 			else
 			{		
@@ -2135,8 +2145,16 @@ static void item_glow_t()
 }
 
 
+
+auto prevTime = std::chrono::high_resolution_clock::now();
+auto currentTime = std::chrono::high_resolution_clock::now();
+float deltaTime = 0.0f;
+
+
 int main(int argc, char *argv[])
 {
+	currentTime = std::chrono::high_resolution_clock::now();
+    deltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - prevTime).count() / 1000.0f;
 	if(geteuid() != 0)
 	{
 		//run as root..
@@ -2149,7 +2167,7 @@ int main(int argc, char *argv[])
 	//const char* ap_proc = "EasyAntiCheat_launcher.exe";
 
 	//Client "add" offset
-	uint64_t add_off = 0x138a10; //todo make this auto update..
+	uint64_t add_off = 0x138a70; //todo make this auto update..
 
 	std::thread aimbot_thr;
 	std::thread esp_thr;
@@ -2232,6 +2250,6 @@ int main(int argc, char *argv[])
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
-
+	prevTime = currentTime;
 	return 0;
 }

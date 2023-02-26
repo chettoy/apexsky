@@ -207,7 +207,8 @@ static IDXGISwapChain* g_pSwapChain = NULL;
 static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
 
 // Forward declarations of helper functions
-bool CreateDeviceD3D(HWND hWnd);
+//bool CreateDeviceD3D(HWND hWnd);
+bool CreateDeviceD3D(HWND hWnd2);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();

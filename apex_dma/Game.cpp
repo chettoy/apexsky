@@ -369,6 +369,8 @@ float CalculateFov(Entity& from, Entity& target)
 	return Math::GetFov(ViewAngles, Angle);
 }
 
+extern float deltaTime;
+
 QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 {
 	Entity target = getEntity(t);
@@ -416,7 +418,7 @@ QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 	*/
 	
 	//more accurate prediction
-	if (BulletSpeed > 1.f)
+	/*if (BulletSpeed > 1.f)
 	{
 		PredictCtx Ctx;
 		Ctx.StartPos = LocalCamera;
@@ -428,6 +430,34 @@ QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 		if (BulletPredict(Ctx))
 			CalculatedAngles = QAngle{Ctx.AimAngles.x, Ctx.AimAngles.y, 0.f};
     }
+	*/
+	//Testing new prediction
+	
+if (BulletSpeed > 1.f)
+{
+    PredictCtx Ctx;
+    Ctx.StartPos = LocalCamera;
+    Ctx.TargetPos = TargetBonePosition; 
+    Ctx.BulletSpeed = BulletSpeed - (BulletSpeed * smoothpred);
+    Ctx.BulletGravity = BulletGrav + (BulletGrav * smoothpred2);
+
+    // Get the target's velocity and add it to the prediction context
+    Vector targetVel = target.getAbsVelocity();
+
+    // Calculate the time since the last frame (in seconds)
+    //float deltaTime = 0.079f;
+
+    // Add the target's velocity to the prediction context, with an offset in the y direction
+    float distanceToTarget = (TargetBonePosition - LocalCamera).Length();
+    float timeToTarget = distanceToTarget / BulletSpeed;
+    Vector targetPosAhead = TargetBonePosition + (targetVel * timeToTarget);
+    Ctx.TargetVel = Vector(targetVel.x, targetVel.y + (targetVel.Length() * deltaTime), targetVel.z);
+    Ctx.TargetPos = targetPosAhead;
+
+    if (BulletPredict(Ctx))
+        CalculatedAngles = QAngle{Ctx.AimAngles.x, Ctx.AimAngles.y, 0.f};
+}
+	
 
 	if (CalculatedAngles == QAngle(0, 0, 0))
     	CalculatedAngles = Math::CalcAngle(LocalCamera, TargetBonePosition);
