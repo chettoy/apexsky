@@ -17,6 +17,7 @@ bool aim_no_recoil = true;
 int bone = 2;
 extern float smoothpred;
 extern float smoothpred2;
+extern float veltest;
 
 bool Entity::Observing(uint64_t entitylist)
 {
@@ -451,7 +452,7 @@ if (BulletSpeed > 1.f)
     float distanceToTarget = (TargetBonePosition - LocalCamera).Length();
     float timeToTarget = distanceToTarget / BulletSpeed;
     Vector targetPosAhead = TargetBonePosition + (targetVel * timeToTarget);
-    Ctx.TargetVel = Vector(targetVel.x, targetVel.y + (targetVel.Length() * deltaTime), targetVel.z);
+    Ctx.TargetVel = Vector(targetVel.x, targetVel.y + (targetVel.Length() * deltaTime + veltest), targetVel.z);
     Ctx.TargetPos = targetPosAhead;
 
     if (BulletPredict(Ctx))

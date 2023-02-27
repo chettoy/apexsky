@@ -10,7 +10,7 @@
 #include <thread>
 #include <chrono>
 
-//this is a test, with seconds
+//this is a test, with seconds. With Tests.
 Memory apex_mem;
 Memory client_mem;
 
@@ -36,6 +36,7 @@ extern int bone;
 bool thirdperson = false;
 float smoothpred = 0.08;
 float smoothpred2 = 0.05;
+float veltest = 1.00;
 bool mapradartest = false;
 //headshot mode
 int snipereq = 0;
@@ -527,7 +528,7 @@ void DoActions()
 
 player players[toRead];
 
-
+Vector LocalPOS;
 
 //ESP loop.. this helps right?
 static void EspLoop()
@@ -555,6 +556,7 @@ static void EspLoop()
 					continue;
 				}
 				Entity LPlayer = getEntity(LocalPlayer);
+				
 				int team_player = LPlayer.getTeamId();
 				if (team_player < 0 || team_player>50)
 				{
@@ -566,6 +568,7 @@ static void EspLoop()
 					continue;
 				}
 				Vector LocalPlayerPosition = LPlayer.getPosition();
+				LocalPOS = LPlayer.getAbsVelocity();
 
 				uint64_t viewRenderer = 0;
 				apex_mem.Read<uint64_t>(g_Base + OFFSET_RENDER, viewRenderer);
@@ -1021,6 +1024,8 @@ static void set_vars(uint64_t add_addr)
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*103, snipereq_addr);
 	uint64_t bowheadshotmode_addr = 0;
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*104, bowheadshotmode_addr);
+	uint64_t veltest_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*105, veltest_addr);
 	
 	
 	
@@ -1166,6 +1171,7 @@ static void set_vars(uint64_t add_addr)
 			//headshot stuff
 			client_mem.Write<int>(snipereq_addr, snipereq);
 			client_mem.Write<int>(bowheadshotmode_addr, bowheadshotmode);
+			client_mem.Read<float>(veltest_addr, veltest);
 			
 			
 			
@@ -1475,12 +1481,12 @@ static void item_glow_t()
 					apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME, weaponID); //0x1844
 					//printf("%d\n", weaponID);
 					
-					if (weaponID == 113 || weaponID == 1 || weaponID == 129 || weaponID == 111 || weaponID == 119 || weaponID == 2 || weaponID == 117 || weaponID == 131 || weaponID == 128 || weaponID == 118 || weaponID == 19)
+					if (weaponID == 113 || weaponID == 1 || weaponID == 129 || weaponID == 111 || weaponID == 119 || weaponID == 2 || weaponID == 117 || weaponID == 131 || weaponID == 128 || weaponID == 118)
 					{
 					//printf("Snipers EQ: %d\n", weaponID);	
 						snipereq = 1;
 					}
-					else if (weaponID != 113 || weaponID != 1 || weaponID != 129 || weaponID != 111 || weaponID != 119 || weaponID != 2 || weaponID != 117 || weaponID != 131 || weaponID != 128 || weaponID != 118 || weaponID != 118)
+					else if (weaponID != 113 || weaponID != 1 || weaponID != 129 || weaponID != 111 || weaponID != 119 || weaponID != 2 || weaponID != 117 || weaponID != 131 || weaponID != 128 || weaponID != 118)
 					{
 						snipereq = 0;
 					}
@@ -2167,7 +2173,7 @@ int main(int argc, char *argv[])
 	//const char* ap_proc = "EasyAntiCheat_launcher.exe";
 
 	//Client "add" offset
-	uint64_t add_off = 0x138a70; //todo make this auto update..
+	uint64_t add_off = 0x138a80; //todo make this auto update..
 
 	std::thread aimbot_thr;
 	std::thread esp_thr;
