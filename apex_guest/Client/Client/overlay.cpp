@@ -21,8 +21,7 @@ extern float smooth;
 
 extern float smoothpred;
 extern float smoothpred2;
-//TDM Toggle
-extern bool TDMToggle;
+
 //Dynamic Fov
 extern float dynamicfov;
 extern float dynamicfovmax;
@@ -279,7 +278,6 @@ void Overlay::RenderMenu()
 					}
 					ImGui::SameLine();
 					ImGui::Sliderbox(XorStr("Firing Range"), &firing_range);
-					ImGui::Sliderbox(XorStr("TDM Toggle"), &TDMToggle);
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Aiming Distance:"));
 					ImGui::SameLine();

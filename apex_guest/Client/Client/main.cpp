@@ -32,14 +32,7 @@ typedef struct player
 
 
 uint32_t check = 0xABCD;
-//Team check?
-// local team id
-int PlayerLocalTeamID = 0;
-//TDM Toggle
-bool TDMToggle = false;
-//More TDM toggle stuff
-int EntTeam;
-int LocTeam;
+
 //Aiming keys: left and right mouse button
 int aim_key = VK_LBUTTON; //Left Click
 int aim_key2 = VK_RBUTTON; //Right Click
@@ -191,7 +184,7 @@ int allied_spectators = 0; //write
 bool valid = true; //write
 bool next2 = true; //read write
 
-uint64_t add[1010];
+uint64_t add[106];
 
 bool k_f5 = 0;
 bool k_f6 = 0;
@@ -377,7 +370,7 @@ void Overlay::RenderEsp()
 					{
 						if (players[i].dist < 16000.0f)
 						{
-								DrawSeerLikeHealth((players[i].b_x - (players[i].width / 2.0f) + 5), (players[i].b_y - players[i].height - 10), players[i].shield, players[i].maxshield, players[i].armortype, players[i].health); //health bar
+							DrawSeerLikeHealth((players[i].b_x - (players[i].width / 2.0f) + 5), (players[i].b_y - players[i].height - 10), players[i].shield, players[i].maxshield, players[i].armortype, players[i].health); //health bar
 						}
 					}
 				}
@@ -497,10 +490,6 @@ int main(int argc, char** argv)
 	add[103] = (uintptr_t)&snipereq;
 	add[104] = (uintptr_t)&bowheadshotmode;
 	add[105] = (uintptr_t)&veltest;
-	add[106] = (uintptr_t)&PlayerLocalTeamID;
-	add[107] = (uintptr_t)&TDMToggle;
-	add[108] = (uintptr_t)&EntTeam;
-	add[109] = (uintptr_t)&LocTeam;
 	
 	
 

@@ -41,8 +41,7 @@ bool mapradartest = false;
 //headshot mode
 int snipereq = 0;
 int bowheadshotmode = 0;
-//TDM Toggle
-bool TDMToggle = false;
+
 
 //chargerifle hack, removed but not all the way, dont edit.
 bool chargerifle = false;
@@ -301,16 +300,6 @@ void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
 	}
 }
 
-//TDM check?
-
-
-
-uint64_t PlayerLocal;
-int PlayerLocalTeamID;
-int EntTeam;
-int LocTeam;
-
-
 
 void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int index)
 {
@@ -329,29 +318,6 @@ void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int ind
 				tmp_spec++;
 		}
 		return;
-	}
-	if (TDMToggle)
-	{// Check if the target entity is on the same team as the local player
-		//int entity_team = Target.getTeamId();
-		//printf("Target Team: %i\n", entity_team);
-		
-		
-		uint64_t PlayerLocal;
-		apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, PlayerLocal);
-		int PlayerLocalTeamID;
-		apex_mem.Read<int>(PlayerLocal + OFFSET_TEAM, PlayerLocalTeamID);
-		
-		
-		
-		if (entity_team % 2) EntTeam = 1;
-		else EntTeam = 2;
-		if (PlayerLocalTeamID % 2) LocTeam = 1;
-		else LocTeam = 2;
-		
-		//printf("Target Team: %i\nLocal Team: %i\n", EntTeam, LocTeam);
-		if (EntTeam == LocTeam)
-			return;
-
 	}
 
 	Vector EntityPosition = target.getPosition();
@@ -1060,23 +1026,18 @@ static void set_vars(uint64_t add_addr)
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*104, bowheadshotmode_addr);
 	uint64_t veltest_addr = 0;
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*105, veltest_addr);
-	//team check?
-	//local team check
-	uint64_t PlayerLocalTeamID_addr = 0;
-	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*106, PlayerLocalTeamID_addr);
-	uint64_t TDMToggle_addr = 0;
-	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*107, TDMToggle_addr);
-	//More Team check stuff
-	uint64_t EntTeam_addr = 0;
-	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*108, EntTeam_addr);
-	uint64_t LocTeam_addr = 0;
-	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*109, LocTeam_addr);
-
+	
+	
 	
 
 	
 	
-	//good god 97..make that 109... of em.. why
+	
+	
+
+	
+	
+	//good god 97 of em.. why
 	
 
 	uint32_t check = 0;
@@ -1211,14 +1172,7 @@ static void set_vars(uint64_t add_addr)
 			client_mem.Write<int>(snipereq_addr, snipereq);
 			client_mem.Write<int>(bowheadshotmode_addr, bowheadshotmode);
 			client_mem.Read<float>(veltest_addr, veltest);
-			//team check?
-			//local team id
-			client_mem.Write<int>(PlayerLocalTeamID_addr, PlayerLocalTeamID);
-			//TDM Toggle
-			client_mem.Read<bool>(TDMToggle_addr, TDMToggle);
-			//More TDM toggle stuff
-			client_mem.Write<int>(EntTeam_addr, EntTeam);
-			client_mem.Write<int>(LocTeam_addr, LocTeam);
+			
 			
 			
 		
