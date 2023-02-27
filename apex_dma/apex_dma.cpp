@@ -10,7 +10,7 @@
 #include <thread>
 #include <chrono>
 
-//this is a test, with seconds.
+//this is a test, with seconds
 Memory apex_mem;
 Memory client_mem;
 
@@ -36,7 +36,7 @@ extern int bone;
 bool thirdperson = false;
 float smoothpred = 0.08;
 float smoothpred2 = 0.05;
-float veltest = 1.00;
+float veltest = 1.00;					 
 bool mapradartest = false;
 //headshot mode
 int snipereq = 0;
@@ -308,10 +308,7 @@ void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
 uint64_t PlayerLocal;
 int PlayerLocalTeamID;
 int EntTeam;
-int LocTeam;
-
-
-
+int LocTeam;	  
 void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int index)
 {
 	int entity_team = target.getTeamId();
@@ -562,6 +559,7 @@ void DoActions()
 
 player players[toRead];
 
+
 Vector LocalPOS;
 
 //ESP loop.. this helps right?
@@ -590,7 +588,6 @@ static void EspLoop()
 					continue;
 				}
 				Entity LPlayer = getEntity(LocalPlayer);
-				
 				int team_player = LPlayer.getTeamId();
 				if (team_player < 0 || team_player>50)
 				{
@@ -602,7 +599,7 @@ static void EspLoop()
 					continue;
 				}
 				Vector LocalPlayerPosition = LPlayer.getPosition();
-				LocalPOS = LPlayer.getAbsVelocity();
+				LocalPOS = LPlayer.getAbsVelocity();						
 
 				uint64_t viewRenderer = 0;
 				apex_mem.Read<uint64_t>(g_Base + OFFSET_RENDER, viewRenderer);
@@ -1071,7 +1068,13 @@ static void set_vars(uint64_t add_addr)
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*108, EntTeam_addr);
 	uint64_t LocTeam_addr = 0;
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*109, LocTeam_addr);
+	
+	
+	
 
+	
+	
+	
 	
 
 	
@@ -1219,6 +1222,7 @@ static void set_vars(uint64_t add_addr)
 			//More TDM toggle stuff
 			client_mem.Write<int>(EntTeam_addr, EntTeam);
 			client_mem.Write<int>(LocTeam_addr, LocTeam);
+			
 			
 			
 		
@@ -1548,7 +1552,24 @@ static void item_glow_t()
 						bowheadshotmode = 0;
 						
 					}
-	
+					
+					
+					
+
+					
+					
+					
+					//done testing
+					
+					
+
+				
+
+					
+					
+					
+					
+					
 					if(item.isItem() && !item.isGlowing())
 					{
 						//item.enableGlow();
@@ -1559,7 +1580,7 @@ static void item_glow_t()
 					apex_mem.Read<uint64_t>(centity + OFFSET_MODELNAME, name_ptr);
 					apex_mem.ReadArray<char>(name_ptr, glowName, 200);
 					//Prints stuff you want to console
-					//if (strstr(glowName, "mdl/")) 
+					//if (strstr(glowName, "mdl/weapons/")) 
 					//{
 					//printf("%s\n", glowName);
 					//}
