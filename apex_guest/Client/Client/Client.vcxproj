@@ -55,6 +55,7 @@
     <IncludePath>$(DXSDK_DIR)Include;$(IncludePath)</IncludePath>
     <TargetName>MonkeyCure</TargetName>
     <ManagedAssembly>true</ManagedAssembly>
+    <OutDir>..\..\..\..\..\..\Desktop</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>

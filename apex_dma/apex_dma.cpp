@@ -10,7 +10,7 @@
 #include <thread>
 #include <chrono>
 
-//this is a test, with seconds. With Tests.
+//this is a test, with seconds.
 Memory apex_mem;
 Memory client_mem;
 
@@ -1502,24 +1502,7 @@ static void item_glow_t()
 						bowheadshotmode = 0;
 						
 					}
-					
-					
-					
-
-					
-					
-					
-					//done testing
-					
-					
-
-				
-
-					
-					
-					
-					
-					
+	
 					if(item.isItem() && !item.isGlowing())
 					{
 						//item.enableGlow();
@@ -1530,7 +1513,7 @@ static void item_glow_t()
 					apex_mem.Read<uint64_t>(centity + OFFSET_MODELNAME, name_ptr);
 					apex_mem.ReadArray<char>(name_ptr, glowName, 200);
 					//Prints stuff you want to console
-					//if (strstr(glowName, "mdl/weapons/")) 
+					//if (strstr(glowName, "mdl/")) 
 					//{
 					//printf("%s\n", glowName);
 					//}
@@ -1816,9 +1799,9 @@ static void item_glow_t()
 						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
 						apex_mem.Write<GlowMode>(centity + GLOW_START_TIME, { 101,101,99,90 });
  
-						apex_mem.Write<float>(centity + GLOW_COLOR_R, 255 / itemglowbrightness); // r
-						apex_mem.Write<float>(centity + GLOW_COLOR_G, 255 / itemglowbrightness); // g
-						apex_mem.Write<float>(centity + GLOW_COLOR_B, 255 / itemglowbrightness); // b
+						apex_mem.Write<float>(centity + GLOW_COLOR_R, 255); // r
+						apex_mem.Write<float>(centity + GLOW_COLOR_G, 0); // g
+						apex_mem.Write<float>(centity + GLOW_COLOR_B, 0); // b
 					}
 					if (weapon_mastiff && strstr(glowName, "mdl/weapons/mastiff_stgn/w_mastiff.rmdl")) 
 					{
@@ -2080,9 +2063,9 @@ static void item_glow_t()
 						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
 						apex_mem.Write<GlowMode>(centity + GLOW_START_TIME, { 101,101,99,90 });
  
-						apex_mem.Write<float>(centity + GLOW_COLOR_R, 255 / itemglowbrightness); // r
-						apex_mem.Write<float>(centity + GLOW_COLOR_G, 255 / itemglowbrightness); // g
-						apex_mem.Write<float>(centity + GLOW_COLOR_B, 0 / itemglowbrightness); // b
+						apex_mem.Write<float>(centity + GLOW_COLOR_R, 255); // r
+						apex_mem.Write<float>(centity + GLOW_COLOR_G, 0); // g
+						apex_mem.Write<float>(centity + GLOW_COLOR_B, 0); // b
 					}
 					if (weapon_3030_repeater && strstr(glowName, "mdl/weapons/3030repeater/w_3030repeater.rmdl")) 
 					{

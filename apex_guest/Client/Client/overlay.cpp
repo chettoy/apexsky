@@ -768,6 +768,8 @@ void Overlay::RenderMenu()
 					ImGui::Sliderbox(XorStr("Regular Stock"), &stockregular);
 					ImGui::Sliderbox(XorStr("Suppressor"), &suppressor);
 					ImGui::SameLine();
+					ImGui::Sliderbox(XorStr("Shotgun Bolt"), &shotgunbolt);
+					ImGui::SameLine();
 					ImGui::Sliderbox(XorStr("Weapon Mods"), &weaponmod);
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Item Glow Brightness:"));
@@ -849,9 +851,10 @@ void Overlay::RenderMenu()
 					ImGui::Sliderbox(XorStr("Wingman "), &weapon_wingman);
 					//KRABER
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
-					ImGui::Text(XorStr("The Kraber"));
+					ImGui::Text(XorStr("Special Weapons"));
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Sliderbox(XorStr("Kraber .50-Cal Sniper"), &weapon_kraber);
+					ImGui::Sliderbox(XorStr("Bocek Bow"), &weapon_bow);
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Item Glow Brightness:"));
 					ImGui::SliderInt(XorStr("##itemglowbright"), &itemglowbrightness, 2, 40, "%d");
