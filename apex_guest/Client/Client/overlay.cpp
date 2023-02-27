@@ -7,7 +7,7 @@
 #include <iomanip>
 
 using namespace std;
-
+extern float veltest;
 extern bool firing_range;
 extern int aim;
 extern bool esp;
@@ -21,8 +21,8 @@ extern float smooth;
 
 extern float smoothpred;
 extern float smoothpred2;
+//TDM Toggle
 extern bool TDMToggle;
-extern float veltest;
 //Dynamic Fov
 extern float dynamicfov;
 extern float dynamicfovmax;
@@ -485,6 +485,8 @@ void Overlay::RenderMenu()
 							config << dynamicfov << "\n";
 							config << dynamicfovmax << "\n";
 
+
+
 							//glow visable
 							config << glowrviz << "\n";
 							config << glowgviz << "\n";
@@ -658,12 +660,12 @@ void Overlay::RenderMenu()
 				{
 					menu2 = 1;
 					//Dot Size for both mini and main map
-					ImGui::Text(XorStr("MiniMap Radar Dot Size"));
-					ImGui::SliderInt(XorStr("MiniMap Dot Width"), &minimapradardotsize1, 1, 10);
-					ImGui::SliderInt(XorStr("MiniMap Dot length"), &minimapradardotsize2, 1, 10);
-					ImGui::Text(XorStr("Main Map Radar Dot Size"));
-					ImGui::SliderInt(XorStr("Main Map Dot Width"), &mainmapradardotsize1, 1, 10);
-					ImGui::SliderInt(XorStr("Main Map Dot length"), &mainmapradardotsize2, 1, 10);
+					ImGui::Text(XorStr("MiniMap Circle Size"));
+					ImGui::SliderInt(XorStr("##MiniMap Circle Size"), &minimapradardotsize1, 1, 10);
+					
+					ImGui::Text(XorStr("MiniMap Circle Outline Size"));
+					ImGui::SliderInt(XorStr("##MiniMap Circle Outline Size"), &minimapradardotsize2, 1, 10);
+					
 					/*//Radar Color
 					ImGui::Text(XorStr("Radar Color Picker:"));
 					ImGui::ColorEdit3("##Radar Color Picker", radarcolor);
@@ -767,8 +769,8 @@ void Overlay::RenderMenu()
 					ImGui::SameLine();
 					ImGui::Sliderbox(XorStr("Regular Stock"), &stockregular);
 					ImGui::Sliderbox(XorStr("Suppressor"), &suppressor);
-					ImGui::Sliderbox(XorStr("Shotgun Bolt"), &shotgunbolt);
 					ImGui::SameLine();
+					ImGui::Sliderbox(XorStr("Shotgun Bolt"), &shotgunbolt);
 					ImGui::SameLine();
 					ImGui::Sliderbox(XorStr("Weapon Mods"), &weaponmod);
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));

@@ -32,15 +32,14 @@ typedef struct player
 
 
 uint32_t check = 0xABCD;
-
+//Team check?
+// local team id
 int PlayerLocalTeamID = 0;
 //TDM Toggle
 bool TDMToggle = false;
 //More TDM toggle stuff
 int EntTeam;
 int LocTeam;
-float veltest = 1.00;
-
 //Aiming keys: left and right mouse button
 int aim_key = VK_LBUTTON; //Left Click
 int aim_key2 = VK_RBUTTON; //Right Click
@@ -71,7 +70,7 @@ float dynamicfovmax = 15.0f;
 
 float smoothpred = 0.08;
 float smoothpred2 = 0.05;
-
+float veltest = 1.00;
 int bone = 2; //0 Head, 1 Neck, 2 Body, 3 Stomace, 4 Nuts
 //Player Glow Color and Brightness
 float glowr = 120.0f; //Red Value
@@ -192,7 +191,7 @@ int allied_spectators = 0; //write
 bool valid = true; //write
 bool next2 = true; //read write
 
-uint64_t add[110];
+uint64_t add[1010];
 
 bool k_f5 = 0;
 bool k_f6 = 0;
@@ -209,7 +208,7 @@ bool k_f100 = 0;
 player players[100];
 
 //Radar Code
-#define M_PI		3.14159265358979323846	// matches value in gcc v2 math.h
+#define M_PI		3.14159265358979323846	// matches value in gcc v2 math.h ?
 static D3DXVECTOR3 RotatePoint(D3DXVECTOR3 EntityPos, D3DXVECTOR3 LocalPlayerPos, int posX, int posY, int sizeX, int sizeY, float angle, float zoom, bool* viewCheck)
 {
 	float r_1, r_2;
@@ -246,23 +245,34 @@ struct RGBA {
 	int A;
 };
 std::map<int, RGBA> teamColors;
-static void TeamMiniMap(int x, int y, int w, int h, int teamID)
+static void TeamMiniMap(int x, int y, int radius, int teamID)
 {
 	RGBA color;
 	auto it = teamColors.find(teamID);
 	if (it == teamColors.end()) {
-		// Generate a new random color for this team
+		// Define the minimum sum of RGB values for a color to be considered "light"
+		const int MIN_SUM_RGB = 500;
+
+		// Generate a new random color for this team, discarding colors with a low sum of RGB values
 		std::random_device rd;
 		std::mt19937 gen(rd());
 		std::uniform_int_distribution<> dis(0, 255);
-		color = { dis(gen), dis(gen), dis(gen), 255 };
+		RGBA color;
+		do {
+			color = { dis(gen), dis(gen), dis(gen), 255 };
+		} while (color.R + color.G + color.B < MIN_SUM_RGB);
+
+		// Store the color in the teamColors map
 		teamColors[teamID] = color;
 	}
 	else {
 		// Use the previously generated color for this team
 		color = it->second;
 	}
-	ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(x, y), ImVec2(x + w, y + h), ImGui::ColorConvertFloat4ToU32(ImVec4(color.R / 255.0, color.G / 255.0, color.B / 255.0, color.A / 255.0)), 0, 0);
+	
+	auto colOutline = ImGui::ColorConvertFloat4ToU32(ImVec4(0.0, 0.0, 0.0, 1.0));
+	ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(x, y), radius, ImGui::ColorConvertFloat4ToU32(ImVec4(color.R / 255.0, color.G / 255.0, color.B / 255.0, color.A / 255.0)));
+	ImGui::GetWindowDrawList()->AddCircle(ImVec2(x, y), radius, colOutline, 12, minimapradardotsize2);
 }
 bool menu = true;
 bool firstS = true;
@@ -294,7 +304,7 @@ void DrawRadarPoint(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos, float LocalPlay
 	{
 		for (int i = 1; i <= 30; i++)
 		{
-			TeamMiniMap(single.x, single.y, minimapradardotsize1, minimapradardotsize2, TeamID);
+			TeamMiniMap(single.x, single.y, minimapradardotsize1, TeamID);
 		}
 	}
 }
@@ -305,6 +315,10 @@ void MiniMapRadar(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos, float LocalPlayer
 	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.13529413f, 0.14705884f, 0.15490198f, 0.82f));
 	ImGuiWindowFlags TargetFlags;
 	TargetFlags = ImGuiWindowFlags_::ImGuiWindowFlags_NoResize | ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_::ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_::ImGuiWindowFlags_NoMove;
+	//Remove the NoMove to move the minimap pos
+	//you have to hit insert to bring up the hack menu, then while the menu is up hit the windows kep to bring up the window start menu 
+	//then just clikc back on the middle of the screen to be on the overlay
+	//from there you can click and drag the minmap around
 	if (!firstS)
 	{
 		ImGui::SetNextWindowPos(ImVec2{ 1200, 60 }, ImGuiCond_Once);
@@ -319,6 +333,9 @@ void MiniMapRadar(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos, float LocalPlayer
 			ImVec2 DrawPos = ImGui::GetCursorScreenPos();
 			ImVec2 DrawSize = ImGui::GetContentRegionAvail();
 			ImVec2 midRadar = ImVec2(DrawPos.x + (DrawSize.x / 2), DrawPos.y + (DrawSize.y / 2));
+			//use the 2 lines to help move the minimap pos
+			//ImGui::GetWindowDrawList()->AddLine(ImVec2(midRadar.x - DrawSize.x / 2.f, midRadar.y), ImVec2(midRadar.x + DrawSize.x / 2.f, midRadar.y), IM_COL32(255, 255, 255, 255));
+			//ImGui::GetWindowDrawList()->AddLine(ImVec2(midRadar.x, midRadar.y - DrawSize.y / 2.f), ImVec2(midRadar.x, midRadar.y + DrawSize.y / 2.f), IM_COL32(255, 255, 255, 255));
 			DrawRadarPoint(EneamyPos, LocalPos, LocalPlayerY, eneamyDist, TeamId, DrawPos.x, DrawPos.y, DrawSize.x, DrawSize.y, { 255, 255, 255, 255 }, targetyaw);
 		}
 		ImGui::End();
@@ -367,7 +384,7 @@ void Overlay::RenderEsp()
 					{
 						if (players[i].dist < 16000.0f)
 						{
-							DrawSeerLikeHealth((players[i].b_x - (players[i].width / 2.0f) + 5), (players[i].b_y - players[i].height - 10), players[i].shield, players[i].maxshield, players[i].armortype, players[i].health); //health bar
+								DrawSeerLikeHealth((players[i].b_x - (players[i].width / 2.0f) + 5), (players[i].b_y - players[i].height - 10), players[i].shield, players[i].maxshield, players[i].armortype, players[i].health); //health bar
 						}
 					}
 				}

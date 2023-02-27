@@ -55,12 +55,14 @@
     <IncludePath>$(DXSDK_DIR)Include;$(IncludePath)</IncludePath>
     <TargetName>MonkeyCure</TargetName>
     <ManagedAssembly>true</ManagedAssembly>
+    <OutDir>C:\Users\FBIVan\Documents\GitHub\apex_dma_kvm_pub\apex_guest\Client\Client\x64\Debug</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
-    <TargetName>client_ap</TargetName>
+    <TargetName>MonkeyCure</TargetName>
+    <OutDir>Desktop</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
