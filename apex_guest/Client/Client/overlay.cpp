@@ -7,7 +7,7 @@
 #include <iomanip>
 
 using namespace std;
-
+extern float veltest;
 extern bool firing_range;
 extern int aim;
 extern bool esp;
@@ -283,6 +283,9 @@ void Overlay::RenderMenu()
 					ImGui::SameLine();
 					ImGui::TextColored(GREEN, "%.f meters", aimdist / 39.62);
 					ImGui::SliderFloat(XorStr("##Aim Distance"), &aimdist, 10.0f * 39.62, 1600.0f * 39.62, "##");
+					ImGui::SameLine();
+					ImGui::TextColored(GREEN, "%.f", veltest);
+					ImGui::SliderFloat(XorStr("VelTest"), &veltest, -10.00f, 10.00f, "##");
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Aiming Keys:"));
 					ImGui::RadioButton("Left Mouse", &e, 1); ImGui::SameLine();
@@ -480,6 +483,8 @@ void Overlay::RenderMenu()
 							config << dynamicfov << "\n";
 							config << dynamicfovmax << "\n";
 
+
+
 							//glow visable
 							config << glowrviz << "\n";
 							config << glowgviz << "\n";
@@ -497,7 +502,8 @@ void Overlay::RenderMenu()
 							config << smoothpred << "\n";
 							config << smoothpred2 << "\n";
 							config << weapon_nemesis << "\n";
-							config << weapon_rampage_lmg;
+							config << weapon_rampage_lmg << "\n";
+							config << veltest;
 							config.close();
 						}
 					}
@@ -634,6 +640,7 @@ void Overlay::RenderMenu()
 							config >> smoothpred2;
 							config >> weapon_nemesis;
 							config >> weapon_rampage_lmg;
+							config >> veltest;
 							config.close();
 
 						}
@@ -651,12 +658,12 @@ void Overlay::RenderMenu()
 				{
 					menu2 = 1;
 					//Dot Size for both mini and main map
-					ImGui::Text(XorStr("MiniMap Radar Dot Size"));
-					ImGui::SliderInt(XorStr("MiniMap Dot Width"), &minimapradardotsize1, 1, 10);
-					ImGui::SliderInt(XorStr("MiniMap Dot length"), &minimapradardotsize2, 1, 10);
-					ImGui::Text(XorStr("Main Map Radar Dot Size"));
-					ImGui::SliderInt(XorStr("Main Map Dot Width"), &mainmapradardotsize1, 1, 10);
-					ImGui::SliderInt(XorStr("Main Map Dot length"), &mainmapradardotsize2, 1, 10);
+					ImGui::Text(XorStr("MiniMap Circle Size"));
+					ImGui::SliderInt(XorStr("##MiniMap Circle Size"), &minimapradardotsize1, 1, 10);
+					
+					ImGui::Text(XorStr("MiniMap Circle Outline Size"));
+					ImGui::SliderInt(XorStr("##MiniMap Circle Outline Size"), &minimapradardotsize2, 1, 10);
+					
 					/*//Radar Color
 					ImGui::Text(XorStr("Radar Color Picker:"));
 					ImGui::ColorEdit3("##Radar Color Picker", radarcolor);
