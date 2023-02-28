@@ -512,7 +512,7 @@ int main(int argc, char** argv)
 	
 
 	
-	printf(XorStr("GameVersion v3.0.26.26 || 2-26-2023 || |-| Clean up with ChatGPT |-| Add me offset: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
+	printf(XorStr("GameVersion=v3.0.27.29 || 2-28-2023 || |-| Testing Bezier Smoothing/Rand Aim |-| Add me offset: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
 
 	Overlay ov1 = Overlay();
 	ov1.Start();
@@ -735,16 +735,21 @@ int main(int argc, char** argv)
 
 
 		
-		if (IsKeyDown(aim_key) && toggleaim)
+		if (IsKeyDown(aim_key) && toggleaim && !IsKeyDown(aim_key2))
 		{
 			aiming = true;
+			max_fov = 50;
 		}
 
 		else if (IsKeyDown(aim_key2) && toggleaim2)
+		{
 			aiming = true;
+			max_fov = 10;
+		}
 		else
 		{
 			aiming = false;
+			max_fov = 10;
 		}
 		
 	}
