@@ -1071,12 +1071,15 @@ static void set_vars(uint64_t add_addr)
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*108, EntTeam_addr);
 	uint64_t LocTeam_addr = 0;
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*109, LocTeam_addr);
+	//lock?
+	uint64_t lock_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*110, lock_addr);
 
 	
 
 	
 	
-	//good god 97..make that 109... of em.. why
+	//good god 97..make that 110... of em.. why
 	
 
 	uint32_t check = 0;
@@ -1219,6 +1222,7 @@ static void set_vars(uint64_t add_addr)
 			//More TDM toggle stuff
 			client_mem.Write<int>(EntTeam_addr, EntTeam);
 			client_mem.Write<int>(LocTeam_addr, LocTeam);
+			client_mem.Read<bool>(lock_addr, lock);
 			
 			
 		
@@ -1530,7 +1534,7 @@ static void item_glow_t()
 					if (weaponID == 113 || weaponID == 1 || weaponID == 129 || weaponID == 111 || weaponID == 119 || weaponID == 2 || weaponID == 117 || weaponID == 131 || weaponID == 128 || weaponID == 118)
 					{
 					//printf("Snipers EQ: %d\n", weaponID);	
-						snipereq = 1;
+						snipereq = 0;
 					}
 					else if (weaponID != 113 || weaponID != 1 || weaponID != 129 || weaponID != 111 || weaponID != 119 || weaponID != 2 || weaponID != 117 || weaponID != 131 || weaponID != 128 || weaponID != 118)
 					{

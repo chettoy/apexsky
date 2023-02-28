@@ -209,7 +209,7 @@ static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
 
 // Forward declarations of helper functions
 //bool CreateDeviceD3D(HWND hWnd);
-bool CreateDeviceD3D(HWND hWnd2);
+bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
@@ -331,8 +331,8 @@ void Overlay::RenderMenu()
 
 					ImGui::Text(XorStr("Max FOV:"));
 					ImGui::SameLine();
-					ImGui::TextColored(GREEN, "%.f", max_fov);
-					ImGui::SliderFloat(XorStr("##3"), &max_fov, 1.0f, 50.0f, "##");
+					//ImGui::TextColored(GREEN, "%.f", max_fov);
+					//ImGui::SliderFloat(XorStr("##3"), &max_fov, 1.0f, 50.0f, "##");
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Aiming Bone:"));
 					ImGui::Text(XorStr("0=Head, 1=Neck, 2=Chest, 3=Stomach"));
@@ -884,9 +884,9 @@ void Overlay::RenderMenu()
 void Overlay::RenderInfo()
 {	
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
-	ImGui::SetNextWindowSize(ImVec2(900, 25));
+	ImGui::SetNextWindowSize(ImVec2(700, 25));
 	ImGui::Begin(XorStr("##info"), (bool*)true, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
-	DrawLine(ImVec2(1, 5), ImVec2(900, 5), RED, 2);
+	DrawLine(ImVec2(1, 5), ImVec2(700, 5), RED, 2);
 	ImGui::TextColored(RED, "Enemy Spec:");
 	ImGui::SameLine();
 	ImGui::TextColored(WHITE, "%d", spectators);
@@ -920,22 +920,7 @@ void Overlay::RenderInfo()
 	{
 		ImGui::TextColored(RED, "Aim Off", aim);
 	}
-	ImGui::SameLine();
-	ImGui::Text("--");
-	ImGui::SameLine();
-
-	
-	if (snipereq ==1)
-	{
-		ImGui::TextColored(GREEN, "Sniper Mode Enabled");
-		bone = 0;
-	}
-	else
-	{
-		ImGui::TextColored(RED, "Sniper Mode Disabled");
-		bone = 2;
-	}
-	
+		
 	ImGui::SameLine();
 	ImGui::Text("--");
 	ImGui::SameLine();
