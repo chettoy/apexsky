@@ -17,7 +17,6 @@ bool aim_no_recoil = true;
 int bone = 2;
 extern float smoothpred;
 extern float smoothpred2;
-extern float veltest;
 
 bool Entity::Observing(uint64_t entitylist)
 {
@@ -370,8 +369,6 @@ float CalculateFov(Entity& from, Entity& target)
 	return Math::GetFov(ViewAngles, Angle);
 }
 
-extern float deltaTime;
-
 QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 {
 	Entity target = getEntity(t);
@@ -389,9 +386,11 @@ QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 			return QAngle(0, 0, 0);
 		}
 	}
+	
 	Vector LocalCamera = from.GetCamPos();
 	Vector TargetBonePosition = target.getBonePositionByHitbox(bone);
 	QAngle CalculatedAngles = QAngle(0, 0, 0);
+	
 	WeaponXEntity curweap = WeaponXEntity();
 	curweap.update(from.ptr);
 	float BulletSpeed = curweap.get_projectile_speed();
@@ -402,7 +401,6 @@ QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 	{
 		max_fov *= zoom_fov/90.0f;
 	}
-
 
 	/*
 	//simple aim prediction
@@ -418,7 +416,7 @@ QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 	*/
 	
 	//more accurate prediction
-	/*if (BulletSpeed > 1.f)
+	if (BulletSpeed > 1.f)
 	{
 		PredictCtx Ctx;
 		Ctx.StartPos = LocalCamera;
@@ -430,46 +428,9 @@ QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 		if (BulletPredict(Ctx))
 			CalculatedAngles = QAngle{Ctx.AimAngles.x, Ctx.AimAngles.y, 0.f};
     }
-	*/
-	//Testing new prediction
-if (BulletSpeed > 1.f)
-{
-    PredictCtx Ctx;
-    Ctx.StartPos = LocalCamera;
-    Ctx.TargetPos = TargetBonePosition; 
-    Ctx.BulletSpeed = BulletSpeed - (BulletSpeed * smoothpred);
-    Ctx.BulletGravity = BulletGrav + (BulletGrav * smoothpred2);
-	// Get the target's velocity and add it to the prediction context
-    Vector targetVel = target.getAbsVelocity();
-	
-	// Calculate the time since the last frame (in seconds)
-    //float deltaTime = 0.079f;
 
-    // Add the target's velocity to the prediction context, with an offset in the y direction
-    float distanceToTarget = (TargetBonePosition - LocalCamera).Length();
-    float timeToTarget = distanceToTarget / BulletSpeed;
-    Vector targetPosAhead = TargetBonePosition + (targetVel * timeToTarget);
-    Ctx.TargetVel = Vector(targetVel.x, targetVel.y + (targetVel.Length() * deltaTime + veltest), targetVel.z);
-    Ctx.TargetPos = targetPosAhead;
-    if (BulletPredict(Ctx))
-        CalculatedAngles = QAngle{Ctx.AimAngles.x, Ctx.AimAngles.y, 0.f};
-}
-	//added Bezier smoothing?
-	//ajust mid1.z and mid2.z to change it
 	if (CalculatedAngles == QAngle(0, 0, 0))
-	{
-    	Vector start = LocalCamera;
-		Vector end = TargetBonePosition;
-		Vector dir = (end - start).Normalize();
-		Vector mid1 = start + (dir * ((end - start).Length() * 0.33f));
-		Vector mid2 = start + (dir * ((end - start).Length() * 0.67f));
-		mid1.z += 25.f;
-		mid2.z += 25.f;
-
-		// Calculate aim angle using the final intermediate point
-		Vector aim = Math::Bezier(start, mid1, mid2, end, 0.5f);
-		CalculatedAngles = Math::CalcAngle(LocalCamera, aim);
-	}
+    	CalculatedAngles = Math::CalcAngle(LocalCamera, TargetBonePosition);
 	QAngle ViewAngles = from.GetViewAngles();
 	QAngle SwayAngles = from.GetSwayAngles();
 	double fov = Math::GetFov(SwayAngles, CalculatedAngles);
@@ -477,20 +438,15 @@ if (BulletSpeed > 1.f)
 	{
 		return QAngle(0, 0, 0);
 	}
+	//remove sway and recoil
 	if(aim_no_recoil)
 		CalculatedAngles-=SwayAngles-ViewAngles;
 	Math::NormalizeAngles(CalculatedAngles);
 	QAngle Delta = CalculatedAngles - ViewAngles;
+ 
 	Math::NormalizeAngles(Delta);
-
-	// Add random movement to the aim
-	//causes 0.002 change to all aiming?
-	QAngle RandomAngles = QAngle(
-	(rand() % 4 - 2) * 0.001f,
-	(rand() % 4 - 2) * 0.001f,
-	(rand() % 4 - 2) * 0.001f
-);
-	QAngle SmoothedAngles = ViewAngles + Delta/smooth + RandomAngles;
+ 
+	QAngle SmoothedAngles = ViewAngles + Delta/smooth;
 	return SmoothedAngles;
 }
 

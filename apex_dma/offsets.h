@@ -1,15 +1,15 @@
 
 #define VERSION STEAM
-//Date 2/16/2023
-//GameVersion=v3.0.27.29
+//Date 1/10/2023
+//GameVersion v3.0.25.21
 
 #if VERSION == STEAM
 
-#define OFFSET_ENTITYLIST 0x1b37a78 //cl_entitylist
-#define OFFSET_LOCAL_ENT 0x01ee8cb0 + 0x8 //LocalPlayer  might be moved to  AVC_GameMovement
-#define OFFSET_NAME_LIST 0xbcc7e50 //NameList
-#define OFFSET_THIRDPERSON 0x01b1c810 + 0x6c //thirdperson_override + 0x6c
-#define OFFSET_TIMESCALE 0x014d2a40 //host_timescale
+#define OFFSET_ENTITYLIST 0x1b37938 //cl_entitylist
+#define OFFSET_LOCAL_ENT 0x01ee8b70 + 0x8 //LocalPlayer  might be moved to  AVC_GameMovement
+#define OFFSET_NAME_LIST 0xbc9ec10 //NameList
+#define OFFSET_THIRDPERSON 0x01b1c6d0 + 0x6c //thirdperson_override + 0x6c
+#define OFFSET_TIMESCALE 0x014d2910 //host_timescale
 
 #define OFFSET_TEAM 0x044c //m_iTeamNum
 #define OFFSET_HEALTH 0x043c //m_iHealth
@@ -42,10 +42,9 @@
 #define OFFSET_OBSERVING_TARGET 0x34e0 //m_hObserverTarget
 
 #define OFFSET_MATRIX 0x11a210 //ViewMatrix
-#define OFFSET_RENDER 0x7677d20 //ViewRender
+#define OFFSET_RENDER 0x7677280 //ViewRender
 
 #define OFFSET_WEAPON 0x1a1c //m_latestPrimaryWeapons
-#define OFFSET_WEAPON_NAME 0x1844 //m_weaponNameIndex 2nd one
 #define OFFSET_BULLET_SPEED 0x1f18 //CWeaponX!m_flProjectileSpeed
 #define OFFSET_BULLET_SCALE 0x1f20 //CWeaponX!m_flProjectileScale
 #define OFFSET_ZOOM_FOV 0x16c0 + 0xb8 //m_playerData + m_curZoomFOV
@@ -78,6 +77,6 @@
 //triggerbot?
 #define CROSSHAIRSTART				0x1a74 // 	crosshairTargetStartTime
 #define CROSSHAIR_TARGET_TIME				0x1a78 // 	lastCrosshairTargetTime
-#define OFFSET_GAMEMODE 			0x01f21a70 //mp_gamemode
+
 
 #endif

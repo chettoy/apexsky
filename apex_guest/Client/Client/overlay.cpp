@@ -7,7 +7,7 @@
 #include <iomanip>
 
 using namespace std;
-extern float veltest;
+
 extern bool firing_range;
 extern int aim;
 extern bool esp;
@@ -21,8 +21,7 @@ extern float smooth;
 
 extern float smoothpred;
 extern float smoothpred2;
-//TDM Toggle
-extern bool TDMToggle;
+
 //Dynamic Fov
 extern float dynamicfov;
 extern float dynamicfovmax;
@@ -134,7 +133,6 @@ extern bool weapon_3030_repeater;
 extern bool weapon_rampage;
 extern bool weapon_car_smg;
 extern bool weapon_nemesis;
-extern bool weapon_rampage_lmg;
 //Aim Dist check
 extern float aimdist;
 //item glow brightness
@@ -144,9 +142,6 @@ int menu1 = 0;
 int menu2 = 0;
 int menu3 = 0;
 int menu4 = 0;
-//headshot mode
-extern int snipereq;
-extern int bowheadshotmode;
 
 
 
@@ -208,7 +203,6 @@ static IDXGISwapChain* g_pSwapChain = NULL;
 static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
 
 // Forward declarations of helper functions
-//bool CreateDeviceD3D(HWND hWnd);
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
@@ -279,15 +273,11 @@ void Overlay::RenderMenu()
 					}
 					ImGui::SameLine();
 					ImGui::Sliderbox(XorStr("Firing Range"), &firing_range);
-					ImGui::Sliderbox(XorStr("TDM Toggle"), &TDMToggle);
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Aiming Distance:"));
 					ImGui::SameLine();
 					ImGui::TextColored(GREEN, "%.f meters", aimdist / 39.62);
 					ImGui::SliderFloat(XorStr("##Aim Distance"), &aimdist, 10.0f * 39.62, 1600.0f * 39.62, "##");
-					ImGui::SameLine();
-					ImGui::TextColored(GREEN, "%.f", veltest);
-					ImGui::SliderFloat(XorStr("VelTest"), &veltest, -10.00f, 10.00f, "##");
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Aiming Keys:"));
 					ImGui::RadioButton("Left Mouse", &e, 1); ImGui::SameLine();
@@ -319,20 +309,35 @@ void Overlay::RenderMenu()
 					ImGui::Text(XorStr("Smooth Aim Value:"));
 					ImGui::SameLine();
 					ImGui::TextColored(GREEN, "%.f", smooth);
-					ImGui::SliderFloat(XorStr("##2"), &smooth, 85.0f, 150.0f, "##");
+					ImGui::SliderFloat(XorStr("##2"), &smooth, 100.0f, 250.0f, "##");
 					ImGui::SameLine();
 					ImGui::Text(XorStr("85 To 100 Is Safe"));
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					
 
 
-	
+					ImGui::Text(XorStr("Smooth Preditcion Speed:"));
+					ImGui::SameLine();
+					ImGui::TextColored(GREEN, "%.2f", smoothpred);
+					ImGui::SliderFloat(XorStr("##55"), &smoothpred, -10.58f, 5.80f, "##");
+					ImGui::SameLine();
+					ImGui::Text(XorStr("Default is 0.08"));
+					ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+
+					ImGui::Text(XorStr("Smooth Preditcion Gravity:"));
+					ImGui::SameLine();
+					ImGui::TextColored(GREEN, "%.2f", smoothpred2);
+					ImGui::SliderFloat(XorStr("##57"), &smoothpred2, -10.55f, 5.90f, "##");
+					ImGui::SameLine();
+					ImGui::Text(XorStr("Default is 0.05"));
+					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
 
 					ImGui::Text(XorStr("Max FOV:"));
 					ImGui::SameLine();
-					//ImGui::TextColored(GREEN, "%.f", max_fov);
-					//ImGui::SliderFloat(XorStr("##3"), &max_fov, 1.0f, 50.0f, "##");
+					ImGui::TextColored(GREEN, "%.f", max_fov);
+					ImGui::SliderFloat(XorStr("##3"), &max_fov, 1.0f, 50.0f, "##");
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Aiming Bone:"));
 					ImGui::Text(XorStr("0=Head, 1=Neck, 2=Chest, 3=Stomach"));
@@ -485,8 +490,6 @@ void Overlay::RenderMenu()
 							config << dynamicfov << "\n";
 							config << dynamicfovmax << "\n";
 
-
-
 							//glow visable
 							config << glowrviz << "\n";
 							config << glowgviz << "\n";
@@ -503,9 +506,7 @@ void Overlay::RenderMenu()
 							config << glowcolorknocked[2] << "\n";
 							config << smoothpred << "\n";
 							config << smoothpred2 << "\n";
-							config << weapon_nemesis << "\n";
-							config << weapon_rampage_lmg << "\n";
-							config << veltest;
+							config << std::boolalpha << weapon_nemesis;
 							config.close();
 						}
 					}
@@ -641,8 +642,6 @@ void Overlay::RenderMenu()
 							config >> smoothpred;
 							config >> smoothpred2;
 							config >> weapon_nemesis;
-							config >> weapon_rampage_lmg;
-							config >> veltest;
 							config.close();
 
 						}
@@ -660,12 +659,12 @@ void Overlay::RenderMenu()
 				{
 					menu2 = 1;
 					//Dot Size for both mini and main map
-					ImGui::Text(XorStr("MiniMap Circle Size"));
-					ImGui::SliderInt(XorStr("##MiniMap Circle Size"), &minimapradardotsize1, 1, 10);
-					
-					ImGui::Text(XorStr("MiniMap Circle Outline Size"));
-					ImGui::SliderInt(XorStr("##MiniMap Circle Outline Size"), &minimapradardotsize2, 1, 10);
-					
+					ImGui::Text(XorStr("MiniMap Radar Dot Size"));
+					ImGui::SliderInt(XorStr("MiniMap Dot Width"), &minimapradardotsize1, 1, 10);
+					ImGui::SliderInt(XorStr("MiniMap Dot length"), &minimapradardotsize2, 1, 10);
+					ImGui::Text(XorStr("Main Map Radar Dot Size"));
+					ImGui::SliderInt(XorStr("Main Map Dot Width"), &mainmapradardotsize1, 1, 10);
+					ImGui::SliderInt(XorStr("Main Map Dot length"), &mainmapradardotsize2, 1, 10);
 					/*//Radar Color
 					ImGui::Text(XorStr("Radar Color Picker:"));
 					ImGui::ColorEdit3("##Radar Color Picker", radarcolor);
@@ -770,8 +769,6 @@ void Overlay::RenderMenu()
 					ImGui::Sliderbox(XorStr("Regular Stock"), &stockregular);
 					ImGui::Sliderbox(XorStr("Suppressor"), &suppressor);
 					ImGui::SameLine();
-					ImGui::Sliderbox(XorStr("Shotgun Bolt"), &shotgunbolt);
-					ImGui::SameLine();
 					ImGui::Sliderbox(XorStr("Weapon Mods"), &weaponmod);
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Item Glow Brightness:"));
@@ -814,8 +811,6 @@ void Overlay::RenderMenu()
 					ImGui::Sliderbox(XorStr("Prowler "), &weapon_prowler);
 					ImGui::SameLine();
 					ImGui::Sliderbox(XorStr("30-30"), &weapon_3030_repeater);
-					ImGui::SameLine();
-					ImGui::Sliderbox(XorStr("Rampage"), &weapon_rampage_lmg);
 					//Energy Weapons
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::TextColored(YELLOW, "Energy Weapons");
@@ -853,10 +848,9 @@ void Overlay::RenderMenu()
 					ImGui::Sliderbox(XorStr("Wingman "), &weapon_wingman);
 					//KRABER
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
-					ImGui::Text(XorStr("Special Weapons"));
+					ImGui::Text(XorStr("The Kraber"));
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Sliderbox(XorStr("Kraber .50-Cal Sniper"), &weapon_kraber);
-					ImGui::Sliderbox(XorStr("Bocek Bow"), &weapon_bow);
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Item Glow Brightness:"));
 					ImGui::SliderInt(XorStr("##itemglowbright"), &itemglowbrightness, 2, 40, "%d");
@@ -884,61 +878,31 @@ void Overlay::RenderMenu()
 void Overlay::RenderInfo()
 {	
 	ImGui::SetNextWindowPos(ImVec2(0, 0));
-	ImGui::SetNextWindowSize(ImVec2(700, 25));
+	ImGui::SetNextWindowSize(ImVec2(250, 25));
 	ImGui::Begin(XorStr("##info"), (bool*)true, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
-	DrawLine(ImVec2(1, 5), ImVec2(700, 5), RED, 2);
-	ImGui::TextColored(RED, "Enemy Spec:");
-	ImGui::SameLine();
-	ImGui::TextColored(WHITE, "%d", spectators);
+	DrawLine(ImVec2(1, 5), ImVec2(250, 5), RED, 2);
+	ImGui::TextColored(RED, "%d", spectators);
 	ImGui::SameLine();
 	ImGui::Text("--");
 	ImGui::SameLine();
-	ImGui::TextColored(GREEN, "Allied Spec:");
-	ImGui::SameLine();
-	ImGui::TextColored(WHITE, "%d", allied_spectators);
+	ImGui::TextColored(GREEN, "%d", allied_spectators);
 	ImGui::SameLine();
 	ImGui::Text("--");
 	ImGui::SameLine();
-	ImGui::TextColored(WHITE, "FOV: %.f", max_fov);
-	ImGui::SameLine();
-	ImGui::Text("--");
-	ImGui::SameLine();
-	ImGui::TextColored(WHITE, "Bone: %d", bone);
+	ImGui::TextColored(WHITE, "%.f", max_fov);
 	ImGui::SameLine();
 	ImGui::Text("--");
 	ImGui::SameLine();
 	//Aim is on = 2, On but No Vis Check = 1, Off = 0
 	if (aim == 2)
 	{
-		ImGui::TextColored(GREEN, "Aim With Vis Check", aim);
-	}
-	else if (aim == 1)
-	{
-		ImGui::TextColored(WHITE, "Aim Without Vis Check", aim);
+		ImGui::TextColored(GREEN, "Aim On %d", aim);
 	}
 	else
 	{
-		ImGui::TextColored(RED, "Aim Off", aim);
+		ImGui::TextColored(RED, "Aim Off %d", aim);
 	}
-		
-	ImGui::SameLine();
-	ImGui::Text("--");
-	ImGui::SameLine();
-	
-	if (bowheadshotmode == 1)
-	{
-		ImGui::TextColored(GREEN, "Bow Mode Enabled");
-		smoothpred = 5.0;
-		smoothpred2 = 1.0;
-	}
-	else
-	{
-		ImGui::TextColored(RED, "Bow Mode Disabled");
-		 smoothpred = 0.08;
-		 smoothpred2 = 0.05;
-	}
-	
-	
+
 	ImGui::End();
 }
 
