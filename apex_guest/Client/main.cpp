@@ -3,6 +3,8 @@
 #pragma warning (disable : 4305)
 #pragma warning (disable : 4244)
 #include "main.h"
+#include <random>
+#include <map>
 
 typedef struct player
 {
@@ -24,6 +26,7 @@ typedef struct player
 	D3DXVECTOR3 EntityPosition;
 	D3DXVECTOR3 LocalPlayerPosition;
 	D3DXVECTOR3 localviewangle;
+	float targetyaw = 0;
 	char name[33] = { 0 };
 }player;
 
@@ -57,10 +60,15 @@ float max_fov = 15.0f; //15 is the sweetspot for 1080p
 // Dynamic Fov
 float dynamicfov = 10;
 float dynamicfovmax = 15.0f;
+//tdm check
+int EntTeam;
+int LocTeam;
+bool TDMToggle = false;
 
 float smoothpred = 0.08;
 float smoothpred2 = 0.05;
-
+float veltest = 1.00;
+bool MiniMapGuides = false;
 int bone = 2; //0 Head, 1 Neck, 2 Body, 3 Stomace, 4 Nuts
 //Player Glow Color and Brightness
 float glowr = 120.0f; //Red Value
@@ -175,7 +183,7 @@ int allied_spectators = 0; //write
 bool valid = true; //write
 bool next2 = true; //read write
 
-uint64_t add[101];
+uint64_t add[105];
 
 bool k_f5 = 0;
 bool k_f6 = 0;
@@ -237,6 +245,13 @@ static D3DXVECTOR3 RotatePoint(D3DXVECTOR3 EntityPos, D3DXVECTOR3 LocalPlayerPos
 
 	return D3DXVECTOR3(x_1, y_1, 0);
 }
+struct RGBA2 {
+	int R;
+	int G;
+	int B;
+	int A;
+};
+std::map<int, RGBA2> teamColors;
 //Main Map Radar Color
 typedef struct
 {
@@ -393,6 +408,45 @@ static void Team35(int x, int y, int w, int h, RGBA color)
 	ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(x, y), ImVec2(x + w, y + h), ImGui::ColorConvertFloat4ToU32(ImVec4(color.R / 255.0, color.G / 255.0, color.B / 255.0, color.A / 255.0)), 0, 0);
 }
 
+static void TeamMiniMap(int x, int y, int radius, int teamID, float targetyaw)
+{
+	RGBA2 color;
+	auto it = teamColors.find(teamID);
+	if (it == teamColors.end()) {
+		// Define the minimum sum of RGB values for a color to be considered "light"
+		const int MIN_SUM_RGB = 500;
+
+		// Generate a new random color for this team, discarding colors with a low sum of RGB values
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		std::uniform_int_distribution<> dis(0, 255);
+		RGBA2 color;
+		do {
+			color = { dis(gen), dis(gen), dis(gen), 255 };
+		} while (color.R + color.G + color.B < MIN_SUM_RGB);
+
+		// Store the color in the teamColors map
+		teamColors[teamID] = color;
+	}
+	else {
+		// Use the previously generated color for this team
+		color = it->second;
+	}
+
+	auto colOutline = ImGui::ColorConvertFloat4ToU32(ImVec4(0.0, 0.0, 0.0, 1.0));
+	ImVec2 center(x, y);
+	ImGui::GetWindowDrawList()->AddCircleFilled(center, radius, ImGui::ColorConvertFloat4ToU32(ImVec4(color.R / 255.0, color.G / 255.0, color.B / 255.0, color.A / 255.0)));
+	ImGui::GetWindowDrawList()->AddCircle(center, radius, colOutline, 12, minimapradardotsize2);
+
+	// Draw a line pointing in the direction of each player's aim
+	const int numPlayers = 3;
+	for (int i = 0; i < numPlayers; i++) {
+		float angle = (360.0 - targetyaw) * (M_PI / 180.0); // Replace this with the actual yaw of the player, then convert it to radians.
+		ImVec2 endpoint(center.x + radius * cos(angle), center.y + radius * sin(angle));
+		ImGui::GetWindowDrawList()->AddLine(center, endpoint, colOutline);
+	}
+}
+
 bool menu = true;
 bool firstS = true;
 //Radar Settings.. ToDO: Put in ImGui menu to change in game
@@ -409,6 +463,26 @@ namespace RadarSettings
 	int distance_Radar = 250;
 	int distance_Radar2 = 1000;
 };
+
+void DrawRadarPointMiniMap(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos, float LocalPlayerY, float eneamyDist, int TeamID, int xAxis, int yAxis, int width, int height, D3DXCOLOR color, float targetyaw)
+{
+	bool out = false;
+	D3DXVECTOR3 siz;
+	siz.x = width;
+	siz.y = height;
+	D3DXVECTOR3 pos;
+	pos.x = xAxis;
+	pos.y = yAxis;
+	bool ck = false;
+	D3DXVECTOR3 single = RotatePoint(EneamyPos, LocalPos, pos.x, pos.y, siz.x, siz.y, LocalPlayerY, 0.3f, &ck);
+	if (eneamyDist >= 0.f && eneamyDist < RadarSettings::distance_Radar)
+	{
+		for (int i = 1; i <= 30; i++)
+		{
+			TeamMiniMap(single.x, single.y, minimapradardotsize1, TeamID, targetyaw);
+		}
+	}
+}
 
 void DrawRadarPoint(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos, float LocalPlayerY, float eneamyDist, int TeamID, int xAxis, int yAxis, int width, int height, D3DXCOLOR color)
 {
@@ -567,39 +641,38 @@ void DrawRadarPoint(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos, float LocalPlay
 	}
 }
 //MiniMap Radar Stuff
-void MiniMapRadar(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos, float LocalPlayerY, float eneamyDist, int TeamId)
+void MiniMapRadar(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos, float LocalPlayerY, float eneamyDist, int TeamId, float targetyaw)
 {
 	ImGuiStyle* style = &ImGui::GetStyle();
 	style->WindowRounding = 0.2f;
 	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.13529413f, 0.14705884f, 0.15490198f, 0.82f));
-	
 	ImGuiWindowFlags TargetFlags;
-	//Radar Window Flags: No Move, Resize, Title bar, Background etc. makes it so you can change it once set.
-
-	//slash out  | ImGuiWindowFlags_::ImGuiWindowFlags_NoMove to move the minimap
-	TargetFlags = ImGuiWindowFlags_::ImGuiWindowFlags_NoResize | ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_::ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_::ImGuiWindowFlags_NoMove;
-	if (!firstS) //dunno
+	TargetFlags = ImGuiWindowFlags_::ImGuiWindowFlags_NoResize | ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_::ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar;
+	//Remove the NoMove to move the minimap pos
+	//you have to hit insert to bring up the hack menu, then while the menu is up hit the windows kep to bring up the window start menu 
+	//then just clikc back on the middle of the screen to be on the overlay
+	//from there you can click and drag the minmap around
+	if (!firstS)
 	{
 		ImGui::SetNextWindowPos(ImVec2{ 1200, 60 }, ImGuiCond_Once);
 		firstS = true;
 	}
-	
 	if (RadarSettings::Radar == true)
 	{
 		ImGui::SetNextWindowSize({ 250, 250 });
 		ImGui::Begin(("Radar"), 0, TargetFlags);
-		//if (ImGui::Begin(xorstr("Radar", 0, ImVec2(200, 200), -1.f, TargetFlags))) {
 		{
 			ImDrawList* Draw = ImGui::GetWindowDrawList();
 			ImVec2 DrawPos = ImGui::GetCursorScreenPos();
 			ImVec2 DrawSize = ImGui::GetContentRegionAvail();
 			ImVec2 midRadar = ImVec2(DrawPos.x + (DrawSize.x / 2), DrawPos.y + (DrawSize.y / 2));
-
-			//unslash to set to minimap, it helps line it up
-			//ImGui::GetWindowDrawList()->AddLine(ImVec2(midRadar.x - DrawSize.x / 2.f, midRadar.y), ImVec2(midRadar.x + DrawSize.x / 2.f, midRadar.y), IM_COL32(255, 255, 255, 255));
-			//ImGui::GetWindowDrawList()->AddLine(ImVec2(midRadar.x, midRadar.y - DrawSize.y / 2.f), ImVec2(midRadar.x, midRadar.y + DrawSize.y / 2.f), IM_COL32(255, 255, 255, 255));
-
-			DrawRadarPoint(EneamyPos, LocalPos, LocalPlayerY, eneamyDist, TeamId, DrawPos.x, DrawPos.y, DrawSize.x, DrawSize.y, { 255, 255, 255, 255 });
+			if (MiniMapGuides)
+			{
+				ImGui::GetWindowDrawList()->AddLine(ImVec2(midRadar.x - DrawSize.x / 2.f, midRadar.y), ImVec2(midRadar.x + DrawSize.x / 2.f, midRadar.y), IM_COL32(255, 255, 255, 255));
+				ImGui::GetWindowDrawList()->AddLine(ImVec2(midRadar.x, midRadar.y - DrawSize.y / 2.f), ImVec2(midRadar.x, midRadar.y + DrawSize.y / 2.f), IM_COL32(255, 255, 255, 255));
+			}
+			
+			DrawRadarPointMiniMap(EneamyPos, LocalPos, LocalPlayerY, eneamyDist, TeamId, DrawPos.x, DrawPos.y, DrawSize.x, DrawSize.y, { 255, 255, 255, 255 }, targetyaw);
 		}
 		ImGui::End();
 	}
@@ -660,13 +733,13 @@ ImVec2 worldToScreenMap(D3DXVECTOR3 origin, int TeamID) {
 		ImVec2 w1;
 		ImVec2 s1;
 		//Is it me being lazy? or that i dont know how? prob both. True or False for the map detection, set in the overlay menu.
-		/*if (kingscanyon == true) { //KingsCanyon
+		if (kingscanyon == true) { //KingsCanyon
 			ratioX = KingsCanyon.ratioX;
 			ratioY = KingsCanyon.ratioY;
 			w1 = KingsCanyon.w1;
 			s1 = KingsCanyon.s1;
 		}
-		*/
+		
 		if (stormpoint == true) { //Storm Point
 			ratioX = BrokenMoon.ratioX;
 			ratioY = BrokenMoon.ratioY;
@@ -871,22 +944,22 @@ void Overlay::RenderEsp()
 					//Radar Stuff
 					if (minimapradar == true)
 					{
-							MiniMapRadar(players[i].EntityPosition, players[i].LocalPlayerPosition, players[i].localviewangle.y, radardistance, players[i].entity_team);
+							MiniMapRadar(players[i].EntityPosition, players[i].LocalPlayerPosition, players[i].localviewangle.y, radardistance, players[i].entity_team, players[i].targetyaw);
 					}
 					if (v.line)
 						DrawLine(ImVec2((float)(getWidth() / 2), (float)getHeight()), ImVec2(players[i].b_x, players[i].b_y), BLUE, 1); //LINE FROM MIDDLE SCREEN
-
+					
 					if (v.distance)
 					{
 						if (players[i].knocked)
-							String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)), RED, distance.c_str());  //DISTANCEs			else
+							String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)), RED, distance.c_str());  //DISTANCE
+						else
 							String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)), GREEN, distance.c_str());  //DISTANCE
 					}
 					if (v.healthbar)
 						if (players[i].dist < 16000.0f)
 						{
-
-							DrawSeerLikeHealth((players[i].b_x - (players[i].width / 2.0f) + 5), (players[i].b_y - players[i].height - 10), players[i].shield, players[i].maxshield, players[i].armortype, players[i].health); //health bar					
+							DrawSeerLikeHealth((players[i].b_x - (players[i].width / 2.0f) + 5), (players[i].b_y - players[i].height - 10), players[i].shield, players[i].maxshield, players[i].armortype, players[i].health); //health bar												
 						}
 					//Full Radar map, Need Manual setting of cords
 					if (mainradarmap == true)
@@ -894,6 +967,7 @@ void Overlay::RenderEsp()
 						worldToScreenMap(players[i].EntityPosition, players[i].entity_team);
 
 						//String(ImVec2(players[i].boxMiddle, (players[i].b_y - players[i].height - 15)), WHITE, players[i].name);
+						
 				}
 			}
 			ImGui::End();
@@ -1006,14 +1080,17 @@ int main(int argc, char** argv)
 	add[98] = (uintptr_t)&smoothpred;
 	add[99] = (uintptr_t)&smoothpred2;
 	add[100] = (uintptr_t)&weapon_nemesis;
-	
+	add[101] = (uintptr_t)&veltest;
+	add[102] = (uintptr_t)&EntTeam;
+	add[103] = (uintptr_t)&LocTeam;
+	add[104] = (uintptr_t)&TDMToggle;
 
 	
-	printf(XorStr("GameVersion v3.0.25.21 || 2-15-2023 || |-| 10th Time's the Charm. |-| Add me offset: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
+	printf(XorStr("GameVersion=v3.0.35.21 || 6-20-2023 || |-| fov Testing |-| Add me offset: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
 
 	Overlay ov1 = Overlay();
 	ov1.Start();
-	printf(XorStr("Waiting for The Ban .... Never Gonna Get it!\n"));
+	printf(XorStr("Waiting for The Extra Ban .... Never Gonna Get it!\n"));
 	while (check == 0xABCD)
 	{
 		if (IsKeyDown(VK_F4))
@@ -1026,7 +1103,7 @@ int main(int argc, char** argv)
 	if (active)
 	{
 		ready = true;
-		printf(XorStr("Ready To Bring The Pain\n"));
+		printf(XorStr("Ready To Bring The Aim\n"));
 	}
 
 	while (active)
@@ -1168,11 +1245,12 @@ int main(int argc, char** argv)
 				config >> smoothpred;
 				config >> smoothpred2;
 				config >> weapon_nemesis;
+				config >> veltest;
 				config.close();
 			}
 		}
 		//Hotkey to Turn on and off Aimbot
-		if (IsKeyDown(VK_F6) && k_f6 == 0)
+		if (IsKeyDown(VK_F2) && k_f6 == 0)
 		{
 			k_f6 = 1;
 			switch (aim)
@@ -1190,10 +1268,11 @@ int main(int argc, char** argv)
 				break;
 			}
 		}
-		else if (!IsKeyDown(VK_F6) && k_f6 == 1)
+		else if (!IsKeyDown(VK_F2) && k_f6 == 1)
 		{
 			k_f6 = 0;
 		}
+		
 		//Main Map Radar, Needs Manual Setting of cords
 		if (IsKeyDown(0x4D) && mainradartoggle == 0)
 		{
@@ -1215,17 +1294,30 @@ int main(int argc, char** argv)
 			mainradartoggle = 0;
 		}
 		
-		if (IsKeyDown(aim_key) && toggleaim)
+				
+		if (IsKeyDown(VK_F1)) {
+			TDMToggle = !TDMToggle;
+			Sleep(500);
+		}
+
+		if (IsKeyDown(aim_key) && toggleaim && !IsKeyDown(aim_key2))
 		{
 			aiming = true;
+			max_fov = 50;
 		}
 
 		else if (IsKeyDown(aim_key2) && toggleaim2)
+		{
 			aiming = true;
+			max_fov = 10;
+		}
 		else
 		{
 			aiming = false;
+			max_fov = 10;
 		}
+
+
 		
 	}
 	ready = false;

@@ -17,6 +17,7 @@ bool aim_no_recoil = true;
 int bone = 2;
 extern float smoothpred;
 extern float smoothpred2;
+extern float veltest;
 
 bool Entity::Observing(uint64_t entitylist)
 {
@@ -369,6 +370,7 @@ float CalculateFov(Entity& from, Entity& target)
 	return Math::GetFov(ViewAngles, Angle);
 }
 
+
 QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 {
 	Entity target = getEntity(t);
@@ -409,7 +411,6 @@ QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 		Vector LocalBonePosition = from.getBonePosition(bone);
 		float VerticalTime = TargetBonePosition.DistTo(LocalBonePosition) / BulletSpeed;
 		TargetBonePosition.z += (BulletGrav * 0.5f) * (VerticalTime * VerticalTime);
-
 		float HorizontalTime = TargetBonePosition.DistTo(LocalBonePosition) / BulletSpeed;
 		TargetBonePosition += (target.getAbsVelocity() * HorizontalTime);
 	}
