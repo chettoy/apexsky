@@ -336,13 +336,6 @@ void Overlay::RenderMenu()
 					ImGui::SameLine();
 					ImGui::Text(XorStr("Default is 0.05"));
 					ImGui::Dummy(ImVec2(0.0f, 10.0f));
-
-
-					ImGui::Text(XorStr("Max FOV:"));
-					ImGui::SameLine();
-					ImGui::TextColored(GREEN, "%.f", max_fov);
-					ImGui::SliderFloat(XorStr("##3"), &max_fov, 1.0f, 50.0f, "##");
-					ImGui::Dummy(ImVec2(0.0f, 10.0f));
 					ImGui::Text(XorStr("Aiming Bone:"));
 					ImGui::Text(XorStr("0=Head, 1=Neck, 2=Chest, 3=Stomach"));
 					ImGui::SliderInt(XorStr("##bone slider"), &bone, 0, 30);
