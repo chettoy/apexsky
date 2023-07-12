@@ -7,13 +7,13 @@ Bone IDs reference: https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hit
 
 Game version (Steam Only right now): v3.0.36.26
 
-![Main View](https://ibb.co/phx6M3T)
+![Main View](https://i.ibb.co/xFDKBMb/Main-Game-View.jpg)
 
-![Main Toggle Menu](https://ibb.co/jv9rg2q)
+![Main Toggle Menu](https://i.ibb.co/Gvf5cLG/Main-Toggle-Menu.jpg)
 
-![Radar Settings](https://ibb.co/8sx9P8p)
+![Radar Settings](https://i.ibb.co/bmvXNdZ/Radar-Settings.jpg)
 
-![Item Filter Settings](https://ibb.co/PwJGT41)
+![Item Filter Settings](https://i.ibb.co/syc95Qs/Item-Filter-Settings.jpg)
 
-![Weapon Filter Settings](https://ibb.co/ChP2YFD)
+![Weapon Filter Settings](https://i.ibb.co/18z6Pxj/Weapon-Filter-Settings.jpg)
 
