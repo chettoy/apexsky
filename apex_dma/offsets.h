@@ -57,6 +57,10 @@
 #define OFFSET_M_CUSTOMSCRIPTINT 0x1638 //m_customScriptInt
 #define OFFSET_MINIMAP_SCALE 0x4638 //m_minimapTargetZoomScale, float
 
+//triggerbot
+#define IN_ATTACK 0x0743d330 //in_attack
+#define OFFSET_CROSSHAIR_LAST 0x1A80 //CPlayer!lastCrosshairTargetTime
+
 #define OFFSET_GLOW_T1 0x262 //16256 = enabled, 0 = disabled
 #define OFFSET_GLOW_T2 0x2dc //1193322764 = enabled, 0 = disabled
 #define OFFSET_GLOW_ENABLE 0x3c8 //7 = enabled, 2 = disabled

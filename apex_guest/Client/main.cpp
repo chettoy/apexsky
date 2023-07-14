@@ -64,6 +64,10 @@ float dynamicfovmax = 15.0f;
 int EntTeam;
 int LocTeam;
 bool TDMToggle = false;
+//triggerbot
+bool triggerbot = false;
+//1v1
+bool onevone = false;
 
 float smoothpred = 0.08;
 float smoothpred2 = 0.05;
@@ -183,7 +187,7 @@ int allied_spectators = 0; //write
 bool valid = true; //write
 bool next2 = true; //read write
 
-uint64_t add[105];
+uint64_t add[107];
 
 bool k_f5 = 0;
 bool k_f6 = 0;
@@ -1084,6 +1088,8 @@ int main(int argc, char** argv)
 	add[102] = (uintptr_t)&EntTeam;
 	add[103] = (uintptr_t)&LocTeam;
 	add[104] = (uintptr_t)&TDMToggle;
+	add[105] = (uintptr_t)&triggerbot;
+	add[106] = (uintptr_t)&onevone;
 
 	
 	printf(XorStr("GameVersion=v3.0.35.21 || 6-20-2023 || |-| fov Testing |-| Add me offset: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
@@ -1246,6 +1252,9 @@ int main(int argc, char** argv)
 				config >> smoothpred2;
 				config >> weapon_nemesis;
 				config >> veltest;
+				//triggerbot
+				config >> triggerbot;
+				config >> onevone;
 				config.close();
 			}
 		}
@@ -1273,6 +1282,18 @@ int main(int argc, char** argv)
 			k_f6 = 0;
 		}
 		
+		//triggerbot
+
+		//if (IsKeyDown(0x58) && triggerbot == 0)
+		//{
+		//	triggerbot = true;
+		//}
+		//else if (!IsKeyDown(0x58) && triggerbot == 1)
+		//{
+
+		//	triggerbot = false;
+		//}
+		
 		//Main Map Radar, Needs Manual Setting of cords
 		if (IsKeyDown(0x4D) && mainradartoggle == 0)
 		{
@@ -1295,10 +1316,10 @@ int main(int argc, char** argv)
 		}
 		
 				
-		if (IsKeyDown(VK_F1)) {
-			TDMToggle = !TDMToggle;
-			Sleep(500);
-		}
+		//if (IsKeyDown(VK_F1)) {
+		//	TDMToggle = !TDMToggle;
+		//	Sleep(500);
+		//}
 
 		if (IsKeyDown(aim_key) && toggleaim && !IsKeyDown(aim_key2))
 		{

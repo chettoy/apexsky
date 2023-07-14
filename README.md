@@ -7,13 +7,40 @@ Bone IDs reference: https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hit
 
 Game version (Steam Only right now): v3.0.36.26
 
-![Main View](https://i.ibb.co/xFDKBMb/Main-Game-View.jpg)
+KrackerCo Fork's features.
 
-![Main Toggle Menu](https://i.ibb.co/Gvf5cLG/Main-Toggle-Menu.jpg)
+ESP Glow color picker for knocked and alive, visable or not visable.
+Item Glow with item filter.
+Weapon Glow with Weapon filter.
+Mini-Map radar*1.
+Full map radar*2.
+Firing Range dummp targeting debug testing.
+TDM Aimbot/Glow so you only target the other team.
+Custom aiming distance.
+Left/Right or both mouse buttons to aim.
+Custom Predition speed and Gravity to use with Headshot Mode*3.
+Save and Load config buttons and at start.
 
-![Radar Settings](https://i.ibb.co/bmvXNdZ/Radar-Settings.jpg)
+NEW:
+Thank you https://github.com/AtomBottle/apex_dma_kvm_pub for some of your lock code. Happy someone had a use for my fork :)
+One V One toggle. Own friends in the firing range*4.
 
-![Item Filter Settings](https://i.ibb.co/syc95Qs/Item-Filter-Settings.jpg)
+TODO:
+Triggerbot*5.
 
-![Weapon Filter Settings](https://i.ibb.co/18z6Pxj/Weapon-Filter-Settings.jpg)
+[Main View](Pictures/Main-Game-View.jpg)
+
+[Main Toggle Menu](Pictures/Main-Toggle-Menu.jpg)
+
+[Radar Settings](Pictures/Radar-Settings.jpg)
+
+[Item Filter Settings](Pictures/Item-Filter-Settings.jpg)
+
+[Weapon Filter Settings](Pictures/Weapon-Filter-Settings.jpg)
+
+1: needs to be calibrated, info how is in the files.
+2: needs to be calibrated, info how is in the files.
+3: Havnt added it back in yet, will do soon.
+4: Visabilty check is a little buggy. 
+5: Cant get it to work, i got the trigger to work but not the bot part. Don't know how to check if its close and in crosshair.
 

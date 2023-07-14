@@ -144,6 +144,10 @@ int menu1 = 0;
 int menu2 = 0;
 int menu3 = 0;
 int menu4 = 0;
+//triggerbot
+extern bool triggerbot;
+//1v1
+extern bool onevone;
 
 
 
@@ -256,6 +260,8 @@ void Overlay::RenderMenu()
 					ImGui::SameLine();
 					ImGui::Sliderbox(XorStr("Mini-Map Radar"), &minimapradar);
 					ImGui::Sliderbox(XorStr("Mini-Map Guide"), &MiniMapGuides);
+					ImGui::SameLine();
+					ImGui::Sliderbox(XorStr("1v1"), &onevone);
 					if (aim_enable)
 					{
 						ImGui::Sliderbox(XorStr("Visibility Check"), &vis_check);
@@ -504,7 +510,9 @@ void Overlay::RenderMenu()
 							config << smoothpred << "\n";
 							config << smoothpred2 << "\n";
 							config << std::boolalpha << weapon_nemesis << "\n";
-							config << veltest;
+							config << veltest << "\n";
+							config << std::boolalpha << triggerbot << "\n";
+							config << std::boolalpha << onevone;
 							config.close();
 						}
 					}
@@ -641,6 +649,9 @@ void Overlay::RenderMenu()
 							config >> smoothpred2;
 							config >> weapon_nemesis;
 							config >> veltest;
+							//triggerbot
+							config >> triggerbot;
+							config >> onevone;
 							config.close();
 
 						}
@@ -904,13 +915,13 @@ void Overlay::RenderInfo()
 		ImGui::TextColored(RED, "Aim Off %d", aim);
 	}
 	ImGui::SameLine();
-	if (TDMToggle)
+	if (triggerbot)
 	{
-		ImGui::TextColored(GREEN, "TDM Mode On");
+		ImGui::TextColored(GREEN, "1v1 On");
 	}
 	else
 	{
-		ImGui::TextColored(RED, "TDM Mode Off");
+		ImGui::TextColored(RED, "1v1 Off");
 	}
 	DrawLine(ImVec2(1, 28), ImVec2(280, 28), RED, 2);
 	ImGui::End();
