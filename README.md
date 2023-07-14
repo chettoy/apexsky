@@ -10,22 +10,36 @@ Game version (Steam Only right now): v3.0.36.26
 KrackerCo Fork's features.
 
 ESP Glow color picker for knocked and alive, visable or not visable.
+
 Item Glow with item filter.
+
 Weapon Glow with Weapon filter.
+
 Mini-Map radar*1.
+
 Full map radar*2.
+
 Firing Range dummp targeting debug testing.
+
 TDM Aimbot/Glow so you only target the other team.
+
 Custom aiming distance.
+
 Left/Right or both mouse buttons to aim.
+
 Custom Predition speed and Gravity to use with Headshot Mode*3.
+
 Save and Load config buttons and at start.
 
+
 NEW:
+
 Thank you https://github.com/AtomBottle/apex_dma_kvm_pub for some of your lock code. Happy someone had a use for my fork :)
+
 One V One toggle. Own friends in the firing range*4.
 
 TODO:
+
 Triggerbot*5.
 
 ![Main View](Pictures/MainGameView.jpg)
