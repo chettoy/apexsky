@@ -28,17 +28,15 @@ One V One toggle. Own friends in the firing range*4.
 TODO:
 Triggerbot*5.
 
-Pictures/MainGame View.jpg
+[Main View](Pictures/Main-Game-View.jpg)
 
-[Main View](Pictures/MainGameView.jpg)
+[Main Toggle Menu](Pictures/Main-Toggle-Menu.jpg)
 
-[Main Toggle Menu](Pictures/MainToggle-Menu.jpg)
+[Radar Settings](Pictures/Radar-Settings.jpg)
 
-[Radar Settings](Pictures/RadarSettings.jpg)
+[Item Filter Settings](Pictures/Item-Filter-Settings.jpg)
 
-[Item Filter Settings](Pictures/ItemFilterSettings.jpg)
-
-[Weapon Filter Settings](Pictures/WeaponFilterSettings.jpg)
+[Weapon Filter Settings](Pictures/Weapon-Filter-Settings.jpg)
 
 1: needs to be calibrated, info how is in the files.
 2: needs to be calibrated, info how is in the files.
