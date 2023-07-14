@@ -28,11 +28,9 @@ One V One toggle. Own friends in the firing range*4.
 TODO:
 Triggerbot*5.
 
-Pictures/MainGame View.jpg
-
 ![Main View](Pictures/MainGameView.jpg)
 
-![Main Toggle Menu](Pictures/MainToggle-Menu.jpg)
+![Main Toggle Menu](Pictures/MainToggleMenu.jpg)
 
 ![Radar Settings](Pictures/RadarSettings.jpg)
 
