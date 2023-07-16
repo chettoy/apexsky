@@ -45,6 +45,9 @@ float isattacing = 0.0f;
 //Firing Range 1v1 toggle
 bool onevone = false;
 
+//map
+int map = 0;
+
 //chargerifle hack, removed but not all the way, dont edit.
 bool chargerifle = false;
 bool shooting = false;
@@ -342,6 +345,9 @@ void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int ind
 	float dist = LocalPlayerPosition.DistTo(EntityPosition);
 	//Prints POS of localplayer for map cords for full map radar. only enable when adding a new map or fixing a old one, will output to console.
 	//std::printf("  X: %.6f   ||    Y:%.6f",LocalPlayerPosition.x, LocalPlayerPosition.y); //Prints x and y cords of localplayer to get mainmap radar stuff.
+	
+    //std::printf("X: %.6f || Y: %.6f\n", LocalPlayerPosition.x, LocalPlayerPosition.y);
+
 	if (dist > aimdist) return;
 	
 	
@@ -397,6 +403,38 @@ void DoActions()
 
 		while (g_Base!=0 && c_Base!=0)
 		{
+			
+			char MapName[200] = { 0 };
+			uint64_t MapName_ptr;
+			apex_mem.Read<uint64_t>(g_Base + OFFSET_HOST_MAP, MapName_ptr);
+			apex_mem.ReadArray<char>(MapName_ptr, MapName, 200);
+					
+			//printf("%s\n", MapName);
+			if (strcmp(MapName, "mp_rr_tropic_island_mu1_storm") == 0) 
+			{
+				map = 1;
+			} 
+			else if (strcmp(MapName, "mp_rr_canyonlands_mu") == 0) 
+			{
+				map = 2;
+			}
+			else if (strcmp(MapName, "mp_rr_desertlands_hu") == 0) 
+			{
+				map = 3;
+			}
+			else if (strcmp(MapName, "mp_rr_olympus") == 0) 
+			{
+				map = 4;
+			} 
+			else  if (strcmp(MapName, "mp_rr_divided_moon") == 0)
+			{
+				map = 5;
+			}
+			else
+			{
+				map = 0;
+			}
+			
 			std::this_thread::sleep_for(std::chrono::milliseconds(30));
 			uint64_t LocalPlayer = 0;
 			apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
@@ -1018,7 +1056,9 @@ static void set_vars(uint64_t add_addr)
 	//1v1
 	uint64_t onevone_addr = 0;
 	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*106, onevone_addr);
-	
+	//map
+	uint64_t map_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*107, map_addr);
 
 	
 	
@@ -1164,6 +1204,8 @@ static void set_vars(uint64_t add_addr)
 			client_mem.Read<bool>(triggerbot_addr, triggerbot);
 			//1v1
 			client_mem.Read<bool>(onevone_addr, onevone);
+			//map
+			client_mem.Write<bool>(map_addr, map);
 
 			
 			
@@ -1867,7 +1909,7 @@ int main(int argc, char *argv[])
 	//const char* ap_proc = "EasyAntiCheat_launcher.exe";
 
 	//Client "add" offset
-	uint64_t add_off = 0xd8d20; //todo make this auto update..
+	uint64_t add_off = 0xd8d30; //todo make this auto update..
 
 	std::thread aimbot_thr;
 	std::thread esp_thr;

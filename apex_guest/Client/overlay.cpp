@@ -148,6 +148,12 @@ int menu4 = 0;
 extern bool triggerbot;
 //1v1
 extern bool onevone;
+//screen pos ajuster
+//ajuster for screen pos
+extern int worldsedgetoprightx = 0;
+extern int worldsedgetoprighty = 0;
+extern int worldsedgebtmleftx = 0;
+extern int worldsedgebtmlefty = 0;
 
 
 

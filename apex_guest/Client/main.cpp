@@ -179,6 +179,8 @@ bool weapon_nemesis = false;
 float aimdist = 9905.0f;
 //item glow brightness
 int itemglowbrightness = 10;
+//Map number
+int map = 0;
 
 
 bool thirdperson = false;
@@ -187,7 +189,7 @@ int allied_spectators = 0; //write
 bool valid = true; //write
 bool next2 = true; //read write
 
-uint64_t add[107];
+uint64_t add[108];
 
 bool k_f5 = 0;
 bool k_f6 = 0;
@@ -713,47 +715,61 @@ public:
 // 
 // Take screenshot, First is top right random pos, then bttm left random pos from screen shot
 // 
-// First set is the x cord, then the y cord, then the screen pos from the screenshot, do the same for the second set.
-//Battel Royal Test
-//default creen res 1080p
+// First set is the x cord, then the y cord, then the screen x,y from the screenshot, do the same for the second set.
 // 1440p is x1.333333
+
 world KingsCanyon(ImVec2(25223.177734, 28906.144531), ImVec2(1197, 185), ImVec2(10399.223633, 13334.792969), ImVec2(1014, 381)); //could be more accurate 
-world WorldsEdge(ImVec2(-9190.608398, 8443.554688), ImVec2(824, 412), ImVec2(-19529.794922, -8933.173828), ImVec2(707, 608));
+
+world WorldsEdge(ImVec2(20501.476562, 33754.492188), ImVec2(1159, 127), ImVec2(-4714.299805, -54425.144531), ImVec2(622, 755)); // mp_rr_desertlands_hu - could be more accurate  updated 7/16/2023
+
 world Olympus(ImVec2(0, 0), ImVec2(0, 0), ImVec2(0, 0), ImVec2(0, 0)); //to be measured
-// 1080p   world StormPoint(ImVec2(-21264.427734, -47086.878906), ImVec2(711, 983), ImVec2(40298.070313, 21163.728516), ImVec2(1321, 306));
-world  BrokenMoon(ImVec2(14532.587891, 19858.138672), ImVec2(1122, 278), ImVec2(-15746.124023, -14393.649414), ImVec2(764, 683));
-// 1440p   world StormPoint(ImVec2(-21264.427734, -47086.878906), ImVec2(948, 1310), ImVec2(40298.070313, 21163.728516), ImVec2(1761, 306));
-world StormPoint(ImVec2(-21264.427734, -47086.878906), ImVec2(711, 983), ImVec2(40298.070313, 21163.728516), ImVec2(1321, 306));
-//Arena
-world Overflow(ImVec2(-3344.994629, -4018.093018), ImVec2(552, 431), ImVec2(5039.592773, -4639.289063), ImVec2(1322, 489));
-world DropOff(ImVec2(3135.113281, 1654.107666), ImVec2(1151, 603), ImVec2(-2920.918701, 811.240479), ImVec2(722, 663));
-world Habitat4(ImVec2(4482.470215, -604.362854), ImVec2(1205, 544), ImVec2(-4464.019043, 593.067688), ImVec2(650, 470));
-world Encore(ImVec2(4144.926270, 468.957611), ImVec2(1184, 472), ImVec2(-3791.070313, 3.092307), ImVec2(692, 501));
-world PartyCrasher(ImVec2(-3275.972900, 3646.970703), ImVec2(589, 197), ImVec2(1085.708740, -3869.658936), ImVec2(1022, 943));
-//TODO get map auto 
+
+world BrokenMoon(ImVec2(35159.300781, 30436.917969), ImVec2(1368, 151), ImVec2(-30641.98821, -30347.98821), ImVec2(593, 873)); // mp_rr_divided_moon - could be more accurate  updated 7/16/2023
+
+world StormPoint(ImVec2(34453.894531, 34695.917969), ImVec2(1264, 172), ImVec2(-28786.898438, -16240.749023), ImVec2(636, 677));  // mp_rr_tropic_island_mu1_storm updated - is within a few pixels of accuracy 7/16/2023
+
+//DONE get map auto 
 ImVec2 worldToScreenMap(D3DXVECTOR3 origin, int TeamID) {
 		float ratioX;
 		float ratioY;
 		ImVec2 w1;
 		ImVec2 s1;
 		//Is it me being lazy? or that i dont know how? prob both. True or False for the map detection, set in the overlay menu.
-		if (kingscanyon == true) { //KingsCanyon
+		if (map == 1) { //Storm Point
+			ratioX = StormPoint.ratioX;
+			ratioY = StormPoint.ratioY;
+			w1 = StormPoint.w1;
+			s1 = StormPoint.s1;
+		}
+		
+		else if (map == 2) { //KingsCanyon
 			ratioX = KingsCanyon.ratioX;
 			ratioY = KingsCanyon.ratioY;
 			w1 = KingsCanyon.w1;
 			s1 = KingsCanyon.s1;
 		}
-		
-		if (stormpoint == true) { //Storm Point
+		else if (map == 3) { //WorldsEdge
+			ratioX = WorldsEdge.ratioX;
+			ratioY = WorldsEdge.ratioY;
+			w1 = WorldsEdge.w1;
+			s1 = WorldsEdge.s1;
+		}
+		else if (map == 4) { //Olympus 
+			ratioX = Olympus.ratioX;
+			ratioY = Olympus.ratioY;
+			w1 = Olympus.w1;
+			s1 = Olympus.s1;
+		}
+		else if (map == 5) { //BrokenMoon 
 			ratioX = BrokenMoon.ratioX;
 			ratioY = BrokenMoon.ratioY;
 			w1 = BrokenMoon.w1;
 			s1 = BrokenMoon.s1;
 		}
-		
 		else {
 			return ImVec2(0, 0);
 		}
+
 
 		//difference from location 1
 		float world_diff_x = origin.x - w1.x;
@@ -1090,6 +1106,8 @@ int main(int argc, char** argv)
 	add[104] = (uintptr_t)&TDMToggle;
 	add[105] = (uintptr_t)&triggerbot;
 	add[106] = (uintptr_t)&onevone;
+	//map
+	add[107] = (uintptr_t)&map;
 
 	
 	printf(XorStr("GameVersion=v3.0.35.21 || 6-20-2023 || |-| fov Testing |-| Add me offset: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
@@ -1330,12 +1348,12 @@ int main(int argc, char** argv)
 		else if (IsKeyDown(aim_key2) && toggleaim2)
 		{
 			aiming = true;
-			max_fov = 10;
+			max_fov = 15;
 		}
 		else
 		{
 			aiming = false;
-			max_fov = 10;
+			max_fov = 15;
 		}
 
 

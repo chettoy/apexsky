@@ -57,6 +57,8 @@
 #define OFFSET_M_CUSTOMSCRIPTINT 0x1638 //m_customScriptInt
 #define OFFSET_MINIMAP_SCALE 0x4638 //m_minimapTargetZoomScale, float
 
+#define OFFSET_HOST_MAP 0x01613990 + 0x58 //host_map + 0x58
+
 //triggerbot
 #define IN_ATTACK 0x0743d330 //in_attack
 #define OFFSET_CROSSHAIR_LAST 0x1A80 //CPlayer!lastCrosshairTargetTime
