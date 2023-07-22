@@ -3,7 +3,9 @@
 extern Memory apex_mem;
 
 extern bool firing_range;
-
+extern float glowr;
+extern float glowg;
+extern float glowb;
 
 
 //glowtype not used, but dont delete its still used.
@@ -158,20 +160,41 @@ bool Entity::isZooming()
 	return *(int*)(buffer + OFFSET_ZOOMING) == 1;
 }
 
-void Entity::enableGlow()
+//custom glow color RGB
+void Entity::enableGlow(GColor color)
 {
-	apex_mem.Write<int>(ptr + OFFSET_GLOW_T1, 16256);
-	apex_mem.Write<int>(ptr + OFFSET_GLOW_T2, 1193322764);
-	apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 7);
-	apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 2);
-}
+	
+	//apex_mem.Write<GlowMode>(ptr + GLOW_TYPE, { 101,102,96,90 });
+	apex_mem.Write<GColor>(ptr + GLOW_COLOR, color);
 
+	
+	
+	
+
+	
+
+	apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE_GLOW_CONTEXT, 1);
+	apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE, 2);
+	
+	//apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, glowtype);
+	//apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, glowtype2);
+	// Color
+	//apex_mem.Write<float>(ptr + GLOW_COLOR_R, glowr);
+	//apex_mem.Write<float>(ptr + GLOW_COLOR_G, glowg);
+	//apex_mem.Write<float>(ptr + GLOW_COLOR_B, glowb);
+}
 void Entity::disableGlow()
 {
+	
 	apex_mem.Write<int>(ptr + OFFSET_GLOW_T1, 0);
 	apex_mem.Write<int>(ptr + OFFSET_GLOW_T2, 0);
 	apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
 	apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 5);
+	//apex_mem.Write<float>(ptr + GLOW_COLOR_R, 0.0f);
+	//apex_mem.Write<float>(ptr + GLOW_COLOR_G, 0.0f);
+	//apex_mem.Write<float>(ptr + GLOW_COLOR_B, 0.0f);
+	//apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
+	//apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 5);
 }
 
 void Entity::SetViewAngles(SVector angles)

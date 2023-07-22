@@ -41,6 +41,20 @@ bool firing_range = false;
 int bone = 2;
 extern float smooth; //Config is in Game.cpp, Line 15 min 85 no beaming, 100 somewhat beam people, 125 should be safe
 
+
+//Player Glow Color and Brightness. 
+float glowr = 255.0f; //Red 0-255, higher is brighter color.
+float glowg = 0.0f; //Green 0-255, higher is brighter color.
+float glowb = 0.0f; //Blue 0-255, higher is brighter color.
+//visable
+float glowrviz = 0.0f; //Red 0-255, higher is brighter color.
+float glowgviz = 255.0f; //Green 0-255, higher is brighter color.
+float glowbviz = 0.0f; //Blue 0-255, higher is brighter color.
+//knocked
+float glowrknocked = 120.0f; //Red 0-255, higher is brighter color.
+float glowgknocked = 120.0f; //Green 0-255, higher is brighter color.
+float glowbknocked = 120.0f; //Blue 0-255, higher is brighter color.
+
 //ITEM GLOW TOGGLES
 int itemglowbrightness = 8; //10 is none and 0 is full glow like the sun in your eye's.
 //Backpacks
@@ -153,24 +167,6 @@ bool weapon_charge_rifle  = false;
 bool weapon_sentinel  = false;
 bool weapon_bow  = false;
 
-
-
-
-//Player Glow Color and Brightness. Edit the RGB
-//not visable
-float glowr = 192.0f; //Red 0-255, higher is brighter color.
-float glowg = 0.0f; //Green 0-255, higher is brighter color.
-float glowb = 0.0f; //Blue 0-255, higher is brighter color.
-//visable
-float glowrviz = 0.0f; //Red 0-255, higher is brighter color.
-float glowgviz = 192.0f; //Green 0-255, higher is brighter color.
-float glowbviz = 0.0f; //Blue 0-255, higher is brighter color.
-//knocked
-float glowrknocked = 158.0f; //Red 0-255, higher is brighter color.
-float glowgknocked = 158.0f; //Green 0-255, higher is brighter color.
-float glowbknocked = 158.0f; //Blue 0-255, higher is brighter color.
-
-
 //Removed but not all the way, dont edit.
 int glowtype = 1;
 int glowtype2 = 2;
@@ -225,7 +221,39 @@ float lastvis_aim[toRead];
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
 
+void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
+{
+	if (player_glow >= 1)
+	{
+		
+		
+			if (!Target.isGlowing() || (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
+				float currentEntityTime = 5000.f;
+				if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
+					GColor color;
+					if (!(firing_range) && (Target.isKnocked() || !Target.isAlive()))
+					{
+						color = { glowrknocked, glowgknocked, glowbknocked };
+					}
+					else if (Target.lastVisTime() > lastvis_aim[index] || (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f))
+					{
+						color = { glowrviz, glowgviz, glowbviz };
+					}
+					else 
+					{
+						color = { glowr, glowg, glowb };
+					}
 
+					Target.enableGlow(color);
+				}
+			}
+		
+		else if((player_glow == 0) && Target.isGlowing())
+		{
+			Target.disableGlow();
+		}
+	}
+}
 
 void MapRadarTesting()
 {
@@ -402,6 +430,7 @@ void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int ind
 			tmp_aimentity = target.ptr;
 		}
 	}
+	SetPlayerGlow(LPlayer, target, index);
 	lastvis_aim[index] = target.lastVisTime();
 }
 
@@ -461,14 +490,7 @@ void DoActions()
 					{
 						continue;
 					}
-					if(player_glow && !Target.isGlowing())
-					{
-						Target.enableGlow();
-					}
-					else if(!player_glow && Target.isGlowing())
-					{
-						Target.disableGlow();
-					}
+					
 				
 
 					ProcessPlayer(LPlayer, Target, entitylist, c);
@@ -497,14 +519,7 @@ void DoActions()
 					{
 						continue;
 					}
-					if(player_glow && !Target.isGlowing())
-					{
-						Target.enableGlow();
-					}
-					else if(!player_glow && Target.isGlowing())
-					{
-						Target.disableGlow();
-					}
+					
 
 					
 				}

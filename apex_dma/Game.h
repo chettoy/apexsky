@@ -50,7 +50,7 @@ public:
 	QAngle GetRecoil();
 	Vector GetViewAnglesV();
 	float GetYaw();
-	void enableGlow();
+	void enableGlow(GColor color);
 	void disableGlow();
 	void SetViewAngles(SVector angles);
 	void SetViewAngles(QAngle& angles);
