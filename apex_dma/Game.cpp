@@ -3,32 +3,20 @@
 extern Memory apex_mem;
 
 extern bool firing_range;
-//glow color and brigtness
-extern float glowr;
-extern float glowg;
-extern float glowb;
+
+
 
 //glowtype not used, but dont delete its still used.
 extern int glowtype;
 extern int glowtype2;
 //setting up vars, dont edit 
-float smooth = 100.0f;
-bool aim_no_recoil = true;
-int bone = 2;
-extern float smoothpred;
-extern float smoothpred2;
-extern float veltest;
+float smooth = 125.0f;
+extern bool aim_no_recoil;
+extern int bone;
+
 
 bool Entity::Observing(uint64_t entitylist)
 {
-	/*uint64_t index = *(uint64_t*)(buffer + OFFSET_OBSERVING_TARGET);
-	index &= ENT_ENTRY_MASK;
-	if (index > 0)
-	{
-		uint64_t centity2 = apex_mem.Read<uint64_t>(entitylist + ((uint64_t)index << 5));
-		return centity2;
-	}
-	return 0;*/
 	return *(bool*)(buffer + OFFSET_OBSERVER_MODE);
 }
 
@@ -50,53 +38,13 @@ void get_class_name(uint64_t entity_ptr, char* out_str)
 
 	apex_mem.ReadArray<char>(client_class.pNetworkName, out_str, 32);
 }
-//patched out but left in for reasons
-void charge_rifle_hack(uint64_t entity_ptr)
-{
-	extern uint64_t g_Base;
-	extern bool shooting;
-	WeaponXEntity curweap = WeaponXEntity();
-	curweap.update(entity_ptr);
-	float BulletSpeed = curweap.get_projectile_speed();
-	int ammo = curweap.get_ammo();
 
-	if (ammo != 0 && BulletSpeed == 1 && shooting)
-	{
-		apex_mem.Write<float>(g_Base + OFFSET_TIMESCALE + 0x68, std::numeric_limits<float>::min());
-	}
-	else
-	{
-		apex_mem.Write<float>(g_Base + OFFSET_TIMESCALE + 0x68, 1.f);
-	}
-}
 
 int Entity::getTeamId()
 {
 	return *(int*)(buffer + OFFSET_TEAM);
 }
 
-int Entity::getHealth()
-{
-	return *(int*)(buffer + OFFSET_HEALTH);
-}
-//seer health and shield i added
-#define OFFSET_ARMOR_TYPE             0x4604
-int Entity::getArmortype()
-{
-	int armortype;
-	apex_mem.Read<int>(ptr + OFFSET_ARMOR_TYPE, armortype);
-	return armortype;
-}
-
-int Entity::getShield()
-{
-	return *(int*)(buffer + OFFSET_SHIELD);
-}
-
-int Entity::getMaxshield()
-{
-	return *(int*)(buffer + OFFSET_MAXSHIELD);
-}
 
 Vector Entity::getAbsVelocity()
 {
@@ -136,49 +84,6 @@ float Entity::lastVisTime()
   return *(float*)(buffer + OFFSET_VISIBLE_TIME);
 }
 
-
-
-
-//https://www.unknowncheats.me/forum/apex-legends/496984-getting-hitbox-positions-cstudiohdr-externally.html
-//https://www.unknowncheats.me/forum/3499185-post1334.html
-//hitboxes
-
-//old one
-//Vector Entity::getBonePositionByHitbox(int id)
-//{
-//	Vector origin = getPosition();
-//
-//    //BoneByHitBox
-//	uint64_t Model = *(uint64_t*)(buffer + OFFSET_STUDIOHDR);
-//
-//	//get studio hdr
-//	uint64_t StudioHdr;
-//	apex_mem.Read<uint64_t>(Model + 0x8, StudioHdr);
-//
-//    //get hitbox array
-//	int HitBoxsArray_set;
-//	apex_mem.Read<int>(StudioHdr + 0x34,HitBoxsArray_set);
-//	uint64_t HitBoxsArray = StudioHdr + HitBoxsArray_set;
-//
-//	int HitboxIndex;
-//	apex_mem.Read<int>(HitBoxsArray + 0x8, HitboxIndex);
-//
-//	int Bone;
-//	apex_mem.Read<int>(HitBoxsArray + HitboxIndex + (id * 0x0038), Bone);
-//
-//	if(Bone < 0 || Bone > 255)
-//		return Vector();
-//
-//    //hitpos
-//	uint64_t BoneArray = *(uint64_t*)(buffer + OFFSET_BONES);
-//
-//	matrix3x4_t Matrix = {};
-//	apex_mem.Read<matrix3x4_t>(BoneArray + Bone * sizeof(matrix3x4_t), Matrix);
-//
-//	return Vector(Matrix.m_flMatVal[0][3] + origin.x, Matrix.m_flMatVal[1][3] + origin.y, Matrix.m_flMatVal[2][3] + origin.z);
-//}
-
-//new one
 Vector Entity::getBonePositionByHitbox(int id)
 {
 	Vector origin = getPosition();
@@ -252,41 +157,21 @@ bool Entity::isZooming()
 {
 	return *(int*)(buffer + OFFSET_ZOOMING) == 1;
 }
-//custom glow color RGB
-void Entity::enableGlow(GColor color)
+
+void Entity::enableGlow()
 {
-	
-	//apex_mem.Write<GlowMode>(ptr + GLOW_TYPE, { 101,102,96,90 });
-	apex_mem.Write<GColor>(ptr + GLOW_COLOR, color);
-
-	
-	
-	
-
-	
-
-	apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE_GLOW_CONTEXT, 1);
-	apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE, 2);
-	
-	//apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, glowtype);
-	//apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, glowtype2);
-	// Color
-	//apex_mem.Write<float>(ptr + GLOW_COLOR_R, glowr);
-	//apex_mem.Write<float>(ptr + GLOW_COLOR_G, glowg);
-	//apex_mem.Write<float>(ptr + GLOW_COLOR_B, glowb);
+	apex_mem.Write<int>(ptr + OFFSET_GLOW_T1, 16256);
+	apex_mem.Write<int>(ptr + OFFSET_GLOW_T2, 1193322764);
+	apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 7);
+	apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 2);
 }
+
 void Entity::disableGlow()
 {
-	
 	apex_mem.Write<int>(ptr + OFFSET_GLOW_T1, 0);
 	apex_mem.Write<int>(ptr + OFFSET_GLOW_T2, 0);
 	apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
 	apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 5);
-	//apex_mem.Write<float>(ptr + GLOW_COLOR_R, 0.0f);
-	//apex_mem.Write<float>(ptr + GLOW_COLOR_G, 0.0f);
-	//apex_mem.Write<float>(ptr + GLOW_COLOR_B, 0.0f);
-	//apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
-	//apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 5);
 }
 
 void Entity::SetViewAngles(SVector angles)
@@ -309,13 +194,7 @@ QAngle Entity::GetRecoil()
 	return *(QAngle*)(buffer + OFFSET_AIMPUNCH);
 }
 
-void Entity::get_name(uint64_t g_Base, uint64_t index, char* name)
-{
-	index *= 0x10;
-    uint64_t name_ptr = 0;
-    apex_mem.Read<uint64_t>(g_Base + OFFSET_NAME_LIST + index, name_ptr);
-	apex_mem.ReadArray<char>(name_ptr, name, 32);
-}
+
 //Items
 bool Item::isItem()
 {
@@ -422,8 +301,8 @@ QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 		PredictCtx Ctx;
 		Ctx.StartPos = LocalCamera;
 		Ctx.TargetPos = TargetBonePosition; 
-		Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*smoothpred);
-		Ctx.BulletGravity = BulletGrav + (BulletGrav*smoothpred2);
+		Ctx.BulletSpeed = BulletSpeed - (BulletSpeed);
+		Ctx.BulletGravity = BulletGrav + (BulletGrav);
 		Ctx.TargetVel = target.getAbsVelocity();
 
 		if (BulletPredict(Ctx))

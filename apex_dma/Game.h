@@ -41,10 +41,6 @@ public:
 	bool isAlive();
 	float lastVisTime();
 	int getTeamId();
-	int getHealth();
-	int getShield();
-	int getArmortype();
-	int getMaxshield();
 	bool isGlowing();
 	bool isZooming();
 	Vector getAbsVelocity();
@@ -54,14 +50,13 @@ public:
 	QAngle GetRecoil();
 	Vector GetViewAnglesV();
 	float GetYaw();
-	void enableGlow(GColor color);
+	void enableGlow();
 	void disableGlow();
 	void SetViewAngles(SVector angles);
 	void SetViewAngles(QAngle& angles);
 	Vector getBonePosition(int id);
 	Vector getBonePositionByHitbox(int id);
 	bool Observing(uint64_t entitylist);
-	void get_name(uint64_t g_Base, uint64_t index, char* name);
 };
 
 class Item
