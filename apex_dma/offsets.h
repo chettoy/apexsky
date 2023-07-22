@@ -1,4 +1,3 @@
-
 #define VERSION STEAM
 //Date 5/28/2023
 //GameVersion=v3.0.38.32
@@ -6,7 +5,7 @@
 #if VERSION == STEAM
 
 #define OFFSET_ENTITYLIST 0x1e54dc8 //cl_entitylist
-#define OFFSET_LOCAL_ENT 0x22048C8 + 0x8 //LocalPlayer  might be moved to  AVC_GameMovement
+#define OFFSET_LOCAL_ENT 0x22048C0 + 0x8 //LocalPlayer  might be moved to  AVC_GameMovement
 #define OFFSET_NAME_LIST 0xbe95d60 //NameList
 
 
@@ -40,6 +39,8 @@
 #define OFFSET_IN_ZOOM 0x0be968e0 //in_zoom
 #define OFFSET_IN_SPEED 0x07871c18 //in_speed
 #define OFFSET_WEAPON_NAME 0x1874 //m_weaponNameIndex 2nd one
+
+
 #define OFFSET_LIFE_STATE 0x0798 //m_lifeState, >0 = dead
 #define OFFSET_BLEED_OUT_STATE 0x2750 //m_bleedoutState, >0 = knocked
 
