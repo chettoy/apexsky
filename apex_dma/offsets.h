@@ -38,7 +38,7 @@
 #define OFFSET_IN_TOGGLE_DUCK 0x0c295450 //in_toggle_duck
 #define OFFSET_IN_ZOOM 0x0be968e0 //in_zoom
 #define OFFSET_IN_SPEED 0x07871c18 //in_speed
-#define OFFSET_WEAPON_NAME 0x1874 //m_weaponNameIndex 2nd one
+#define OFFSET_WEAPON_NAME 0x1858 //m_weaponNameIndex 2nd one
 
 
 #define OFFSET_LIFE_STATE 0x0798 //m_lifeState, >0 = dead

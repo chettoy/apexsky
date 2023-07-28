@@ -21,54 +21,57 @@ uintptr_t lastaimentity = 0;
 float max = 9999.0f;
 int team_player = 0;
 const int toRead = 100;
-
-
 bool aiming = false;
-
-
-
 float smoothpred = 0.08;
 float smoothpred2 = 0.05;
-
+//Removed but not all the way, dont edit.
+int glowtype = 1;
+int glowtype2 = 2;
+float aimdist = 200.0f * 40.0f;
+bool actions_t = false;
+bool cactions_t = false;
+bool esp_t = false;
+bool aim_t = false;
+bool vars_t = false;
+bool item_t = false;
+uint64_t g_Base;
+bool next2 = false;
+bool valid = false;
+bool lock = false;
+//^^ Don't EDIT^^
 
 //CONFIG AREA, you must set all the true/false to what you want.
-bool item_glow = true;
-bool player_glow = true;
-bool aim_no_recoil = true;
-float max_fov = 15;
-int aim = 2;
-bool firing_range = false;
-int bone = 2;
-extern float smooth; //Config is in Game.cpp, Line 15 min 85 no beaming, 100 somewhat beam people, 125 should be safe
-
-
+bool item_glow = true; //item glow
+bool player_glow = true; //player glow
+bool aim_no_recoil = true; //no recoil
+float max_fov = 15; // Fov you want to use while aiming
+int aim = 2; // 0 no aim, 1 aim with no vis check, 2 aim with vis check
+bool firing_range = false; //firing range
+int bone = 2; //bone 0 head, 1 neck, 2 check, 3 dick shot
+float smooth = 100.0f; //min 85 no beaming, 100 somewhat beam people, 125 should be safe
 //Player Glow Color and Brightness. 
+//Visable 
 float glowr = 255.0f; //Red 0-255, higher is brighter color.
 float glowg = 0.0f; //Green 0-255, higher is brighter color.
 float glowb = 0.0f; //Blue 0-255, higher is brighter color.
-//visable
+//Visable
 float glowrviz = 0.0f; //Red 0-255, higher is brighter color.
 float glowgviz = 255.0f; //Green 0-255, higher is brighter color.
 float glowbviz = 0.0f; //Blue 0-255, higher is brighter color.
-//knocked
+//Knocked
 float glowrknocked = 120.0f; //Red 0-255, higher is brighter color.
 float glowgknocked = 120.0f; //Green 0-255, higher is brighter color.
 float glowbknocked = 120.0f; //Blue 0-255, higher is brighter color.
-
-//ITEM GLOW TOGGLES
+//Item Configs
 int itemglowbrightness = 8; //10 is none and 0 is full glow like the sun in your eye's.
 //Backpacks
 bool lightbackpack = false;
 bool medbackpack = true;
 bool heavybackpack = true;
-
-
 //Shield upgrades
 bool shieldupgrade = true;
 bool shieldupgradehead = true;
 bool shielddown = true;
-
-
 //heaing and Misc
 bool accelerant = false;
 bool phoenix = false;
@@ -76,16 +79,12 @@ bool healthlarge = true;
 bool healthsmall = false;
 bool shieldbattsmall = false;
 bool shieldbattlarge = true;
-
-
 //Ammo
-bool ammosniper = true;
-bool ammohc = true;
-bool ammosc = true;
-bool ammonrg = true;
-bool ammoshotgun = false;
-
-
+bool sniperammo = true;
+bool heavyammo = true;
+bool lightammo = true;
+bool energyammo = true;
+bool shotgunammo = false;
 //Optics
 bool optic = false;
 bool optic2x = true;
@@ -97,41 +96,29 @@ bool optic2x4x = true;
 bool opticsniper6x = true;
 bool opticsniper4x8x = true;
 bool opticsniperthreat = false;
-
-
 //Magazines
-bool magsniper = true;
-bool magenergy = true;
+bool sniperammomag = true;
+bool energyammomag = true;
 bool lightammomag = true;
 bool heavyammomag = true;
-
-
 //Attachments 
 bool lasersight = true;
 bool stocksniper = true;
 bool stockregular = true;
 bool suppressor = true;
-bool weaponmod = false;
+bool weaponmod = true;
 bool shotgunbolt = false;
-
-
 //Nades
-bool grenade_frag = false;
-bool grenade_arc_star = false;
-bool grenade_thermite = false;
-
-
+bool grenade_frag = true;
+bool grenade_arc_star = true;
+bool grenade_thermite = true;
 //Kraber
 bool weapon_kraber = true;
-
-
 //Shotguns
 bool weapon_mastiff = false;
 bool weapon_eva8  = false;
 bool weapon_peacekeeper  = false;
 bool weapon_mozambique  = false;
-
-
 //Energy weapons
 bool weapon_lstar = true;
 bool weapon_nemesis = true;
@@ -140,60 +127,29 @@ bool weapon_devotion = false;
 bool weapon_triple_take = true;
 bool weapon_prowler  = false;
 bool weapon_volt  = false;
-
-
 //Heavy Weapons
 bool weapon_flatline = true;
 bool weapon_hemlock  = false;
 bool weapon_3030_repeater = false; 
 bool weapon_rampage  = true;
 bool weapon_car_smg  = true;
-
-
 //Light weapons
 bool weapon_p2020  = false;
-bool weapon_re45  = false;
+bool weapon_re45  = true;
 bool weapon_g7_scout  = false;
 bool weapon_alternator  = false;
 bool weapon_r99  = true;
 bool weapon_spitfire  = false;
 bool weapon_r301 = true;
-
-
 //Snipers.. wingman is the odd one...and the bow..
 bool weapon_wingman  = true;
 bool weapon_longbow  = false;
-bool weapon_charge_rifle  = false;
+bool weapon_charge_rifle  = true;
 bool weapon_sentinel  = false;
-bool weapon_bow  = false;
-
-//Removed but not all the way, dont edit.
-int glowtype = 1;
-int glowtype2 = 2;
+bool weapon_bow  = true;
 
 
-
-
-//aim dist check. Just setting things up, dont edit.
-float aimdist = 200.0f * 40.0f;
-
-
-
-
-//Just setting things up, dont edit.
-bool actions_t = false;
-bool cactions_t = false;
-bool esp_t = false;
-bool aim_t = false;
-bool vars_t = false;
-bool item_t = false;
-uint64_t g_Base;
-bool next2 = false;
-bool valid = false;
-bool lock = false;
-
-
-
+//DONE WITH THE EDITING
 //Player Definitions, dont edit unless you know what you are doing.
 typedef struct player
 {
@@ -204,20 +160,11 @@ typedef struct player
 	int health = 0;
 	int shield = 0;
 }player;
-
-
-//Your in the matrix neo.
 struct Matrix
 {
 	float matrix[16];
 };
-
-
-//Visual check and aim check.?
 float lastvis_aim[toRead];
-
-
-//Specator stuff. Just setting things up, dont edit.
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
 
@@ -262,22 +209,16 @@ void MapRadarTesting()
 	int dt;
 		apex_mem.Read<int>(pLocal + OFFSET_TEAM, dt);
 
-	for (uintptr_t i = 0; i <= 80000; i++)
+	for (uintptr_t i = 0; i <= 100; i++)
 	{
 		apex_mem.Write<int>(pLocal + OFFSET_TEAM, 1);
 	}
 
-	for (uintptr_t i = 0; i <= 80000; i++)
+	for (uintptr_t i = 0; i <= 100; i++)
 	{
 		apex_mem.Write<int>(pLocal + OFFSET_TEAM, dt);
 	}
 }
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
 
 uint64_t PlayerLocal;
 int PlayerLocalTeamID;
@@ -773,7 +714,7 @@ static void item_glow_t()
 						apex_mem.Write<float>(centity + GLOW_COLOR_G, 0 / itemglowbrightness); // g
 						apex_mem.Write<float>(centity + GLOW_COLOR_B, 225 / itemglowbrightness); // b
 					}
-					if (ammosniper && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_sniper.rmdl")) 
+					if (sniperammo && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_sniper.rmdl")) 
 					{
 					apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 1);
 						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
@@ -783,7 +724,7 @@ static void item_glow_t()
 						apex_mem.Write<float>(centity + GLOW_COLOR_G, 92 / itemglowbrightness); // g
 						apex_mem.Write<float>(centity + GLOW_COLOR_B, 255 / itemglowbrightness); // b
 					}
-					if (ammohc && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_hc.rmdl")) 
+					if (heavyammo && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_hc.rmdl")) 
 					{
 					apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 1);
 						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
@@ -797,7 +738,7 @@ static void item_glow_t()
 					{
 						apex_mem.Write<int>(centity + OFFSET_ITEM_GLOW, 1363184265);
 					}
-					if (ammosc && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_sc.rmdl")) 
+					if (lightammo && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_sc.rmdl")) 
 					{
 					apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 1);
 						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
@@ -807,7 +748,7 @@ static void item_glow_t()
 						apex_mem.Write<float>(centity + GLOW_COLOR_G, 140 / itemglowbrightness); // g
 						apex_mem.Write<float>(centity + GLOW_COLOR_B, 0 / itemglowbrightness); // b
 					}
-					if (ammonrg && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_nrg.rmdl")) 
+					if (energyammo && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_nrg.rmdl")) 
 					{
 					apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 1);
 						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
@@ -817,7 +758,7 @@ static void item_glow_t()
 						apex_mem.Write<float>(centity + GLOW_COLOR_G, 205 / itemglowbrightness); // g
 						apex_mem.Write<float>(centity + GLOW_COLOR_B, 50 / itemglowbrightness); // b
 					}
-					if (ammoshotgun && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_shg.rmdl")) 
+					if (shotgunammo && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_shg.rmdl")) 
 					{
 					apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, 1);
 						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 1); // 1 = far, 2 = close
@@ -831,11 +772,11 @@ static void item_glow_t()
 					{
 						apex_mem.Write<int>(centity + OFFSET_ITEM_GLOW, 1363184265);
 					}
-					if (magsniper && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_sniper_v1.rmdl")) 
+					if (sniperammomag && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_sniper_v1.rmdl")) 
 					{
 						apex_mem.Write<int>(centity + OFFSET_ITEM_GLOW, 1363184265);
 					}
-					if (magenergy && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_energy_v1.rmdl")) 
+					if (energyammomag && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_energy_v1.rmdl")) 
 					{
 						apex_mem.Write<int>(centity + OFFSET_ITEM_GLOW, 1363184265);
 					}
@@ -1214,10 +1155,50 @@ static void item_glow_t()
 						apex_mem.Write<float>(centity + GLOW_COLOR_G, 250 / itemglowbrightness); // g
 						apex_mem.Write<float>(centity + GLOW_COLOR_B, 154 / itemglowbrightness); // b
 					}
-					
-					
 
-						
+					// CREDITS to Rikkie https://www.unknowncheats.me/forum/members/169606.html
+					// for all the weapon ids and item ids code, you are a life saver!
+					ulong ehWeaponHandle;
+					apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON, ehWeaponHandle); // 0x1a1c
+					ehWeaponHandle &= 0xFFFF; // eHandle
+					ulong pWeapon;
+					apex_mem.Read<uint64_t>(entitylist + (ehWeaponHandle * 0x20), pWeapon);
+					
+					uint32_t weaponID;
+					apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME, weaponID); //0x1844
+					//printf("%d\n", weaponID);
+					//snipers for headsbots
+					if (weaponID == 101 || weaponID == 87 || weaponID == 2 || weaponID == 84 || weaponID == 1 || weaponID == 78 || weaponID == 80 || weaponID == 102 || weaponID == 104)
+					{
+					
+						bone = 0;
+					}
+					else if (weaponID != 101 || weaponID != 87 || weaponID != 2 || weaponID != 84 || weaponID != 1 || weaponID != 78 || weaponID != 80 || weaponID != 102 || weaponID != 104)
+					{
+						bone = 2;
+					}
+					//bow
+					if (weaponID == 2)
+					{
+						smoothpred = 5.0;
+						smoothpred2 = 1.0;						
+					}
+					else if (weaponID != 2)
+					{
+						smoothpred = 0.08;
+						smoothpred2 = 0.05;						
+					}
+					//knife
+					if (weaponID == 148)
+					{
+						smoothpred = 5.0;
+						smoothpred2 = 1.0;						
+					}
+					else if (weaponID != 148)
+					{
+						smoothpred = 0.08;
+						smoothpred2 = 0.05;						
+					}
 					
 				}
 				k=1;

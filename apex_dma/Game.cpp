@@ -12,7 +12,7 @@ extern float glowb;
 extern int glowtype;
 extern int glowtype2;
 //setting up vars, dont edit 
-float smooth = 125.0f;
+extern float smooth;
 extern bool aim_no_recoil;
 extern int bone;
 
