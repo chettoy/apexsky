@@ -38,17 +38,20 @@ uint64_t g_Base;
 bool next2 = false;
 bool valid = false;
 bool lock = false;
+
 //^^ Don't EDIT^^
 
 //CONFIG AREA, you must set all the true/false to what you want.
+bool TDMToggle = false;
+
 bool item_glow = true; //item glow
 bool player_glow = true; //player glow
 bool aim_no_recoil = true; //no recoil
 float max_fov = 15; // Fov you want to use while aiming
 int aim = 2; // 0 no aim, 1 aim with no vis check, 2 aim with vis check
 bool firing_range = false; //firing range
-int bone = 2; //bone 0 head, 1 neck, 2 check, 3 dick shot
-float smooth = 100.0f; //min 85 no beaming, 100 somewhat beam people, 125 should be safe
+int bone = 2; //bone 0 head, 1 neck, 2 chest, 3 dick shot
+float smooth = 110.0f; //min 85 no beaming, 100 somewhat beam people, 125 should be safe
 //Player Glow Color and Brightness. 
 //Visable 
 float glowr = 255.0f; //Red 0-255, higher is brighter color.
@@ -129,7 +132,7 @@ bool weapon_prowler  = false;
 bool weapon_volt  = false;
 //Heavy Weapons
 bool weapon_flatline = true;
-bool weapon_hemlock  = false;
+bool weapon_hemlock  = true;
 bool weapon_3030_repeater = false; 
 bool weapon_rampage  = true;
 bool weapon_car_smg  = true;
@@ -209,12 +212,12 @@ void MapRadarTesting()
 	int dt;
 		apex_mem.Read<int>(pLocal + OFFSET_TEAM, dt);
 
-	for (uintptr_t i = 0; i <= 100; i++)
+	for (uintptr_t i = 0; i <= 80000; i++)
 	{
 		apex_mem.Write<int>(pLocal + OFFSET_TEAM, 1);
 	}
 
-	for (uintptr_t i = 0; i <= 100; i++)
+	for (uintptr_t i = 0; i <= 80000; i++)
 	{
 		apex_mem.Write<int>(pLocal + OFFSET_TEAM, dt);
 	}
@@ -256,7 +259,7 @@ void ClientActions()
 			apex_mem.Read<int>(g_Base + OFFSET_IN_TOGGLE_DUCK, tduckState); //61			
 			int zoomState = 0;
 			apex_mem.Read<int>(g_Base + OFFSET_IN_ZOOM, zoomState); //109
-			//printf("%i\n", aiming);
+			//printf("%f\n", max_fov);
 			
 			
 			if (attackState == 108 || zoomState == 109)
@@ -266,6 +269,16 @@ void ClientActions()
 			else
 			{
 				aiming = false;
+			}
+			
+			
+			if (attackState == 108 || !zoomState == 109)
+			{
+				max_fov = 50;
+			}
+			if (!attackState == 108 || zoomState == 109)
+			{
+				max_fov = 10;
 			}
 			
 			
@@ -294,7 +307,7 @@ void ClientActions()
 				auto currentTime = std::chrono::steady_clock::now();
 				auto duration = std::chrono::duration_cast<std::chrono::seconds>(currentTime - tduckStartTime).count();
 
-				if (duration >= 3)
+				if (duration >= 500)
 				{
 					mapRadarTestingEnabled = false;
 				}
@@ -330,11 +343,35 @@ void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int ind
 		return;
 	}
 	
+	if (TDMToggle)
+	{// Check if the target entity is on the same team as the local player
+		//int entity_team = Target.getTeamId();
+		//printf("Target Team: %i\n", entity_team);
+
+
+		uint64_t PlayerLocal;
+		apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, PlayerLocal);
+		int PlayerLocalTeamID;
+		apex_mem.Read<int>(PlayerLocal + OFFSET_TEAM, PlayerLocalTeamID);
+
+
+
+		if (entity_team % 2) EntTeam = 1;
+		else EntTeam = 2;
+		if (PlayerLocalTeamID % 2) LocTeam = 1;
+		else LocTeam = 2;
+
+		//printf("Target Team: %i\nLocal Team: %i\n", EntTeam, LocTeam);
+		if (EntTeam == LocTeam)
+			return;
+
+	}
+	
 
 	Vector EntityPosition = target.getPosition();
 	Vector LocalPlayerPosition = LPlayer.getPosition();
 	float dist = LocalPlayerPosition.DistTo(EntityPosition);
-	if (dist > aimdist) return;
+	//if (dist > aimdist) return;
 	
 	
 	//Firing range stuff
@@ -1231,21 +1268,19 @@ static void item_glow_t()
 	item_t = false;
 }
 
-auto prevTime = std::chrono::high_resolution_clock::now();
-auto currentTime = std::chrono::high_resolution_clock::now();
-float deltaTime = 0.0f;
+
+
 
 int main(int argc, char *argv[])
 {
-	currentTime = std::chrono::high_resolution_clock::now();
-	deltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - prevTime).count() / 1000.0f;
+	
 	if(geteuid() != 0)
 	{
 		//run as root..
 		return 0;
 	}
 
-	const char* ap_proc = "R5Apex.exe";
+	const char* ap_proc = "r5apex.exe";
 
 	std::thread aimbot_thr;
 	std::thread actions_thr;
@@ -1296,6 +1331,6 @@ int main(int argc, char *argv[])
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
-	prevTime = currentTime;
+	
 	return 0;
 }

@@ -1,12 +1,12 @@
 #define VERSION STEAM
-//Date 8/10/2023
-//GameVersion=v3.0.40.25
+//Date 8/23/2023
+//GameVersion=v3.0.41.34
 
 #if VERSION == STEAM
 
-#define OFFSET_ENTITYLIST 0x1e743a8 //cl_entitylist
-#define OFFSET_LOCAL_ENT 0x2224528 //LocalPlayer  might be moved to  AVC_GameMovement
-#define OFFSET_NAME_LIST 0xc2b0b00 //NameList
+#define OFFSET_ENTITYLIST 0x1e74448 //cl_entitylist
+#define OFFSET_LOCAL_ENT 0x22245c8 //LocalPlayer  might be moved to  AVC_GameMovement
+#define OFFSET_NAME_LIST 0xc2b0c00 //NameList
 
 
 #define OFFSET_LEVELNAME 0x16eed90 //LevelName
@@ -24,25 +24,12 @@
 #define OFFSET_ABS_VELOCITY 0x0170 //m_vecAbsVelocity
 #define OFFSET_VISIBLE_TIME 0x1AA0 //CPlayer!lastVisibleTime
 #define OFFSET_ZOOMING 0x1c81 //m_bZooming
-#define OFFSET_THIRDPERSON_SV 0x3728 //m_thirdPersonShoulderView
-#define OFFSET_YAW 0x22ec - 0x8 //m_currentFramePlayer.m_ammoPoolCount - 0x8
 
-#define OFFSET_WEAPON_NAME 0x1858 //m_weaponNameIndex 2nd one
+#define OFFSET_WEAPON_NAME 0x1888 //m_weaponNameIndex 2nd one
 
-//superglide?
-#define OFFSET_TRAVERSAL_PROGRESS 0x2b5c // m_traversalProgress
-//#define OFFSET_TRAVERSAL_PROGRESS 0x2b60 // m_traversalStartTime
-#define OFFSET_FORCE_JUMP 0x07472fa8 // in_jump
-#define OFFSET_FORCE_DUCK_TOGGLE 0x07473098 // in_duck
-//#define OFFSET_TRAVERSAL_PROGRESS 0x2108  //m_currentFramePlayer.timeBase
-#define OFFSET_CURRENT_FRAME 0x16fad90 + 0x8 // GlobalVars
-#define OFFSET_IN_ATTACK 0x07472e98 // in_attack
-#define OFFSET_IN_TOGGLE_DUCK 0x07472ed8 //in_toggle_duck
-#define OFFSET_IN_ZOOM 0x07473028 //in_zoom
-#define OFFSET_IN_SPEED 0x07871c18 //in_speed
-#define OFFSET_WEAPON_NAME 0x1858 //m_weaponNameIndex 2nd one
-
-
+#define OFFSET_IN_ATTACK 0x07472f98 // in_attack
+#define OFFSET_IN_TOGGLE_DUCK 0x07472fd8 //in_toggle_duck
+#define OFFSET_IN_ZOOM 0x07473138 //in_zoom
 
 #define OFFSET_LIFE_STATE 0x07d0 //m_lifeState, >0 = dead
 #define OFFSET_BLEED_OUT_STATE 0x2790 //m_bleedoutState, >0 = knocked
@@ -58,11 +45,11 @@
 #define OFFSET_OBSERVING_TARGET 0x3540 //m_hObserverTarget
 
 #define OFFSET_MATRIX 0x11A350 //ViewMatrix
-#define OFFSET_RENDER 0x7472E00 //ViewRender displays ESp, heath dist names etc
+#define OFFSET_RENDER 0x7472A28 //ViewRender displays ESp, heath dist names etc
 
 #define OFFSET_WEAPON 0x1a44 //m_latestPrimaryWeapons
-#define OFFSET_BULLET_SPEED 0x04cc //CWeaponX!m_flProjectileSpeed  maybe its  WeaponSettings.projectile_launch_speed now
-#define OFFSET_BULLET_SCALE 0x04d4 //CWeaponX!m_flProjectileScale  maybe its  WeaponSettings.projectile_gravity_scale now
+#define OFFSET_BULLET_SPEED OFFSET_VISIBLE_TIME + 0x04cc //CWeaponX!m_flProjectileSpeed  maybe its  WeaponSettings.projectile_launch_speed now
+#define OFFSET_BULLET_SCALE OFFSET_VISIBLE_TIME + 0x4d4 //CWeaponX!m_flProjectileScale  maybe its  WeaponSettings.projectile_gravity_scale now
 #define OFFSET_ZOOM_FOV 0x16e0 + 0xb8 //m_playerData + m_curZoomFOV
 #define OFFSET_AMMO 0x1664 //m_ammoInClip first offset 
 
@@ -70,7 +57,7 @@
 #define OFFSET_ITEM_ID 0x1628 // item id?
 #define OFFSET_MODELNAME 0x0030 // m_ModelName
 #define OFFSET_M_CUSTOMSCRIPTINT 0x1668  //m_customScriptInt
-#define OFFSET_MINIMAP_SCALE 0x4638 //m_minimapTargetZoomScale, float
+#define OFFSET_YAW 0x22bc - 0x8 //m_currentFramePlayer.m_ammoPoolCount - 0x8
 
 #define OFFSET_GLOW_T1 0x262+ 0x30 //16256 = enabled, 0 = disabled
 #define OFFSET_GLOW_T2 0x2dc+ 0x30 //1193322764 = enabled, 0 = disabled
