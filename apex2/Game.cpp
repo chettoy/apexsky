@@ -165,10 +165,13 @@ bool Entity::isZooming()
 {
 	return *(int*)(buffer + OFFSET_ZOOMING) == 1;
 }
-extern int glowtype;
-extern int glowtype2;
-extern int glowtype3;
+extern float glowcolorr;
+extern float glowcolorg;
+extern float glowcolorb;
 //custom glow color RGB
+
+extern int glowsetting;
+
 void Entity::enableGlow()
 {
 
@@ -192,10 +195,32 @@ void Entity::enableGlow()
 
 
     //testing
-	apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, glowtype);
+	/* apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, glowtype);
 	apex_mem.Write<int>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + glowtype3, glowtype2);
-    apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE , 2);
+    apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE , 2); */
 	
+	
+	
+	int contextId = 1; // Same as glow enable
+					
+	
+	std::array<unsigned char, 4> highlightFunctionBits = {
+		0,   // InsideFunction
+		125, // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
+		64,  // OutlineRadius: size * 255 / 8
+		64   // (EntityVisible << 6) | State & 0x3F | (AfterPostProcess << 7)
+	};
+	std::array<float, 3> highlightParameter = { 0, 1, 0 };
+	
+	
+	apex_mem.Write<unsigned char>(ptr + 0x298 + contextId, glowsetting);
+	long highlightSettingsPtr;
+	apex_mem.Read<long>(ptr + 0xb5f9620, highlightSettingsPtr);
+	apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 1);
+	apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * glowsetting + 4, highlightFunctionBits);
+	apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * glowsetting + 8, highlightParameter);
+	//printf("%d\n", contextId2);
+	//printf("%d\n", settingIndex2);
 	
 	
 	

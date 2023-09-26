@@ -48,7 +48,7 @@ bool player_glow = true; //player glow
 bool aim_no_recoil = true; //no recoil
 float max_fov = 15; // Fov you want to use while aiming
 int aim = 2; // 0 no aim, 1 aim with no vis check, 2 aim with vis check
-bool firing_range = false; //firing range
+bool firing_range = true; //firing range
 int bone = 2; //bone 0 head, 1 neck, 2 chest, 3 dick shot
 float smooth = 120.0f; //min 85 no beaming, 100 somewhat beam people, 125 should be safe
 //Player Glow Color and Brightness. 
@@ -109,7 +109,7 @@ bool stocksniper = true;
 bool stockregular = true;
 bool suppressor = true;
 bool weaponmod = true;
-bool shotgunbolt = false;
+bool shotgunbolt = true;
 //Nades
 bool grenade_frag = false;
 bool grenade_arc_star = false;
@@ -171,9 +171,9 @@ float lastvis_aim[toRead];
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
 int glowtype3;
-int settingIndex = 65;
+
 //works
-void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
+/* void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
 {
 	if (player_glow >= 1)
 	{
@@ -211,7 +211,62 @@ void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
 		}
 		
 	}
+} */
+float glowcolorr;
+float glowcolorg;
+float glowcolorb;
+int glowsetting;
+
+void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
+{
+	if (player_glow >= 1)
+	{
+		
+		
+			if (!Target.isGlowing() || (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
+				float currentEntityTime = 5000.f;
+				if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
+					
+					
+					/* glowsetting = 66  //orage
+					glowsetting = 65  //teal 
+					glowsetting = 67  //red 
+					glowsetting = 72  //white 
+					glowsetting = 69  //blue 
+					glowsetting = 70  //arc star 
+					glowsetting = 71  //green
+					glowsetting = 73  //lime green - energy stuff
+					glowsetting = 74  //purple 
+ */					if (!(firing_range) && (Target.isKnocked() || !Target.isAlive()))
+					{
+						glowsetting = 72;
+						
+					}
+					else if (Target.lastVisTime() > lastvis_aim[index] || (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f))
+					{
+						glowsetting = 71;
+					}
+					else 
+					{
+						glowsetting = 67;
+					}
+
+					Target.enableGlow();
+					
+					
+					
+					
+				}
+			}
+		
+		else if((player_glow == 0) && Target.isGlowing())
+		{
+			Target.disableGlow();
+		}
+		
+	}
 }
+
 
 bool IsInCrossHair(Entity& target)
 {
@@ -423,7 +478,7 @@ void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int ind
 	
 	//Firing range stuff
 	if(!firing_range)
-		if (entity_team < 0 || entity_team>50 || entity_team == team_player) return;
+		if (entity_team < 0 || entity_team>50 || entity_team == !team_player) return;
 	
 	
 	//Vis check aiming? dunno
@@ -982,7 +1037,7 @@ static void item_glow_t()
 							64,
 							64
 						};
-						//std::array<float, 3> highlightParameter = { 0, 1, 1 };
+						std::array<float, 3> highlightParameter = { 0, 1, 1 };
 						//OFFSET_HIGHLIGHTSETTINGS = 0xb5f9620;
 						//OFFSET_HIGHLIGHTSERVERACTIVESTATES = 0x298;
 						//OFFSET_HIGHLIGHTCURRENTCONTEXTID = 0x294;
@@ -996,7 +1051,7 @@ static void item_glow_t()
 						apex_mem.Read<uint64_t>(g_Base + 0xb5f9620, HighlightSettings);
 						
 						apex_mem.Write<typeof(highlightFunctionBits)>(HighlightSettings + 40 * hightState + 4, highlightFunctionBits); 
-						//apex_mem.Write<typeof(highlightParameter)>(HighlightSettings + 40 * hightState + 8, highlightParameter);
+						apex_mem.Write<typeof(highlightParameter)>(HighlightSettings + 40 * hightState + 8, highlightParameter);
 					}
 					if (sniperammomag && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_sniper_v1.rmdl")) 
 					{
@@ -1072,7 +1127,21 @@ static void item_glow_t()
 					}
 					if (shotgunbolt && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v3b.rmdl")) 
 					{
-						
+						std::array<unsigned char, 4> highlightFunctionBits = {
+							0,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,
+							64
+						};
+						std::array<float, 3> highlightParameter = { 0, 1, 0 };
+						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
+						static const int contextId = 0;
+						int settingIndex = 71;
+						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+						long highlightSettingsPtr;
+						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
+						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					}
 					//Nades
 					if (grenade_frag && strstr(glowName, "mdl/weapons/grenades/w_loot_m20_f_grenade_projectile.rmdl")) 
@@ -1087,7 +1156,7 @@ static void item_glow_t()
 						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 						static const int contextId = 0;
 						int settingIndex = 67;
-												apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
 						long highlightSettingsPtr;
 						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
 						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
