@@ -9,6 +9,7 @@
 #include "Game.h"
 #include <thread>
 #include <array>
+#include <map>
 //this is a test, with seconds
 Memory apex_mem;
 
@@ -18,7 +19,7 @@ bool active = true;
 uintptr_t aimentity = 0;
 uintptr_t tmp_aimentity = 0;
 uintptr_t lastaimentity = 0;
-float max = 9999.0f;
+float max = 999.0f;
 int team_player = 0;
 const int toRead = 100;
 bool aiming = false;
@@ -41,8 +42,12 @@ bool lock = false;
 //^^ Don't EDIT^^
 
 //CONFIG AREA, you must set all the true/false to what you want.
-bool TDMToggle = false;
 
+//Gamepad or Keyboard config, Only one true at once or it wont work.
+bool keyboard = true;
+bool gamepad = false;
+//Done with Gamepad or Keyboard config
+bool TDMToggle = false;
 bool item_glow = true; //item glow
 bool player_glow = true; //player glow
 bool aim_no_recoil = true; //no recoil
@@ -51,21 +56,27 @@ int aim = 2; // 0 no aim, 1 aim with no vis check, 2 aim with vis check
 bool firing_range = false; //firing range
 int bone = 2; //bone 0 head, 1 neck, 2 chest, 3 dick shot
 float smooth = 120.0f; //min 85 no beaming, 100 somewhat beam people, 125 should be safe
-//Player Glow Color and Brightness. 
-//Visable 
-float glowr = 255.0f; //Red 0-255, higher is brighter color.
-float glowg = 0.0f; //Green 0-255, higher is brighter color.
-float glowb = 0.0f; //Blue 0-255, higher is brighter color.
+//Player Glow Color and Brightness.
+//inside fill
+unsigned char insidevalue = 14;  //0 = no fill, 14 = full fill
+//Outline size
+unsigned char outlinesize = 200; // 0-255
+//Not Visable 
+float glowr = 1; //Red 0-255, higher is brighter color.
+float glowg = 0; //Green 0-255, higher is brighter color.
+float glowb = 0; //Blue 0-255, higher is brighter color.
 //Visable
-float glowrviz = 0.0f; //Red 0-255, higher is brighter color.
-float glowgviz = 255.0f; //Green 0-255, higher is brighter color.
-float glowbviz = 0.0f; //Blue 0-255, higher is brighter color.
+float glowrviz = 0; //Red 0-255, higher is brighter color.
+float glowgviz = 1; //Green 0-255, higher is brighter color.
+float glowbviz = 0; //Blue 0-255, higher is brighter color.
 //Knocked
-float glowrknocked = 120.0f; //Red 0-255, higher is brighter color.
-float glowgknocked = 120.0f; //Green 0-255, higher is brighter color.
-float glowbknocked = 120.0f; //Blue 0-255, higher is brighter color.
+float glowrknocked = 0.5; //Red 0-255, higher is brighter color.
+float glowgknocked = 0.5; //Green 0-255, higher is brighter color.
+float glowbknocked = 0.5; //Blue 0-255, higher is brighter color.
 //Item Configs
 int itemglowbrightness = 8; //10 is none and 0 is full glow like the sun in your eye's.
+//rev skull
+bool skull = true;
 //Backpacks
 bool lightbackpack = false;
 bool medbackpack = true;
@@ -82,7 +93,7 @@ bool healthsmall = false;
 bool shieldbattsmall = false;
 bool shieldbattlarge = true;
 //Ammo
-bool sniperammo = false;
+bool sniperammo = true;
 bool heavyammo = true;
 bool lightammo = true;
 bool energyammo = true;
@@ -99,7 +110,7 @@ bool opticsniper6x = true;
 bool opticsniper4x8x = true;
 bool opticsniperthreat = false;
 //Magazines
-bool sniperammomag = false;
+bool sniperammomag = true;
 bool energyammomag = true;
 bool lightammomag = true;
 bool heavyammomag = true;
@@ -145,7 +156,7 @@ bool weapon_spitfire  = false;
 bool weapon_r301 = true;
 //Snipers.. wingman is the odd one...and the bow..
 bool weapon_wingman  = false;
-bool weapon_longbow  = false;
+bool weapon_longbow  = true;
 bool weapon_charge_rifle  = false;
 bool weapon_sentinel  = false;
 bool weapon_bow  = false;
@@ -171,34 +182,34 @@ float lastvis_aim[toRead];
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
 int glowtype3;
-int settingIndex = 65;
+int settingIndex;
+int contextId;
+std::array<float, 3> highlightParameter;
 //works
 void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
 {
 	if (player_glow >= 1)
 	{
-		
-		
 			if (!Target.isGlowing() || (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
 				float currentEntityTime = 5000.f;
 				if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
 					if (!(firing_range) && (Target.isKnocked() || !Target.isAlive()))
 					{
-						glowtype = 66;
-						glowtype3 = 0;
-						glowtype2 = 66;
+						contextId = 5;
+						settingIndex = 41;
+						highlightParameter = { 0.5, 0.5, 0.5 };
 					}
 					else if (Target.lastVisTime() > lastvis_aim[index] || (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f))
 					{
-						glowtype = 69;
-						glowtype3 = 69;
-						glowtype2 = 44;// 44 birght blue
+						contextId = 6;
+						settingIndex = 42;
+						highlightParameter = { 0, 1, 0 };
 					}
 					else 
 					{
-						glowtype = 69;
-						glowtype3 = 69;
-						glowtype2 = 48; // 48 bright green
+						contextId = 7;
+						settingIndex = 43;
+						highlightParameter = { 1, 0, 0 };
 					}
 
 					Target.enableGlow();
@@ -286,6 +297,7 @@ void loop()
 std::chrono::steady_clock::time_point tduckStartTime;
 bool mapRadarTestingEnabled = true;
 
+
 void ClientActions()
 {
 	cactions_t = true;
@@ -307,26 +319,49 @@ void ClientActions()
 			apex_mem.Read<int>(g_Base + OFFSET_IN_ZOOM, zoomState); //109
 			//printf("%f\n", max_fov);
 			
-			
-			if (attackState == 108 || zoomState == 109)
+			if(keyboard)
 			{
-				aiming = true;
-			}
-			else
-			{
-				aiming = false;
+				if (attackState == 108 || zoomState == 109)
+				{
+					aiming = true;
+				}
+				else
+				{
+					aiming = false;
+				}
+				
+				
+				if (attackState == 108 || !zoomState == 109)
+				{
+					max_fov = 50;
+				}
+				if (!attackState == 108 || zoomState == 109)
+				{
+					max_fov = 15;
+				}
 			}
 			
-			
-			if (attackState == 108 || !zoomState == 109)
+			if(gamepad)
 			{
-				max_fov = 50;
+				if (attackState == 264 || zoomState == 263)
+				{
+					aiming = true;
+				}
+				else
+				{
+					aiming = false;
+				}
+				
+				
+				if (attackState == 264 || !zoomState == 263)
+				{
+					max_fov = 50;
+				}
+				if (!attackState == 264 || zoomState == 263)
+				{
+					max_fov = 15;
+				}
 			}
-			if (!attackState == 108 || zoomState == 109)
-			{
-				max_fov = 10;
-			}
-			
 			
 			
 			now1 = Clock::now();
@@ -338,7 +373,7 @@ void ClientActions()
 		
 				
 			// Toggle crouch = check for ring
-			if (attackState != 108 && tduckState == 61)
+			if (attackState != 108 && tduckState == 13)
 			{
 				if (mapRadarTestingEnabled)
 				{
@@ -458,7 +493,8 @@ void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int ind
 	SetPlayerGlow(LPlayer, target, index);
 	lastvis_aim[index] = target.lastVisTime();
 }
-
+std::map<uint64_t, int> centityToNumber; // Map centity to a unique number
+int uniqueNumber = 1; // Initialize a unique number
 //Main stuff, dont edit.
 void DoActions()
 {
@@ -495,7 +531,7 @@ void DoActions()
 				continue;
 			}
 
-			max = 9999.0f;
+			max = 999.0f;
 			tmp_aimentity = 0;
 			tmp_spec = 0;
 			tmp_all_spec = 0;
@@ -523,6 +559,8 @@ void DoActions()
 			}
 			else
 			{
+				
+
 				for (int i = 0; i < toRead; i++)
 				{
 					uint64_t centity = 0;
@@ -543,9 +581,6 @@ void DoActions()
 					{
 						continue;
 					}
-					
-
-					
 				}
 			}
 
@@ -746,6 +781,24 @@ static void item_glow_t()
 						
 					}
 					if (phoenix && strstr(glowName, "mdl/weapons_r5/loot/w_loot_wep_iso_phoenix_kit_v1.rmdl")) 
+					{
+						std::array<unsigned char, 4> highlightFunctionBits = {
+							0,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,
+							64
+						};
+						std::array<float, 3> highlightParameter = { 0.6275, 0.1255, 0.9412 };
+						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
+						static const int contextId = 0;
+						int settingIndex = 74;
+												apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+						long highlightSettingsPtr;
+						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
+						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
+					}
+					if (skull && strstr(glowName, "mdl/Weapons/skull_grenade/skull_grenade_base_v.rmdl")) 
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							0,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
@@ -1721,15 +1774,15 @@ static void item_glow_t()
 					apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME, weaponID); //0x1844
 					//printf("%d\n", weaponID);
 					//snipers for headsbots
-					/* if (weaponID == 101 || weaponID == 87 || weaponID == 2 || weaponID == 84 || weaponID == 1 || weaponID == 78 || weaponID == 80 || weaponID == 102 || weaponID == 104)
+					if (weaponID == 101 || weaponID == 87 || weaponID == 2 || weaponID == 84 || weaponID == 1 || weaponID == 78 || weaponID == 80 || weaponID == 102 || weaponID == 104 || weaponID == 105)
 					{
 					
 						bone = 0;
 					}
-					else if (weaponID != 101 || weaponID != 87 || weaponID != 2 || weaponID != 84 || weaponID != 1 || weaponID != 78 || weaponID != 80 || weaponID != 102 || weaponID != 104)
+					else if (weaponID != 101 || weaponID != 87 || weaponID != 2 || weaponID != 84 || weaponID != 1 || weaponID != 78 || weaponID != 80 || weaponID != 102 || weaponID != 104 || !weaponID == 105)
 					{
 						bone = 2;
-					} */
+					}
 					//bow
 			
 					
