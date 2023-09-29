@@ -54,7 +54,7 @@
 #define OFFSET_AMMO 0x1574 //m_ammoInClip first offset 
 
 #define OFFSET_ITEM_GLOW 0x02f0 //m_highlightFunctionBits
-#define OFFSET_ITEM_ID 0x1628 // item id?
+#define OFFSET_ITEM_ID 0x1578 // item id?
 #define OFFSET_MODELNAME 0x0030 // m_ModelName
 #define OFFSET_M_CUSTOMSCRIPTINT 0x1578  //m_customScriptInt
 #define OFFSET_YAW 0x21fc - 0x8 //m_currentFramePlayer.m_ammoPoolCount - 0x8

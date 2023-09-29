@@ -1,5 +1,5 @@
 #!/bin/bash
-
+export RUSTFLAGS="-Awarnings"
 cd memflow_lib/memflow-win32-ffi/
 if cargo build --release ; then
     cd ../memflow-qemu-procfs
