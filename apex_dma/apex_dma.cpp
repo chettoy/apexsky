@@ -240,7 +240,7 @@ void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
 					{
 						contextId = 5;
 						settingIndex = 80;
-						highlightParameter = { 0.5, 0.5, 0.5 };
+						highlightParameter = { 1, 1, 1 };
 					}
 					else if (Target.lastVisTime() > lastvis_aim[index] || (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f))
 					{
@@ -1055,15 +1055,15 @@ static void item_glow_t()
 					if (item.isBox())
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
-							14,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							0,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
 							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
-						std::array<float, 3> highlightParameter = { 1, 0.8431, 0 };
+						std::array<float, 3> highlightParameter = { 1, 0, 0 };
 						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 						static const int contextId = 0;
-						int settingIndex = 67;
+						int settingIndex = 88;
 						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
 						long highlightSettingsPtr;
 						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
@@ -1075,12 +1075,12 @@ static void item_glow_t()
 					if (item.isTrap())
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
-							14,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							0,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
 							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
-						std::array<float, 3> highlightParameter = { 1, 0.8431, 0 };
+						std::array<float, 3> highlightParameter = { 1, 0, 0 };
 						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 						static const int contextId = 0;
 						int settingIndex = 67;
@@ -1096,12 +1096,12 @@ static void item_glow_t()
 					if (strstr(glowName, "mdl/props/caustic_gas_tank/caustic_gas_tank.rmdl")) 
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
-							14,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							0,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
 							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
-						std::array<float, 3> highlightParameter = { 1, 0.8431, 0 };
+						std::array<float, 3> highlightParameter = { 1, 0, 0 };
 						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 						static const int contextId = 0;
 						int settingIndex = 67;

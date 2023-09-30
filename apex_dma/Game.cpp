@@ -193,6 +193,7 @@ void Entity::enableGlow()
     apex_mem.Write<int>(ptr + 0x278 , 2);
 	apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 0x28 * settingIndex + 4, highlightFunctionBits);
 	apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 0x28 * settingIndex + 8, highlightParameter);
+	apex_mem.Write(ptr + 0x270 , 1);
 	//printf("%f\n", deltaTime2);
 
 }
