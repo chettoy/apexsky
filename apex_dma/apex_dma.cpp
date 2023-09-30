@@ -54,6 +54,8 @@ bool player_glow = true; //player glow
 bool aim_no_recoil = true; //no recoil
 float max_fov = 15; // Fov you want to use while aiming
 int aim = 2; // 0 no aim, 1 aim with no vis check, 2 aim with vis check
+//aimbot for nades on or off
+bool NoNadeAim = true;
 bool firing_range = false; //firing range
 int bone = 2; //bone 0 head, 1 neck, 2 chest, 3 dick shot
 float smooth = 120.0f; //min 85 no beaming, 100 somewhat beam people, 125 should be safe
@@ -80,7 +82,7 @@ unsigned char lootfilled = 14;  //0 no fill, 14 100% fill
 //rev skull
 bool skull = true;
 //Backpacks
-bool lightbackpack = true;
+bool lightbackpack = false;
 bool medbackpack = true;
 bool heavybackpack = true;
 bool goldbackpack = true;
@@ -89,118 +91,118 @@ bool shieldupgrade1 = true;
 bool shieldupgrade2 = true;
 bool shieldupgrade3 = true;
 bool shieldupgrade4 = true;
-bool shieldupgradehead1 = true;
+bool shieldupgradehead1 = false;
 bool shieldupgradehead2 = true;
 bool shieldupgradehead3 = true;
 bool shieldupgradehead4 = true;
-bool shielddown1 = true;
+bool shielddown1 = false;
 bool shielddown2 = true;
 bool shielddown3 = true;
 bool shielddown4 = true;
 //heaing and Misc
-bool accelerant = true;
+bool accelerant = false;
 bool phoenix = true;
 bool healthlarge = true;
-bool healthsmall = true;
-bool shieldbattsmall = true;
+bool healthsmall = false;
+bool shieldbattsmall = false;
 bool shieldbattlarge = true;
 //Ammo
-bool sniperammo = true;
+bool sniperammo = false;
 bool heavyammo = true;
 bool lightammo = true;
 bool energyammo = true;
-bool shotgunammo = true;
+bool shotgunammo = false;
 //Optics
-bool optic1xhcog = true;
+bool optic1xhcog = false;
 bool optic2xhcog = true;
-bool opticholo1x = true;
+bool opticholo1x = false;
 bool opticholo1x2x = true;
-bool opticthreat = true;
+bool opticthreat = false;
 bool optic3xhcog = true;
 bool optic2x4x = true;
-bool opticsniper6x = true;
+bool opticsniper6x = false;
 bool opticsniper4x8x = true;
-bool opticsniperthreat = true;
+bool opticsniperthreat = false;
 //Magazines
-bool sniperammomag1 = true;
+bool sniperammomag1 = false;
 bool energyammomag1 = true;
 bool lightammomag1 = true;
 bool heavyammomag1 = true;
-bool sniperammomag2 = true;
+bool sniperammomag2 = false;
 bool energyammomag2 = true;
 bool lightammomag2 = true;
 bool heavyammomag2 = true;
-bool sniperammomag3 = true;
+bool sniperammomag3 = false;
 bool energyammomag3 = true;
 bool lightammomag3 = true;
 bool heavyammomag3 = true;
-bool sniperammomag4 = true;
+bool sniperammomag4 = false;
 bool energyammomag4 = true;
 bool lightammomag4 = true;
 bool heavyammomag4 = true;
 //Attachments 
-bool lasersight1 = true;
+bool lasersight1 = false;
 bool lasersight2 = true;
 bool lasersight3 = true;
 bool lasersight4 = true;
-bool stocksniper1 = true;
+bool stocksniper1 = false;
 bool stocksniper2 = true;
 bool stocksniper3 = true;
 bool stocksniper4 = true;
-bool stockregular1 = true;
+bool stockregular1 = false;
 bool stockregular2 = true;
 bool stockregular3 = true;
-bool suppressor1 = true;
+bool suppressor1 = false;
 bool suppressor2 = true;
 bool suppressor3 = true;
-bool turbo_charger = true;
-bool skull_piecer = true;
+bool turbo_charger = false;
+bool skull_piecer = false;
 bool hammer_point = true;
 bool disruptor_rounds = true;
-bool boosted_loader = true;
-bool shotgunbolt1 = true;
-bool shotgunbolt2 = true;
-bool shotgunbolt3 = true;
-bool shotgunbolt4 = true;
+bool boosted_loader = false;
+bool shotgunbolt1 = false;
+bool shotgunbolt2 = false;
+bool shotgunbolt3 = false;
+bool shotgunbolt4 = false;
 //Nades
-bool grenade_frag = true;
-bool grenade_arc_star = true;
-bool grenade_thermite = true;
+bool grenade_frag = false;
+bool grenade_arc_star = false;
+bool grenade_thermite = false;
 //Kraber
 bool weapon_kraber = true;
 //Shotguns
-bool weapon_mastiff = true;
-bool weapon_eva8  = true;
-bool weapon_peacekeeper  = true;
-bool weapon_mozambique  = true;
+bool weapon_mastiff = false;
+bool weapon_eva8  = false;
+bool weapon_peacekeeper  = false;
+bool weapon_mozambique  = false;
 //Energy weapons
 bool weapon_lstar = true;
 bool weapon_nemesis = true;
-bool weapon_havoc = true;
-bool weapon_devotion = true;
-bool weapon_triple_take = true;
-bool weapon_prowler  = true;
+bool weapon_havoc = false;
+bool weapon_devotion = false;
+bool weapon_triple_take = false;
+bool weapon_prowler  = false;
 bool weapon_volt  = true;
 //Heavy Weapons
 bool weapon_flatline = true;
 bool weapon_hemlock  = true;
-bool weapon_3030_repeater = true; 
-bool weapon_rampage  = true;
+bool weapon_3030_repeater = false; 
+bool weapon_rampage  = false;
 bool weapon_car_smg  = true;
 //Light weapons
-bool weapon_p2020  = true;
+bool weapon_p2020  = false;
 bool weapon_re45  = true;
-bool weapon_g7_scout  = true;
-bool weapon_alternator  = true;
+bool weapon_g7_scout  = false;
+bool weapon_alternator  = false;
 bool weapon_r99  = true;
 bool weapon_spitfire  = true;
 bool weapon_r301 = true;
 //Snipers.. wingman is the odd one...and the bow..
-bool weapon_wingman  = true;
-bool weapon_longbow  = true;
-bool weapon_charge_rifle  = true;
-bool weapon_sentinel  = true;
-bool weapon_bow  = true;
+bool weapon_wingman  = false;
+bool weapon_longbow  = false;
+bool weapon_charge_rifle  = false;
+bool weapon_sentinel  = false;
+bool weapon_bow  = false;
 //trigger bot
 bool is_trigger;
 
@@ -237,19 +239,19 @@ void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
 					if (!(firing_range) && (Target.isKnocked() || !Target.isAlive()))
 					{
 						contextId = 5;
-						settingIndex = 41;
+						settingIndex = 80;
 						highlightParameter = { 0.5, 0.5, 0.5 };
 					}
 					else if (Target.lastVisTime() > lastvis_aim[index] || (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f))
 					{
 						contextId = 6;
-						settingIndex = 42;
+						settingIndex = 81;
 						highlightParameter = { 0, 1, 0 };
 					}
 					else 
 					{
 						contextId = 7;
-						settingIndex = 43;
+						settingIndex = 82;
 						highlightParameter = { 1, 0, 0 };
 					}
 
@@ -345,22 +347,7 @@ std::chrono::steady_clock::time_point tduckStartTime;
 bool mapRadarTestingEnabled = true;
 
 
-//Used to change things on a timer
-/* unsigned char insidevalueItem = 0;
-void updateInsideValue()
-{
-	updateInsideValue_t = true;
-	while (updateInsideValue_t)
-	{
-		insidevalueItem++;
-		insidevalueItem %= 256;
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		
-		printf("%i\n", insidevalueItem);
-		
-	}
-	updateInsideValue_t = false;
-} */
+
 
 void ClientActions()
 {
@@ -720,6 +707,23 @@ static void AimbotLoop()
 	aim_t = false;
 }
 // Item Glow Stuff
+
+//Used to change things on a timer
+/* unsigned char insidevalueItem = 0;
+void updateInsideValue()
+{
+	updateInsideValue_t = true;
+	while (updateInsideValue_t)
+	{
+		insidevalueItem++;
+		insidevalueItem %= 256;
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		
+		printf("%i\n", insidevalueItem);
+		
+	}
+	updateInsideValue_t = false;
+} */
 static void item_glow_t()
 {
 	item_t = true;
@@ -754,7 +758,9 @@ static void item_glow_t()
 					//item ids?
 					uint64_t ItemID;
 					apex_mem.Read<uint64_t>(centity + OFFSET_ITEM_ID, ItemID);
-					
+					/* uint64_t ItemID2;
+					ItemID2 = ItemID % 301;
+					printf("%ld\n", ItemID2); */
 					
 					//Level name printf
 					//char LevelNAME[200] = { 0 };
@@ -851,98 +857,74 @@ static void item_glow_t()
 					if (shieldupgrade1 && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_body.rmdl")) 
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
-							137,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							138,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
-						//std::array<float, 3> highlightParameter = { 0, 1, 1 };
-						//OFFSET_HIGHLIGHTSETTINGS = 0xb5f9620;
-						//OFFSET_HIGHLIGHTSERVERACTIVESTATES = 0x298;
-						//OFFSET_HIGHLIGHTCURRENTCONTEXTID = 0x294;
-						//OFFSET_HIGHLIGHTVISIBILITYTYPE = 0x278;
-						apex_mem.Write<uint32_t>(centity + 0x278, 2);
-						uint32_t contextId;
-						apex_mem.Read<uint32_t>(centity + 0x294, contextId);
-						uint8_t hightState;
-						apex_mem.Read<uint8_t>(centity + contextId + 0x298, hightState);
-						uint64_t HighlightSettings;
-						apex_mem.Read<uint64_t>(g_Base + 0xb5f9620, HighlightSettings);
-						
-						apex_mem.Write<typeof(highlightFunctionBits)>(HighlightSettings + 40 * hightState + 4, highlightFunctionBits); 
-						//apex_mem.Write<typeof(highlightParameter)>(HighlightSettings + 40 * hightState + 8, highlightParameter);
+						std::array<float, 3> highlightParameter = { 0, 0, 1 };
+						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
+						static const int contextId = 0;
+						int settingIndex = 69;
+						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+						long highlightSettingsPtr;
+						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
+						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					}
-					if (shieldupgrade2 && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_body.rmdl"))
+					if (shieldupgrade2 && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_body.rmdl")) 
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
-							137,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							138,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
-						//std::array<float, 3> highlightParameter = { 0, 1, 1 };
-						//OFFSET_HIGHLIGHTSETTINGS = 0xb5f9620;
-						//OFFSET_HIGHLIGHTSERVERACTIVESTATES = 0x298;
-						//OFFSET_HIGHLIGHTCURRENTCONTEXTID = 0x294;
-						//OFFSET_HIGHLIGHTVISIBILITYTYPE = 0x278;
-						apex_mem.Write<uint32_t>(centity + 0x278, 2);
-						uint32_t contextId;
-						apex_mem.Read<uint32_t>(centity + 0x294, contextId);
-						uint8_t hightState;
-						apex_mem.Read<uint8_t>(centity + contextId + 0x298, hightState);
-						uint64_t HighlightSettings;
-						apex_mem.Read<uint64_t>(g_Base + 0xb5f9620, HighlightSettings);
-						
-						apex_mem.Write<typeof(highlightFunctionBits)>(HighlightSettings + 40 * hightState + 4, highlightFunctionBits); 
-						//apex_mem.Write<typeof(highlightParameter)>(HighlightSettings + 40 * hightState + 8, highlightParameter);
+						std::array<float, 3> highlightParameter = { 0, 0, 1 };
+						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
+						static const int contextId = 0;
+						int settingIndex = 69;
+						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+						long highlightSettingsPtr;
+						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
+						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					}
 					if (shieldupgrade3 && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_body.rmdl")) 
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
-							137,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							138,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
-						//std::array<float, 3> highlightParameter = { 0, 1, 1 };
-						//OFFSET_HIGHLIGHTSETTINGS = 0xb5f9620;
-						//OFFSET_HIGHLIGHTSERVERACTIVESTATES = 0x298;
-						//OFFSET_HIGHLIGHTCURRENTCONTEXTID = 0x294;
-						//OFFSET_HIGHLIGHTVISIBILITYTYPE = 0x278;
-						apex_mem.Write<uint32_t>(centity + 0x278, 2);
-						uint32_t contextId;
-						apex_mem.Read<uint32_t>(centity + 0x294, contextId);
-						uint8_t hightState;
-						apex_mem.Read<uint8_t>(centity + contextId + 0x298, hightState);
-						uint64_t HighlightSettings;
-						apex_mem.Read<uint64_t>(g_Base + 0xb5f9620, HighlightSettings);
-						
-						apex_mem.Write<typeof(highlightFunctionBits)>(HighlightSettings + 40 * hightState + 4, highlightFunctionBits); 
-						//apex_mem.Write<typeof(highlightParameter)>(HighlightSettings + 40 * hightState + 8, highlightParameter);
+						std::array<float, 3> highlightParameter = { 0, 0, 1 };
+						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
+						static const int contextId = 0;
+						int settingIndex = 69;
+						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+						long highlightSettingsPtr;
+						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
+						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					}
-					if (shieldupgrade4 && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_body.rmdl")) 
+					if (shieldupgrade4 && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_body.rmdl"))  
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
-							137,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							138,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
-						//std::array<float, 3> highlightParameter = { 0, 1, 1 };
-						//OFFSET_HIGHLIGHTSETTINGS = 0xb5f9620;
-						//OFFSET_HIGHLIGHTSERVERACTIVESTATES = 0x298;
-						//OFFSET_HIGHLIGHTCURRENTCONTEXTID = 0x294;
-						//OFFSET_HIGHLIGHTVISIBILITYTYPE = 0x278;
-						apex_mem.Write<uint32_t>(centity + 0x278, 2);
-						uint32_t contextId;
-						apex_mem.Read<uint32_t>(centity + 0x294, contextId);
-						uint8_t hightState;
-						apex_mem.Read<uint8_t>(centity + contextId + 0x298, hightState);
-						uint64_t HighlightSettings;
-						apex_mem.Read<uint64_t>(g_Base + 0xb5f9620, HighlightSettings);
-						
-						apex_mem.Write<typeof(highlightFunctionBits)>(HighlightSettings + 40 * hightState + 4, highlightFunctionBits); 
-						//apex_mem.Write<typeof(highlightParameter)>(HighlightSettings + 40 * hightState + 8, highlightParameter);
+						std::array<float, 3> highlightParameter = { 0, 0, 1 };
+						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
+						static const int contextId = 0;
+						int settingIndex = 69;
+						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+						long highlightSettingsPtr;
+						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
+						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					}
 					if (shieldupgradehead1 && ItemID == 187) 
 					{
@@ -1073,38 +1055,32 @@ static void item_glow_t()
 					if (item.isBox())
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
-							137,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							138,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							14,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
-						//std::array<float, 3> highlightParameter = { 0, 1, 1 };
-						//OFFSET_HIGHLIGHTSETTINGS = 0xb5f9620;
-						//OFFSET_HIGHLIGHTSERVERACTIVESTATES = 0x298;
-						//OFFSET_HIGHLIGHTCURRENTCONTEXTID = 0x294;
-						//OFFSET_HIGHLIGHTVISIBILITYTYPE = 0x278;
-						apex_mem.Write<uint32_t>(centity + 0x278, 2);
-						uint32_t contextId;
-						apex_mem.Read<uint32_t>(centity + 0x294, contextId);
-						uint8_t hightState;
-						apex_mem.Read<uint8_t>(centity + contextId + 0x298, hightState);
-						uint64_t HighlightSettings;
-						apex_mem.Read<uint64_t>(g_Base + 0xb5f9620, HighlightSettings);
-						
-						apex_mem.Write<typeof(highlightFunctionBits)>(HighlightSettings + 40 * hightState + 4, highlightFunctionBits); 
-						//apex_mem.Write<typeof(highlightParameter)>(HighlightSettings + 40 * hightState + 8, highlightParameter);
+						std::array<float, 3> highlightParameter = { 1, 0.8431, 0 };
+						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
+						static const int contextId = 0;
+						int settingIndex = 67;
+						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+						long highlightSettingsPtr;
+						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
+						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 						
 					}
 					
 					if (item.isTrap())
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
-							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							14,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
 							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
-						std::array<float, 3> highlightParameter = { 1, 0, 0 };
+						std::array<float, 3> highlightParameter = { 1, 0.8431, 0 };
 						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 						static const int contextId = 0;
 						int settingIndex = 67;
@@ -1120,12 +1096,12 @@ static void item_glow_t()
 					if (strstr(glowName, "mdl/props/caustic_gas_tank/caustic_gas_tank.rmdl")) 
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
-							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							14,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
 							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
-						std::array<float, 3> highlightParameter = { 1, 0, 0 };
+						std::array<float, 3> highlightParameter = { 1, 0.8431, 0 };
 						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 						static const int contextId = 0;
 						int settingIndex = 67;
@@ -2797,7 +2773,9 @@ static void item_glow_t()
 						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
 						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
 						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
-					} 
+					}
+					
+					
 
 					// CREDITS to Rikkie https://www.unknowncheats.me/forum/members/169606.html
 					// for all the weapon ids and item ids code, you are a life saver!
@@ -2807,9 +2785,63 @@ static void item_glow_t()
 					ulong pWeapon;
 					apex_mem.Read<uint64_t>(entitylist + (ehWeaponHandle * 0x20), pWeapon);
 					
+					
+					enum HeldWeaponID
+					{
+						r301 = 0,
+						sentinel = 1,
+						bow = 2,
+						rampage = 19,
+						alternator = 75,
+						re45,
+						chargerifle,
+						devotion,
+						longbow,
+						havoc,
+						eva8,
+						flatline,
+						scout,
+						hemlock,
+						kraber,
+						lstar,
+						mastiff,
+						mozambique,
+						prowler,
+						peacekeeper,
+						r99,
+						p2020,
+						spitfire,
+						tripletake,
+						wingman,
+						volt,
+						repeater,
+						car,
+						nemesis,
+						melee_survival = 100,
+						shield,
+						heirloom_wraith = 130, 
+						heirloom_valkyrie = 136, 
+						throwing_knife = 139
+					};
+					
+					//Nade test
+					int HeldID;
+					apex_mem.Read<int>(LocalPlayer + OFFSET_OFF_WEAPON, HeldID); // 0x1a1c
+					
+					if(NoNadeAim)
+					{
+						if (HeldID == -251)
+						{
+							aim = 0;
+						}
+						else
+						{
+							aim = 2;
+						}
+					}
 					uint32_t weaponID;
-					apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME, weaponID); //0x1844
-					//printf("%d\n", weaponID);
+					apex_mem.Read<uint32_t>(pWeapon + OFFSET_MODELNAME, weaponID); //0x1844
+					//printf("%d\n", HeldID);
 					//snipers for headsbots
 					if (weaponID == 101 || weaponID == 87 || weaponID == 2 || weaponID == 84 || weaponID == 1 || weaponID == 78 || weaponID == 80 || weaponID == 102 || weaponID == 104 || weaponID == 105)
 					{

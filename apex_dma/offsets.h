@@ -26,7 +26,7 @@
 #define OFFSET_ZOOMING 0x1b91 //m_bZooming
 
 #define OFFSET_WEAPON_NAME 0x1798 //m_weaponNameIndex 2nd one
-
+#define OFFSET_OFF_WEAPON  0x1964  //m_latestNonOffhandWeapons
 #define OFFSET_IN_ATTACK 0x07422868 // in_attack
 #define OFFSET_IN_TOGGLE_DUCK 0x07422888 //in_toggle_duck
 #define OFFSET_IN_ZOOM 0x074229e8 //in_zoom
