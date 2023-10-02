@@ -2547,7 +2547,7 @@ static void item_glow_t()
 						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
 						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					}
-					if (weapon_charge_rifle && strstr(glowName, "mdl/weapons/defender/w_defender.rmdl")) 
+					if (weapon_charge_rifle && ItemID == 70) 
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
@@ -2564,6 +2564,9 @@ static void item_glow_t()
 						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
 						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
 						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
+						uint64_t ItemID;
+						apex_mem.Read<uint64_t>(centity + OFFSET_ITEM_ID, ItemID);
+						//printf("%ld\n", ItemID);
 					}
 					if (weapon_spitfire && ItemID == 75) 
 					{
