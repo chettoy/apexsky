@@ -1,24 +1,24 @@
 #define VERSION STEAM
 //Date 9/12/2023
-//GameVersion=v3.0.44.22
+//GameVersion=v3.0.45.39
 
 #if VERSION == STEAM
 
-#define OFFSET_ENTITYLIST 0x1e23418 //cl_entitylist
-#define OFFSET_LOCAL_ENT 0x21d3758 //LocalPlayer  might be moved to  AVC_GameMovement
-#define OFFSET_NAME_LIST 0xc266a60 //NameList
+#define OFFSET_ENTITYLIST 0x1e223f8 //cl_entitylist
+#define OFFSET_LOCAL_ENT 0x21d2738 //LocalPlayer might be moved to AVC_GameMovement
+#define OFFSET_NAME_LIST 0xc265a60 //NameList
 
 
-#define OFFSET_LEVELNAME 0x16f71e0 //LevelName
-#define OFFSET_CLIENTSTATE 0x16f7020 //ClientState
-#define OFFSET_SIGNONSTATE 0x16f70cc //SignonState
+#define OFFSET_LEVELNAME 0x16f61c0 //LevelName
+#define OFFSET_CLIENTSTATE 0x16f6000 //ClientState
+#define OFFSET_SIGNONSTATE 0x16f60ac //SignonState
 
 
 #define OFFSET_TEAM 0x037c //m_iTeamNum
 #define OFFSET_HEALTH 0x036c //m_iHealth
 #define OFFSET_SHIELD 0x01a0 //m_shieldHealth
 #define OFFSET_MAXSHIELD 0x01a4 //m_shieldHealthMax
-#define OFFSET_ARMORTYPE 0x4694 //armortype
+#define OFFSET_ARMORTYPE 0x45c4 //armortype
 #define OFFSET_NAME 0x04b9 //m_iName
 #define OFFSET_SIGN_NAME 0x04b0 //m_iSignifierName
 #define OFFSET_ABS_VELOCITY 0x0170 //m_vecAbsVelocity
@@ -26,10 +26,10 @@
 #define OFFSET_ZOOMING 0x1b91 //m_bZooming
 
 #define OFFSET_WEAPON_NAME 0x1798 //m_weaponNameIndex 2nd one
-#define OFFSET_OFF_WEAPON  0x1964  //m_latestNonOffhandWeapons
-#define OFFSET_IN_ATTACK 0x07422868 // in_attack
-#define OFFSET_IN_TOGGLE_DUCK 0x07422888 //in_toggle_duck
-#define OFFSET_IN_ZOOM 0x074229e8 //in_zoom
+#define OFFSET_OFF_WEAPON 0x1964 //m_latestNonOffhandWeapons
+#define OFFSET_IN_ATTACK 0x07421868 // in_attack
+#define OFFSET_IN_TOGGLE_DUCK 0x07421888 //in_toggle_duck
+#define OFFSET_IN_ZOOM 0x074219e8 //in_zoom
 
 #define OFFSET_LIFE_STATE 0x06c8 //m_lifeState, >0 = dead
 #define OFFSET_BLEED_OUT_STATE 0x26a0 //m_bleedoutState, >0 = knocked
@@ -45,18 +45,18 @@
 #define OFFSET_OBSERVING_TARGET 0x3460 //m_hObserverTarget
 
 #define OFFSET_MATRIX 0x11a350 //ViewMatrix
-#define OFFSET_RENDER 0x74210a8 //ViewRender displays ESp, heath dist names etc
+#define OFFSET_RENDER 0x74200a8 //ViewRender displays ESp, heath dist names etc
 
 #define OFFSET_WEAPON 0x1954 //m_latestPrimaryWeapons
-#define OFFSET_BULLET_SPEED  0x19c8 + 0x04d4 //CWeaponX!m_flProjectileSpeed  maybe its  WeaponSettings.projectile_launch_speed now
-#define OFFSET_BULLET_SCALE 0x19c8 + 0x04dc //CWeaponX!m_flProjectileScale  maybe its  WeaponSettings.projectile_gravity_scale now
+#define OFFSET_BULLET_SPEED 0x19c8 + 0x04d4 //CWeaponX!m_flProjectileSpeed maybe its WeaponSettings.projectile_launch_speed now
+#define OFFSET_BULLET_SCALE 0x19c8 + 0x04dc //CWeaponX!m_flProjectileScale maybe its WeaponSettings.projectile_gravity_scale now
 #define OFFSET_ZOOM_FOV 0x15f0 + 0xb8 //m_playerData + m_curZoomFOV
-#define OFFSET_AMMO 0x1574 //m_ammoInClip first offset 
+#define OFFSET_AMMO 0x1574 //m_ammoInClip first offset
 
 #define OFFSET_ITEM_GLOW 0x02f0 //m_highlightFunctionBits
 #define OFFSET_ITEM_ID 0x1578 // item id?
 #define OFFSET_MODELNAME 0x0030 // m_ModelName
-#define OFFSET_M_CUSTOMSCRIPTINT 0x1578  //m_customScriptInt
+#define OFFSET_M_CUSTOMSCRIPTINT 0x1578 //m_customScriptInt
 #define OFFSET_YAW 0x21fc - 0x8 //m_currentFramePlayer.m_ammoPoolCount - 0x8
 
 #define OFFSET_GLOW_T1 0x262+ 0x30 //16256 = enabled, 0 = disabled
@@ -70,14 +70,13 @@
 #define GLOW_START_TIME 0x02c8+ 0x30 //m_playerFloatLookStartTime=0x02c4
 #define OFFSET_HIGHLIGHTSERVERACTIVESTATES 0x298
 
-#define OFFSET_GLOW_ENABLE_GLOW_CONTEXT                 OFFSET_GLOW_ENABLE // Script_Highlight_SetCurrentContext
-#define OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE     OFFSET_GLOW_THROUGH_WALLS // Script_Highlight_SetVisibilityType 5th mov
-#define GLOW_LIFE_TIME              0x3A4+ 0x30 // Script_Highlight_SetLifeTime + 4
-#define GLOW_DISTANCE               0x26c // Script_Highlight_SetFarFadeDist
-#define GLOW_TYPE                   0x29c // Script_Highlight_GetState + 4
-#define GLOW_COLOR                  0x1D0+ 0x30 // Script_CopyHighlightState 15th mov
-#define GLOW_FADE                   0x388+ 0x30 // Script_Highlight_GetCurrentInsideOpacity 3rd result of 3 offsets consecutive or first + 8
-#define HIGHLIGHT_SETTINGS 0xb5f9620 //?
-#define HIGHLIGHT_TYPE_SIZE 0x28	//?
-
+#define OFFSET_GLOW_ENABLE_GLOW_CONTEXT OFFSET_GLOW_ENABLE // Script_Highlight_SetCurrentContext
+#define OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE OFFSET_GLOW_THROUGH_WALLS // Script_Highlight_SetVisibilityType 5th mov
+#define GLOW_LIFE_TIME 0x3A4+ 0x30 // Script_Highlight_SetLifeTime + 4
+#define GLOW_DISTANCE 0x26c // Script_Highlight_SetFarFadeDist
+#define GLOW_TYPE 0x29c // Script_Highlight_GetState + 4
+#define GLOW_COLOR 0x1D0+ 0x30 // Script_CopyHighlightState 15th mov
+#define GLOW_FADE 0x388+ 0x30 // Script_Highlight_GetCurrentInsideOpacity 3rd result of 3 offsets consecutive or first + 8
+#define HIGHLIGHT_SETTINGS 0xB5F8620 //?
+#define HIGHLIGHT_TYPE_SIZE 0x28 //?
 #endif

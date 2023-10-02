@@ -10,6 +10,7 @@
 #include <thread>
 #include <array>
 #include <map>
+#include <cstdlib> // For the system() function
 //this is a test, with seconds
 Memory apex_mem;
 
@@ -31,6 +32,7 @@ float aimdist = 200.0f * 40.0f;
 bool actions_t = false;
 bool cactions_t = false;
 bool updateInsideValue_t = false;
+bool terminal_t = false;
 bool esp_t = false;
 bool aim_t = false;
 bool vars_t = false;
@@ -39,6 +41,7 @@ uint64_t g_Base;
 bool next2 = false;
 bool valid = false;
 bool lock = false;
+
 
 //^^ Don't EDIT^^
 
@@ -63,6 +66,10 @@ void updateInsideValue()
 bool keyboard = true;
 bool gamepad = false;
 //Done with Gamepad or Keyboard config
+//Terminal Stuff
+bool lootfilledtoggle = true;
+bool playerfilledtoggle = true;
+//end Terminal Stuff
 bool TDMToggle = false;
 bool item_glow = true; //item glow
 bool player_glow = true; //player glow
@@ -80,9 +87,9 @@ unsigned char insidevalue = 14;  //0 = no fill, 14 = full fill
 //Outline size
 unsigned char outlinesize = 32; // 0-255
 //Not Visable 
-float glowr = 1; //Red 0-1, higher is brighter color.
-float glowg = 0; //Green 0-1, higher is brighter color.
-float glowb = 0; //Blue 0-1, higher is brighter color.
+float glowrnot = 1; //Red 0-1, higher is brighter color.
+float glowgnot = 0; //Green 0-1, higher is brighter color.
+float glowbnot = 0; //Blue 0-1, higher is brighter color.
 //Visable
 float glowrviz = 0; //Red 0-1, higher is brighter color.
 float glowgviz = 1; //Green 0-1, higher is brighter color.
@@ -256,19 +263,19 @@ void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
 					{
 						contextId = 5;
 						settingIndex = 80;
-						highlightParameter = { 1, 1, 1 };
+						highlightParameter = { glowrknocked, glowgknocked, glowbknocked };
 					}
 					else if (Target.lastVisTime() > lastvis_aim[index] || (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f))
 					{
 						contextId = 6;
 						settingIndex = 81;
-						highlightParameter = { 0, 1, 0 };
+						highlightParameter = { glowrviz, glowgviz, glowbviz };
 					}
 					else 
 					{
 						contextId = 7;
 						settingIndex = 82;
-						highlightParameter = { 1, 0, 0 };
+						highlightParameter = { glowrnot, glowgnot, glowbnot };
 					}
 					Target.enableGlow();
 				}
@@ -403,7 +410,7 @@ void ClientActions()
 				}
 				if (!attackState == 108 || zoomState == 109)
 				{
-					max_fov = 15;
+					max_fov = 3;
 				}
 			}
 			
@@ -425,7 +432,7 @@ void ClientActions()
 				}
 				if (!attackState == 264 || zoomState == 263)
 				{
-					max_fov = 15;
+					max_fov = 3;
 				}
 			}
 			
@@ -2302,12 +2309,12 @@ static void item_glow_t()
 						std::array<float, 3> highlightParameter = { 1, 0, 0 };
 						int settingIndex = 67;
 						static const int contextId = 2;
-						apex_mem.Write<int>(centity + 0x294, contextId);
-						apex_mem.Write<unsigned char>(centity + 0x298 + contextId, settingIndex);
-						//apex_mem.Write<int>(ptr + 0x298 + contextId, settingIndex);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, contextId);
+						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+						//apex_mem.Write<int>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
 						long highlightSettingsPtr;
-						apex_mem.Read<long>(g_Base + 0xb5f9620, highlightSettingsPtr);
-						apex_mem.Write<int>(centity + 0x278 , 2);
+						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+						apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS , 2);
 						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 0x28 * settingIndex + 4, highlightFunctionBits);
 						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 0x28 * settingIndex + 8, highlightParameter);
 					}
@@ -2775,12 +2782,12 @@ static void item_glow_t()
 							64
 						};
 						std::array<float, 3> highlightParameter = { 0, 1, 1 };
-						apex_mem.Write<uint32_t>(centity + 0x278, 2);
+						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 						static const int contextId = 0;
 						int settingIndex = 65;
-						apex_mem.Write<unsigned char>(centity + 0x298 + contextId, settingIndex);
+						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
 						long highlightSettingsPtr;
-						apex_mem.Read<long>(g_Base + 0xb5f9620, highlightSettingsPtr);
+						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
 						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
 						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					}
@@ -2871,7 +2878,7 @@ static void item_glow_t()
 					apex_mem.Read<uint32_t>(pWeapon + OFFSET_MODELNAME, weaponID); //0x1844
 					//printf("%d\n", HeldID);
 					//snipers for headsbots
-					if (weaponID == 101 || weaponID == 87 || weaponID == 2 || weaponID == 84 || weaponID == 1 || weaponID == 78 || weaponID == 80 || weaponID == 102 || weaponID == 104 || weaponID == 105)
+					/* if (weaponID == 101 || weaponID == 87 || weaponID == 2 || weaponID == 84 || weaponID == 1 || weaponID == 78 || weaponID == 80 || weaponID == 102 || weaponID == 104 || weaponID == 105)
 					{
 					
 						bone = 0;
@@ -2879,7 +2886,7 @@ static void item_glow_t()
 					else if (weaponID != 101 || weaponID != 87 || weaponID != 2 || weaponID != 84 || weaponID != 1 || weaponID != 78 || weaponID != 80 || weaponID != 102 || weaponID != 104 || !weaponID == 105)
 					{
 						bone = 2;
-					}
+					} */
 					//bow
 			
 					
@@ -2914,7 +2921,352 @@ static void item_glow_t()
 	item_t = false;
 }
 
+//SSH terminal
+const char* boneDescriptions[] = {
+    "Head",
+    "Neck",
+    "Chest",
+    "Gut Shot"
+};
+void updateGlowColor(float &glowr, float &glowg, float &glowb, const std::string &setName)
+{
+    std::cout << "Enter RGB values for " << setName << " (0-1 for each channel):\n";
+    std::cout << "Red: ";
+    std::cin >> glowr;
 
+    std::cout << "Green: ";
+    std::cin >> glowg;
+
+    std::cout << "Blue: ";
+    std::cin >> glowb;
+
+    // Validate and clamp values to the range [0, 1].
+    glowr = std::max(0.0f, std::min(1.0f, glowr));
+    glowg = std::max(0.0f, std::min(1.0f, glowg));
+    glowb = std::max(0.0f, std::min(1.0f, glowb));
+
+    std::cout << setName << " RGB values updated (R: " << glowr << ", G: " << glowg << ", B: " << glowb << ").\n";
+}
+
+void terminal()
+{
+	
+	while (true)
+	{
+		
+		system("clear"); // Use "cls" for Windows
+		std::string userInput;
+		std::cout << "Available commands:" << std::endl;
+        
+        if (firing_range)
+        {
+            std::cout << "1 - Firing Range Enabled" << std::endl;
+        }
+        else
+        {
+            std::cout << "1 - Firing Range Disabled" << std::endl;
+        }
+		if (TDMToggle)
+        {
+            std::cout << "2 - TDMToggle Enabled" << std::endl;
+        }
+        else
+        {
+            std::cout << "2 - TDMToggle Disabled" << std::endl;
+        }
+		if (keyboard)
+        {
+            std::cout << "3 - Keyboard Enabled" << std::endl;
+        }
+        else
+        {
+            std::cout << "3 - Keyboard Disabled" << std::endl;
+        }
+		if (gamepad)
+        {
+            std::cout << "4 - Gamepad Enabled" << std::endl;
+        }
+        else
+        {
+            std::cout << "4 - Gamepad Disabled" << std::endl;
+        }
+		if (item_glow)
+        {
+            std::cout << "5 - Item Glow Enabled" << std::endl;
+        }
+        else
+        {
+            std::cout << "5 - Item Glow Disabled" << std::endl;
+        }
+		if (player_glow)
+        {
+            std::cout << "6 - Player Glow Enabled" << std::endl;
+        }
+        else
+        {
+            std::cout << "6 - Player Glow Disabled" << std::endl;
+        }
+		
+		std::cout << "7 - Change Smooth Value: (Current: ";
+        if (smooth < 100.0f)
+        {
+            std::cout << "\033[1;31m"; // Set text color to red for values below 100
+        }
+        else if (smooth > 120.0f)
+        {
+            std::cout << "\033[1;32m"; // Set text color to green for values above 120
+        }
+        std::cout << smooth << "\033[0m"; // Reset text color to default and close color tag
+        std::cout << ")" << std::endl;
+		
+		std::cout << "8 - Change Bone Aim Value: (Current: ";
+		if (bone == 0)
+		{
+			std::cout << "Head";
+		}
+		else if (bone == 1)
+		{
+			std::cout << "Neck";
+		}
+		else if (bone == 2)
+		{
+			std::cout << "Chest";
+		}
+		else if (bone == 3)
+		{
+			std::cout << "Gut Shot";
+		}
+		else
+		{
+			std::cout << "Unknown";
+		}
+		std::cout << ")" << std::endl;
+		
+		if (lootfilledtoggle)
+        {
+			lootfilled = 14;
+            std::cout << "9 - Loot Glow Filled" << std::endl;
+        }
+        else
+        {
+			lootfilled = 0;
+            std::cout << "9 - Loot Glow Not Filled" << std::endl;
+        }
+		if (playerfilledtoggle)
+        {
+			insidevalue = 14;
+            std::cout << "10 - Player Glow Filled" << std::endl;
+        }
+        else
+        {
+			insidevalue = 0;
+            std::cout << "10 - Player Glow Not Filled" << std::endl;
+        }
+		std::cout << "11 - Player Outline Glow" << std::endl;
+		std::cout << "12 - Update Glow Colors\n";
+		
+		std::cout << "Enter a command: ";
+        std::getline(std::cin, userInput);
+        
+        if (userInput == "1")
+        {
+            // Toggle the firing_range.
+            firing_range = !firing_range;
+            
+            if (firing_range)
+            {
+                std::cout << "Firing Range ON.\n";
+            }
+            else
+            {
+                std::cout << "Firing Range OFF.\n";
+            }
+        }
+		
+		if (userInput == "2")
+        {
+            // Toggle TDM.
+            TDMToggle = !TDMToggle;
+            
+            if (TDMToggle)
+            {
+                std::cout << "TDM ON.\n";
+            }
+            else
+            {
+                std::cout << "TDM OFF.\n";
+            }
+        }
+		if (userInput == "3")
+        {
+            // Keyboard Enable.
+            keyboard = true;
+			gamepad = false;
+            std::cout << "Keyboard ON.\n";
+            
+        }
+		if (userInput == "4")
+        {
+            // Gamepad Enable.
+            keyboard = false;
+			gamepad = true;
+            std::cout << "Gamepad ON.\n";
+            
+        }
+		if (userInput == "5")
+        {
+            // Toggle TDM.
+            item_glow = !item_glow;
+            
+            if (item_glow)
+            {
+                std::cout << "Item Glow ON.\n";
+            }
+            else
+            {
+                std::cout << "Item Glow OFF.\n";
+            }
+        }
+		if (userInput == "6")
+        {
+            // Toggle TDM.
+            player_glow = !player_glow;
+            
+            if (player_glow)
+            {
+                std::cout << "Player Glow ON.\n";
+            }
+            else
+            {
+                std::cout << "Player Glow OFF.\n";
+            }
+        }
+		if (userInput == "7")
+        {
+            // Command to change the 'smooth' value.
+            std::cout << "Enter a new value for 'smooth' (85 to 200): ";
+            float newSmooth;
+            std::cin >> newSmooth;
+
+            // Check if the new value is within the desired range.
+            if (newSmooth >= 85.0f && newSmooth <= 200.0f)
+            {
+                smooth = newSmooth;
+                std::cout << "'smooth' value updated to: " << smooth << std::endl;
+				printf("The value of 'smooth' is: %f\n", smooth);
+            }
+            else
+            {
+                std::cout << "Invalid value. 'smooth' value must be between 85 and 200." << std::endl;
+            }
+            
+            // Clear the input buffer to prevent any issues with future input.
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+		if (userInput == "8")
+        {
+            // Command to change the 'smooth' value.
+            std::cout << "Enter a new value for 'bone' (0 to 3): ";
+            int newBone;
+            std::cin >> newBone;
+
+            // Check if the new value is within the desired range.
+            if (newBone >= 0 && newBone <= 3)
+            {
+                bone = newBone;
+                std::cout << "'bone' value updated to: " << bone << std::endl;
+            }
+            else
+            {
+                std::cout << "Invalid value. 'bone' value must be between 0 and 3." << std::endl;
+            }
+            
+            // Clear the input buffer to prevent any issues with future input.
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+		if (userInput == "9")
+        {
+            //Loot Filled.
+            lootfilledtoggle = !lootfilledtoggle;
+            
+            if (lootfilledtoggle)
+            {
+				lootfilled = 14;
+                std::cout << "Loot Glow Filled.\n";
+            }
+            else
+            {
+				lootfilled = 0;
+                std::cout << "Loot Glow Not Filled.\n";
+            }
+        }
+		if (userInput == "10")
+        {
+            //player Filled.
+            playerfilledtoggle = !playerfilledtoggle;
+            
+            if (playerfilledtoggle)
+            {
+				insidevalue = 14;
+                std::cout << "Player Glow Filled.\n";
+            }
+            else
+            {
+				insidevalue = 0;
+                std::cout << "Player Glow Not Filled.\n";
+            }
+        }
+		if (userInput == "11")
+        {
+            // Command to change the 'smooth' value.
+            std::cout << "Enter a new value for Player Outlines (0 to 255): ";
+            int newoutlinesize;
+            std::cin >> newoutlinesize;
+
+            // Check if the new value is within the desired range.
+            if (newoutlinesize >= 0 && newoutlinesize <= 255)
+            {
+                outlinesize = newoutlinesize;
+                std::cout << "Player Outline updated to: " << outlinesize << std::endl;
+            }
+            else
+            {
+                std::cout << "Invalid value. 'outlinesize' value must be between 0 and 255." << std::endl;
+            }
+            
+            // Clear the input buffer to prevent any issues with future input.
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+		if (userInput == "12")
+        {
+            // Select a glow set (1 for "Not Visible," 2 for "Visible," 3 for "Knocked").
+            std::cout << "Select Glow: 1 - Not Visible, 2 - Visible, 3 - Knocked (can do fractions IE: 0.863: ";
+            std::cin >> userInput;
+            int selectedSet = std::stoi(userInput);
+            
+            switch (selectedSet)
+            {
+                case 1:
+                    updateGlowColor(glowrnot, glowgnot, glowbnot, "'Not Visible'");
+                    break;
+                case 2:
+                    updateGlowColor(glowrviz, glowgviz, glowbviz, "'Visible'");
+                    break;
+                case 3:
+                    updateGlowColor(glowrknocked, glowgknocked, glowbknocked, "'Knocked'");
+                    break;
+                default:
+                    std::cout << "Invalid set selection. Please choose 1-3.\n";
+                    break;
+            }
+        }
+		
+	}
+	terminal_t = false;
+}
 
 
 int main(int argc, char *argv[])
@@ -2933,6 +3285,7 @@ int main(int argc, char *argv[])
 	std::thread cactions_thr;
 	//Used to change things on a timer
 	//std::thread updateInsideValue_thr;
+	std::thread terminal_thr;
 	std::thread itemglow_thr;
 	while(active)
 	{
@@ -2944,6 +3297,7 @@ int main(int argc, char *argv[])
 				actions_t = false;
 				cactions_t = false;
 				updateInsideValue_t = false;
+				terminal_t = false;
 				item_t = false;
 				g_Base = 0;
 
@@ -2952,6 +3306,7 @@ int main(int argc, char *argv[])
 				cactions_thr.~thread();
 				//Used to change things on a timer
 				//updateInsideValue_thr.~thread();
+				terminal_thr.~thread();
 				itemglow_thr.~thread();
 			}
 
@@ -2971,12 +3326,14 @@ int main(int argc, char *argv[])
 				cactions_thr = std::thread(ClientActions);
 				//Used to change things on a timer
 				//updateInsideValue_thr = std::thread(updateInsideValue);
+				terminal_thr = std::thread(terminal);
 				itemglow_thr = std::thread(item_glow_t);
 				aimbot_thr.detach();
 				actions_thr.detach();
 				cactions_thr.detach();
 				//Used to change things on a timer
 				//updateInsideValue_thr.detach();
+				terminal_thr.detach();
 				itemglow_thr.detach();
 			}
 		}

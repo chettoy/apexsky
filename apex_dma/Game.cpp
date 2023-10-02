@@ -186,14 +186,14 @@ void Entity::enableGlow()
 		64   // (EntityVisible << 6) | State & 0x3F | (AfterPostProcess << 7)
 	};
 	//std::array<float, 3> highlightParameter = { 0, 1, 0 };
-	apex_mem.Write<int>(ptr + 0x294, contextId);
-	apex_mem.Write<unsigned char>(ptr + 0x298 + contextId, settingIndex);
+	apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, contextId);
+	apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
 	//apex_mem.Write<int>(ptr + 0x298 + contextId, settingIndex);
 	long highlightSettingsPtr;
-	apex_mem.Read<long>(g_Base + 0xb5f9620, highlightSettingsPtr);
-    apex_mem.Write<int>(ptr + 0x278 , 2);
-	apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 0x28 * settingIndex + 4, highlightFunctionBits);
-	apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 0x28 * settingIndex + 8, highlightParameter);
+	apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+    apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS , 2);
+	apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + HIGHLIGHT_TYPE_SIZE * settingIndex + 4, highlightFunctionBits);
+	apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + HIGHLIGHT_TYPE_SIZE * settingIndex + 8, highlightParameter);
 	apex_mem.Write(ptr + 0x270 , 1);
 	apex_mem.Write(ptr + 0x270 , 1);
 	//printf("%f\n", deltaTime2);
@@ -202,10 +202,10 @@ void Entity::enableGlow()
 void Entity::disableGlow()
 {
 	
-	apex_mem.Write<int>(ptr + OFFSET_GLOW_T1, 0);
-	apex_mem.Write<int>(ptr + OFFSET_GLOW_T2, 0);
-	apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
-	apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 5);
+	//apex_mem.Write<int>(ptr + OFFSET_GLOW_T1, 0);
+	//apex_mem.Write<int>(ptr + OFFSET_GLOW_T2, 0);
+	//apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
+	//apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 5);
 	//apex_mem.Write<float>(ptr + GLOW_COLOR_R, 0.0f);
 	//apex_mem.Write<float>(ptr + GLOW_COLOR_G, 0.0f);
 	//apex_mem.Write<float>(ptr + GLOW_COLOR_B, 0.0f);
