@@ -43,7 +43,22 @@ bool lock = false;
 //^^ Don't EDIT^^
 
 //CONFIG AREA, you must set all the true/false to what you want.
-
+//Used to change things on a timer
+/* unsigned char insidevalueItem = 1;
+void updateInsideValue()
+{
+	updateInsideValue_t = true;
+	while (updateInsideValue_t)
+	{
+		insidevalueItem++;
+		insidevalueItem %= 256;
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		
+		printf("insidevalueItem: %i\n", insidevalueItem);
+		
+	}
+	updateInsideValue_t = false;
+} */
 //Gamepad or Keyboard config, Only one true at once or it wont work.
 bool keyboard = true;
 bool gamepad = false;
@@ -63,19 +78,19 @@ float smooth = 120.0f; //min 85 no beaming, 100 somewhat beam people, 125 should
 //inside fill
 unsigned char insidevalue = 14;  //0 = no fill, 14 = full fill
 //Outline size
-unsigned char outlinesize = 64; // 0-255
+unsigned char outlinesize = 32; // 0-255
 //Not Visable 
-float glowr = 1; //Red 0-255, higher is brighter color.
-float glowg = 0; //Green 0-255, higher is brighter color.
-float glowb = 0; //Blue 0-255, higher is brighter color.
+float glowr = 1; //Red 0-1, higher is brighter color.
+float glowg = 0; //Green 0-1, higher is brighter color.
+float glowb = 0; //Blue 0-1, higher is brighter color.
 //Visable
-float glowrviz = 0; //Red 0-255, higher is brighter color.
-float glowgviz = 1; //Green 0-255, higher is brighter color.
-float glowbviz = 0; //Blue 0-255, higher is brighter color.
+float glowrviz = 0; //Red 0-1, higher is brighter color.
+float glowgviz = 1; //Green 0-1, higher is brighter color.
+float glowbviz = 0; //Blue 0-1, higher is brighter color.
 //Knocked
-float glowrknocked = 0.5; //Red 0-255, higher is brighter color.
-float glowgknocked = 0.5; //Green 0-255, higher is brighter color.
-float glowbknocked = 0.5; //Blue 0-255, higher is brighter color.
+float glowrknocked = 0.5; //Red 0-1, higher is brighter color.
+float glowgknocked = 0.5; //Green 0-1, higher is brighter color.
+float glowbknocked = 0.5; //Blue 0-1, higher is brighter color.
 //Item Configs
 //loot Fill
 unsigned char lootfilled = 14;  //0 no fill, 14 100% fill
@@ -87,10 +102,11 @@ bool medbackpack = true;
 bool heavybackpack = true;
 bool goldbackpack = true;
 //Shield upgrades
-bool shieldupgrade1 = true;
-bool shieldupgrade2 = true;
-bool shieldupgrade3 = true;
-bool shieldupgrade4 = true;
+bool shieldupgrade1 = false;  //white
+bool shieldupgrade2 = true;  //blue
+bool shieldupgrade3 = true;  //purple
+bool shieldupgrade4 = true;  //gold
+bool shieldupgrade5 = true;  //red
 bool shieldupgradehead1 = false;
 bool shieldupgradehead2 = true;
 bool shieldupgradehead3 = true;
@@ -254,7 +270,6 @@ void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
 						settingIndex = 82;
 						highlightParameter = { 1, 0, 0 };
 					}
-
 					Target.enableGlow();
 				}
 			}
@@ -424,7 +439,7 @@ void ClientActions()
 		
 				
 			// Toggle crouch = check for ring
-			if (attackState != 108 && tduckState == 13)
+			if (attackState != 108 && tduckState == 65)
 			{
 				if (mapRadarTestingEnabled)
 				{
@@ -708,22 +723,7 @@ static void AimbotLoop()
 }
 // Item Glow Stuff
 
-//Used to change things on a timer
-/* unsigned char insidevalueItem = 0;
-void updateInsideValue()
-{
-	updateInsideValue_t = true;
-	while (updateInsideValue_t)
-	{
-		insidevalueItem++;
-		insidevalueItem %= 256;
-		std::this_thread::sleep_for(std::chrono::milliseconds(300));
-		
-		printf("%i\n", insidevalueItem);
-		
-	}
-	updateInsideValue_t = false;
-} */
+
 static void item_glow_t()
 {
 	item_t = true;
@@ -795,7 +795,7 @@ static void item_glow_t()
 						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
 						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					
-					}				
+					}					
 					if (medbackpack && ItemID == 207) 
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
@@ -854,7 +854,32 @@ static void item_glow_t()
 					
 					}
 					//item id would help so much here, cant make them all the same color so went with loba glow for body shield and helmet
-					if (shieldupgrade1 && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_body.rmdl")) 
+					if (shieldupgrade1 && (ItemID == 214748364992 || ItemID == 14073963583897797))
+					{
+						std::array<unsigned char, 4> highlightFunctionBits = {
+							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							64,
+							64
+						};
+						std::array<float, 3> highlightParameter = { 1, 1, 1 };
+						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
+						static const int contextId = 0;
+						int settingIndex = 72;
+						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+						long highlightSettingsPtr;
+						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
+						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter); 
+						
+						uint64_t ItemID;
+						apex_mem.Read<uint64_t>(centity + OFFSET_ITEM_ID, ItemID);
+						//uint64_t ItemID2;
+						//ItemID2 = ItemID % 301;
+						//printf("%ld\n", ItemID);
+						//apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);;
+					}
+					if (shieldupgrade2 && (ItemID == 322122547393 || ItemID == 21110945375846598))
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
@@ -872,7 +897,7 @@ static void item_glow_t()
 						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
 						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					}
-					if (shieldupgrade2 && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_body.rmdl")) 
+					if (shieldupgrade3 && (ItemID == 429496729794 || ItemID == 52776987629977799)) 
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
@@ -880,17 +905,17 @@ static void item_glow_t()
 							64,
 							64
 						};
-						std::array<float, 3> highlightParameter = { 0, 0, 1 };
+						std::array<float, 3> highlightParameter = { 0.2941, 0, 0.5098 };
 						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 						static const int contextId = 0;
-						int settingIndex = 69;
+						int settingIndex = 74;
 						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
 						long highlightSettingsPtr;
 						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
 						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
 						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					}
-					if (shieldupgrade3 && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_body.rmdl")) 
+					if (shieldupgrade4 && (ItemID == 429496729795 || ItemID == 536870912200))  
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
@@ -898,17 +923,17 @@ static void item_glow_t()
 							64,
 							64
 						};
-						std::array<float, 3> highlightParameter = { 0, 0, 1 };
+						std::array<float, 3> highlightParameter = { 1, 0.8431, 0 };
 						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 						static const int contextId = 0;
-						int settingIndex = 69;
+						int settingIndex = 75;
 						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
 						long highlightSettingsPtr;
 						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
 						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
 						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					}
-					if (shieldupgrade4 && strstr(glowName, "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_body.rmdl"))  
+					if (shieldupgrade5 && ItemID == 536870912200)  
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
@@ -916,10 +941,10 @@ static void item_glow_t()
 							64,
 							64
 						};
-						std::array<float, 3> highlightParameter = { 0, 0, 1 };
+						std::array<float, 3> highlightParameter = { 1, 0, 0 };
 						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
 						static const int contextId = 0;
-						int settingIndex = 69;
+						int settingIndex = 67;
 						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
 						long highlightSettingsPtr;
 						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
