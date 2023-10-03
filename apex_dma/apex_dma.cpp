@@ -11,6 +11,8 @@
 #include <array>
 #include <map>
 #include <cstdlib> // For the system() function
+#include <fstream>
+#include <filesystem>
 //this is a test, with seconds
 Memory apex_mem;
 
@@ -41,27 +43,15 @@ uint64_t g_Base;
 bool next2 = false;
 bool valid = false;
 bool lock = false;
+float ADSfov = 4;
+float nonADSfov = 50;
 
 
 //^^ Don't EDIT^^
 
 //CONFIG AREA, you must set all the true/false to what you want.
-//Used to change things on a timer
-/* unsigned char insidevalueItem = 1;
-void updateInsideValue()
-{
-	updateInsideValue_t = true;
-	while (updateInsideValue_t)
-	{
-		insidevalueItem++;
-		insidevalueItem %= 256;
-		std::this_thread::sleep_for(std::chrono::milliseconds(300));
-		
-		printf("insidevalueItem: %i\n", insidevalueItem);
-		
-	}
-	updateInsideValue_t = false;
-} */
+//Enable Loading of setting file automaticly
+bool LoadSettings = false;
 //Gamepad or Keyboard config, Only one true at once or it wont work.
 bool keyboard = true;
 bool gamepad = false;
@@ -228,7 +218,26 @@ bool weapon_sentinel  = false;
 bool weapon_bow  = false;
 //trigger bot
 bool is_trigger;
-
+//Used to change things on a timer
+/* unsigned char insidevalueItem = 1;
+void updateInsideValue()
+{
+	updateInsideValue_t = true;
+	while (updateInsideValue_t)
+	{
+		insidevalueItem++;
+		insidevalueItem %= 256;
+		std::this_thread::sleep_for(std::chrono::seconds(2));
+		printf("smooth: %f\n", smooth);
+		printf("bone: %i\n", bone);
+		printf("glowrnot: %f\n", glowrnot);
+		printf("glowgnot: %f\n", glowgnot);
+		printf("glowbnot: %f\n", glowbnot);
+		
+		
+	}
+	updateInsideValue_t = false;
+} */
 //DONE WITH THE EDITING
 //Player Definitions, dont edit unless you know what you are doing.
 typedef struct player
@@ -390,7 +399,8 @@ void ClientActions()
 			apex_mem.Read<int>(g_Base + OFFSET_IN_TOGGLE_DUCK, tduckState); //61			
 			int zoomState = 0;
 			apex_mem.Read<int>(g_Base + OFFSET_IN_ZOOM, zoomState); //109
-			//printf("%f\n", max_fov);
+			
+			//printf("Minimap: %ld\n", minimap);
 			
 			if(keyboard)
 			{
@@ -406,11 +416,11 @@ void ClientActions()
 				
 				if (attackState == 108 || !zoomState == 109)
 				{
-					max_fov = 50;
+					max_fov = nonADSfov;
 				}
 				if (!attackState == 108 || zoomState == 109)
 				{
-					max_fov = 3;
+					max_fov = ADSfov;
 				}
 			}
 			
@@ -428,11 +438,11 @@ void ClientActions()
 				
 				if (attackState == 264 || !zoomState == 263)
 				{
-					max_fov = 50;
+					max_fov = nonADSfov;
 				}
 				if (!attackState == 264 || zoomState == 263)
 				{
-					max_fov = 3;
+					max_fov = ADSfov;
 				}
 			}
 			
@@ -2922,6 +2932,81 @@ static void item_glow_t()
 }
 
 //SSH terminal
+// Function to save settings to a file
+void saveSettings()
+{
+    std::ofstream settingsFile("settings.txt");
+
+    if (settingsFile.is_open())
+    {
+        // Write the settings to the file.
+		settingsFile << std::boolalpha << firing_range << "\n";
+        settingsFile << std::boolalpha << TDMToggle << "\n";
+        settingsFile << std::boolalpha << keyboard << "\n";
+        settingsFile << std::boolalpha << gamepad << "\n";
+        settingsFile << std::boolalpha << item_glow << "\n";
+        settingsFile << std::boolalpha << player_glow << "\n";
+        settingsFile << smooth << "\n";
+        settingsFile << bone << "\n";
+        settingsFile << glowrnot << "\n";
+        settingsFile << glowgnot << "\n";
+        settingsFile << glowbnot << "\n";
+        settingsFile << glowrviz << "\n";
+        settingsFile << glowgviz << "\n";
+        settingsFile << glowbviz << "\n";
+        settingsFile << glowrknocked << "\n";
+        settingsFile << glowgknocked << "\n";
+        settingsFile << glowbknocked << "\n";
+		settingsFile << ADSfov << "\n";
+		settingsFile << nonADSfov << "\n";
+
+		
+		
+		
+        settingsFile.close();
+		std::cout << "Settings saved to 'settings.txt'.\n";
+		std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
+    }
+    else
+    {
+        std::cout << "Error opening settings file for writing." << std::endl;
+    }
+}
+void loadSettings()
+{
+    std::ifstream settingsFile("settings.txt");
+
+    if (settingsFile.is_open())
+    {
+		settingsFile >> std::boolalpha >> firing_range;
+        settingsFile >> std::boolalpha >> TDMToggle;
+        settingsFile >> std::boolalpha >> keyboard;
+        settingsFile >> std::boolalpha >> gamepad;
+        settingsFile >> std::boolalpha >> item_glow;
+        settingsFile >> std::boolalpha >> player_glow;
+        settingsFile >> smooth;
+        settingsFile >> bone;
+        settingsFile >> glowrnot;
+        settingsFile >> glowgnot;
+        settingsFile >> glowbnot;
+        settingsFile >> glowrviz;
+        settingsFile >> glowgviz;
+        settingsFile >> glowbviz;
+        settingsFile >> glowrknocked;
+        settingsFile >> glowgknocked;
+        settingsFile >> glowbknocked;
+		settingsFile >> ADSfov;
+		settingsFile >> nonADSfov;
+
+
+        settingsFile.close();
+        std::cout << "Settings loaded from 'settings.txt'.\n";
+    }
+    else
+    {
+        std::cout << "Error opening settings file for reading. Using default settings.\n";
+    }
+}
 const char* boneDescriptions[] = {
     "Head",
     "Neck",
@@ -2950,12 +3035,18 @@ void updateGlowColor(float &glowr, float &glowg, float &glowb, const std::string
 
 void terminal()
 {
-	
+		
+	if (LoadSettings)
+	{
+		loadSettings();
+		LoadSettings = false;
+	}
 	while (true)
 	{
 		
 		system("clear"); // Use "cls" for Windows
 		std::string userInput;
+		std::cout << "Chnage LoadSettings in apex_dma.cpp to enable Auto Loading of Settings." << std::endl;
 		std::cout << "Available commands:" << std::endl;
         
         if (firing_range)
@@ -3063,7 +3154,15 @@ void terminal()
             std::cout << "10 - Player Glow Not Filled" << std::endl;
         }
 		std::cout << "11 - Player Outline Glow" << std::endl;
-		std::cout << "12 - Update Glow Colors\n";
+		std::cout << "12 - Update Glow Colors" << std::endl;
+		std::cout << "13 - Change ADS FOV: (Current: ";
+		std::cout << ADSfov;
+        std::cout << ")" << std::endl;
+		std::cout << "14 - Change Non-ADS FOV: (Current: ";
+		std::cout << nonADSfov;
+        std::cout << ")" << std::endl;
+		std::cout << "15 - Save Settings" << std::endl;
+		std::cout << "16 - Load Settings\n" << std::endl;
 		
 		std::cout << "Enter a command: ";
         std::getline(std::cin, userInput);
@@ -3264,6 +3363,64 @@ void terminal()
             }
         }
 		
+		if (userInput == "13")
+        {
+            // Command to change the 'smooth' value.
+            std::cout << "Enter a new value for 'ADS FOV' (1 to 50): ";
+            float newADSfov;
+            std::cin >> newADSfov;
+
+            // Check if the new value is within the desired range.
+            if (newADSfov >= 1.0f && newADSfov <= 50.0f)
+            {
+                ADSfov = newADSfov;
+                std::cout << "'ADS FOV' value updated to: " << ADSfov << std::endl;
+				printf("The value of 'ADS FOV' is: %f\n", ADSfov);
+            }
+            else
+            {
+                std::cout << "Invalid value. 'ADS FOV' value must be between 85 and 200." << std::endl;
+            }
+            
+            // Clear the input buffer to prevent any issues with future input.
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+		if (userInput == "14")
+        {
+            // Command to change the 'smooth' value.
+            std::cout << "Enter a new value for 'Non-ADS FOV' (1 to 50): ";
+            float newnonADSfov;
+            std::cin >> newnonADSfov;
+
+            // Check if the new value is within the desired range.
+            if (newnonADSfov >= 1.0f && newnonADSfov <= 50.0f)
+            {
+                nonADSfov = newnonADSfov;
+                std::cout << "'Non-ADS FOV' value updated to: " << nonADSfov << std::endl;
+				printf("The value of 'Non-ADS FOV' is: %f\n", nonADSfov);
+            }
+            else
+            {
+                std::cout << "Invalid value. 'Non-ADS FOV' value must be between 85 and 200." << std::endl;
+            }
+            
+            // Clear the input buffer to prevent any issues with future input.
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+		if (userInput == "15")
+		{
+			// Command to change the 'smooth' value.
+			// ...
+			saveSettings(); // Add this line to save settings after changing smooth.
+		}
+		if (userInput == "16")
+		{
+			// Command to change the 'smooth' value.
+			// ...
+			loadSettings(); // Add this line to save settings after changing smooth.
+		}
 	}
 	terminal_t = false;
 }
