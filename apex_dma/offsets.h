@@ -7,7 +7,7 @@
 #define OFFSET_ENTITYLIST 0x1E213F8 //cl_entitylist
 #define OFFSET_LOCAL_ENT 0x21D1738 //LocalPlayer might be moved to AVC_GameMovement
 #define OFFSET_NAME_LIST 0xC264A60 //NameList
-
+#define OFFSET_GLOBAL_VARS      0x16f4d00
 
 #define OFFSET_LEVELNAME 0x16f51c0 //LevelName
 #define OFFSET_CLIENTSTATE 0x16f5000 //ClientState
@@ -24,12 +24,19 @@
 #define OFFSET_ABS_VELOCITY 0x0170 //m_vecAbsVelocity
 #define OFFSET_VISIBLE_TIME 0x19B0 //CPlayer!lastVisibleTime
 #define OFFSET_ZOOMING 0x1b91 //m_bZooming
+#define OFFSET_FORCE_DUCK 0x07420a48 //in_duck
+#define OFFSET_TRAVERSAL_PROGRESS 0x2abc //m_traversalProgress
+#define OFFSET_FORCE_JUMP 0x07420958 //in_jump
 
 #define OFFSET_WEAPON_NAME 0x1798 //m_weaponNameIndex 2nd one
 #define OFFSET_OFF_WEAPON 0x1964 //m_latestNonOffhandWeapons
 #define OFFSET_IN_ATTACK 0x07420848 // in_attack
 #define OFFSET_IN_TOGGLE_DUCK 0x07420888 //in_toggle_duck
 #define OFFSET_IN_ZOOM 0x074209d8 //in_zoom
+#define OFFSET_WALL_RUN_START_TIME 0x3524 //m_wallRunStartTime
+#define OFFSET_WALL_RUN_CLEAR_TIME 0x3528 //m_wallRunClearTime
+#define OFFSET_FLAGS 0x00c8 //m_fFlags
+#define OFFSET_IN_FORWARD		0x07420798 //in_forward
 
 #define OFFSET_LIFE_STATE 0x06c8 //m_lifeState, >0 = dead
 #define OFFSET_BLEED_OUT_STATE 0x26a0 //m_bleedoutState, >0 = knocked
@@ -43,6 +50,8 @@
 #define OFFSET_BREATH_ANGLES OFFSET_VIEWANGLES - 0x10
 #define OFFSET_OBSERVER_MODE 0x3454 //m_iObserverMode
 #define OFFSET_OBSERVING_TARGET 0x3460 //m_hObserverTarget
+#define OFFSET_IN_USE 0x074209c8 //in_use
+
 
 #define OFFSET_MATRIX 0x11a350 //ViewMatrix
 #define OFFSET_RENDER 0x741F0A8 //ViewRender displays ESp, heath dist names etc

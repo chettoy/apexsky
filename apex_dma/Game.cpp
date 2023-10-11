@@ -11,7 +11,8 @@ extern float glowr;
 extern float glowg;
 extern float glowb;
 
-
+float bulletspeed = 0.08;
+float bulletgrav = 0.05;
 
 //glowtype not used, but dont delete its still used.
 extern int glowtype;
@@ -194,7 +195,7 @@ void Entity::enableGlow()
     apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS , 2);
 	apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + HIGHLIGHT_TYPE_SIZE * settingIndex + 4, highlightFunctionBits);
 	apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + HIGHLIGHT_TYPE_SIZE * settingIndex + 8, highlightParameter);
-	apex_mem.Write(ptr + 0x270 , 1);
+	apex_mem.Write(g_Base + 0x270 , 1);
 	apex_mem.Write(ptr + 0x270 , 1);
 	//printf("%f\n", deltaTime2);
 
@@ -348,8 +349,8 @@ if (BulletSpeed > 1.f)
     PredictCtx Ctx;
     Ctx.StartPos = LocalCamera;
     Ctx.TargetPos = TargetBonePosition; 
-	Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*0.08);
-	Ctx.BulletGravity = BulletGrav + (BulletGrav*0.05);
+	Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*bulletspeed);
+	Ctx.BulletGravity = BulletGrav + (BulletGrav*bulletgrav);
 
     // Get the target's velocity and add it to the prediction context
     Vector targetVel = target.getAbsVelocity();
