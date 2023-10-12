@@ -1,24 +1,24 @@
 #define VERSION STEAM
-//Date 9/12/2023
-//GameVersion=v3.0.46.46
+//Date 10/12/2023
+//GameVersion=v3.0.47.47
 
 #if VERSION == STEAM
 
-#define OFFSET_ENTITYLIST 0x1E213F8 //cl_entitylist
-#define OFFSET_LOCAL_ENT 0x21D1738 //LocalPlayer might be moved to AVC_GameMovement
-#define OFFSET_NAME_LIST 0xC264A60 //NameList
-#define OFFSET_GLOBAL_VARS      0x16f4d00
+#define OFFSET_ENTITYLIST 0x1e21418 //cl_entitylist
+#define OFFSET_LOCAL_ENT 0x21d1758 //LocalPlayer might be moved to AVC_GameMovement
+#define OFFSET_NAME_LIST 0xc264a60 //NameList
+#define OFFSET_GLOBAL_VARS      0x16f4d20
 
-#define OFFSET_LEVELNAME 0x16f51c0 //LevelName
-#define OFFSET_CLIENTSTATE 0x16f5000 //ClientState
-#define OFFSET_SIGNONSTATE 0x16f50ac //SignonState
+#define OFFSET_LEVELNAME 0x16f51e0 //LevelName
+#define OFFSET_CLIENTSTATE 0x16f5020 //ClientState
+#define OFFSET_SIGNONSTATE 0x16f50cc //SignonState
 
 
 #define OFFSET_TEAM 0x037c //m_iTeamNum
-#define OFFSET_HEALTH 0x036c //m_iHealth
+#define OFFSET_HEALTH 0x037c //m_iHealth
 #define OFFSET_SHIELD 0x01a0 //m_shieldHealth
 #define OFFSET_MAXSHIELD 0x01a4 //m_shieldHealthMax
-#define OFFSET_ARMORTYPE 0x45c4 //armortype
+#define OFFSET_ARMORTYPE 0x45c4 //m_armorType
 #define OFFSET_NAME 0x04b9 //m_iName
 #define OFFSET_SIGN_NAME 0x04b0 //m_iSignifierName
 #define OFFSET_ABS_VELOCITY 0x0170 //m_vecAbsVelocity
@@ -30,9 +30,9 @@
 
 #define OFFSET_WEAPON_NAME 0x1798 //m_weaponNameIndex 2nd one
 #define OFFSET_OFF_WEAPON 0x1964 //m_latestNonOffhandWeapons
-#define OFFSET_IN_ATTACK 0x07420848 // in_attack
+#define OFFSET_IN_ATTACK 0x07420868 // in_attack
 #define OFFSET_IN_TOGGLE_DUCK 0x07420888 //in_toggle_duck
-#define OFFSET_IN_ZOOM 0x074209d8 //in_zoom
+#define OFFSET_IN_ZOOM 0x074209e8 //in_zoom
 #define OFFSET_WALL_RUN_START_TIME 0x3524 //m_wallRunStartTime
 #define OFFSET_WALL_RUN_CLEAR_TIME 0x3528 //m_wallRunClearTime
 #define OFFSET_FLAGS 0x00c8 //m_fFlags
@@ -54,7 +54,7 @@
 
 
 #define OFFSET_MATRIX 0x11a350 //ViewMatrix
-#define OFFSET_RENDER 0x741F0A8 //ViewRender displays ESp, heath dist names etc
+#define OFFSET_RENDER 0x741f0a8 //ViewRender displays ESp, heath dist names etc
 
 #define OFFSET_WEAPON 0x1954 //m_latestPrimaryWeapons
 #define OFFSET_BULLET_SPEED 0x19c8 + 0x04d4 //CWeaponX!m_flProjectileSpeed maybe its WeaponSettings.projectile_launch_speed now
