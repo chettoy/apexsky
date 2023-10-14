@@ -530,7 +530,7 @@ void ClientActions()
 			
 			if(gamepad)
 			{
-				if (attackState == 264 || zoomState == 263)
+				if (attackState == 120 || zoomState == 119)
 				{
 					aiming = true;
 				}
@@ -540,11 +540,11 @@ void ClientActions()
 				}
 				
 				
-				if (attackState == 264 || !zoomState == 263)
+				if (attackState == 120 || !zoomState == 119)
 				{
 					max_fov = nonADSfov;
 				}
-				if (!attackState == 264 || zoomState == 263)
+				if (!attackState == 120 || zoomState == 119)
 				{
 					max_fov = ADSfov;
 				}
