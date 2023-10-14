@@ -3,6 +3,7 @@
 #include <ostream>
 #include <thread>
 #include <chrono>
+#include <array>
 
 extern Memory apex_mem;
 
