@@ -13,6 +13,7 @@
 #include <cstdlib> // For the system() function
 #include <fstream>
 #include <filesystem>
+#include <unordered_map> // Include the unordered_map header
 //this is a test, with seconds
 Memory apex_mem;
 
@@ -30,10 +31,12 @@ bool aiming = false;
 //Removed but not all the way, dont edit.
 int glowtype;
 int glowtype2;
+//float triggerdist = 50.0f;
 float aimdist = 200.0f * 40.0f;
 bool actions_t = false;
 bool cactions_t = false;
 bool updateInsideValue_t = false;
+bool TriggerBotRun_t = false;
 bool terminal_t = false;
 bool esp_t = false;
 bool aim_t = false;
@@ -59,6 +62,9 @@ bool SuperKey = false;
 bool keyboard = true;
 bool gamepad = false;
 //Done with Gamepad or Keyboard config
+//triggerbot?
+bool autoshoot = true;
+bool TriggerBot = false;
 //Terminal Stuff
 bool lootfilledtoggle = true;
 bool playerfilledtoggle = true;
@@ -95,6 +101,8 @@ float glowbknocked = 1; //Blue 0-1, higher is brighter color.
 //Item Configs
 //loot Fill
 unsigned char lootfilled = 14;  //0 no fill, 14 100% fill
+//loot outline siez
+unsigned char lootoutline = 0;
 //rev skull
 bool skull = true;
 //Backpacks
@@ -222,6 +230,54 @@ bool weapon_sentinel  = false;
 bool weapon_bow  = false;
 //trigger bot
 bool is_trigger;
+
+
+void TriggerBotRun()
+{
+	//testing
+	//apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 4);
+	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 5);
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 4);
+	//printf("TriggerBotRun\n");
+}
+bool IsInCrossHair(Entity &target)
+{
+	static uintptr_t last_t = 0;
+	static float last_crosshair_target_time = -1.f;
+	float now_crosshair_target_time = target.lastCrossHairTime();
+	bool is_trigger = false;
+	if (last_t == target.ptr)
+	{
+		if(last_crosshair_target_time != -1.f)
+		{
+			if(now_crosshair_target_time > last_crosshair_target_time)
+			{
+				is_trigger = true;
+				//printf("Trigger\n");
+				last_crosshair_target_time = -1.f;
+			}
+			else
+			{
+				is_trigger = false;
+				last_crosshair_target_time = now_crosshair_target_time;
+			}
+		}
+		else
+		{
+			is_trigger = false;
+			last_crosshair_target_time = now_crosshair_target_time;
+		}
+	}
+	else
+	{
+		last_t = target.ptr;
+		last_crosshair_target_time = -1.f;
+	}
+	return is_trigger;
+}
+
 //Used to change things on a timer
 /* unsigned char insidevalueItem = 1;
 void updateInsideValue()
@@ -332,48 +388,7 @@ void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
 		}
 }
 
-bool IsInCrossHair(Entity& target)
-{
-    static uintptr_t last_t;
-		static float last_crosshair_target_time = -1.f;
-		float now_crosshair_target_time = target.lastVisTime();
-		bool is_trigger = false;
-		
-		/* driver.Writevirtual<uint32_t>(driver.GameBase + OFFSET_IN_ATTACK + 0x8, 4);
-		Sleep(1);
-		driver.Writevirtual<uint32_t>(driver.GameBase + OFFSET_IN_ATTACK + 0x8, 5);
-		Sleep(1);
-		driver.Writevirtual<uint32_t>(driver.GameBase + OFFSET_IN_ATTACK + 0x8, 4); */
-		if (last_t == target.ptr)
-		{
-			if (last_crosshair_target_time != -1.f)
-			{
-				if (now_crosshair_target_time > last_crosshair_target_time)
-				{
-					is_trigger = true;
-					last_crosshair_target_time = -1.f;
-				}
-				else
-				{
-					is_trigger = false;
-					last_crosshair_target_time = now_crosshair_target_time;
-				}
-			}
-			else
-			{
-				is_trigger = false;
-				last_crosshair_target_time = now_crosshair_target_time;
-			}
-	 
-		}
-		else
-		{
-			last_t = target.ptr;
-			last_crosshair_target_time = -1.f;
-		}
-	 
-		return is_trigger;
-}
+
 
 
 void MapRadarTesting()
@@ -411,7 +426,14 @@ void loop()
 std::chrono::steady_clock::time_point tduckStartTime;
 bool mapRadarTestingEnabled = true;
 
-
+uint32_t button_state[4];
+int AimbotHotKey1 = 108;
+int AimbotHotKey2 = 109;
+int TriggerBotHotKey = 81;
+bool isPressed(uint32_t button_code)
+{
+	return (button_state[static_cast<uint32_t>(button_code) >> 5] & (1 << (static_cast<uint32_t>(button_code) & 0x1f))) != 0;
+}
 
 
 void ClientActions()
@@ -430,7 +452,10 @@ void ClientActions()
 			int attackState = 0;
 			apex_mem.Read<int>(g_Base + OFFSET_IN_ATTACK, attackState); //108
 			int tduckState = 0;
-			apex_mem.Read<int>(g_Base + OFFSET_IN_TOGGLE_DUCK, tduckState); //61			
+			apex_mem.Read<int>(g_Base + OFFSET_IN_TOGGLE_DUCK, tduckState); //61
+			
+			apex_mem.Read<typeof(button_state)>(g_Base + OFFSET_INPUT_SYSTEM + 0xb0, button_state);
+			
 			int zoomState = 0;
 			apex_mem.Read<int>(g_Base + OFFSET_IN_ZOOM, zoomState); //109
 			int frameSleepTimer;
@@ -506,9 +531,130 @@ void ClientActions()
 			frameSleepTimer -= 1;
 			//printf("Minimap: %ld\n", minimap);
 			//apex_mem.Write(LocalPlayer + 0x270 , 1);
+			
+			
+			/* 			
+			108 Left mouse button (mouse1)
+			109 Right mouse button (mouse2)
+			110 Middle mouse button (mouse3)
+			111 Side mouse button (mouse4)
+			112 Side mouse button (mouse5)
+
+			79 SHIFT key
+			81 ALT key
+			83 CTRL key
+
+			1 KEY_0
+			2 KEY_1
+			3 KEY_2
+			4 KEY_3
+			5 KEY_4
+			6 KEY_5
+			7 KEY_6
+			8 KEY_7
+			9 KEY_8
+			10 KEY_9
+
+			11 KEY_A
+			12 KEY_B
+			13 KEY_C
+			14 KEY_D
+			15 KEY_E
+			16 KEY_F
+			17 KEY_G
+			18 KEY_H
+			19 KEY_I
+			20 KEY_J
+			21 KEY_K
+			22 KEY_L
+			23 KEY_M
+			24 KEY_N
+			25 KEY_O
+			26 KEY_P
+			27 KEY_Q
+			28 KEY_R
+			29 KEY_S
+			30 KEY_T
+			31 KEY_U
+			32 KEY_V
+			33 KEY_W
+			34 KEY_X
+			35 KEY_Y
+			36 KEY_Z
+
+
+			37 KEY_PAD_0
+			38 KEY_PAD_1
+			39 KEY_PAD_2
+			40 KEY_PAD_3
+			41 KEY_PAD_4
+			42 KEY_PAD_5
+			43 KEY_PAD_6
+			44 KEY_PAD_7
+			45 KEY_PAD_8
+			46 KEY_PAD_9
+			47 KEY_PAD_DIVIDE
+			48 KEY_PAD_MULTIPLY
+			49 KEY_PAD_MINUS
+			50 KEY_PAD_PLUS
+			51 KEY_PAD_ENTER
+			52 KEY_PAD_DECIMAL
+
+
+			65 KEY_SPACE
+			67 KEY_TAB
+			68 KEY_CAPSLOCK
+			69 KEY_NUMLOCK
+			70 KEY_ESCAPE
+			71 KEY_SCROLLLOCK
+			72 KEY_INSERT
+			73 KEY_DELETE
+			74 KEY_HOME
+			75 KEY_END
+			76 KEY_PAGEUP
+			77 KEY_PAGEDOWN
+			78 KEY_BREAK
+
+
+			88 KEY_UP
+			89 KEY_LEFT
+			90 KEY_DOWN
+			91 KEY_RIGHT
+
+
+			92 KEY_F1
+			93 KEY_F2
+			94 KEY_F3
+			95 KEY_F4
+			96 KEY_F5
+			97 KEY_F6
+			98 KEY_F7
+			99 KEY_F8
+			100 KEY_F9
+			101 KEY_F10
+			102 KEY_F11
+			103 KEY_F12
+			*/			
+			
+			
+			/* if (isPressed(79)) //TESTING KEYS
+			{
+				printf("Shift Pressed\n");
+			}
+			if (isPressed(81)) //TESTING KEYS
+			{
+				printf("ALT Pressed\n");
+			}
+			if (isPressed(83)) //TESTING KEYS
+			{
+				printf("CTRL Pressed0\n");
+			} */
+			
+			
+			
 			if(keyboard)
 			{
-				if (attackState == 108 || zoomState == 109)
+				if (isPressed(AimbotHotKey1) || isPressed(AimbotHotKey2) && !isPressed(TriggerBotHotKey)) //Left and Right click
 				{
 					aiming = true;
 				}
@@ -516,15 +662,21 @@ void ClientActions()
 				{
 					aiming = false;
 				}
-				
-				
-				if (attackState == 108 || !zoomState == 109)
+				if (isPressed(AimbotHotKey1) || !isPressed(AimbotHotKey2))
 				{
 					max_fov = nonADSfov;
 				}
-				if (!attackState == 108 || zoomState == 109)
+				if (!isPressed(AimbotHotKey1) || isPressed(AimbotHotKey2))
 				{
 					max_fov = ADSfov;
+				}
+				if (isPressed(TriggerBotHotKey)) //Left and Right click
+				{
+					TriggerBot = true;
+				}
+				else
+				{
+					TriggerBot = false;
 				}
 			}
 			
@@ -667,6 +819,21 @@ void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int ind
 				aimentity=tmp_aimentity=lastaimentity=0;
 			}
 		}
+		
+		if (aimentity != 0)
+		{
+			uint64_t LocalPlayer = 0;
+			apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+			
+			Entity Target = getEntity(aimentity);
+			Entity LPlayer = getEntity(LocalPlayer);
+			
+			if(TriggerBot && IsInCrossHair(Target))
+			{
+				TriggerBotRun();
+			}
+		}
+		
 	}
 	else
 	{
@@ -694,7 +861,7 @@ void DoActions()
 		while (g_Base!=0)
 		{
 			
-			std::this_thread::sleep_for(std::chrono::milliseconds(30));	
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));	
 
 			uint64_t LocalPlayer = 0;
 			apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
@@ -900,7 +1067,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -937,7 +1104,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -956,7 +1123,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -975,7 +1142,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -995,7 +1162,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1020,7 +1187,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1038,7 +1205,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1056,7 +1223,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1074,7 +1241,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1092,7 +1259,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1110,7 +1277,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1128,7 +1295,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1146,7 +1313,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1164,7 +1331,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1182,7 +1349,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1200,7 +1367,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1218,7 +1385,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							0,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1238,7 +1405,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							0,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1259,7 +1426,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							0,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1277,7 +1444,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1295,7 +1462,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1313,7 +1480,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1331,7 +1498,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1349,7 +1516,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1367,7 +1534,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1385,7 +1552,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1403,7 +1570,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1421,7 +1588,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1439,7 +1606,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1457,7 +1624,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1475,7 +1642,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1493,7 +1660,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1511,7 +1678,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1529,7 +1696,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1547,7 +1714,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1565,7 +1732,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1583,7 +1750,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1601,7 +1768,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1619,7 +1786,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1637,7 +1804,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1655,7 +1822,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 								lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-								125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+								125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 								64,
 								64
 							};
@@ -1673,7 +1840,7 @@ static void item_glow_t()
 					{
 					std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1691,7 +1858,7 @@ static void item_glow_t()
 					{
 					std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1709,7 +1876,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1727,7 +1894,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1745,7 +1912,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1763,7 +1930,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1781,7 +1948,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1799,7 +1966,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1817,7 +1984,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1835,7 +2002,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1853,7 +2020,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1871,7 +2038,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1889,7 +2056,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1907,7 +2074,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1925,7 +2092,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1943,7 +2110,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1961,7 +2128,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1979,7 +2146,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -1997,7 +2164,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2015,7 +2182,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2033,7 +2200,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2051,7 +2218,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2069,7 +2236,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2087,7 +2254,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2105,7 +2272,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2123,7 +2290,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2141,7 +2308,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2159,7 +2326,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2177,7 +2344,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2195,7 +2362,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2213,7 +2380,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2231,7 +2398,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2249,7 +2416,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2267,7 +2434,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2285,7 +2452,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2303,7 +2470,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2321,7 +2488,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2339,7 +2506,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2358,7 +2525,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2377,7 +2544,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2395,7 +2562,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2414,7 +2581,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2452,7 +2619,7 @@ static void item_glow_t()
 					{
 					std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2471,7 +2638,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2490,7 +2657,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2508,7 +2675,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2526,7 +2693,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2544,7 +2711,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2562,7 +2729,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2580,7 +2747,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2598,7 +2765,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2616,7 +2783,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2634,7 +2801,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2652,7 +2819,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2670,7 +2837,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2688,7 +2855,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2709,7 +2876,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2727,7 +2894,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2745,7 +2912,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2763,7 +2930,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2781,7 +2948,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2799,7 +2966,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2817,7 +2984,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2835,7 +3002,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2853,7 +3020,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2871,7 +3038,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2889,7 +3056,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2907,7 +3074,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -2925,7 +3092,7 @@ static void item_glow_t()
 					{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 							lootfilled,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 							64,
 							64
 						};
@@ -3006,7 +3173,7 @@ static void item_glow_t()
 					}
 					uint32_t weaponID;
 					apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME, weaponID); //0x1844
-					//printf("%d\n", HeldID);
+					//printf("%d\n", weaponID);
 					//snipers for headsbots
 					/* if (weaponID == 101 || weaponID == 87 || weaponID == 2 || weaponID == 84 || weaponID == 1 || weaponID == 78 || weaponID == 80 || weaponID == 102 || weaponID == 104 || weaponID == 105)
 					{
@@ -3018,6 +3185,20 @@ static void item_glow_t()
 						bone = 2;
 					} */
 					//bow
+					
+					if(TriggerBot)
+					{
+						if((weaponID == 98 || weaponID == 90 || weaponID == 91 || weaponID == 82 || weaponID == 1))
+						{
+							autoshoot = true;
+						}
+						else
+						{
+							autoshoot = false;
+						}
+					}
+					
+					
 					if (weaponID == 2)
 					{
 						//Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*0.08);
@@ -3066,7 +3247,7 @@ static void item_glow_t()
 						{
 						std::array<unsigned char, 4> highlightFunctionBits = {
 						14,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-						125,   // OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+						125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
 						64,
 						64
 						};
@@ -5132,7 +5313,7 @@ void ItemFilterMenu()
 }
 void saveSettings()
 {
-    std::ofstream settingsFile("settings.txt");
+    std::ofstream settingsFile("Config.txt");
 
     if (settingsFile.is_open())
     {
@@ -5142,6 +5323,17 @@ void saveSettings()
         settingsFile << std::boolalpha << keyboard << "\n";
         settingsFile << std::boolalpha << gamepad << "\n";
         settingsFile << std::boolalpha << item_glow << "\n";
+		
+		settingsFile << std::boolalpha << playerfilledtoggle << "\n";
+		//settingsFile << playerfill << "\n";
+		//settingsFile << playeroutline << "\n";
+		
+
+		settingsFile << std::boolalpha << lootfilledtoggle << "\n";
+		//settingsFile << lootfill << "\n";
+		//settingsFile << lootoutlinesize << "\n";
+		
+		
         settingsFile << std::boolalpha << player_glow << "\n";
         settingsFile << smooth << "\n";
         settingsFile << bone << "\n";
@@ -5280,22 +5472,26 @@ void saveSettings()
 		settingsFile << SuperKeyToggle  << "\n";
 		settingsFile << SuperKey << "\n";
 		
+		settingsFile << AimbotHotKey1 << "\n";
+		settingsFile << AimbotHotKey2 << "\n";
+		settingsFile << TriggerBotHotKey << "\n";
+		
 		
 		
 		
 		
         settingsFile.close();
-		std::cout << "Settings saved to 'settings.txt'.\n";
+		std::cout << "Config saved to 'Config.txt'.\n";
 		std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
     }
     else
     {
-        std::cout << "Error opening settings file for writing." << std::endl;
+        std::cout << "Error opening Config file for writing." << std::endl;
     }
 }
 void loadSettings()
 {
-    std::ifstream settingsFile("settings.txt");
+    std::ifstream settingsFile("Config.txt");
 
     if (settingsFile.is_open())
     {
@@ -5305,6 +5501,16 @@ void loadSettings()
         settingsFile >> std::boolalpha >> gamepad;
         settingsFile >> std::boolalpha >> item_glow;
         settingsFile >> std::boolalpha >> player_glow;
+		
+		settingsFile >> std::boolalpha >> playerfilledtoggle;
+		//settingsFile >> playerfill;
+		//settingsFile >> playeroutline;
+		
+
+		settingsFile >> std::boolalpha >> lootfilledtoggle;
+		//settingsFile >> lootfill;
+		//settingsFile >> lootoutlinesize;
+		
         settingsFile >> smooth;
         settingsFile >> bone;
         settingsFile >> glowrnot;
@@ -5429,15 +5635,19 @@ void loadSettings()
 		settingsFile >> SuperKeyToggle;
 		settingsFile >> SuperKey;
 		
+		settingsFile >> AimbotHotKey1;
+		settingsFile >> AimbotHotKey2;
+		settingsFile >> TriggerBotHotKey;
+		
 		
 
 
         settingsFile.close();
-        std::cout << "Settings loaded from 'settings.txt'.\n";
+        std::cout << "Config loaded from 'Config.txt'.\n";
     }
     else
     {
-        std::cout << "Error opening settings file for reading. Using default settings.\n";
+        std::cout << "Error opening Config file for reading. Using default Config.\n";
     }
 }
 const char* boneDescriptions[] = {
@@ -5576,7 +5786,7 @@ void displayMainMenu()
 		insidevalue = 0;
 		std::cout << "10 - Player Glow Not Filled" << std::endl;
 	}
-	std::cout << "11 - Player Outline Glow" << std::endl;
+	std::cout << "11 - Player Outline Glow Setting Size" << std::endl;
 	std::cout << "12 - Update Glow Colors" << std::endl;
 	std::cout << "13 - Change ADS FOV: (Current: ";
 	std::cout << ADSfov;
@@ -5594,9 +5804,12 @@ void displayMainMenu()
 		std::cout << "15 - Super Glide Enabled" << std::endl;
 	}
 	std::cout << "16 - Item Filter Settings\n" << std::endl;
+	std::cout << "17 - Aiming Key One Setting" << std::endl;
+	std::cout << "18 - Aiming Key Two Setting" << std::endl;
+	std::cout << "19 - Triggerbot Key Setting\n" << std::endl;
 	
-	std::cout << "17 - Save Settings" << std::endl;
-	std::cout << "18 - Load Settings\n" << std::endl;
+	std::cout << "20 - Save Settings" << std::endl;
+	std::cout << "21 - Load Settings\n" << std::endl;
     
 }
 
@@ -7083,9 +7296,106 @@ int getMenuOption()
     std::cin >> option;
     return option;
 }
-
+//keycode stuff
+void printKeyCodes() {
+    std::cout << "Key Codes:" << std::endl;
+    std::cout << "108 Left mouse button (mouse1)" << std::endl;
+    std::cout << "109 Right mouse button (mouse2)" << std::endl;
+    std::cout << "110 Middle mouse button (mouse3)" << std::endl;
+    std::cout << "111 Side mouse button (mouse4)" << std::endl;
+    std::cout << "112 Side mouse button (mouse5)" << std::endl;
+    std::cout << "79 SHIFT key" << std::endl;
+    std::cout << "81 ALT key" << std::endl;
+    std::cout << "83 CTRL key" << std::endl;
+    std::cout << "1 KEY_0" << std::endl;
+    std::cout << "2 KEY_1" << std::endl;
+    std::cout << "3 KEY_2" << std::endl;
+    std::cout << "4 KEY_3" << std::endl;
+    std::cout << "5 KEY_4" << std::endl;
+    std::cout << "6 KEY_5" << std::endl;
+    std::cout << "7 KEY_6" << std::endl;
+    std::cout << "8 KEY_7" << std::endl;
+    std::cout << "9 KEY_8" << std::endl;
+    std::cout << "10 KEY_9" << std::endl;
+    std::cout << "11 KEY_A" << std::endl;
+    std::cout << "12 KEY_B" << std::endl;
+    std::cout << "13 KEY_C" << std::endl;
+    std::cout << "14 KEY_D" << std::endl;
+    std::cout << "15 KEY_E" << std::endl;
+    std::cout << "16 KEY_F" << std::endl;
+    std::cout << "17 KEY_G" << std::endl;
+    std::cout << "18 KEY_H" << std::endl;
+    std::cout << "19 KEY_I" << std::endl;
+    std::cout << "20 KEY_J" << std::endl;
+    std::cout << "21 KEY_K" << std::endl;
+    std::cout << "22 KEY_L" << std::endl;
+    std::cout << "23 KEY_M" << std::endl;
+    std::cout << "24 KEY_N" << std::endl;
+    std::cout << "25 KEY_O" << std::endl;
+    std::cout << "26 KEY_P" << std::endl;
+    std::cout << "27 KEY_Q" << std::endl;
+    std::cout << "28 KEY_R" << std::endl;
+    std::cout << "29 KEY_S" << std::endl;
+    std::cout << "30 KEY_T" << std::endl;
+    std::cout << "31 KEY_U" << std::endl;
+    std::cout << "32 KEY_V" << std::endl;
+    std::cout << "33 KEY_W" << std::endl;
+    std::cout << "34 KEY_X" << std::endl;
+    std::cout << "35 KEY_Y" << std::endl;
+    std::cout << "36 KEY_Z" << std::endl;
+    std::cout << "37 KEY_PAD_0" << std::endl;
+    std::cout << "38 KEY_PAD_1" << std::endl;
+    std::cout << "39 KEY_PAD_2" << std::endl;
+    std::cout << "40 KEY_PAD_3" << std::endl;
+    std::cout << "41 KEY_PAD_4" << std::endl;
+    std::cout << "42 KEY_PAD_5" << std::endl;
+    std::cout << "43 KEY_PAD_6" << std::endl;
+    std::cout << "44 KEY_PAD_7" << std::endl;
+    std::cout << "45 KEY_PAD_8" << std::endl;
+    std::cout << "46 KEY_PAD_9" << std::endl;
+    std::cout << "47 KEY_PAD_DIVIDE" << std::endl;
+    std::cout << "48 KEY_PAD_MULTIPLY" << std::endl;
+    std::cout << "49 KEY_PAD_MINUS" << std::endl;
+    std::cout << "50 KEY_PAD_PLUS" << std::endl;
+    std::cout << "51 KEY_PAD_ENTER" << std::endl;
+    std::cout << "52 KEY_PAD_DECIMAL" << std::endl;
+    std::cout << "65 KEY_SPACE" << std::endl;
+    std::cout << "67 KEY_TAB" << std::endl;
+    std::cout << "68 KEY_CAPSLOCK" << std::endl;
+    std::cout << "69 KEY_NUMLOCK" << std::endl;
+    std::cout << "70 KEY_ESCAPE" << std::endl;
+    std::cout << "71 KEY_SCROLLLOCK" << std::endl;
+    std::cout << "72 KEY_INSERT" << std::endl;
+    std::cout << "73 KEY_DELETE" << std::endl;
+    std::cout << "74 KEY_HOME" << std::endl;
+    std::cout << "75 KEY_END" << std::endl;
+    std::cout << "76 KEY_PAGEUP" << std::endl;
+    std::cout << "77 KEY_PAGEDOWN" << std::endl;
+    std::cout << "78 KEY_BREAK" << std::endl;
+    std::cout << "88 KEY_UP" << std::endl;
+    std::cout << "89 KEY_LEFT" << std::endl;
+    std::cout << "90 KEY_DOWN" << std::endl;
+    std::cout << "91 KEY_RIGHT" << std::endl;
+    std::cout << "92 KEY_F1" << std::endl;
+    std::cout << "93 KEY_F2" << std::endl;
+    std::cout << "94 KEY_F3" << std::endl;
+    std::cout << "95 KEY_F4" << std::endl;
+    std::cout << "96 KEY_F5" << std::endl;
+    std::cout << "97 KEY_F6" << std::endl;
+    std::cout << "98 KEY_F7" << std::endl;
+    std::cout << "99 KEY_F8" << std::endl;
+    std::cout << "100 KEY_F9" << std::endl;
+    std::cout << "101 KEY_F10" << std::endl;
+    std::cout << "102 KEY_F11" << std::endl;
+    std::cout << "103 KEY_F12" << std::endl;
+}
 void terminal()
 {
+	if (LoadSettings)
+	{
+		loadSettings();
+		LoadSettings = false;
+	}
     bool exitProgram = false;
     int menuLevel = 0; // 0 for Main Menu, 1 for Settings Menu, 2 for Submenu
 
@@ -7277,6 +7587,7 @@ void terminal()
 					std::cout << "Loot Glow Not Filled.\n";
 				}
             }
+			
 			if (option == 10)
 			{
                 //player Filled.
@@ -7295,7 +7606,7 @@ void terminal()
             }
 			if (option == 11)
 			{
-                // Command to change the 'smooth' value.
+                // Command to change the 'Player Outlines' value.
 				std::cout << "Enter a new value for Player Outlines (0 to 255): ";
 				int newoutlinesize;
 				std::cin >> newoutlinesize;
@@ -7396,11 +7707,114 @@ void terminal()
                 //  displayItemFilterMenu
                 menuLevel = 1;
             }
+			//Keycode stuff
+			
+			
+			
 			if (option == 17)
+			{
+				// Optionally print the key codes before updating
+				std::cout << "Do you want to see the key codes before updating? (1 for yes, 0 for no): ";
+				int showKeyCodesBeforeUpdate;
+				std::cin >> showKeyCodesBeforeUpdate;
+
+				if (showKeyCodesBeforeUpdate == 1) {
+					printKeyCodes();
+				}
+
+				// Command to change the 'AimbotHotKey1' value.
+				std::cout << "Enter a new value for 'AimbotHotKey1' (e.g., 108 for Left mouse button): ";
+				int newAimbotHotKey1;
+				std::cin >> newAimbotHotKey1;
+
+				// Check if the new value is within the desired range (e.g., 0-255 for key codes).
+				if (newAimbotHotKey1 >= 0 && newAimbotHotKey1 <= 255)
+				{
+					AimbotHotKey1 = newAimbotHotKey1;
+					std::cout << "'AimbotHotKey1' value updated to: " << AimbotHotKey1 << std::endl;
+					printf("The value of 'AimbotHotKey1' is: %d\n", AimbotHotKey1);
+				}
+				else
+				{
+					std::cout << "Invalid value. 'AimbotHotKey1' value must be between 0 and 255." << std::endl;
+				}
+
+				// Clear the input buffer to prevent any issues with future input.
+				std::cin.clear();
+				std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+			}
+
+			if (option == 18)
+			{
+				// Optionally print the key codes before updating
+				std::cout << "Do you want to see the key codes before updating? (1 for yes, 0 for no): ";
+				int showKeyCodesBeforeUpdate;
+				std::cin >> showKeyCodesBeforeUpdate;
+
+				if (showKeyCodesBeforeUpdate == 1) {
+					printKeyCodes();
+				}
+				// Command to change the 'AimbotHotKey2' value.
+				std::cout << "Enter a new value for 'AimbotHotKey2' (e.g., 109 for Right mouse button): ";
+				printKeyCodes();
+				int newAimbotHotKey2;
+				std::cin >> newAimbotHotKey2;
+
+				// Check if the new value is within the desired range (e.g., 0-255 for key codes).
+				if (newAimbotHotKey2 >= 0 && newAimbotHotKey2 <= 255)
+				{
+					AimbotHotKey2 = newAimbotHotKey2;
+					std::cout << "'AimbotHotKey2' value updated to: " << AimbotHotKey2 << std::endl;
+					printf("The value of 'AimbotHotKey2' is: %d\n", AimbotHotKey2);
+				}
+				else
+				{
+					std::cout << "Invalid value. 'AimbotHotKey2' value must be between 0 and 255." << std::endl;
+				}
+
+				// Clear the input buffer to prevent any issues with future input.
+				std::cin.clear();
+				std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+			}
+			if (option == 19)
+			{
+				// Optionally print the key codes before updating
+				std::cout << "Do you want to see the key codes before updating? (1 for yes, 0 for no): ";
+				int showKeyCodesBeforeUpdate;
+				std::cin >> showKeyCodesBeforeUpdate;
+
+				if (showKeyCodesBeforeUpdate == 1) {
+					printKeyCodes();
+				}
+				// Command to change the 'TriggerBotHotKey' value.
+				std::cout << "Enter a new value for 'TriggerBotHotKey': ";
+				printKeyCodes();
+				int newTriggerBotHotKey;
+				std::cin >> newTriggerBotHotKey;
+
+				// Check if the new value is within the desired range (e.g., 0-255 for key codes).
+				if (newTriggerBotHotKey >= 0 && newTriggerBotHotKey <= 255)
+				{
+					TriggerBotHotKey = newTriggerBotHotKey;
+					std::cout << "'TriggerBotHotKey' value updated to: " << TriggerBotHotKey << std::endl;
+					printf("The value of 'TriggerBotHotKey' is: %d\n", TriggerBotHotKey);
+				}
+				else
+				{
+					std::cout << "Invalid value. 'TriggerBotHotKey' value must be between 0 and 255." << std::endl;
+				}
+
+				// Clear the input buffer to prevent any issues with future input.
+				std::cin.clear();
+				std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+			}
+
+			
+			if (option == 20)
 			{
 				saveSettings();
             }
-			if (option == 18)
+			if (option == 21)
 			{
 				loadSettings(); 
             }
@@ -8152,6 +8566,7 @@ int main(int argc, char *argv[])
 	std::thread cactions_thr;
 	//Used to change things on a timer
 	//std::thread updateInsideValue_thr;
+	std::thread TriggerBotRun_thr;
 	std::thread terminal_thr;
 	std::thread itemglow_thr;
 	while(active)
@@ -8163,7 +8578,9 @@ int main(int argc, char *argv[])
 				aim_t = false;
 				actions_t = false;
 				cactions_t = false;
+				//Used to change things on a timer
 				updateInsideValue_t = false;
+				TriggerBotRun_t	= false;
 				terminal_t = false;
 				item_t = false;
 				g_Base = 0;
@@ -8173,6 +8590,7 @@ int main(int argc, char *argv[])
 				cactions_thr.~thread();
 				//Used to change things on a timer
 				//updateInsideValue_thr.~thread();
+				TriggerBotRun_thr.~thread();
 				terminal_thr.~thread();
 				itemglow_thr.~thread();
 			}
@@ -8193,6 +8611,7 @@ int main(int argc, char *argv[])
 				cactions_thr = std::thread(ClientActions);
 				//Used to change things on a timer
 				//updateInsideValue_thr = std::thread(updateInsideValue);
+				TriggerBotRun_thr = std::thread(TriggerBotRun);
 				terminal_thr = std::thread(terminal);
 				itemglow_thr = std::thread(item_glow_t);
 				aimbot_thr.detach();
@@ -8200,6 +8619,7 @@ int main(int argc, char *argv[])
 				cactions_thr.detach();
 				//Used to change things on a timer
 				//updateInsideValue_thr.detach();
+				TriggerBotRun_thr.detach();
 				terminal_thr.detach();
 				itemglow_thr.detach();
 			}

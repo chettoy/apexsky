@@ -93,6 +93,11 @@ float Entity::lastVisTime()
   return *(float*)(buffer + OFFSET_VISIBLE_TIME);
 }
 
+float Entity::lastCrossHairTime()
+{
+	return *(float*)(buffer + OFFSET_CROSSHAIR_LAST);
+}
+
 Vector Entity::getBonePositionByHitbox(int id)
 {
 	Vector origin = getPosition();
@@ -195,7 +200,7 @@ void Entity::enableGlow()
     apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS , 2);
 	apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + HIGHLIGHT_TYPE_SIZE * settingIndex + 4, highlightFunctionBits);
 	apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + HIGHLIGHT_TYPE_SIZE * settingIndex + 8, highlightParameter);
-	apex_mem.Write(g_Base + 0x270 , 1);
+	//apex_mem.Write(g_Base + 0x270 , 1);
 	apex_mem.Write(ptr + 0x270 , 1);
 	//printf("%f\n", deltaTime2);
 
