@@ -52,6 +52,7 @@ public:
 	float GetYaw();
 	void enableGlow();
 	void disableGlow();
+	float lastCrossHairTime();
 	void SetViewAngles(SVector angles);
 	void SetViewAngles(QAngle& angles);
 	Vector getBonePosition(int id);

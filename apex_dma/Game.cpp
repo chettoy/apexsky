@@ -94,6 +94,11 @@ float Entity::lastVisTime()
   return *(float*)(buffer + OFFSET_VISIBLE_TIME);
 }
 
+float Entity::lastCrossHairTime()
+{
+	return *(float*)(buffer + OFFSET_CROSSHAIR_LAST);
+}
+
 Vector Entity::getBonePositionByHitbox(int id)
 {
 	Vector origin = getPosition();
