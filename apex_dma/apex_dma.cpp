@@ -861,7 +861,7 @@ void DoActions()
 		while (g_Base!=0)
 		{
 			
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));	
+			std::this_thread::sleep_for(std::chrono::milliseconds(30));	 //don't change xD
 
 			uint64_t LocalPlayer = 0;
 			apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
