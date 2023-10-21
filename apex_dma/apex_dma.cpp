@@ -50,6 +50,9 @@ float ADSfov = 10;
 float nonADSfov = 50;
 extern float bulletspeed;
 extern float bulletgrav;
+int playerentcount = 61;
+int itementcount = 10000;
+bool deathbox = false;
 
 
 //^^ Don't EDIT^^
@@ -466,7 +469,8 @@ void ClientActions()
 			float m_traversalProgressTmp = 0.0f;
 			apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008, curFrameNumber); // GlobalVars + 0x0008
 			float m_traversalProgress;
-			
+			//printf("Playerentcount: %i\n", playerentcount);
+			//printf("Playerentcount: %i\n", itementcount);
 			apex_mem.Read<float>(LocalPlayer + OFFSET_TRAVERSAL_PROGRESS, m_traversalProgress);
 			//printf("Travel Time: %f\n", m_traversalProgress);
 			//printf("Frame Sleep Timer: %i\n", frameSleepTimer);
@@ -860,7 +864,22 @@ void DoActions()
 
 		while (g_Base!=0)
 		{
-			
+			if(firing_range)
+			{
+				playerentcount = 16000;
+			}
+			else
+			{
+				playerentcount = 61;
+			}
+			if(deathbox)
+			{
+				itementcount = 15000;
+			}
+			else
+			{
+				itementcount = 10000;
+			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(30));	 //don't change xD
 
 			uint64_t LocalPlayer = 0;
@@ -890,7 +909,7 @@ void DoActions()
 			if(firing_range)
 			{
 				int c=0;
-				for (int i = 0; i < 16000; i++)
+				for (int i = 0; i < playerentcount; i++)
 				{
 					uint64_t centity = 0;
 					apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
@@ -1024,7 +1043,7 @@ static void item_glow_t()
 			if (item_glow)
 			{
 				//item ENTs to loop, 10k-15k is normal. 10k might be better but will not show all the death boxes i think.
-				for (int i = 0; i < 15000; i++)
+				for (int i = 0; i < itementcount; i++)
 				{
 					uint64_t centity = 0;
 					apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
@@ -1381,24 +1400,27 @@ static void item_glow_t()
 						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
 						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
 					}
-					if (item.isBox())
+					if(deathbox)
 					{
-						std::array<unsigned char, 4> highlightFunctionBits = {
-							0,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
-							125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
-							64,
-							64
-						};
-						std::array<float, 3> highlightParameter = { 1, 0, 0 };
-						apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
-						static const int contextId = 0;
-						int settingIndex = 88;
-						apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
-						long highlightSettingsPtr;
-						apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
-						apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
-						apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
-						
+						if (item.isBox())
+						{
+							std::array<unsigned char, 4> highlightFunctionBits = {
+								0,   // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
+								125,   // OutlineFunction OutlineFunction HIGHLIGHT_OUTLINE_LOOT_SCANNED 
+								64,
+								64
+							};
+							std::array<float, 3> highlightParameter = { 1, 0, 0 };
+							apex_mem.Write<uint32_t>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
+							static const int contextId = 0;
+							int settingIndex = 88;
+							apex_mem.Write<unsigned char>(centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+							long highlightSettingsPtr;
+							apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+							apex_mem.Write<typeof(highlightFunctionBits)>(highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits); 
+							apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
+							
+						}
 					}
 					
 					if (item.isTrap())
@@ -3215,14 +3237,14 @@ static void item_glow_t()
 				}
 				k=1;
 				//Change the 60 ms to lower to make the death boxes filker less.
-				//std::this_thread::sleep_for(std::chrono::milliseconds(60));
+				std::this_thread::sleep_for(std::chrono::milliseconds(60));
 			}
 			else
 			{		
 				if(k==1)
 				{
 					//same and the ents above to turn the glow off
-					for (int i = 0; i < 15000; i++)
+					for (int i = 0; i < itementcount; i++)
 					{
 						uint64_t centity = 0;
 						apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
@@ -5289,6 +5311,7 @@ static void item_glow_t()
 					
 					}
 					k=0;
+					std::this_thread::sleep_for(std::chrono::milliseconds(60));
 				}
 			}	
 		}
@@ -5323,7 +5346,7 @@ void saveSettings()
         settingsFile << std::boolalpha << keyboard << "\n";
         settingsFile << std::boolalpha << gamepad << "\n";
         settingsFile << std::boolalpha << item_glow << "\n";
-		
+		settingsFile << std::boolalpha << deathbox << "\n"; 
 		settingsFile << std::boolalpha << playerfilledtoggle << "\n";
 		//settingsFile << playerfill << "\n";
 		//settingsFile << playeroutline << "\n";
@@ -5500,6 +5523,7 @@ void loadSettings()
         settingsFile >> std::boolalpha >> keyboard;
         settingsFile >> std::boolalpha >> gamepad;
         settingsFile >> std::boolalpha >> item_glow;
+		settingsFile >> std::boolalpha >> deathbox;
         settingsFile >> std::boolalpha >> player_glow;
 		
 		settingsFile >> std::boolalpha >> playerfilledtoggle;
@@ -5808,8 +5832,17 @@ void displayMainMenu()
 	std::cout << "18 - Aiming Key Two Setting" << std::endl;
 	std::cout << "19 - Triggerbot Key Setting\n" << std::endl;
 	
-	std::cout << "20 - Save Settings" << std::endl;
-	std::cout << "21 - Load Settings\n" << std::endl;
+	if (deathbox)
+	{
+		std::cout << "20 - Death Boxes ON\n" << std::endl;
+	}
+	else
+	{
+		std::cout << "20 - Death Boxes OFF\n" << std::endl;
+	}
+	
+	std::cout << "21 - Save Settings" << std::endl;
+	std::cout << "22 - Load Settings\n" << std::endl;
     
 }
 
@@ -7809,12 +7842,25 @@ void terminal()
 				std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 			}
 
-			
 			if (option == 20)
+			{
+                // Toggle TDM.
+				deathbox = !deathbox;
+				
+				if (deathbox)
+				{
+					std::cout << "Death Boxes on.\n";
+				}
+				else
+				{
+					std::cout << "Death Boxes off.\n";
+				}
+            }
+			if (option == 21)
 			{
 				saveSettings();
             }
-			if (option == 21)
+			if (option == 22)
 			{
 				loadSettings(); 
             }
