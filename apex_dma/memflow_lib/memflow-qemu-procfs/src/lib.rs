@@ -1,9 +1,10 @@
 use log::info;
 
+use memflow::*;
+use memflow_derive::connector;
+
 use core::ffi::c_void;
 use libc::{c_ulong, iovec, pid_t, sysconf, _SC_IOV_MAX};
-
-use memflow::prelude::v1::*;
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]

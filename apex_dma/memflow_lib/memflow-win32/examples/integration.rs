@@ -1,5 +1,4 @@
-use memflow::connector::ConnectorInventory;
-use memflow::connector::ConnectorArgs;
+use memflow::connector::*;
 use memflow::mem::*;
 
 use memflow_win32::error::{Error, Result};

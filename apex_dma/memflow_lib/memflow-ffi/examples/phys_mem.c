@@ -1,14 +1,13 @@
 #include "memflow.h"
 #include <stdio.h>
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	log_init(4);
 
-	ConnectorInventory *inv = inventory_scan();
+	ConnectorInventory *inv = inventory_try_new();
 	printf("inv: %p\n", inv);
 
-	const char *conn_name = argc > 1? argv[1]: "qemu_procfs";
+	const char *conn_name = argc > 1? argv[1]: "kvm";
 	const char *conn_arg = argc > 2? argv[2]: "";
 
 	CloneablePhysicalMemoryObj *conn = inventory_create_connector(inv, conn_name, conn_arg);

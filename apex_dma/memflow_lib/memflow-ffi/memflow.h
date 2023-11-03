@@ -138,11 +138,11 @@ typedef uint32_t PID;
 extern "C" {
 #endif // __cplusplus
 
-extern const struct ArchitectureObj *X86_32;
+extern const ArchitectureObj *X86_32;
 
-extern const struct ArchitectureObj *X86_32_PAE;
+extern const ArchitectureObj *X86_32_PAE;
 
-extern const struct ArchitectureObj *X86_64;
+extern const ArchitectureObj *X86_64;
 
 void log_init(int32_t level_num);
 
@@ -151,7 +151,7 @@ void log_init(int32_t level_num);
  *
  * This will create a `PhysicalAddress` with `UNKNOWN` PageType.
  */
-struct PhysicalAddress addr_to_paddr(Address address);
+PhysicalAddress addr_to_paddr(Address address);
 
 /**
  * Create a new connector inventory
@@ -166,7 +166,7 @@ struct PhysicalAddress addr_to_paddr(Address address);
  * ConnectorInventory is inherently unsafe, because it loads shared libraries which can not be
  * guaranteed to be safe.
  */
-struct ConnectorInventory *inventory_scan(void);
+ConnectorInventory *inventory_scan(void);
 
 /**
  * Create a new inventory with custom path string
@@ -175,7 +175,7 @@ struct ConnectorInventory *inventory_scan(void);
  *
  * `path` must be a valid null terminated string
  */
-struct ConnectorInventory *inventory_scan_path(const char *path);
+ConnectorInventory *inventory_scan_path(const char *path);
 
 /**
  * Add a directory to an existing inventory
@@ -184,7 +184,7 @@ struct ConnectorInventory *inventory_scan_path(const char *path);
  *
  * `dir` must be a valid null terminated string
  */
-int32_t inventory_add_dir(struct ConnectorInventory *inv, const char *dir);
+int32_t inventory_add_dir(ConnectorInventory *inv, const char *dir);
 
 /**
  * Create a connector with given arguments
@@ -206,9 +206,9 @@ int32_t inventory_add_dir(struct ConnectorInventory *inv, const char *dir);
  * Any error strings returned by the connector must not be outputed after the connector gets
  * freed, because that operation could cause the underlying shared library to get unloaded.
  */
-struct CloneablePhysicalMemoryObj *inventory_create_connector(struct ConnectorInventory *inv,
-                                                              const char *name,
-                                                              const char *args);
+CloneablePhysicalMemoryObj *inventory_create_connector(ConnectorInventory *inv,
+                                                       const char *name,
+                                                       const char *args);
 
 /**
  * Clone a connector
@@ -222,7 +222,7 @@ struct CloneablePhysicalMemoryObj *inventory_create_connector(struct ConnectorIn
  * `conn` has to point to a a valid `CloneablePhysicalMemory` created by one of the provided
  * functions.
  */
-struct CloneablePhysicalMemoryObj *connector_clone(const struct CloneablePhysicalMemoryObj *conn);
+CloneablePhysicalMemoryObj *connector_clone(const CloneablePhysicalMemoryObj *conn);
 
 /**
  * Free a connector instance
@@ -235,7 +235,7 @@ struct CloneablePhysicalMemoryObj *connector_clone(const struct CloneablePhysica
  * There has to be no instance of `PhysicalMemory` created from the input `conn`, because they
  * will become invalid.
  */
-void connector_free(struct CloneablePhysicalMemoryObj *conn);
+void connector_free(CloneablePhysicalMemoryObj *conn);
 
 /**
  * Free a connector inventory
@@ -245,7 +245,7 @@ void connector_free(struct CloneablePhysicalMemoryObj *conn);
  * `inv` must point to a valid `ConnectorInventory` that was created using one of the provided
  * functions.
  */
-void inventory_free(struct ConnectorInventory *inv);
+void inventory_free(ConnectorInventory *inv);
 
 /**
  * Downcast a cloneable physical memory into a physical memory object.
@@ -256,7 +256,7 @@ void inventory_free(struct ConnectorInventory *inv);
  * Please note that this does not free `cloneable`, and the reference is still valid for further
  * operations.
  */
-struct PhysicalMemoryObj *downcast_cloneable(struct CloneablePhysicalMemoryObj *cloneable);
+PhysicalMemoryObj *downcast_cloneable(CloneablePhysicalMemoryObj *cloneable);
 
 /**
  * Free a `PhysicalMemoryObj`
@@ -269,7 +269,7 @@ struct PhysicalMemoryObj *downcast_cloneable(struct CloneablePhysicalMemoryObj *
  * `mem` must point to a valid `PhysicalMemoryObj` that was created using one of the provided
  * functions.
  */
-void phys_free(struct PhysicalMemoryObj *mem);
+void phys_free(PhysicalMemoryObj *mem);
 
 /**
  * Read a list of values
@@ -281,9 +281,7 @@ void phys_free(struct PhysicalMemoryObj *mem);
  *
  * `data` must be a valid array of `PhysicalReadData` with the length of at least `len`
  */
-int32_t phys_read_raw_list(struct PhysicalMemoryObj *mem,
-                           struct PhysicalReadData *data,
-                           uintptr_t len);
+int32_t phys_read_raw_list(PhysicalMemoryObj *mem, PhysicalReadData *data, uintptr_t len);
 
 /**
  * Write a list of values
@@ -295,14 +293,12 @@ int32_t phys_read_raw_list(struct PhysicalMemoryObj *mem,
  *
  * `data` must be a valid array of `PhysicalWriteData` with the length of at least `len`
  */
-int32_t phys_write_raw_list(struct PhysicalMemoryObj *mem,
-                            const struct PhysicalWriteData *data,
-                            uintptr_t len);
+int32_t phys_write_raw_list(PhysicalMemoryObj *mem, const PhysicalWriteData *data, uintptr_t len);
 
 /**
  * Retrieve metadata about the physical memory object
  */
-struct PhysicalMemoryMetadata phys_metadata(const struct PhysicalMemoryObj *mem);
+PhysicalMemoryMetadata phys_metadata(const PhysicalMemoryObj *mem);
 
 /**
  * Read a single value into `out` from a provided `PhysicalAddress`
@@ -311,20 +307,20 @@ struct PhysicalMemoryMetadata phys_metadata(const struct PhysicalMemoryObj *mem)
  *
  * `out` must be a valid pointer to a data buffer of at least `len` size.
  */
-int32_t phys_read_raw_into(struct PhysicalMemoryObj *mem,
-                           struct PhysicalAddress addr,
+int32_t phys_read_raw_into(PhysicalMemoryObj *mem,
+                           PhysicalAddress addr,
                            uint8_t *out,
                            uintptr_t len);
 
 /**
  * Read a single 32-bit value from a provided `PhysicalAddress`
  */
-uint32_t phys_read_u32(struct PhysicalMemoryObj *mem, struct PhysicalAddress addr);
+uint32_t phys_read_u32(PhysicalMemoryObj *mem, PhysicalAddress addr);
 
 /**
  * Read a single 64-bit value from a provided `PhysicalAddress`
  */
-uint64_t phys_read_u64(struct PhysicalMemoryObj *mem, struct PhysicalAddress addr);
+uint64_t phys_read_u64(PhysicalMemoryObj *mem, PhysicalAddress addr);
 
 /**
  * Write a single value from `input` into a provided `PhysicalAddress`
@@ -333,20 +329,20 @@ uint64_t phys_read_u64(struct PhysicalMemoryObj *mem, struct PhysicalAddress add
  *
  * `input` must be a valid pointer to a data buffer of at least `len` size.
  */
-int32_t phys_write_raw(struct PhysicalMemoryObj *mem,
-                       struct PhysicalAddress addr,
+int32_t phys_write_raw(PhysicalMemoryObj *mem,
+                       PhysicalAddress addr,
                        const uint8_t *input,
                        uintptr_t len);
 
 /**
  * Write a single 32-bit value into a provided `PhysicalAddress`
  */
-int32_t phys_write_u32(struct PhysicalMemoryObj *mem, struct PhysicalAddress addr, uint32_t val);
+int32_t phys_write_u32(PhysicalMemoryObj *mem, PhysicalAddress addr, uint32_t val);
 
 /**
  * Write a single 64-bit value into a provided `PhysicalAddress`
  */
-int32_t phys_write_u64(struct PhysicalMemoryObj *mem, struct PhysicalAddress addr, uint64_t val);
+int32_t phys_write_u64(PhysicalMemoryObj *mem, PhysicalAddress addr, uint64_t val);
 
 /**
  * Free a virtual memory object reference
@@ -357,7 +353,7 @@ int32_t phys_write_u64(struct PhysicalMemoryObj *mem, struct PhysicalAddress add
  *
  * `mem` must be a valid reference to a virtual memory object.
  */
-void virt_free(struct VirtualMemoryObj *mem);
+void virt_free(VirtualMemoryObj *mem);
 
 /**
  * Read a list of values
@@ -370,9 +366,7 @@ void virt_free(struct VirtualMemoryObj *mem);
  *
  * `data` must be a valid array of `VirtualReadData` with the length of at least `len`
  */
-int32_t virt_read_raw_list(struct VirtualMemoryObj *mem,
-                           struct VirtualReadData *data,
-                           uintptr_t len);
+int32_t virt_read_raw_list(VirtualMemoryObj *mem, VirtualReadData *data, uintptr_t len);
 
 /**
  * Write a list of values
@@ -385,9 +379,7 @@ int32_t virt_read_raw_list(struct VirtualMemoryObj *mem,
  *
  * `data` must be a valid array of `VirtualWriteData` with the length of at least `len`
  */
-int32_t virt_write_raw_list(struct VirtualMemoryObj *mem,
-                            const struct VirtualWriteData *data,
-                            uintptr_t len);
+int32_t virt_write_raw_list(VirtualMemoryObj *mem, const VirtualWriteData *data, uintptr_t len);
 
 /**
  * Read a single value into `out` from a provided `Address`
@@ -396,17 +388,17 @@ int32_t virt_write_raw_list(struct VirtualMemoryObj *mem,
  *
  * `out` must be a valid pointer to a data buffer of at least `len` size.
  */
-int32_t virt_read_raw_into(struct VirtualMemoryObj *mem, Address addr, uint8_t *out, uintptr_t len);
+int32_t virt_read_raw_into(VirtualMemoryObj *mem, Address addr, uint8_t *out, uintptr_t len);
 
 /**
  * Read a single 32-bit value from a provided `Address`
  */
-uint32_t virt_read_u32(struct VirtualMemoryObj *mem, Address addr);
+uint32_t virt_read_u32(VirtualMemoryObj *mem, Address addr);
 
 /**
  * Read a single 64-bit value from a provided `Address`
  */
-uint64_t virt_read_u64(struct VirtualMemoryObj *mem, Address addr);
+uint64_t virt_read_u64(VirtualMemoryObj *mem, Address addr);
 
 /**
  * Write a single value from `input` into a provided `Address`
@@ -415,30 +407,27 @@ uint64_t virt_read_u64(struct VirtualMemoryObj *mem, Address addr);
  *
  * `input` must be a valid pointer to a data buffer of at least `len` size.
  */
-int32_t virt_write_raw(struct VirtualMemoryObj *mem,
-                       Address addr,
-                       const uint8_t *input,
-                       uintptr_t len);
+int32_t virt_write_raw(VirtualMemoryObj *mem, Address addr, const uint8_t *input, uintptr_t len);
 
 /**
  * Write a single 32-bit value into a provided `Address`
  */
-int32_t virt_write_u32(struct VirtualMemoryObj *mem, Address addr, uint32_t val);
+int32_t virt_write_u32(VirtualMemoryObj *mem, Address addr, uint32_t val);
 
 /**
  * Write a single 64-bit value into a provided `Address`
  */
-int32_t virt_write_u64(struct VirtualMemoryObj *mem, Address addr, uint64_t val);
+int32_t virt_write_u64(VirtualMemoryObj *mem, Address addr, uint64_t val);
 
-uint8_t arch_bits(const struct ArchitectureObj *arch);
+uint8_t arch_bits(const ArchitectureObj *arch);
 
-Endianess arch_endianess(const struct ArchitectureObj *arch);
+Endianess arch_endianess(const ArchitectureObj *arch);
 
-uintptr_t arch_page_size(const struct ArchitectureObj *arch);
+uintptr_t arch_page_size(const ArchitectureObj *arch);
 
-uintptr_t arch_size_addr(const struct ArchitectureObj *arch);
+uintptr_t arch_size_addr(const ArchitectureObj *arch);
 
-uint8_t arch_address_space_bits(const struct ArchitectureObj *arch);
+uint8_t arch_address_space_bits(const ArchitectureObj *arch);
 
 /**
  * Free an architecture reference
@@ -447,13 +436,13 @@ uint8_t arch_address_space_bits(const struct ArchitectureObj *arch);
  *
  * `arch` must be a valid heap allocated reference created by one of the API's functions.
  */
-void arch_free(struct ArchitectureObj *arch);
+void arch_free(ArchitectureObj *arch);
 
-bool is_x86_arch(const struct ArchitectureObj *arch);
+bool is_x86_arch(const ArchitectureObj *arch);
 
-Address os_process_info_address(const struct OsProcessInfoObj *obj);
+Address os_process_info_address(const OsProcessInfoObj *obj);
 
-PID os_process_info_pid(const struct OsProcessInfoObj *obj);
+PID os_process_info_pid(const OsProcessInfoObj *obj);
 
 /**
  * Retreive name of the process
@@ -465,11 +454,11 @@ PID os_process_info_pid(const struct OsProcessInfoObj *obj);
  *
  * `out` must be a buffer with at least `max_len` size
  */
-uintptr_t os_process_info_name(const struct OsProcessInfoObj *obj, char *out, uintptr_t max_len);
+uintptr_t os_process_info_name(const OsProcessInfoObj *obj, char *out, uintptr_t max_len);
 
-const struct ArchitectureObj *os_process_info_sys_arch(const struct OsProcessInfoObj *obj);
+const ArchitectureObj *os_process_info_sys_arch(const OsProcessInfoObj *obj);
 
-const struct ArchitectureObj *os_process_info_proc_arch(const struct OsProcessInfoObj *obj);
+const ArchitectureObj *os_process_info_proc_arch(const OsProcessInfoObj *obj);
 
 /**
  * Free a OsProcessInfoObj reference
@@ -479,15 +468,15 @@ const struct ArchitectureObj *os_process_info_proc_arch(const struct OsProcessIn
  * `obj` must point to a valid `OsProcessInfoObj`, and was created using one of the API's
  * functions.
  */
-void os_process_info_free(struct OsProcessInfoObj *obj);
+void os_process_info_free(OsProcessInfoObj *obj);
 
-Address os_process_module_address(const struct OsProcessModuleInfoObj *obj);
+Address os_process_module_address(const OsProcessModuleInfoObj *obj);
 
-Address os_process_module_parent_process(const struct OsProcessModuleInfoObj *obj);
+Address os_process_module_parent_process(const OsProcessModuleInfoObj *obj);
 
-Address os_process_module_base(const struct OsProcessModuleInfoObj *obj);
+Address os_process_module_base(const OsProcessModuleInfoObj *obj);
 
-uintptr_t os_process_module_size(const struct OsProcessModuleInfoObj *obj);
+uintptr_t os_process_module_size(const OsProcessModuleInfoObj *obj);
 
 /**
  * Retreive name of the module
@@ -499,9 +488,7 @@ uintptr_t os_process_module_size(const struct OsProcessModuleInfoObj *obj);
  *
  * `out` must be a buffer with at least `max_len` size
  */
-uintptr_t os_process_module_name(const struct OsProcessModuleInfoObj *obj,
-                                 char *out,
-                                 uintptr_t max_len);
+uintptr_t os_process_module_name(const OsProcessModuleInfoObj *obj, char *out, uintptr_t max_len);
 
 /**
  * Free a OsProcessModuleInfoObj reference
@@ -511,7 +498,7 @@ uintptr_t os_process_module_name(const struct OsProcessModuleInfoObj *obj,
  * `obj` must point to a valid `OsProcessModuleInfoObj`, and was created using one of the API's
  * functions.
  */
-void os_process_module_free(struct OsProcessModuleInfoObj *obj);
+void os_process_module_free(OsProcessModuleInfoObj *obj);
 
 #ifdef __cplusplus
 } // extern "C"

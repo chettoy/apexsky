@@ -120,9 +120,7 @@ pub fn main() {
         )
     }
     .unwrap();
-    
-    println!("test");
-    
+
     // parallel test functions
     // see each function's implementation for further details
 
