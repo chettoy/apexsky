@@ -62,7 +62,7 @@
 #define OFFSET_ZOOM_FOV 0x1600 + 0x00b8 //m_playerData + m_curZoomFOV //updated 11/1/2023
 #define OFFSET_AMMO 0x1584 //m_ammoInClip first offset //updated 11/1/2023
  
-//#define OFFSET_ITEM_GLOW 0x02f0 //m_highlightFunctionBits
+#define OFFSET_ITEM_GLOW 0x02f0 //m_highlightFunctionBits
 #define OFFSET_ITEM_ID 0x1588 // item id? m_customScriptInt ? //updated 11/1/2023
 #define OFFSET_MODELNAME 0x0030 // m_ModelName //updated 11/1/2023
 #define OFFSET_M_CUSTOMSCRIPTINT 0x1588 //m_customScriptInt //updated 11/1/2023

@@ -8,9 +8,6 @@
 extern Memory apex_mem;
 
 extern bool firing_range;
-extern float glowr;
-extern float glowg;
-extern float glowb;
 
 float bulletspeed = 0.08;
 float bulletgrav = 0.05;
@@ -47,6 +44,19 @@ void get_class_name(uint64_t entity_ptr, char *out_str) {
 }
 
 int Entity::getTeamId() { return *(int *)(buffer + OFFSET_TEAM); }
+
+int Entity::getHealth() { return *(int *)(buffer + OFFSET_HEALTH); }
+// seer health and shield i added
+
+int Entity::getArmortype() {
+  int armortype;
+  apex_mem.Read<int>(ptr + OFFSET_ARMORTYPE, armortype);
+  return armortype;
+}
+
+int Entity::getShield() { return *(int *)(buffer + OFFSET_SHIELD); }
+
+int Entity::getMaxshield() { return *(int *)(buffer + OFFSET_MAXSHIELD); }
 
 Vector Entity::getAbsVelocity() {
   return *(Vector *)(buffer + OFFSET_ABS_VELOCITY);
@@ -218,6 +228,13 @@ Vector Entity::GetCamPos() { return *(Vector *)(buffer + OFFSET_CAMERAPOS); }
 
 QAngle Entity::GetRecoil() { return *(QAngle *)(buffer + OFFSET_AIMPUNCH); }
 
+void Entity::get_name(uint64_t g_Base, uint64_t index, char *name) {
+  index *= 0x10;
+  uint64_t name_ptr = 0;
+  apex_mem.Read<uint64_t>(g_Base + OFFSET_NAME_LIST + index, name_ptr);
+  apex_mem.ReadArray<char>(name_ptr, name, 32);
+}
+
 // Items
 bool Item::isItem() {
   char class_name[33] = {};
@@ -241,7 +258,7 @@ bool Item::isTrap() {
 }
 
 bool Item::isGlowing() {
-  return *(int *)(buffer + OFFSET_ITEM_ID) == 1363184265;
+  return *(int *)(buffer + OFFSET_ITEM_GLOW) == 1363184265;
 }
 
 void Item::enableGlow() {
