@@ -12,3 +12,5 @@ target/
 Cargo.lock
 *.so
 .vscode/
+build/
+.cache
