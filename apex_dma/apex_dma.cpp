@@ -81,7 +81,7 @@ bool SuperKeyToggle = true;
 // end Terminal Stuff
 bool TDMToggle = false;
 bool item_glow = true;     // item glow
-bool player_glow = false;   // player glow
+bool player_glow = false;  // player glow
 bool aim_no_recoil = true; // no recoil
 float max_fov = 15;        // Fov you want to use while aiming
 int aim = 2; // 0 no aim, 1 aim with no vis check, 2 aim with vis check
@@ -3883,10 +3883,7 @@ static void item_glow_t() {
           // printf("%d\n", weaponID);
           // snipers for headsbots
           if (weaponID == 1573) {
-
             bone = 0;
-          } else if (weaponID != 1573) {
-            bone = 2;
           }
           // bow
 
@@ -3895,9 +3892,6 @@ static void item_glow_t() {
             // Ctx.BulletGravity = BulletGrav + (BulletGrav*0.05);
             bulletspeed = 10.08;
             bulletgrav = 10.05;
-          } else if (weaponID != 2) {
-            bulletspeed = 0.08;
-            bulletgrav = 0.05;
           }
         }
         k = 1;

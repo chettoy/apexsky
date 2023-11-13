@@ -34,8 +34,8 @@ float max_dist = 3800.0f * 40.0f; // read //Max Distance of ESP 3800 is full map
 extern float smooth;              // Min 100 for safe aimbotting   sync
 extern float max_fov;             // 15 is the sweetspot for 1080p
 // Dynamic Fov
-float dynamicfov = 10;
-float dynamicfovmax = 15.0f;
+extern float ADSfov;
+extern float nonADSfov;
 // tdm check
 extern int EntTeam;    // sync
 extern int LocTeam;    // sync
@@ -45,8 +45,8 @@ bool triggerbot = false;
 // 1v1
 bool onevone = false;
 
-float smoothpred = 0.08;
-float smoothpred2 = 0.05;
+extern float bulletspeed; // sync
+extern float bulletgrav; // sync
 float veltest = 1.00; // sync
 bool MiniMapGuides = true;
 extern int bone; // 0 Head, 1 Neck, 2 Body, 3 Stomace, 4 Nuts  sync

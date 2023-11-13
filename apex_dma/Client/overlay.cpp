@@ -35,13 +35,13 @@ extern bool ready;
 extern float max_dist;
 extern float smooth;
 extern bool MiniMapGuides;
-extern float smoothpred;
-extern float smoothpred2;
+extern float bulletspeed;
+extern float bulletgrav;
 
 // Dynamic Fov
-extern float dynamicfov;
-extern float dynamicfovmax;
 extern float max_fov;
+extern float ADSfov;
+extern float nonADSfov;
 extern int bone;
 extern bool thirdperson;
 extern int spectators;
@@ -328,14 +328,32 @@ void Overlay::RenderMenu() {
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
     ImGui::Text(XorStr("Max fov:"));
+    ImGui::Dummy(ImVec2(0.0f, 4.0f));
+    ImGui::Text(XorStr("non-ADS:"));
+    ImGui::SameLine();
+    ImGui::TextColored(GREEN, "%.f", nonADSfov);
+    ImGui::SliderFloat(XorStr("##nonADSfov"), &nonADSfov, 5.0f, 50.0f, "##");
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
+    ImGui::Text(XorStr("ADS:"));
+    ImGui::SameLine();
+    ImGui::TextColored(GREEN, "%.f", ADSfov);
+    ImGui::SliderFloat(XorStr("##ADSfov"), &ADSfov, 5.0f, 50.0f, "##");
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
+    ImGui::Text(XorStr("Current:"));
     ImGui::SameLine();
     ImGui::TextColored(GREEN, "%.f", max_fov);
-    ImGui::SliderFloat(XorStr("##?"), &max_fov, 5.0f, 50.0f, "##");
+    ImGui::SliderFloat(XorStr("##max_fov"), &max_fov, 5.0f, 50.0f, "##");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
-
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Smooth Aim Value:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.f", smooth);
+    if (smooth < 100.0f) {
+      ImGui::TextColored(RED, "%.f", smooth);
+    } else if (smooth > 120.0f) {
+      ImGui::TextColored(GREEN, "%.f", smooth);
+    } else {
+      ImGui::TextColored(WHITE, "%.f", smooth);
+    }
     ImGui::SliderFloat(XorStr("##2"), &smooth, 85.0f, 150.0f, "##");
     ImGui::SameLine();
     ImGui::Text(XorStr("85 To 100 Is Safe"));
@@ -343,22 +361,22 @@ void Overlay::RenderMenu() {
 
     ImGui::Text(XorStr("Smooth Preditcion Speed:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.2f", smoothpred);
-    ImGui::SliderFloat(XorStr("##55"), &smoothpred, -10.58f, 5.80f, "##");
+    ImGui::TextColored(GREEN, "%.2f", bulletspeed);
+    ImGui::SliderFloat(XorStr("##55"), &bulletspeed, -10.58f, 5.80f, "##");
     ImGui::SameLine();
     ImGui::Text(XorStr("Default is 0.08"));
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
     ImGui::Text(XorStr("Smooth Preditcion Gravity:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.2f", smoothpred2);
-    ImGui::SliderFloat(XorStr("##57"), &smoothpred2, -10.55f, 5.90f, "##");
+    ImGui::TextColored(GREEN, "%.2f", bulletgrav);
+    ImGui::SliderFloat(XorStr("##57"), &bulletgrav, -10.55f, 5.90f, "##");
     ImGui::SameLine();
     ImGui::Text(XorStr("Default is 0.05"));
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Aiming Bone:"));
     ImGui::Text(XorStr("0=Head, 1=Neck, 2=Chest, 3=Stomach"));
-    ImGui::SliderInt(XorStr("##bone slider"), &bone, 0, 30);
+    ImGui::SliderInt(XorStr("##bone"), &bone, 0, 3);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("ESP Options:"));
     ImGui::Checkbox(XorStr("Box"), &v.box);
@@ -663,6 +681,7 @@ void Overlay::RenderMenu() {
   ImGui::Dummy(ImVec2(0.0f, 10.0f));
   ImGui::Text(XorStr("Overlay FPS: %.3f ms/frame (%.1f FPS)"),
               1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+  ImGui::Text(XorStr("external-overlay test build #2"));
   ImGui::End();
 }
 
@@ -673,7 +692,11 @@ void Overlay::RenderInfo() {
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                    ImGuiWindowFlags_NoScrollbar);
   DrawLine(ImVec2(1, 2), ImVec2(280, 2), RED, 2);
-  ImGui::TextColored(RED, "%d", spectators);
+  if (spectators == 0) {
+    ImGui::TextColored(GREEN, "%d", spectators);
+  } else {
+    ImGui::TextColored(RED, "%d", spectators);
+  }
   ImGui::SameLine();
   ImGui::Text("--");
   ImGui::SameLine();
@@ -692,11 +715,11 @@ void Overlay::RenderInfo() {
     ImGui::TextColored(RED, "Aim Off %d", aim);
   }
   ImGui::SameLine();
-  if (triggerbot) {
-    ImGui::TextColored(GREEN, "1v1 On");
-  } else {
-    ImGui::TextColored(RED, "1v1 Off");
-  }
+  // if (triggerbot) {
+  //   ImGui::TextColored(GREEN, "1v1 On");
+  // } else {
+  //   ImGui::TextColored(RED, "1v1 Off");
+  // }
   DrawLine(ImVec2(1, 28), ImVec2(280, 28), RED, 2);
   ImGui::End();
 }
@@ -938,7 +961,8 @@ void Overlay::DrawLine(ImVec2 a, ImVec2 b, ImColor color, float width) {
   ImGui::GetWindowDrawList()->AddLine(a, b, color, width);
 }
 
-void Overlay::DrawBox(ImColor color, float x, float y, float w, float h, float line_w) {
+void Overlay::DrawBox(ImColor color, float x, float y, float w, float h,
+                      float line_w) {
   DrawLine(ImVec2(x, y), ImVec2(x + w, y), color, line_w);
   DrawLine(ImVec2(x, y), ImVec2(x, y + h), color, line_w);
   DrawLine(ImVec2(x + w, y), ImVec2(x + w, y + h), color, line_w);
