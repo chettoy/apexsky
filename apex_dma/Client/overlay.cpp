@@ -27,6 +27,8 @@ extern void loadSettings();
 extern float veltest;
 extern bool firing_range;
 extern int aim;
+extern int local_held_id;
+extern uint32_t local_weapon_id;
 extern bool esp;
 extern bool item_glow;
 extern bool player_glow;
@@ -679,6 +681,8 @@ void Overlay::RenderMenu() {
   // ImGui::EndTabBar();
   //}
   ImGui::Dummy(ImVec2(0.0f, 10.0f));
+  ImGui::Text(XorStr("held=%d, weapon=%d"), local_held_id, local_weapon_id);
+  ImGui::Dummy(ImVec2(0.0f, 5.0f));
   ImGui::Text(XorStr("Overlay FPS: %.3f ms/frame (%.1f FPS)"),
               1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
   ImGui::Text(XorStr("external-overlay test build #3"));
@@ -710,9 +714,11 @@ void Overlay::RenderInfo() {
   ImGui::SameLine();
   // Aim is on = 2, On but No Vis Check = 1, Off = 0
   if (aim == 2) {
-    ImGui::TextColored(GREEN, "Aim On %d", aim);
+    ImGui::TextColored(GREEN, "Aim On");
+  } else if (aim == 0) {
+    ImGui::TextColored(RED, "Aim Off");
   } else {
-    ImGui::TextColored(RED, "Aim Off %d", aim);
+    ImGui::TextColored(RED, "Aim On %d", aim);
   }
   ImGui::SameLine();
   // if (triggerbot) {

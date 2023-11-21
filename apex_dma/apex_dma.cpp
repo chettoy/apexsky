@@ -3,6 +3,7 @@
 #include <array>
 #include <cfloat>
 #include <chrono>
+#include <cstdint>
 #include <cstdlib> // For the system() function
 #include <filesystem>
 #include <fstream>
@@ -85,6 +86,8 @@ bool player_glow = false;  // player glow
 bool aim_no_recoil = true; // no recoil
 float max_fov = 15;        // Fov you want to use while aiming
 int aim = 2; // 0 no aim, 1 aim with no vis check, 2 aim with vis check
+int local_held_id = 2147483647;
+uint32_t local_weapon_id = 2147483647;
 extern bool esp;
 // aimbot for nades on or off
 bool NoNadeAim = true;
@@ -3869,6 +3872,7 @@ static void item_glow_t() {
           // Nade test
           int HeldID;
           apex_mem.Read<int>(LocalPlayer + OFFSET_OFF_WEAPON, HeldID); // 0x1a1c
+          local_held_id = HeldID;
 
           if (NoNadeAim) {
             if (HeldID == -251) {
@@ -3880,6 +3884,7 @@ static void item_glow_t() {
           uint32_t weaponID;
           apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME,
                                   weaponID); // 0x1844
+          local_weapon_id = weaponID;
           // printf("%d\n", weaponID);
           // snipers for headsbots
           if (weaponID == 1573) {
