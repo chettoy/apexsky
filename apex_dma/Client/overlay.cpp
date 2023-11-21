@@ -681,7 +681,7 @@ void Overlay::RenderMenu() {
   ImGui::Dummy(ImVec2(0.0f, 10.0f));
   ImGui::Text(XorStr("Overlay FPS: %.3f ms/frame (%.1f FPS)"),
               1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-  ImGui::Text(XorStr("external-overlay test build #2"));
+  ImGui::Text(XorStr("external-overlay test build #3"));
   ImGui::End();
 }
 
