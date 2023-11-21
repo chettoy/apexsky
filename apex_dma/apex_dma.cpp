@@ -3202,15 +3202,16 @@ static void item_glow_t() {
           }
           if (weapon_mastiff && ItemID == 3) {
             std::array<unsigned char, 4> highlightFunctionBits = {
-                14,  // InsideFunction
+                lootfilled,  // InsideFunction
                 125, // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
                 64,  // OutlineRadius: size * 255 / 8
                 64 // (EntityVisible << 6) | State & 0x3F | (AfterPostProcess <<
                    // 7)
             };
             std::array<float, 3> highlightParameter = {1, 0, 0};
-            int settingIndex = 67;
+            apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
             static const int contextId = 2;
+            int settingIndex = 67;
             apex_mem.Write<int>(centity + OFFSET_GLOW_ENABLE, contextId);
             apex_mem.Write<unsigned char>(
                 centity + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId,
@@ -3220,7 +3221,6 @@ static void item_glow_t() {
             long highlightSettingsPtr;
             apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS,
                                 highlightSettingsPtr);
-            apex_mem.Write<int>(centity + OFFSET_GLOW_THROUGH_WALLS, 2);
             apex_mem.Write<typeof(highlightFunctionBits)>(
                 highlightSettingsPtr + 0x28 * settingIndex + 4,
                 highlightFunctionBits);
