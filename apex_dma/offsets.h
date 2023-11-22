@@ -1,10 +1,10 @@
-//Date 11/20/2023
+//Date 11/21/2023
 //GameVersion=v3.0.51.45
 
 #define OFFSET_ENTITYLIST 0x1d71858 //cl_entitylist  updated 11/20/2023
 #define OFFSET_LOCAL_ENT 0x211fac8 //LocalPlayer might be moved to AVC_GameMovement updated 11/20/2023
 #define OFFSET_NAME_LIST 0xc275bf0 //NameList updated 11/20/2023
-#define OFFSET_GLOBAL_VARS 0x16961f0 //updated 11/20/2023
+#define OFFSET_GLOBAL_VARS 0x16961f0 // GlobalVars updated 11/20/2023
  
 #define OFFSET_LEVELNAME 0x16966f0 //LevelName //updated 11/20/2023
 #define OFFSET_CLIENTSTATE OFFSET_LEVELNAME - 0x1c0 //ClientState  ClientState = LevelName - 0x1C0  //updated 11/20/2023
@@ -25,7 +25,7 @@
 #define OFFSET_TRAVERSAL_PROGRESS 0x2b2c //m_traversalProgress //updated 11/20/2023
 #define OFFSET_FORCE_JUMP 0x0738b0a0 //in_jump //updated 11/20/2023
  
-#define OFFSET_WEAPON_NAME 0x1594 //m_weaponNameIndex 2nd one //updated 11/20/2023
+#define OFFSET_WEAPON_NAME 0x17a8 //m_weaponNameIndex 2nd one //updated 11/20/2023
 #define OFFSET_OFF_WEAPON 0x1974 //m_latestNonOffhandWeapons //updated 11/20/2023
 #define OFFSET_IN_ATTACK 0x0738af90 // in_attack //updated 11/20/2023
 #define OFFSET_IN_TOGGLE_DUCK 0x0738afd0 //in_toggle_duck //updated 11/20/2023
