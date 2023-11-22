@@ -1,0 +1,12 @@
+[submodule "apex_dma/memflow"]
+	path = apex_dma/memflow
+	url = https://github.com/memflow/memflow
+[submodule "apex_dma/memflow-qemu"]
+	path = apex_dma/memflow-qemu
+	url = https://github.com/memflow/memflow-qemu
+[submodule "apex_dma/Client/glfw"]
+	path = apex_dma/Client/glfw
+	url = https://github.com/glfw/glfw
+[submodule "apex_dma/Client/imgui"]
+	path = apex_dma/Client/imgui
+	url = https://github.com/ocornut/imgui
