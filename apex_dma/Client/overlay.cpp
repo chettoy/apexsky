@@ -25,6 +25,7 @@ extern void saveSettings();
 extern void loadSettings();
 
 extern float veltest;
+extern bool NoNadeAim;
 extern bool firing_range;
 extern int aim;
 extern int local_held_id;
@@ -45,6 +46,7 @@ extern float max_fov;
 extern float ADSfov;
 extern float nonADSfov;
 extern int bone;
+extern bool bone_auto;
 extern bool thirdperson;
 extern int spectators;
 extern int allied_spectators;
@@ -295,6 +297,7 @@ void Overlay::RenderMenu() {
       aim = 0;
     }
     ImGui::SameLine();
+    ImGui::Checkbox(XorStr("No Nade Aim"), &NoNadeAim);
     ImGui::Checkbox(XorStr("Firing Range"), &firing_range);
     ImGui::Checkbox(XorStr("TDM Toggle"), &TDMToggle);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
@@ -377,6 +380,7 @@ void Overlay::RenderMenu() {
     ImGui::Text(XorStr("Default is 0.05"));
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Aiming Bone:"));
+    ImGui::Checkbox(XorStr("Nearest"), &bone_auto);
     ImGui::Text(XorStr("0=Head, 1=Neck, 2=Chest, 3=Stomach"));
     ImGui::SliderInt(XorStr("##bone"), &bone, 0, 3);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
@@ -685,7 +689,7 @@ void Overlay::RenderMenu() {
   ImGui::Dummy(ImVec2(0.0f, 5.0f));
   ImGui::Text(XorStr("Overlay FPS: %.3f ms/frame (%.1f FPS)"),
               1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-  ImGui::Text(XorStr("external-overlay test build #3"));
+  ImGui::Text(XorStr("external-overlay test build"));
   ImGui::End();
 }
 

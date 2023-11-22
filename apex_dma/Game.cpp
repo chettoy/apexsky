@@ -19,7 +19,9 @@ extern int glowtype2;
 extern float smooth;
 extern bool aim_no_recoil;
 extern int bone;
+bool bone_auto = true;
 extern float veltest;
+extern float max_dist;
 
 bool Entity::Observing(uint64_t entitylist) {
   return *(bool *)(buffer + OFFSET_OBSERVER_MODE);
@@ -310,7 +312,8 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
   }
 
   Vector LocalCamera = from.GetCamPos();
-  Vector TargetBonePosition = target.getBonePositionByHitbox(bone);
+  Vector TargetBonePosition;
+  float distanceToTarget;
   QAngle CalculatedAngles = QAngle(0, 0, 0);
 
   WeaponXEntity curweap = WeaponXEntity();
@@ -321,6 +324,24 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
 
   if (zoom_fov != 0.0f && zoom_fov != 1.0f) {
     max_fov *= zoom_fov / 90.0f;
+  }
+
+  // Find best bone
+  if (bone_auto) {
+    float NearestBoneDistance = max_dist;
+    for (int i = 0; i < 4; i++) {
+      Vector currentBonePosition = target.getBonePositionByHitbox(i);
+      float DistanceFromCrosshair =
+          (currentBonePosition - LocalCamera).Length();
+      if (DistanceFromCrosshair < NearestBoneDistance) {
+        TargetBonePosition = currentBonePosition;
+        distanceToTarget = DistanceFromCrosshair;
+        NearestBoneDistance = DistanceFromCrosshair;
+      }
+    }
+  } else {
+    TargetBonePosition = target.getBonePositionByHitbox(bone);
+    distanceToTarget = (TargetBonePosition - LocalCamera).Length();
   }
 
   if (BulletSpeed > 1.f) {
@@ -339,7 +360,6 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
 
     // Add the target's velocity to the prediction context, with an offset in
     // the y direction
-    float distanceToTarget = (TargetBonePosition - LocalCamera).Length();
     float timeToTarget = distanceToTarget / BulletSpeed;
     Vector targetPosAhead = TargetBonePosition + (targetVel * timeToTarget);
     Ctx.TargetVel =
