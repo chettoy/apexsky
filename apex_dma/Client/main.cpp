@@ -1117,9 +1117,10 @@ void Overlay::RenderEsp() {
           ImColor(0.0f, 1.0f, 0.0f, 0.6f), 10.0f, 0);
     }
 
-    // while (!next2 && esp) {
-    //   std::this_thread::sleep_for(std::chrono::milliseconds(2));
-    // }
+    if (!firing_range)
+      while (!next2 && esp) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+      }
 
     if (next2 && valid) {
 
