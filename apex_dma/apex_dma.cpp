@@ -4104,8 +4104,6 @@ void loadSettings() {
     settingsFile >> std::boolalpha >> gamepad;
     settingsFile >> std::boolalpha >> item_glow;
     settingsFile >> std::boolalpha >> deathbox;
-    settingsFile >> std::boolalpha >> player_glow;
-
     settingsFile >> std::boolalpha >> playerfilledtoggle;
     // settingsFile >> playerfill;
     // settingsFile >> playeroutline;
@@ -4114,6 +4112,7 @@ void loadSettings() {
     // settingsFile >> lootfill;
     // settingsFile >> lootoutlinesize;
 
+    settingsFile >> std::boolalpha >> player_glow;
     settingsFile >> smooth;
     settingsFile >> bone;
     settingsFile >> glowrnot;
