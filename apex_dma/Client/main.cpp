@@ -2,6 +2,7 @@
 #include "../Game.h"
 #include "imgui.h"
 #include "overlay.h"
+#include <cstdio>
 #include <map>
 #include <random>
 #include <thread>
@@ -46,8 +47,8 @@ bool triggerbot = false;
 bool onevone = false;
 
 extern float bulletspeed; // sync
-extern float bulletgrav; // sync
-float veltest = 1.00; // sync
+extern float bulletgrav;  // sync
+float veltest = 1.00;     // sync
 bool MiniMapGuides = true;
 extern int bone; // 0 Head, 1 Neck, 2 Body, 3 Stomace, 4 Nuts  sync
 // Player Glow Color and Brightness
@@ -217,9 +218,13 @@ extern int allied_spectators; // write sync
 extern bool valid;            // write sync
 extern bool next2;            // read write sync
 
+Vector aim_target = Vector(0, 0, 0);
+bool show_aim_target = true;
+
 extern bool overlay_t;
 
 extern player players[100];
+extern Matrix view_matrix_data;
 
 // Radar Code
 #define M_PI 3.14159265358979323846 // matches value in gcc v2 math.h
@@ -1095,18 +1100,28 @@ void Overlay::RenderEsp() {
 
     memset(players, 0, sizeof(players));
 
-    while (!next2 && esp) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2((float)getWidth(), (float)getHeight()));
+    ImGui::Begin(XorStr("##esp"), (bool *)true,
+                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                     ImGuiWindowFlags_NoBackground |
+                     ImGuiWindowFlags_NoBringToFrontOnFocus);
+
+    if (show_aim_target && aiming && aim_target != Vector(0, 0, 0)) {
+      Vector bs = Vector();
+      WorldToScreen(aim_target, view_matrix_data.matrix, getWidth(),
+                    getHeight(), bs);
+      ImGui::GetWindowDrawList()->AddRectFilled(
+          ImVec2(bs.x - 10, bs.y - 10), ImVec2(bs.x + 10, bs.y + 10),
+          ImColor(0.0f, 1.0f, 0.0f, 0.6f), 10.0f, 0);
     }
 
+    // while (!next2 && esp) {
+    //   std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    // }
+
     if (next2 && valid) {
-      ImGui::SetNextWindowPos(ImVec2(0, 0));
-      ImGui::SetNextWindowSize(ImVec2((float)getWidth(), (float)getHeight()));
-      ImGui::Begin(XorStr("##esp"), (bool *)true,
-                   ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                       ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-                       ImGuiWindowFlags_NoBackground |
-                       ImGuiWindowFlags_NoBringToFrontOnFocus);
 
       for (int i = 0; i < 100; i++) {
 
@@ -1136,7 +1151,7 @@ void Overlay::RenderEsp() {
                          players[i].entity_team, players[i].targetyaw);
           }
           if (v.line)
-            DrawLine(ImVec2((float)(getWidth() / 2), (float)getHeight()),
+            DrawLine(ImVec2((float)(getWidth() / 2.0), (float)getHeight()),
                      ImVec2(players[i].b_x, players[i].b_y), BLUE,
                      1); // LINE FROM MIDDLE SCREEN
 
@@ -1185,8 +1200,8 @@ void Overlay::RenderEsp() {
           // players[i].height - 15)), WHITE, players[i].name);
         }
       }
-      ImGui::End();
     }
+    ImGui::End();
   }
 }
 

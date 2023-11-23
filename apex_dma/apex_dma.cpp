@@ -905,6 +905,7 @@ void DoActions() {
 // /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 player players[toRead];
+Matrix view_matrix_data = {};
 
 // ESP loop.. this helps right?
 static void EspLoop() {
@@ -940,8 +941,8 @@ static void EspLoop() {
         apex_mem.Read<uint64_t>(g_Base + OFFSET_RENDER, viewRenderer);
         uint64_t viewMatrix = 0;
         apex_mem.Read<uint64_t>(viewRenderer + OFFSET_MATRIX, viewMatrix);
-        Matrix m = {};
-        apex_mem.Read<Matrix>(viewMatrix, m);
+
+        apex_mem.Read<Matrix>(viewMatrix, view_matrix_data);
 
         uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
 
@@ -991,14 +992,14 @@ static void EspLoop() {
             Vector bs = Vector();
             // Change res to your res here, default is 1080p but can copy paste
             // 1440p here
-            WorldToScreen(EntityPosition, m.matrix, 1920, 1080,
+            WorldToScreen(EntityPosition, view_matrix_data.matrix, 1920, 1080,
                           bs); // 2560, 1440
             if (esp) {
               Vector hs = Vector();
               Vector HeadPosition = Target.getBonePositionByHitbox(0);
               // Change res to your res here, default is 1080p but can copy
               // paste 1440p here
-              WorldToScreen(HeadPosition, m.matrix, 1920, 1080,
+              WorldToScreen(HeadPosition, view_matrix_data.matrix, 1920, 1080,
                             hs); // 2560, 1440
               float height = abs(abs(hs.y) - abs(bs.y));
               float width = height / 2.0f;
@@ -1072,14 +1073,14 @@ static void EspLoop() {
             Vector bs = Vector();
             // Change res to your res here, default is 1080p but can copy paste
             // 1440p here
-            WorldToScreen(EntityPosition, m.matrix, 1920, 1080,
+            WorldToScreen(EntityPosition, view_matrix_data.matrix, 1920, 1080,
                           bs); // 2560, 1440
             if (esp) {
               Vector hs = Vector();
               Vector HeadPosition = Target.getBonePositionByHitbox(0);
               // Change res to your res here, default is 1080p but can copy
               // paste 1440p here
-              WorldToScreen(HeadPosition, m.matrix, 1920, 1080,
+              WorldToScreen(HeadPosition, view_matrix_data.matrix, 1920, 1080,
                             hs); // 2560, 1440
               float height = abs(abs(hs.y) - abs(bs.y));
               float width = height / 2.0f;
@@ -3205,9 +3206,9 @@ static void item_glow_t() {
           }
           if (weapon_mastiff && ItemID == 3) {
             std::array<unsigned char, 4> highlightFunctionBits = {
-                lootfilled,  // InsideFunction
-                125, // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
-                64,  // OutlineRadius: size * 255 / 8
+                lootfilled, // InsideFunction
+                125,        // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
+                64,         // OutlineRadius: size * 255 / 8
                 64 // (EntityVisible << 6) | State & 0x3F | (AfterPostProcess <<
                    // 7)
             };

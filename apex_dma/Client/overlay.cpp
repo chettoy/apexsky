@@ -85,6 +85,8 @@ bool mainradartoggle = 1;
 bool mainradarmap = false;
 int mainmapradardotsize1 = 5;
 int mainmapradardotsize2 = 5;
+// Others
+extern bool show_aim_target;
 
 // Ha think i was done ?
 // Item Filter Brute Force!
@@ -246,8 +248,6 @@ static void StaticMessageStart(Overlay &ov) { ov.CreateOverlay(); }
 void Overlay::RenderMenu() {
   static bool aim_enable = false;
   static bool vis_check = false;
-  static bool spec_disable = false;
-  static bool all_spec_disable = false;
 
   if (aim > 0) {
     aim_enable = true;
@@ -390,12 +390,13 @@ void Overlay::RenderMenu() {
     ImGui::Checkbox(XorStr("Line"), &v.line);
     ImGui::SameLine();
     ImGui::Checkbox(XorStr("Distance"), &v.distance);
-    ImGui::SameLine();
     ImGui::Checkbox(XorStr("Health bar"), &v.healthbar);
     ImGui::SameLine();
     ImGui::Checkbox(XorStr("Shield bar"), &v.shieldbar);
     ImGui::SameLine();
     ImGui::Checkbox(XorStr("Name"), &v.name);
+    ImGui::Dummy(ImVec2(0.0f, 5.0f));
+    ImGui::Checkbox(XorStr("Show aimbot target"), &show_aim_target);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Player Glow Visable:"));
     ImGui::ColorEdit3("##Glow Color Picker Visable", glowcolorviz);

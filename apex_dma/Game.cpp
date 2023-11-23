@@ -1,6 +1,8 @@
 #include "prediction.h"
+#include "vector.h"
 #include <array>
 #include <chrono>
+#include <cstdio>
 #include <iostream>
 #include <ostream>
 #include <thread>
@@ -22,6 +24,7 @@ extern int bone;
 bool bone_auto = true;
 extern float veltest;
 extern float max_dist;
+extern Vector aim_target;
 
 bool Entity::Observing(uint64_t entitylist) {
   return *(bool *)(buffer + OFFSET_OBSERVER_MODE);
@@ -367,6 +370,10 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
                targetVel.z);
     Ctx.TargetPos = targetPosAhead;
 
+    aim_target.x = Ctx.TargetPos.x;
+    aim_target.y = Ctx.TargetPos.y;
+    aim_target.z = Ctx.TargetPos.z;
+
     if (BulletPredict(Ctx))
       CalculatedAngles = QAngle{Ctx.AimAngles.x, Ctx.AimAngles.y, 0.f};
   }
@@ -422,8 +429,8 @@ bool WorldToScreen(Vector from, float *m_vMatrix, int targetWidth,
   to.x *= invw;
   to.y *= invw;
 
-  float x = targetWidth / 2;
-  float y = targetHeight / 2;
+  float x = targetWidth / 2.0;
+  float y = targetHeight / 2.0;
 
   x += 0.5 * to.x * targetWidth + 0.5;
   y -= 0.5 * to.y * targetHeight + 0.5;
