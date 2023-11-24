@@ -87,6 +87,8 @@ int mainmapradardotsize1 = 5;
 int mainmapradardotsize2 = 5;
 // Others
 extern bool show_aim_target;
+extern float game_fps; // for aimbot calc
+bool use_overlay_fps = true;
 
 // Ha think i was done ?
 // Item Filter Brute Force!
@@ -690,6 +692,15 @@ void Overlay::RenderMenu() {
   ImGui::Dummy(ImVec2(0.0f, 5.0f));
   ImGui::Text(XorStr("Overlay FPS: %.3f ms/frame (%.1f FPS)"),
               1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+  ImGui::Dummy(ImVec2(0.0f, 5.0f));
+
+  ImGui::Text(XorStr("Game FPS for Aim Prediction:"));
+  ImGui::Checkbox(XorStr("Use overlay FPS"), &use_overlay_fps);
+  if (use_overlay_fps)
+    game_fps = ImGui::GetIO().Framerate;
+  ImGui::SliderFloat(XorStr("##gamefps"), &game_fps, 1.0f, 300.0f, "%.1f");
+
+  ImGui::Dummy(ImVec2(0.0f, 5.0f));
   ImGui::Text(XorStr("external-overlay test build"));
   ImGui::End();
 }

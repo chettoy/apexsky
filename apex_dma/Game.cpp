@@ -25,6 +25,7 @@ bool bone_auto = true;
 extern float veltest;
 extern float max_dist;
 extern Vector aim_target;
+float game_fps = 75.0f; // for aimbot calc
 
 bool Entity::Observing(uint64_t entitylist) {
   return *(bool *)(buffer + OFFSET_OBSERVER_MODE);
@@ -359,7 +360,7 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
     Vector targetVel = target.getAbsVelocity();
 
     // Calculate the time since the last frame (in seconds)
-    float deltaTime = 0.0133333;
+    float deltaTime = 1.0 / game_fps;
 
     // Add the target's velocity to the prediction context, with an offset in
     // the y direction
