@@ -40,6 +40,7 @@ extern float smooth;
 extern bool MiniMapGuides;
 extern float bulletspeed;
 extern float bulletgrav;
+extern bool map_radar_testing;
 
 // Dynamic Fov
 extern float max_fov;
@@ -228,12 +229,12 @@ int menu4 = 0;
 extern bool triggerbot;
 // 1v1
 extern bool onevone;
-// screen pos ajuster
-// ajuster for screen pos
-extern int worldsedgetoprightx = 0;
-extern int worldsedgetoprighty = 0;
-extern int worldsedgebtmleftx = 0;
-extern int worldsedgebtmlefty = 0;
+// // screen pos ajuster
+// // ajuster for screen pos
+// extern int worldsedgetoprightx = 0;
+// extern int worldsedgetoprighty = 0;
+// extern int worldsedgebtmleftx = 0;
+// extern int worldsedgebtmlefty = 0;
 
 int width;
 int height;
@@ -275,21 +276,26 @@ void Overlay::RenderMenu() {
     menu1 = 1;
     ImGui::Checkbox(XorStr("ESP On/Off"), &esp);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("AIM On/Off"), &aim_enable);
-    ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Glow Items"), &item_glow);
-    ImGui::Checkbox(XorStr("Glow Players"), &player_glow);
-    ImGui::SameLine();
     ImGui::Checkbox(XorStr("Thirdperson"), &thirdperson);
+
+    ImGui::Checkbox(XorStr("Glow Items"), &item_glow);
     ImGui::SameLine();
     ImGui::Checkbox(XorStr("Mini-Map Radar"), &minimapradar);
+
+    ImGui::Checkbox(XorStr("Glow Players"), &player_glow);
+    ImGui::SameLine();
     ImGui::Checkbox(XorStr("Mini-Map Guide"), &MiniMapGuides);
+
+    ImGui::Checkbox(XorStr("AIM On/Off"), &aim_enable);
     ImGui::SameLine();
     ImGui::Checkbox(XorStr("1v1"), &onevone);
+
     if (aim_enable) {
       ImGui::Checkbox(XorStr("Visibility Check"), &vis_check);
       ImGui::SameLine();
       ImGui::Checkbox(XorStr("No Recoil"), &aim_no_recoil);
+      ImGui::SameLine();
+      ImGui::Checkbox(XorStr("No Nade Aim"), &NoNadeAim);
       if (vis_check) {
         aim = 2;
       } else {
@@ -298,10 +304,11 @@ void Overlay::RenderMenu() {
     } else {
       aim = 0;
     }
-    ImGui::SameLine();
-    ImGui::Checkbox(XorStr("No Nade Aim"), &NoNadeAim);
+
     ImGui::Checkbox(XorStr("Firing Range"), &firing_range);
+    ImGui::SameLine();
     ImGui::Checkbox(XorStr("TDM Toggle"), &TDMToggle);
+    ImGui::Checkbox(XorStr("Press C duck for MapRadar"), &map_radar_testing);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Aiming Distance:"));
     ImGui::SameLine();
@@ -695,6 +702,7 @@ void Overlay::RenderMenu() {
   ImGui::Dummy(ImVec2(0.0f, 5.0f));
 
   ImGui::Text(XorStr("Game FPS for Aim Prediction:"));
+  ImGui::SameLine();
   ImGui::Checkbox(XorStr("Use overlay FPS"), &use_overlay_fps);
   if (use_overlay_fps)
     game_fps = ImGui::GetIO().Framerate;

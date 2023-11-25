@@ -1,3 +1,4 @@
+#include "apex_sky.h"
 #include "Client/main.h"
 #include "Game.h"
 #include <array>
@@ -55,6 +56,7 @@ extern float bulletgrav;
 int playerentcount = 61;
 int itementcount = 10000;
 bool deathbox = false;
+bool map_radar_testing = true;
 
 // map
 int map = 0;
@@ -90,7 +92,7 @@ int local_held_id = 2147483647;
 uint32_t local_weapon_id = 2147483647;
 extern bool esp;
 // aimbot for nades on or off
-bool NoNadeAim = true;
+bool NoNadeAim = false;
 bool firing_range = false; // firing range
 int bone = 2;              // bone 0 head, 1 neck, 2 chest, 3 dick shot
 float smooth =
@@ -426,10 +428,10 @@ void ClientActions() {
 
       int zoomState = 0;
       apex_mem.Read<int>(g_Base + OFFSET_IN_ZOOM, zoomState); // 109
-      int frameSleepTimer;
-      int lastFrameNumber;
-      bool superGlideStart;
-      int superGlideTimer;
+      int frameSleepTimer = 0;
+      int lastFrameNumber = 0;
+      bool superGlideStart = false;
+      int superGlideTimer = 0;
       int curFrameNumber;
       float m_traversalProgressTmp = 0.0f;
       apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008,
@@ -449,12 +451,12 @@ void ClientActions() {
       int jump;
       int ducktoggle;
       int forceduck;
-      // printf("Jump Value: %i\n", jump);
-      // printf("Toggle Jump: %i\n", ducktoggle);
-      // printf("Force Duck: %i\n", forceduck);
       apex_mem.Read<int>(g_Base + OFFSET_FORCE_JUMP + 0x8, jump);
       apex_mem.Read<int>(g_Base + OFFSET_IN_TOGGLE_DUCK + 0x8, ducktoggle);
       apex_mem.Read<int>(g_Base + OFFSET_FORCE_DUCK + 0x8, forceduck);
+      // printf("Jump Value: %i\n", jump);
+      // printf("Toggle Jump: %i\n", ducktoggle);
+      // printf("Force Duck: %i\n", forceduck);
       // apex_mem.Write<int>(g_Base + OFFSET_FORCE_JUMP + 0x8, 4);
 
       if (curFrameNumber > lastFrameNumber) {
@@ -626,7 +628,7 @@ void ClientActions() {
         if (isPressed(AimbotHotKey1) || !isPressed(AimbotHotKey2)) {
           max_fov = nonADSfov;
         }
-        if (!isPressed(AimbotHotKey1) || isPressed(AimbotHotKey2)) {
+        if (isPressed(AimbotHotKey2)) {
           max_fov = ADSfov;
         }
         if (isPressed(TriggerBotHotKey)) // Left and Right click
@@ -638,17 +640,17 @@ void ClientActions() {
       }
 
       if (gamepad) {
-        if (attackState == 120 || zoomState == 119) {
+        // attackState == 120 || zoomState == 119
+        if (attackState > 0 || zoomState > 0) {
           aiming = true;
         } else {
           aiming = false;
         }
 
-        if (attackState == 120) {
-          max_fov = nonADSfov;
-        }
-        if (zoomState == 119) {
+        if (zoomState > 0) {
           max_fov = ADSfov;
+        } else {
+          max_fov = nonADSfov;
         }
       }
 
@@ -657,7 +659,7 @@ void ClientActions() {
           std::chrono::duration_cast<std::chrono::milliseconds>(now1 - start1);
 
       // Toggle crouch = check for ring
-      if (attackState != 108 && tduckState == 65) {
+      if (map_radar_testing && attackState == 0 && tduckState == 13) {
         if (mapRadarTestingEnabled) {
           MapRadarTesting();
         }
@@ -733,7 +735,8 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
 
   // Firing range stuff
   if (!firing_range)
-    if (entity_team < 0 || entity_team > 50 || entity_team == team_player)
+    if (entity_team < 0 || entity_team > 50 ||
+        (entity_team == team_player && !onevone))
       return;
 
   // Vis check aiming? dunno
@@ -849,7 +852,7 @@ void DoActions() {
             continue;
 
           Entity Target = getEntity(centity);
-          if (!Target.isDummy()) {
+          if (!Target.isDummy() && !onevone) {
             continue;
           }
 
@@ -874,7 +877,7 @@ void DoActions() {
           ProcessPlayer(LPlayer, Target, entitylist, i);
 
           int entity_team = Target.getTeamId();
-          if (entity_team == team_player) {
+          if (entity_team == team_player && !onevone) {
             continue;
           }
         }
@@ -964,7 +967,7 @@ static void EspLoop() {
 
             Entity Target = getEntity(centity);
 
-            if (!Target.isDummy()) {
+            if (!Target.isDummy() && !onevone) {
               continue;
             }
 
@@ -1132,9 +1135,31 @@ static void EspLoop() {
 static void AimbotLoop() {
   aim_t = true;
   while (aim_t) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
     while (g_Base != 0) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+      // Read LocalPlayer
+      uint64_t LocalPlayer = 0;
+      apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+      // Read HeldID
+      int HeldID;
+      apex_mem.Read<int>(LocalPlayer + OFFSET_OFF_WEAPON, HeldID); // 0x1a1c
+      local_held_id = HeldID;
+      // Read WeaponID
+      ulong ehWeaponHandle;
+      apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_ACTIVE_WEAPON,
+                              ehWeaponHandle); // 0x1a1c
+      ehWeaponHandle &= 0xFFFF;                // eHandle
+      ulong pWeapon;
+      uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
+      apex_mem.Read<uint64_t>(entitylist + (ehWeaponHandle * 0x20), pWeapon);
+      uint32_t weaponID;
+      apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME,
+                              weaponID); // 0x1844
+      local_weapon_id = weaponID;
+      // printf("%d\n", weaponID);
+
       if (aim > 0) {
         if (aimentity == 0 || !aiming) {
           lock = false;
@@ -1143,18 +1168,39 @@ static void AimbotLoop() {
         }
         lock = true;
         lastaimentity = aimentity;
-        uint64_t LocalPlayer = 0;
-        apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+
         Entity LPlayer = getEntity(LocalPlayer);
         if (LocalPlayer == 0)
           continue;
-        QAngle Angles = CalculateBestBoneAim(LPlayer, aimentity, max_fov);
-        if (Angles.x == 0 && Angles.y == 0) {
-          lock = false;
-          lastaimentity = 0;
-          continue;
+
+        /* Fine-tuning for each weapon */
+        // bow
+        if (HeldID == -255 && weaponID == 2) {
+          // Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*0.08);
+          // Ctx.BulletGravity = BulletGrav + (BulletGrav*0.05);
+          bulletspeed = 10.08;
+          bulletgrav = 10.05;
         }
-        LPlayer.SetViewAngles(Angles);
+
+        if (HeldID == -251) { // auto throw
+          if (!NoNadeAim) {
+            QAngle Angles_g = CalculateBestBoneAim(LPlayer, aimentity, 999.9f);
+            if (Angles_g.x == 0 && Angles_g.y == 0) {
+              lock = false;
+              lastaimentity = 0;
+              continue;
+            }
+            LPlayer.SetViewAngles(Angles_g);
+          }
+        } else {
+          QAngle Angles = CalculateBestBoneAim(LPlayer, aimentity, max_fov);
+          if (Angles.x == 0 && Angles.y == 0) {
+            lock = false;
+            lastaimentity = 0;
+            continue;
+          }
+          LPlayer.SetViewAngles(Angles);
+        }
       }
     }
   }
@@ -1174,48 +1220,6 @@ static void item_glow_t() {
         // item ENTs to loop, 10k-15k is normal. 10k might be better but will
         // not show all the death boxes i think.
         for (int i = 0; i < itementcount; i++) {
-
-          enum weapon_id : int32_t {
-            idweapon_r301 = 0,
-            idweapon_sentinel = 1,
-            idweapon_bow = 2,
-            idsheila_stationary = 10,
-            idsheila = 56,
-            idweapon_rampage = 20,
-            idmelee = 113,
-            idsnipers_mark = 76,
-            idweapon_alternator = 79,
-            idweapon_re45,
-            idweapon_charge_rifle = 82,
-            idweapon_devotion,
-            idweapon_longbow,
-            idweapon_havoc,
-            idweapon_eva8,
-            idweapon_flatline,
-            idweapon_g7_scout,
-            idweapon_hemlock,
-            idweapon_kraber = 91,
-            idweapon_lstar,
-            idweapon_mastiff = 94,
-            idweapon_mozambique,
-            idweapon_prowler = 101,
-            idweapon_peacekeeper,
-            idweapon_r99,
-            idweapon_p2020,
-            idweapon_spitfire = 105,
-            idweapon_triple_take,
-            idweapon_wingman = 108,
-            idweapon_volt,
-            idweapon_3030_repeater,
-            idweapon_car_smg,
-            idweapon_nemesis,
-            idthrowing_knife = 158,
-            idgrenade_thermite,
-            idgrenade_frag,
-            idgrenade_arc_star,
-            idmax
-          };
-
           uint64_t centity = 0;
           apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
           if (centity == 0)
@@ -3862,43 +3866,6 @@ static void item_glow_t() {
           // CREDITS to Rikkie
           // https://www.unknowncheats.me/forum/members/169606.html for all the
           // weapon ids and item ids code, you are a life saver!
-          ulong ehWeaponHandle;
-          apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON,
-                                  ehWeaponHandle); // 0x1a1c
-          ehWeaponHandle &= 0xFFFF;                // eHandle
-          ulong pWeapon;
-          apex_mem.Read<uint64_t>(entitylist + (ehWeaponHandle * 0x20),
-                                  pWeapon);
-
-          // Nade test
-          int HeldID;
-          apex_mem.Read<int>(LocalPlayer + OFFSET_OFF_WEAPON, HeldID); // 0x1a1c
-          local_held_id = HeldID;
-
-          if (NoNadeAim) {
-            if (HeldID == -251) {
-              aim = 0;
-            } else {
-              aim = 2;
-            }
-          }
-          uint32_t weaponID;
-          apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME,
-                                  weaponID); // 0x1844
-          local_weapon_id = weaponID;
-          // printf("%d\n", weaponID);
-          // snipers for headsbots
-          if (weaponID == 1573) {
-            bone = 0;
-          }
-          // bow
-
-          if (weaponID == 2) {
-            // Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*0.08);
-            // Ctx.BulletGravity = BulletGrav + (BulletGrav*0.05);
-            bulletspeed = 10.08;
-            bulletgrav = 10.05;
-          }
         }
         k = 1;
         // Change the 60 ms to lower to make the death boxes filker less.
@@ -4347,12 +4314,9 @@ void displayMainMenu() {
   }
   std::cout << "11 - Player Outline Glow Setting Size" << std::endl;
   std::cout << "12 - Update Glow Colors" << std::endl;
-  std::cout << "13 - Change ADS FOV: (Current: ";
-  std::cout << ADSfov;
-  std::cout << ")" << std::endl;
-  std::cout << "14 - Change Non-ADS FOV: (Current: ";
-  std::cout << nonADSfov;
-  std::cout << ")" << std::endl;
+  std::cout << "13 - Change ADS FOV: (Current: " << ADSfov << ")" << std::endl;
+  std::cout << "14 - Change Non-ADS FOV: (Current: " << nonADSfov << ")"
+            << std::endl;
 
   if (SuperKeyToggle) {
     std::cout << "15 - Super Glide Disabled" << std::endl;
@@ -4372,6 +4336,15 @@ void displayMainMenu() {
 
   std::cout << "21 - Save Settings" << std::endl;
   std::cout << "22 - Load Settings\n" << std::endl;
+
+  std::cout << "23 - Toggle NoNadeAim (Current: "
+            << (NoNadeAim ? "No Nade Aim" : "Throwing aimbot on") << ")"
+            << std::endl;
+
+  std::cout << "24 - Toggle 1v1 (Current: " << (onevone ? "on" : "off") << ")"
+            << std::endl;
+
+  std::cout << std::endl;
 }
 
 void displayItemFilterMenu() {
@@ -5851,8 +5824,7 @@ void terminal() {
         } else {
           std::cout << "Firing Range OFF.\n";
         }
-      }
-      if (option == 2) {
+      } else if (option == 2) {
         // Toggle TDM.
         TDMToggle = !TDMToggle;
 
@@ -5861,20 +5833,17 @@ void terminal() {
         } else {
           std::cout << "TDM OFF.\n";
         }
-      }
-      if (option == 3) {
+      } else if (option == 3) {
         // Keyboard Enable.
         keyboard = true;
         gamepad = false;
         std::cout << "Keyboard ON.\n";
-      }
-      if (option == 4) {
+      } else if (option == 4) {
         // Gamepad Enable.
         keyboard = false;
         gamepad = true;
         std::cout << "Gamepad ON.\n";
-      }
-      if (option == 5) {
+      } else if (option == 5) {
         // Toggle TDM.
         item_glow = !item_glow;
 
@@ -5883,8 +5852,7 @@ void terminal() {
         } else {
           std::cout << "Item Glow OFF.\n";
         }
-      }
-      if (option == 6) {
+      } else if (option == 6) {
         // Toggle TDM.
         player_glow = !player_glow;
 
@@ -5893,8 +5861,7 @@ void terminal() {
         } else {
           std::cout << "Player Glow OFF.\n";
         }
-      }
-      if (option == 7) {
+      } else if (option == 7) {
         // Command to change the 'smooth' value.
         std::cout << "Enter a new value for 'smooth' (70 to 200): ";
         float newSmooth;
@@ -5914,8 +5881,7 @@ void terminal() {
         // Clear the input buffer to prevent any issues with future input.
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      }
-      if (option == 8) {
+      } else if (option == 8) {
         // Command to change the 'smooth' value.
         std::cout << "Enter a new value for 'bone' (0 to 3): ";
         int newBone;
@@ -5933,8 +5899,7 @@ void terminal() {
         // Clear the input buffer to prevent any issues with future input.
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      }
-      if (option == 9) {
+      } else if (option == 9) {
         // Loot Filled.
         lootfilledtoggle = !lootfilledtoggle;
 
@@ -5947,7 +5912,7 @@ void terminal() {
         }
       }
 
-      if (option == 10) {
+      else if (option == 10) {
         // player Filled.
         playerfilledtoggle = !playerfilledtoggle;
 
@@ -5958,8 +5923,7 @@ void terminal() {
           insidevalue = 0;
           std::cout << "Player Glow Not Filled.\n";
         }
-      }
-      if (option == 11) {
+      } else if (option == 11) {
         // Command to change the 'Player Outlines' value.
         std::cout << "Enter a new value for Player Outlines (0 to 255): ";
         int newoutlinesize;
@@ -5979,8 +5943,7 @@ void terminal() {
         // Clear the input buffer to prevent any issues with future input.
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      }
-      if (option == 12) {
+      } else if (option == 12) {
         // Select a glow set (1 for "Not Visible," 2 for "Visible," 3 for
         // "Knocked").
         std::cout << "Select Glow: 1 - Not Visible, 2 - Visible, 3 - Knocked "
@@ -6003,8 +5966,7 @@ void terminal() {
           std::cout << "Invalid set selection. Please choose 1-3.\n";
           break;
         }
-      }
-      if (option == 13) {
+      } else if (option == 13) {
         // Command to change the 'smooth' value.
         std::cout << "Enter a new value for 'ADS FOV' (1 to 50): ";
         float newADSfov;
@@ -6024,8 +5986,7 @@ void terminal() {
         // Clear the input buffer to prevent any issues with future input.
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      }
-      if (option == 14) {
+      } else if (option == 14) {
         // Command to change the 'smooth' value.
         std::cout << "Enter a new value for 'Non-ADS FOV' (1 to 50): ";
         float newnonADSfov;
@@ -6046,20 +6007,19 @@ void terminal() {
         // Clear the input buffer to prevent any issues with future input.
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      }
-      if (option == 15) {
+      } else if (option == 15) {
         // player Filled.
         SuperKey = !SuperKey;
         SuperKeyToggle = !SuperKeyToggle;
       }
 
-      if (option == 16) {
+      else if (option == 16) {
         //  displayItemFilterMenu
         menuLevel = 1;
       }
       // Keycode stuff
 
-      if (option == 17) {
+      else if (option == 17) {
         // Optionally print the key codes before updating
         std::cout << "Do you want to see the key codes before updating? (1 for "
                      "yes, 0 for no): ";
@@ -6094,7 +6054,7 @@ void terminal() {
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
       }
 
-      if (option == 18) {
+      else if (option == 18) {
         // Optionally print the key codes before updating
         std::cout << "Do you want to see the key codes before updating? (1 for "
                      "yes, 0 for no): ";
@@ -6127,8 +6087,7 @@ void terminal() {
         // Clear the input buffer to prevent any issues with future input.
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      }
-      if (option == 19) {
+      } else if (option == 19) {
         // Optionally print the key codes before updating
         std::cout << "Do you want to see the key codes before updating? (1 for "
                      "yes, 0 for no): ";
@@ -6160,26 +6119,22 @@ void terminal() {
         // Clear the input buffer to prevent any issues with future input.
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      }
-
-      if (option == 20) {
-        // Toggle TDM.
+      } else if (option == 20) {
         deathbox = !deathbox;
-
-        if (deathbox) {
-          std::cout << "Death Boxes on.\n";
-        } else {
-          std::cout << "Death Boxes off.\n";
-        }
-      }
-      if (option == 21) {
+        std::cout << "Death Boxes " << (deathbox ? "on" : "off") << "."
+                  << std::endl;
+      } else if (option == 21) {
         saveSettings();
-      }
-      if (option == 22) {
+      } else if (option == 22) {
         loadSettings();
-      }
-
-      else {
+      } else if (option == 23) {
+        NoNadeAim = !NoNadeAim;
+        std::cout << "NoNadeAim " << (NoNadeAim ? "on" : "off") << "."
+                  << std::endl;
+      } else if (option == 24) {
+        onevone = !onevone;
+        std::cout << "1v1 " << (onevone ? "on" : "off") << "." << std::endl;
+      } else {
         std::cout << "Invalid command. Please try again." << std::endl;
       }
     }
@@ -6226,86 +6181,59 @@ void terminal() {
     {
       if (option == 1) {
         weapon_p2020 = !weapon_p2020;
-      }
-      if (option == 2) {
+      } else if (option == 2) {
         weapon_re45 = !weapon_re45;
-      }
-      if (option == 3) {
+      } else if (option == 3) {
         weapon_alternator = !weapon_alternator;
-      }
-      if (option == 4) {
+      } else if (option == 4) {
         weapon_r99 = !weapon_r99;
-      }
-      if (option == 5) {
+      } else if (option == 5) {
         weapon_r301 = !weapon_r301;
-      }
-      if (option == 6) {
+      } else if (option == 6) {
         weapon_spitfire = !weapon_spitfire;
-      }
-      if (option == 7) {
+      } else if (option == 7) {
         weapon_g7_scout = !weapon_g7_scout;
-      }
-      if (option == 8) {
+      } else if (option == 8) {
         lightammo = !lightammo;
-      }
-      if (option == 9) {
+      } else if (option == 9) {
         lightammomag1 = !lightammomag1;
-      }
-      if (option == 10) {
+      } else if (option == 10) {
         lightammomag2 = !lightammomag2;
-      }
-      if (option == 11) {
+      } else if (option == 11) {
         lightammomag3 = !lightammomag3;
-      }
-      if (option == 12) {
+      } else if (option == 12) {
         lightammomag4 = !lightammomag4;
-      }
-      if (option == 13) {
+      } else if (option == 13) {
         stockregular1 = !stockregular1;
-      }
-      if (option == 14) {
+      } else if (option == 14) {
         stockregular2 = !stockregular2;
-      }
-      if (option == 15) {
+      } else if (option == 15) {
         stockregular3 = !stockregular3;
-      }
-      if (option == 16) {
+      } else if (option == 16) {
         suppressor1 = !suppressor1;
-      }
-      if (option == 17) {
+      } else if (option == 17) {
         suppressor2 = !suppressor2;
-      }
-      if (option == 18) {
+      } else if (option == 18) {
         suppressor3 = !suppressor3;
-      }
-      if (option == 19) {
+      } else if (option == 19) {
         lasersight1 = !lasersight1;
-      }
-      if (option == 20) {
+      } else if (option == 20) {
         lasersight2 = !lasersight2;
-      }
-      if (option == 21) {
+      } else if (option == 21) {
         lasersight3 = !lasersight3;
-      }
-      if (option == 22) {
+      } else if (option == 22) {
         lasersight4 = !lasersight4;
-      }
-      if (option == 23) {
+      } else if (option == 23) {
         turbo_charger = !turbo_charger;
-      }
-      if (option == 24) {
+      } else if (option == 24) {
         skull_piecer = !skull_piecer;
-      }
-      if (option == 25) {
+      } else if (option == 25) {
         hammer_point = !hammer_point;
-      }
-      if (option == 26) {
+      } else if (option == 26) {
         disruptor_rounds = !disruptor_rounds;
-      }
-      if (option == 27) {
+      } else if (option == 27) {
         boosted_loader = !boosted_loader;
-      }
-      if (option == 28) {
+      } else if (option == 28) {
         menuLevel = 1;
       }
 
@@ -6319,83 +6247,57 @@ void terminal() {
     {
       if (option == 1) {
         weapon_flatline = !weapon_flatline;
-      }
-      if (option == 2) {
+      } else if (option == 2) {
         weapon_hemlock = !weapon_hemlock;
-      }
-      if (option == 3) {
+      } else if (option == 3) {
         weapon_3030_repeater = !weapon_3030_repeater;
-      }
-      if (option == 4) {
+      } else if (option == 4) {
         weapon_rampage = !weapon_rampage;
-      }
-      if (option == 5) {
+      } else if (option == 5) {
         weapon_prowler = !weapon_prowler;
-      }
-      if (option == 6) {
+      } else if (option == 6) {
         weapon_car_smg = !weapon_car_smg;
-      }
-      if (option == 7) {
+      } else if (option == 7) {
         heavyammo = !heavyammo;
-      }
-      if (option == 8) {
+      } else if (option == 8) {
         heavyammomag1 = !heavyammomag1;
-      }
-      if (option == 9) {
+      } else if (option == 9) {
         heavyammomag2 = !heavyammomag2;
-      }
-      if (option == 10) {
+      } else if (option == 10) {
         heavyammomag3 = !heavyammomag3;
-      }
-      if (option == 11) {
+      } else if (option == 11) {
         heavyammomag4 = !heavyammomag4;
-      }
-      if (option == 12) {
+      } else if (option == 12) {
         stockregular1 = !stockregular1;
-      }
-      if (option == 13) {
+      } else if (option == 13) {
         stockregular2 = !stockregular2;
-      }
-      if (option == 14) {
+      } else if (option == 14) {
         stockregular3 = !stockregular3;
-      }
-      if (option == 15) {
+      } else if (option == 15) {
         suppressor1 = !suppressor1;
-      }
-      if (option == 16) {
+      } else if (option == 16) {
         suppressor2 = !suppressor2;
-      }
-      if (option == 17) {
+      } else if (option == 17) {
         suppressor3 = !suppressor3;
-      }
-      if (option == 18) {
+      } else if (option == 18) {
         lasersight1 = !lasersight1;
-      }
-      if (option == 19) {
+      } else if (option == 19) {
         lasersight2 = !lasersight2;
-      }
-      if (option == 20) {
+      } else if (option == 20) {
         lasersight3 = !lasersight3;
-      }
-      if (option == 21) {
+      } else if (option == 21) {
         lasersight4 = !lasersight4;
-      }
-      if (option == 22) {
+      } else if (option == 22) {
         turbo_charger = !turbo_charger;
-      }
-      if (option == 23) {
+      } else if (option == 23) {
         skull_piecer = !skull_piecer;
-      }
-      if (option == 24) {
+      } else if (option == 24) {
         hammer_point = !hammer_point;
-      }
-      if (option == 25) {
+      } else if (option == 25) {
         disruptor_rounds = !disruptor_rounds;
-      }
-      if (option == 26) {
+      } else if (option == 26) {
         boosted_loader = !boosted_loader;
-      }
-      if (option == 27) {
+      } else if (option == 27) {
         menuLevel = 1;
       } else {
         std::cout << "Invalid command. Please try again." << std::endl;
@@ -6407,83 +6309,57 @@ void terminal() {
     {
       if (option == 1) {
         weapon_lstar = !weapon_lstar;
-      }
-      if (option == 2) {
+      } else if (option == 2) {
         weapon_nemesis = !weapon_nemesis;
-      }
-      if (option == 3) {
+      } else if (option == 3) {
         weapon_havoc = !weapon_havoc;
-      }
-      if (option == 4) {
+      } else if (option == 4) {
         weapon_devotion = !weapon_devotion;
-      }
-      if (option == 5) {
+      } else if (option == 5) {
         weapon_triple_take = !weapon_triple_take;
-      }
-      if (option == 6) {
+      } else if (option == 6) {
         weapon_volt = !weapon_volt;
-      }
-      if (option == 7) {
+      } else if (option == 7) {
         energyammo = !energyammo;
-      }
-      if (option == 8) {
+      } else if (option == 8) {
         energyammomag1 = !energyammomag1;
-      }
-      if (option == 9) {
+      } else if (option == 9) {
         energyammomag2 = !energyammomag2;
-      }
-      if (option == 10) {
+      } else if (option == 10) {
         energyammomag3 = !energyammomag3;
-      }
-      if (option == 11) {
+      } else if (option == 11) {
         energyammomag4 = !energyammomag4;
-      }
-      if (option == 12) {
+      } else if (option == 12) {
         stockregular1 = !stockregular1;
-      }
-      if (option == 13) {
+      } else if (option == 13) {
         stockregular2 = !stockregular2;
-      }
-      if (option == 14) {
+      } else if (option == 14) {
         stockregular3 = !stockregular3;
-      }
-      if (option == 15) {
+      } else if (option == 15) {
         suppressor1 = !suppressor1;
-      }
-      if (option == 16) {
+      } else if (option == 16) {
         suppressor2 = !suppressor2;
-      }
-      if (option == 17) {
+      } else if (option == 17) {
         suppressor3 = !suppressor3;
-      }
-      if (option == 18) {
+      } else if (option == 18) {
         lasersight1 = !lasersight1;
-      }
-      if (option == 19) {
+      } else if (option == 19) {
         lasersight2 = !lasersight2;
-      }
-      if (option == 20) {
+      } else if (option == 20) {
         lasersight3 = !lasersight3;
-      }
-      if (option == 21) {
+      } else if (option == 21) {
         lasersight4 = !lasersight4;
-      }
-      if (option == 22) {
+      } else if (option == 22) {
         turbo_charger = !turbo_charger;
-      }
-      if (option == 23) {
+      } else if (option == 23) {
         skull_piecer = !skull_piecer;
-      }
-      if (option == 24) {
+      } else if (option == 24) {
         hammer_point = !hammer_point;
-      }
-      if (option == 25) {
+      } else if (option == 25) {
         disruptor_rounds = !disruptor_rounds;
-      }
-      if (option == 26) {
+      } else if (option == 26) {
         boosted_loader = !boosted_loader;
-      }
-      if (option == 27) {
+      } else if (option == 27) {
         menuLevel = 1;
       } else {
         std::cout << "Invalid command. Please try again." << std::endl;
@@ -6495,68 +6371,47 @@ void terminal() {
     {
       if (option == 1) {
         weapon_wingman = !weapon_wingman;
-      }
-      if (option == 2) {
+      } else if (option == 2) {
         weapon_longbow = !weapon_longbow;
-      }
-      if (option == 3) {
+      } else if (option == 3) {
         weapon_charge_rifle = !weapon_charge_rifle;
-      }
-      if (option == 4) {
+      } else if (option == 4) {
         weapon_sentinel = !weapon_sentinel;
-      }
-      if (option == 5) {
+      } else if (option == 5) {
         weapon_bow = !weapon_bow;
-      }
-      if (option == 6) {
+      } else if (option == 6) {
         sniperammo = !sniperammo;
-      }
-      if (option == 7) {
+      } else if (option == 7) {
         sniperammomag1 = !sniperammomag1;
-      }
-      if (option == 8) {
+      } else if (option == 8) {
         sniperammomag2 = !sniperammomag2;
-      }
-      if (option == 9) {
+      } else if (option == 9) {
         sniperammomag3 = !sniperammomag3;
-      }
-      if (option == 10) {
+      } else if (option == 10) {
         sniperammomag4 = !sniperammomag4;
-      }
-      if (option == 11) {
+      } else if (option == 11) {
         stocksniper1 = !stocksniper1;
-      }
-      if (option == 12) {
+      } else if (option == 12) {
         stocksniper2 = !stocksniper2;
-      }
-      if (option == 13) {
+      } else if (option == 13) {
         stocksniper3 = !stocksniper3;
-      }
-      if (option == 14) {
+      } else if (option == 14) {
         suppressor1 = !suppressor1;
-      }
-      if (option == 15) {
+      } else if (option == 15) {
         suppressor2 = !suppressor2;
-      }
-      if (option == 16) {
+      } else if (option == 16) {
         suppressor3 = !suppressor3;
-      }
-      if (option == 17) {
+      } else if (option == 17) {
         turbo_charger = !turbo_charger;
-      }
-      if (option == 18) {
+      } else if (option == 18) {
         skull_piecer = !skull_piecer;
-      }
-      if (option == 19) {
+      } else if (option == 19) {
         hammer_point = !hammer_point;
-      }
-      if (option == 20) {
+      } else if (option == 20) {
         disruptor_rounds = !disruptor_rounds;
-      }
-      if (option == 21) {
+      } else if (option == 21) {
         boosted_loader = !boosted_loader;
-      }
-      if (option == 22) {
+      } else if (option == 22) {
         menuLevel = 1;
       } else {
         std::cout << "Invalid command. Please try again." << std::endl;
@@ -6567,45 +6422,31 @@ void terminal() {
     else if (menuLevel == 6) {
       if (option == 1) {
         shieldupgrade1 = !shieldupgrade1;
-      }
-      if (option == 2) {
+      } else if (option == 2) {
         shieldupgrade2 = !shieldupgrade2;
-      }
-      if (option == 3) {
+      } else if (option == 3) {
         shieldupgrade3 = !shieldupgrade3;
-      }
-      if (option == 4) {
+      } else if (option == 4) {
         shieldupgrade4 = !shieldupgrade4;
-      }
-      if (option == 5) {
+      } else if (option == 5) {
         shieldupgrade5 = !shieldupgrade5;
-      }
-      if (option == 6) {
+      } else if (option == 6) {
         shieldupgradehead1 = !shieldupgradehead1;
-      }
-      if (option == 7) {
+      } else if (option == 7) {
         shieldupgradehead2 = !shieldupgradehead2;
-      }
-      if (option == 8) {
+      } else if (option == 8) {
         shieldupgradehead3 = !shieldupgradehead3;
-      }
-      if (option == 9) {
+      } else if (option == 9) {
         shieldupgradehead4 = !shieldupgradehead4;
-      }
-      if (option == 10) {
+      } else if (option == 10) {
         shielddown1 = !shielddown1;
-      }
-      if (option == 11) {
+      } else if (option == 11) {
         shielddown2 = !shielddown2;
-      }
-      if (option == 12) {
+      } else if (option == 12) {
         shielddown3 = !shielddown3;
-      }
-      if (option == 13) {
+      } else if (option == 13) {
         shielddown4 = !shielddown4;
-      }
-
-      if (option == 14) {
+      } else if (option == 14) {
         menuLevel = 1;
       } else {
         std::cout << "Invalid command. Please try again." << std::endl;
@@ -6616,20 +6457,15 @@ void terminal() {
     else if (menuLevel == 7) {
       if (option == 1) {
         accelerant = !accelerant;
-      }
-      if (option == 2) {
+      } else if (option == 2) {
         phoenix = !phoenix;
-      }
-      if (option == 3) {
+      } else if (option == 3) {
         healthlarge = !healthlarge;
-      }
-      if (option == 4) {
+      } else if (option == 4) {
         healthsmall = !healthsmall;
-      }
-      if (option == 5) {
+      } else if (option == 5) {
         shieldbattsmall = !shieldbattsmall;
-      }
-      if (option == 6) {
+      } else if (option == 6) {
         menuLevel = 1;
       } else {
         std::cout << "Invalid command. Please try again." << std::endl;
@@ -6640,14 +6476,11 @@ void terminal() {
     else if (menuLevel == 8) {
       if (option == 1) {
         grenade_frag = !grenade_frag;
-      }
-      if (option == 2) {
+      } else if (option == 2) {
         grenade_arc_star = !grenade_arc_star;
-      }
-      if (option == 3) {
+      } else if (option == 3) {
         grenade_thermite = !grenade_thermite;
-      }
-      if (option == 4) {
+      } else if (option == 4) {
         menuLevel = 1;
       } else {
         std::cout << "Invalid command. Please try again." << std::endl;
@@ -6658,17 +6491,13 @@ void terminal() {
     else if (menuLevel == 9) {
       if (option == 1) {
         lightbackpack = !lightbackpack;
-      }
-      if (option == 2) {
+      } else if (option == 2) {
         medbackpack = !medbackpack;
-      }
-      if (option == 3) {
+      } else if (option == 3) {
         heavybackpack = !heavybackpack;
-      }
-      if (option == 4) {
+      } else if (option == 4) {
         goldbackpack = !goldbackpack;
-      }
-      if (option == 5) {
+      } else if (option == 5) {
         menuLevel = 1;
       } else {
         std::cout << "Invalid command. Please try again." << std::endl;
@@ -6679,36 +6508,27 @@ void terminal() {
     else if (menuLevel == 10) {
       if (option == 1) {
         optic1xhcog = !optic1xhcog;
-      }
-      if (option == 2) {
+      } else if (option == 2) {
         optic2xhcog = !optic2xhcog;
-      }
-      if (option == 3) {
+      } else if (option == 3) {
         opticholo1x = !opticholo1x;
-      }
-      if (option == 4) {
+      } else if (option == 4) {
         opticholo1x2x = !opticholo1x2x;
-      }
-      if (option == 5) {
+      } else if (option == 5) {
         opticthreat = !opticthreat;
-      }
-      if (option == 6) {
+      } else if (option == 6) {
         optic3xhcog = !optic3xhcog;
-      }
-      if (option == 7) {
+      } else if (option == 7) {
         optic2x4x = !optic2x4x;
-      }
-      if (option == 8) {
+      } else if (option == 8) {
         opticsniper6x = !opticsniper6x;
-      }
-      if (option == 9) {
+      } else if (option == 9) {
         opticsniper4x8x = !opticsniper4x8x;
-      }
-      if (option == 10) {
+      } else if (option == 10) {
         opticsniperthreat = !opticsniperthreat;
       }
 
-      if (option == 11) {
+      else if (option == 11) {
         menuLevel = 1;
       } else {
         std::cout << "Invalid command. Please try again." << std::endl;
@@ -6722,6 +6542,7 @@ int main(int argc, char *argv[]) {
 
   if (geteuid() != 0) {
     // run as root..
+    print_run_as_root();
     return 0;
   }
 

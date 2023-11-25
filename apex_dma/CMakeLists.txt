@@ -63,10 +63,24 @@ add_executable(apex_dma
     ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp)
 
-add_dependencies(apex_dma memflow_win32_ffi memflow_qemu_procfs)
+ExternalProject_Add(
+    apexsky
+    DOWNLOAD_COMMAND ""
+    CONFIGURE_COMMAND ""
+    BINARY_DIR ${PROJECT_SOURCE_DIR}/apexsky/
+    BUILD_COMMAND cargo build --release
+    INSTALL_COMMAND ""
+    LOG_BUILD ON)
+
+add_dependencies(apex_dma 
+    apexsky
+    memflow_win32_ffi
+    memflow_qemu_procfs)
+
 target_link_libraries(
     apex_dma
-    "${PROJECT_SOURCE_DIR}/memflow/target/release/libmemflow_win32_ffi.a"
+    ${PROJECT_SOURCE_DIR}/apexsky/target/release/libapexsky.a
+    ${PROJECT_SOURCE_DIR}/memflow/target/release/libmemflow_win32_ffi.a
     glfw
     GL
     ${CMAKE_THREAD_LIBS_INIT}

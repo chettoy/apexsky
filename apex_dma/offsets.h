@@ -24,7 +24,7 @@
 #define OFFSET_FORCE_DUCK 0x0738b190 //in_duck //updated 11/20/2023
 #define OFFSET_TRAVERSAL_PROGRESS 0x2b2c //m_traversalProgress //updated 11/20/2023
 #define OFFSET_FORCE_JUMP 0x0738b0a0 //in_jump //updated 11/20/2023
- 
+
 #define OFFSET_WEAPON_NAME 0x17a8 //m_weaponNameIndex 2nd one //updated 11/20/2023
 #define OFFSET_OFF_WEAPON 0x1974 //m_latestNonOffhandWeapons //updated 11/20/2023
 #define OFFSET_IN_ATTACK 0x0738af90 // in_attack //updated 11/20/2023
@@ -37,7 +37,8 @@
  
 #define OFFSET_LIFE_STATE 0x06c8 //m_lifeState, >0 = dead //updated 11/20/2023
 #define OFFSET_BLEED_OUT_STATE 0x2710 //m_bleedoutState, >0 = knocked //updated 11/20/2023
- 
+
+#define OFFSET_VIEW_OFFSET 0x00e8 //m_currentFrame.viewOffset //updated 11/20/2023
 #define OFFSET_ORIGIN 0x017c //m_vecAbsOrigin - 3rd offset after the first int and vector //updated 11/20/2023
 #define OFFSET_BONES 0x0dd0 + 0x48 //m_nForceBone + 0x48 //updated 11/20/2023
 #define OFFSET_STUDIOHDR 0x1020 //CBaseAnimating!m_pStudioHdr //updated 11/20/2023
@@ -48,12 +49,13 @@
 #define OFFSET_OBSERVER_MODE 0x34c4 //m_iObserverMode//updated 11/20/2023
 #define OFFSET_OBSERVING_TARGET 0x34d0 //m_hObserverTarget//updated 11/20/2023
 #define OFFSET_IN_USE 0x0738b110 //in_use //updated 11/20/2023
- 
- 
+
+
 #define OFFSET_MATRIX 0x11a350 //ViewMatrix//updated 11/20/2023
 #define OFFSET_RENDER 0x7389d40 //ViewRender displays ESp, heath dist names etc //updated 11/20/2023
  
-#define OFFSET_WEAPON 0x1964 //m_latestPrimaryWeapons //updated 11/20/2023
+#define OFFSET_PRIMARY_WEAPON 0x1964 //m_latestPrimaryWeapons //updated 11/20/2023
+#define OFFSET_ACTIVE_WEAPON 0x18f8 + 0x58 // m_inventory + activeWeapon //updated 11/20/2023
 #define OFFSET_BULLET_SPEED 0x1ebc //CWeaponX!m_flProjectileSpeed maybe its WeaponSettings.projectile_launch_speed now //updated 11/20/2023
 #define OFFSET_BULLET_SCALE 0x1ec4 //CWeaponX!m_flProjectileScale maybe its WeaponSettings.projectile_gravity_scale now //updated 11/20/2023
 #define OFFSET_ZOOM_FOV 0x1600 + 0x00b8 //m_playerData + m_curZoomFOV //updated 11/20/2023
@@ -86,3 +88,4 @@
 #define OFFSET_CROSSHAIR_LAST 0x19c8 //CWeaponX!lastCrosshairTargetTime // CPlayer!lastVisibleTime + 0x8 // updated 11/20/2023
 //#define OFFSET_CROSSHAIR_START 0x1A84 //CPlayer!crosshairTargetStartTime
 #define OFFSET_INPUT_SYSTEM 0x17151c0 //InputSystem // updated 11/20/2023 
+#define OFFSET_WEAPON_BITFIELD 0x1734 // m_modBitfieldFromPlayer // updated 11/20/2023

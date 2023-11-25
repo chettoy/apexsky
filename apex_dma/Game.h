@@ -2,6 +2,8 @@
 #include "glowmode.h"
 #include "memory.h"
 #include "offsets.h"
+#include "vector.h"
+#include <cstdint>
 
 #define NUM_ENT_ENTRIES (1 << 12)
 #define ENT_ENTRY_MASK (NUM_ENT_ENTRIES - 1)
@@ -41,6 +43,7 @@ public:
   int getMaxshield();
   bool isGlowing();
   bool isZooming();
+  Vector getViewOffset();
   Vector getAbsVelocity();
   QAngle GetSwayAngles();
   QAngle GetViewAngles();
@@ -80,12 +83,18 @@ public:
   float get_projectile_gravity();
   float get_zoom_fov();
   int get_ammo();
+  const char *get_name_str();
+  int get_mod_bitfield();
+  uint32_t get_weap_id();
 
 private:
   float projectile_scale;
   float projectile_speed;
   float zoom_fov;
   int ammo;
+  char name_str[200];
+  int mod_bitfield;
+  uint32_t weap_id;
 };
 
 struct ClientClass {
@@ -136,3 +145,44 @@ float CalculateFov(Entity &from, Entity &target);
 QAngle CalculateBestBoneAim(Entity &from, uintptr_t target, float max_fov);
 void get_class_name(uint64_t entity_ptr, char *out_str);
 void charge_rifle_hack(uint64_t entity_ptr);
+
+enum weapon_id : int32_t {
+  idweapon_r301 = 0,
+  idweapon_sentinel = 1,
+  idweapon_bow = 2,
+  idsheila_stationary = 10,
+  idsheila = 56,
+  idweapon_rampage = 20,
+  idmelee = 113,
+  idsnipers_mark = 76,
+  idweapon_alternator = 79,
+  idweapon_re45,
+  idweapon_charge_rifle = 82,
+  idweapon_devotion,
+  idweapon_longbow = 84,
+  idweapon_havoc,
+  idweapon_eva8,
+  idweapon_flatline,
+  idweapon_g7_scout = 88,
+  idweapon_hemlock,
+  idweapon_kraber = 91,
+  idweapon_lstar,
+  idweapon_mastiff = 94,
+  idweapon_mozambique,
+  idweapon_prowler = 101,
+  idweapon_peacekeeper,
+  idweapon_r99 = 103,
+  idweapon_p2020,
+  idweapon_spitfire = 105,
+  idweapon_triple_take = 106,
+  idweapon_wingman = 108,
+  idweapon_volt,
+  idweapon_3030_repeater = 110,
+  idweapon_car_smg = 111,
+  idweapon_nemesis,
+  idthrowing_knife = 158,
+  idgrenade_thermite = 159,
+  idgrenade_frag = 160,
+  idgrenade_arc_star = 161,
+  idmax
+};

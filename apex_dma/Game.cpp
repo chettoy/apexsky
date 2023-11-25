@@ -1,8 +1,11 @@
+#include "apex_sky.h"
 #include "prediction.h"
 #include "vector.h"
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <ostream>
 #include <thread>
@@ -26,6 +29,8 @@ extern float veltest;
 extern float max_dist;
 extern Vector aim_target;
 float game_fps = 75.0f; // for aimbot calc
+extern int local_held_id;
+extern uint32_t local_weapon_id;
 
 bool Entity::Observing(uint64_t entitylist) {
   return *(bool *)(buffer + OFFSET_OBSERVER_MODE);
@@ -69,6 +74,9 @@ Vector Entity::getAbsVelocity() {
 }
 
 Vector Entity::getPosition() { return *(Vector *)(buffer + OFFSET_ORIGIN); }
+Vector Entity::getViewOffset() {
+  return *(Vector *)(buffer + OFFSET_VIEW_OFFSET);
+}
 
 bool Entity::isPlayer() {
   return *(uint64_t *)(buffer + OFFSET_NAME) == 125780153691248;
@@ -317,7 +325,6 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
 
   Vector LocalCamera = from.GetCamPos();
   Vector TargetBonePosition;
-  float distanceToTarget;
   QAngle CalculatedAngles = QAngle(0, 0, 0);
 
   WeaponXEntity curweap = WeaponXEntity();
@@ -325,13 +332,33 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
   float BulletSpeed = curweap.get_projectile_speed();
   float BulletGrav = curweap.get_projectile_gravity();
   float zoom_fov = curweap.get_zoom_fov();
+  uint32_t weap_id = curweap.get_weap_id();
 
   if (zoom_fov != 0.0f && zoom_fov != 1.0f) {
     max_fov *= zoom_fov / 90.0f;
   }
 
   // Find best bone
-  if (bone_auto) {
+  bool weap_headshot;
+  switch (weap_id) {
+  case idweapon_3030_repeater:
+  case idweapon_bow:
+  case idweapon_charge_rifle:
+  case idweapon_g7_scout:
+  case idweapon_kraber:
+  case idweapon_longbow:
+  case idweapon_sentinel:
+  case idweapon_triple_take:
+  case idweapon_wingman:
+    weap_headshot = true;
+    break;
+  default:
+    weap_headshot = false;
+  }
+  if (weap_headshot) {
+    TargetBonePosition = target.getBonePositionByHitbox(0);
+  } else if (bone_auto) {
+    // find nearest bone
     float NearestBoneDistance = max_dist;
     for (int i = 0; i < 4; i++) {
       Vector currentBonePosition = target.getBonePositionByHitbox(i);
@@ -339,13 +366,11 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
           (currentBonePosition - LocalCamera).Length();
       if (DistanceFromCrosshair < NearestBoneDistance) {
         TargetBonePosition = currentBonePosition;
-        distanceToTarget = DistanceFromCrosshair;
         NearestBoneDistance = DistanceFromCrosshair;
       }
     }
   } else {
     TargetBonePosition = target.getBonePositionByHitbox(bone);
-    distanceToTarget = (TargetBonePosition - LocalCamera).Length();
   }
 
   if (BulletSpeed > 1.f) {
@@ -364,6 +389,7 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
 
     // Add the target's velocity to the prediction context, with an offset in
     // the y direction
+    float distanceToTarget = (TargetBonePosition - LocalCamera).Length();
     float timeToTarget = distanceToTarget / BulletSpeed;
     Vector targetPosAhead = TargetBonePosition + (targetVel * timeToTarget);
     Ctx.TargetVel =
@@ -395,6 +421,31 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
 
   Math::NormalizeAngles(Delta);
 
+  if (local_held_id == -251) {
+    uint32_t weapon_id = curweap.get_weap_id();
+    int weapon_mod_bitfield = curweap.get_mod_bitfield();
+    Vector local_origin = from.getPosition();
+    Vector view_offset = from.getViewOffset();
+    // printf("view_offset(%f,%f,%f)\n", view_offset.x, view_offset.y,
+    //        view_offset.z);
+    Vector view_origin = local_origin + view_offset;
+    Vector target_origin = target.getPosition();
+    vector2d_t skynade_angles =
+        skynade_angle(weapon_id, weapon_mod_bitfield, BulletGrav / 750.0f,
+                      BulletSpeed, view_origin.x, view_origin.y, view_origin.z,
+                      target_origin.x, target_origin.y, target_origin.z);
+
+    // printf("(%.1f, %.1f)\n", ViewAngles.x, ViewAngles.y);
+
+    const float PIS_IN_180 = 57.2957795130823208767981548141051703f;
+    QAngle TargetAngles = QAngle(-skynade_angles.x * PIS_IN_180,
+                                 skynade_angles.y * PIS_IN_180, 0);
+    // printf("weap=%d, bitfield=%d, (%.1f, %.1f)\n", weapon_id,
+    //        weapon_mod_bitfield, TargetAngles.x, TargetAngles.y);
+
+    Delta = TargetAngles - ViewAngles;
+    return ViewAngles + Delta / (smooth / 2);
+  }
   QAngle SmoothedAngles = ViewAngles + Delta / smooth;
   return SmoothedAngles;
 }
@@ -446,7 +497,7 @@ void WeaponXEntity::update(uint64_t LocalPlayer) {
   extern uint64_t g_Base;
   uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
   uint64_t wephandle = 0;
-  apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON, wephandle);
+  apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_ACTIVE_WEAPON, wephandle);
 
   wephandle &= 0xffff;
 
@@ -461,6 +512,14 @@ void WeaponXEntity::update(uint64_t LocalPlayer) {
   apex_mem.Read<float>(wep_entity + OFFSET_ZOOM_FOV, zoom_fov);
   ammo = 0;
   apex_mem.Read<int>(wep_entity + OFFSET_AMMO, ammo);
+  memset(name_str, 0, sizeof(name_str));
+  uint64_t name_ptr;
+  apex_mem.Read<uint64_t>(wep_entity + OFFSET_MODELNAME, name_ptr);
+  apex_mem.ReadArray<char>(name_ptr, name_str, 200);
+  mod_bitfield = 0;
+  apex_mem.Read<int>(wep_entity + OFFSET_WEAPON_BITFIELD, mod_bitfield);
+  weap_id = 0;
+  apex_mem.Read<uint32_t>(wep_entity + OFFSET_WEAPON_NAME, weap_id);
 }
 
 float WeaponXEntity::get_projectile_speed() { return projectile_speed; }
@@ -472,3 +531,9 @@ float WeaponXEntity::get_projectile_gravity() {
 float WeaponXEntity::get_zoom_fov() { return zoom_fov; }
 
 int WeaponXEntity::get_ammo() { return ammo; }
+
+const char *WeaponXEntity::get_name_str() { return name_str; }
+
+int WeaponXEntity::get_mod_bitfield() { return mod_bitfield; }
+
+uint32_t WeaponXEntity::get_weap_id() { return weap_id; }
