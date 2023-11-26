@@ -24,6 +24,7 @@ ExternalProject_Add(
     BINARY_DIR ${PROJECT_SOURCE_DIR}/memflow/memflow-win32-ffi/
     BUILD_COMMAND cargo build --release
     INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/memflow/target/release/libmemflow_win32_ffi.a
     LOG_BUILD ON)
 ExternalProject_Add(
     memflow_qemu_procfs
@@ -70,6 +71,7 @@ ExternalProject_Add(
     BINARY_DIR ${PROJECT_SOURCE_DIR}/apexsky/
     BUILD_COMMAND cargo build --release
     INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/apexsky/target/release/libapexsky.a
     LOG_BUILD ON)
 
 add_dependencies(apex_dma 
