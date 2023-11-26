@@ -22,6 +22,7 @@ extern int glowtype;
 extern int glowtype2;
 // setting up vars, dont edit
 extern float smooth;
+extern float skynade_smooth;
 extern bool aim_no_recoil;
 extern int bone;
 bool bone_auto = true;
@@ -444,7 +445,7 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
     //        weapon_mod_bitfield, TargetAngles.x, TargetAngles.y);
 
     Delta = TargetAngles - ViewAngles;
-    return ViewAngles + Delta / (smooth / 2);
+    return ViewAngles + Delta / skynade_smooth;
   }
   QAngle SmoothedAngles = ViewAngles + Delta / smooth;
   return SmoothedAngles;

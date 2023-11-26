@@ -1,6 +1,7 @@
 #include "Client/main.h"
 #include "Game.h"
 #include "apex_sky.h"
+#include "vector.h"
 #include <array>
 #include <cfloat>
 #include <chrono>
@@ -25,10 +26,12 @@ bool active = true;
 uintptr_t aimentity = 0;
 uintptr_t tmp_aimentity = 0;
 uintptr_t lastaimentity = 0;
-float max = 999.0f;
+float aiming_fov_max;
+float aiming_dist_max;
 int team_player = 0;
 const int toRead = 100;
 bool aiming = false;
+extern Vector aim_target; // for esp
 
 // Removed but not all the way, dont edit.
 int glowtype;
@@ -48,7 +51,7 @@ bool item_t = false;
 uint64_t g_Base;
 bool next2 = false;
 bool valid = false;
-bool lock = false;
+int lock = 0;
 float ADSfov = 10;
 float nonADSfov = 50;
 extern float bulletspeed;
@@ -97,6 +100,7 @@ bool firing_range = false; // firing range
 int bone = 2;              // bone 0 head, 1 neck, 2 chest, 3 dick shot
 float smooth =
     120.0f; // min 85 no beaming, 100 somewhat beam people, 125 should be safe
+float skynade_smooth = smooth * 0.6667;
 // Player Glow Color and Brightness.
 // inside fill
 unsigned char insidevalue = 14; // 0 = no fill, 14 = full fill
@@ -731,7 +735,10 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   Vector EntityPosition = target.getPosition();
   Vector LocalPlayerPosition = LPlayer.getPosition();
   float dist = LocalPlayerPosition.DistTo(EntityPosition);
-  // if (dist > aimdist) return;
+  float skynade_dist = aimdist / 2;
+  float aiming_fov_threshold = 2.0f;
+  if (dist > aimdist)
+    return;
 
   // Firing range stuff
   if (!firing_range)
@@ -739,17 +746,39 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
         (entity_team == team_player && !onevone))
       return;
 
-  // Vis check aiming? dunno
-  if (aim == 2 && local_held_id != -251) { /* ignore vis check for skynade */
+  // Find best aim target
+  if (local_held_id == -251) {
+    /* skynade: fov > dist + vis */
+    const float vis_weights = 50.0f;
+    float fov = CalculateFov(LPlayer, target);
+    float dist_score =
+        (target.lastVisTime() > lastvis_aim[index]) ? dist : dist + vis_weights;
+    if (dist < skynade_dist && fov < aiming_fov_max + aiming_fov_threshold) {
+      aiming_fov_max = fov;
+      if (dist_score < aiming_dist_max) {
+        aiming_dist_max = dist_score;
+        tmp_aimentity = target.ptr;
+      } else {
+        if (aimentity == target.ptr) {
+          aimentity = tmp_aimentity = lastaimentity = 0;
+          aim_target = Vector(0, 0, 0);
+        }
+      }
+    }
+  } else if (aim == 2) {
+    /* aim2: vis > lock > fov + dist */
     if ((target.lastVisTime() > lastvis_aim[index])) {
       float fov = CalculateFov(LPlayer, target);
-      if (fov < max) {
-        max = fov;
+      if (fov < aiming_fov_max + aiming_fov_threshold &&
+          dist < aiming_dist_max) {
+        aiming_fov_max = fov;
+        aiming_dist_max = dist;
         tmp_aimentity = target.ptr;
       }
     } else {
       if (aimentity == target.ptr) {
         aimentity = tmp_aimentity = lastaimentity = 0;
+        aim_target = Vector(0, 0, 0);
       }
     }
 
@@ -767,8 +796,10 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
 
   } else {
     float fov = CalculateFov(LPlayer, target);
-    if (fov < max) {
-      max = fov;
+    if (fov < (aiming_fov_max + aiming_fov_threshold) &&
+        dist < aiming_dist_max) {
+      aiming_fov_max = fov;
+      aiming_dist_max = dist;
       tmp_aimentity = target.ptr;
     }
   }
@@ -837,7 +868,8 @@ void DoActions() {
         continue;
       }
 
-      max = 999.0f;
+      aiming_fov_max = 999.0f;
+      aiming_dist_max = aimdist;
       tmp_aimentity = 0;
       tmp_spec = 0;
       tmp_all_spec = 0;
@@ -896,10 +928,12 @@ void DoActions() {
         }
       }
 
-      if (!lock)
+      if (local_held_id == -251) // 1. don't lock target for skynade
         aimentity = tmp_aimentity;
-      else
+      else if (lock) // 2. locked target
         aimentity = lastaimentity;
+      else // 3. or new target
+        aimentity = tmp_aimentity;
     }
   }
   actions_t = false;

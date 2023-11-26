@@ -1108,13 +1108,13 @@ void Overlay::RenderEsp() {
                      ImGuiWindowFlags_NoBackground |
                      ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-    if (show_aim_target && aiming && aim_target != Vector(0, 0, 0)) {
+    if (show_aim_target && aim_target != Vector(0, 0, 0)) {
       Vector bs = Vector();
       WorldToScreen(aim_target, view_matrix_data.matrix, getWidth(),
                     getHeight(), bs);
       ImGui::GetWindowDrawList()->AddRectFilled(
           ImVec2(bs.x - 10, bs.y - 10), ImVec2(bs.x + 10, bs.y + 10),
-          ImColor(0.0f, 1.0f, 0.0f, 0.6f), 10.0f, 0);
+          ImColor(1.0f, 0.647f, 0.0f, 0.6f), 10.0f, 0);
     }
 
     if (!firing_range)
