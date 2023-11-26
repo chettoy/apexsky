@@ -737,7 +737,9 @@ void Overlay::RenderInfo() {
   ImGui::Text("--");
   ImGui::SameLine();
   // Aim is on = 2, On but No Vis Check = 1, Off = 0
-  if (aim == 2) {
+  if (local_held_id == -251) {
+    ImGui::TextColored(BLUE, "Skynade On");
+  } else if (aim == 2) {
     ImGui::TextColored(GREEN, "Aim On");
   } else if (aim == 0) {
     ImGui::TextColored(RED, "Aim Off");

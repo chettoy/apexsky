@@ -1,6 +1,6 @@
-#include "apex_sky.h"
 #include "Client/main.h"
 #include "Game.h"
+#include "apex_sky.h"
 #include <array>
 #include <cfloat>
 #include <chrono>
@@ -740,7 +740,7 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
       return;
 
   // Vis check aiming? dunno
-  if (aim == 2) {
+  if (aim == 2 && local_held_id != -251) { /* ignore vis check for skynade */
     if ((target.lastVisTime() > lastvis_aim[index])) {
       float fov = CalculateFov(LPlayer, target);
       if (fov < max) {
