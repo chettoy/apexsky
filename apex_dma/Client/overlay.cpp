@@ -824,6 +824,12 @@ int Overlay::CreateOverlay() {
   io.ConfigFlags |=
       ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
 
+#include "impl/render/font.h"
+  io.Fonts->AddFontFromMemoryCompressedTTF(
+      LXGWNeoXiHei_compressed_data, LXGWNeoXiHei_compressed_size, 15, NULL,
+      io.Fonts->GetGlyphRangesChineseFull());
+  io.Fonts->Build();
+
   // Setup Dear ImGui style
   ImGui::StyleColorsDark();
   // ImGui::StyleColorsLight();
@@ -867,30 +873,16 @@ int Overlay::CreateOverlay() {
     // 2. Show a simple window that we create ourselves. We use a Begin/End pair
     // to create a named window.
     {
-      static float f = 0.0f;
-      static int counter = 0;
-
       ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!"
                                      // and append into it.
 
       ImGui::Text("This is some useful text."); // Display some text (you can
-                                                // use a format strings too)
+      // use a format strings too)
+      ImGui::Text(u8"fsdfsdad我是中文dfd");
+      ImGui::Text(u8"Kanjis: \xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e (nihongo)");
       ImGui::Checkbox(
           "Demo Window",
           &show_demo_window); // Edit bools storing our window open/close state
-      ImGui::Checkbox("Another Window", &show_another_window);
-
-      ImGui::SliderFloat("float", &f, 0.0f,
-                         1.0f); // Edit 1 float using a slider from 0.0f to 1.0f
-      ImGui::ColorEdit3(
-          "clear color",
-          (float *)&clear_color); // Edit 3 floats representing a color
-
-      if (ImGui::Button("Button")) // Buttons return true when clicked (most
-                                   // widgets return true when edited/activated)
-        counter++;
-      ImGui::SameLine();
-      ImGui::Text("counter = %d", counter);
 
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                   1000.0f / io.Framerate, io.Framerate);

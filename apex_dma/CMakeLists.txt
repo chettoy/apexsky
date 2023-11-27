@@ -56,6 +56,7 @@ add_executable(apex_dma
     apex_dma.cpp Game.cpp Math.cpp memory.cpp
     ${PROJECT_SOURCE_DIR}/Client/main.cpp
     ${PROJECT_SOURCE_DIR}/Client/overlay.cpp
+    ${PROJECT_SOURCE_DIR}/Client/impl/render/font.cpp
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_demo.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
