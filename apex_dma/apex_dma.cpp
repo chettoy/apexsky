@@ -26,8 +26,8 @@ bool active = true;
 uintptr_t aimentity = 0;
 uintptr_t tmp_aimentity = 0;
 uintptr_t lastaimentity = 0;
-float aiming_fov_max;
-float aiming_dist_max;
+float aiming_score_max;
+bool aimbot_safety = true;
 int team_player = 0;
 const int toRead = 100;
 bool aiming = false;
@@ -732,56 +732,51 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
       return;
   }
 
-  Vector EntityPosition = target.getPosition();
-  Vector LocalPlayerPosition = LPlayer.getPosition();
-  float dist = LocalPlayerPosition.DistTo(EntityPosition);
-  float skynade_dist = aimdist / 2;
-  float aiming_fov_threshold = 2.0f;
-  if (dist > aimdist)
-    return;
-
   // Firing range stuff
   if (!firing_range)
     if (entity_team < 0 || entity_team > 50 ||
         (entity_team == team_player && !onevone))
       return;
 
-  // Find best aim target
-  if (local_held_id == -251) {
-    /* skynade: fov > dist + vis */
-    const float vis_weights = 50.0f;
-    float fov = CalculateFov(LPlayer, target);
-    float dist_score =
-        (target.lastVisTime() > lastvis_aim[index]) ? dist : dist + vis_weights;
-    if (dist < skynade_dist && fov < aiming_fov_max + aiming_fov_threshold) {
-      aiming_fov_max = fov;
-      if (dist_score < aiming_dist_max) {
-        aiming_dist_max = dist_score;
-        tmp_aimentity = target.ptr;
+  Vector EntityPosition = target.getPosition();
+  Vector LocalPlayerPosition = LPlayer.getPosition();
+  float dist = LocalPlayerPosition.DistTo(EntityPosition);
+  if (dist > aimdist)
+    return;
+
+  // Targeting
+  const float vis_weights = 12.5f;
+  // float skynade_dist = aimdist / 2;
+  float fov = CalculateFov(LPlayer, target);
+  bool vis = target.lastVisTime() > lastvis_aim[index];
+  float score =
+      (fov * fov) * 100 + (dist * 0.025) * 10 + (vis ? 0 : vis_weights);
+  // if (local_held_id == -251 && dist > skynade_dist)
+  //   score += 9999999.0f;
+  /*
+   fov:dist:score
+    1  10m  100
+    2  40m  400
+    3  90m  900
+    4  160m 1600
+  */
+  if (score < aiming_score_max) {
+    aiming_score_max = score;
+    tmp_aimentity = target.ptr;
+  }
+
+  if (aim == 2) {
+    // vis check
+    if (aimentity == target.ptr) {
+      if (local_held_id != -251 && !vis) {
+        // turn on safety
+        aimbot_safety = true;
       } else {
-        if (aimentity == target.ptr) {
-          aimentity = tmp_aimentity = lastaimentity = 0;
-          aim_target = Vector(0, 0, 0);
-        }
-      }
-    }
-  } else if (aim == 2) {
-    /* aim2: vis > lock > fov + dist */
-    if ((target.lastVisTime() > lastvis_aim[index])) {
-      float fov = CalculateFov(LPlayer, target);
-      if (fov < aiming_fov_max + aiming_fov_threshold &&
-          dist < aiming_dist_max) {
-        aiming_fov_max = fov;
-        aiming_dist_max = dist;
-        tmp_aimentity = target.ptr;
-      }
-    } else {
-      if (aimentity == target.ptr) {
-        aimentity = tmp_aimentity = lastaimentity = 0;
-        aim_target = Vector(0, 0, 0);
+        aimbot_safety = false;
       }
     }
 
+    // TriggerBot
     if (aimentity != 0) {
       uint64_t LocalPlayer = 0;
       apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
@@ -792,15 +787,6 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
       if (TriggerBot && IsInCrossHair(Target)) {
         TriggerBotRun();
       }
-    }
-
-  } else {
-    float fov = CalculateFov(LPlayer, target);
-    if (fov < (aiming_fov_max + aiming_fov_threshold) &&
-        dist < aiming_dist_max) {
-      aiming_fov_max = fov;
-      aiming_dist_max = dist;
-      tmp_aimentity = target.ptr;
     }
   }
   SetPlayerGlow(LPlayer, target, index);
@@ -868,8 +854,7 @@ void DoActions() {
         continue;
       }
 
-      aiming_fov_max = 999.0f;
-      aiming_dist_max = aimdist;
+      aiming_score_max = (50 * 50) * 100 + (aimdist * 0.025) * 10;
       tmp_aimentity = 0;
       tmp_spec = 0;
       tmp_all_spec = 0;
@@ -928,11 +913,9 @@ void DoActions() {
         }
       }
 
-      if (local_held_id == -251) // 1. don't lock target for skynade
-        aimentity = tmp_aimentity;
-      else if (lock) // 2. locked target
+      if (lock) // locked target
         aimentity = lastaimentity;
-      else // 3. or new target
+      else // or new target
         aimentity = tmp_aimentity;
     }
   }
@@ -1198,6 +1181,9 @@ static void AimbotLoop() {
         if (aimentity == 0 || !aiming) {
           lock = false;
           lastaimentity = 0;
+          continue;
+        }
+        if (aimbot_safety) {
           continue;
         }
         lock = true;

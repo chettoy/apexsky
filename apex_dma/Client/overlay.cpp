@@ -43,7 +43,8 @@ extern float bulletgrav;
 extern bool map_radar_testing;
 
 // Aimbot
-extern bool lock; // read lock state
+extern bool lock;          // read lock state
+extern bool aimbot_safety; // read safety state
 extern float max_fov;
 extern float ADSfov;
 extern float nonADSfov;
@@ -739,7 +740,7 @@ void Overlay::RenderInfo() {
   ImGui::SameLine();
   // Aim is on = 2, On but No Vis Check = 1, Off = 0
   if (lock) {
-    ImGui::TextColored(ORANGE, "[TARGET LOCK!]");
+    ImGui::TextColored(aimbot_safety ? GREEN : ORANGE, "[TARGET LOCK!]");
   } else if (local_held_id == -251) {
     ImGui::TextColored(BLUE, "Skynade On");
   } else if (aim == 2) {
