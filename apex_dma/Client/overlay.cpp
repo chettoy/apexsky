@@ -391,7 +391,7 @@ void Overlay::RenderMenu() {
     ImGui::Text(XorStr("Default is 0.05"));
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Aiming Bone:"));
-    ImGui::Checkbox(XorStr("Nearest"), &bone_auto);
+    ImGui::Checkbox(XorStr("Auto"), &bone_auto);
     ImGui::Text(XorStr("0=Head, 1=Neck, 2=Chest, 3=Stomach"));
     ImGui::SliderInt(XorStr("##bone"), &bone, 0, 3);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));

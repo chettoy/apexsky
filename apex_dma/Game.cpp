@@ -2,6 +2,7 @@
 #include "prediction.h"
 #include "vector.h"
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -312,7 +313,43 @@ float CalculateFov(Entity &from, Entity &target) {
   return Math::GetFov(ViewAngles, Angle);
 }
 
+auto fun_calc_angles = [](Vector LocalCamera, Vector TargetBonePosition,
+                          Vector targetVel, float BulletSpeed, float BulletGrav,
+                          float deltaTime) {
+  QAngle CalculatedAngles = QAngle(0, 0, 0);
+  if (BulletSpeed > 1.f) {
+
+    PredictCtx Ctx;
+    Ctx.StartPos = LocalCamera;
+    Ctx.TargetPos = TargetBonePosition;
+    Ctx.BulletSpeed = BulletSpeed - (BulletSpeed * bulletspeed);
+    Ctx.BulletGravity = BulletGrav + (BulletGrav * bulletgrav);
+
+    // Add the target's velocity to the prediction context, with an offset
+    // in the y direction
+    float distanceToTarget = (TargetBonePosition - LocalCamera).Length();
+    float timeToTarget = distanceToTarget / BulletSpeed;
+    Vector targetPosAhead = TargetBonePosition + (targetVel * timeToTarget);
+    Ctx.TargetVel =
+        Vector(targetVel.x, targetVel.y + (targetVel.Length() * deltaTime),
+               targetVel.z);
+    Ctx.TargetPos = targetPosAhead;
+
+    aim_target.x = Ctx.TargetPos.x;
+    aim_target.y = Ctx.TargetPos.y;
+    aim_target.z = Ctx.TargetPos.z;
+
+    if (BulletPredict(Ctx))
+      CalculatedAngles = QAngle{Ctx.AimAngles.x, Ctx.AimAngles.y, 0.f};
+  }
+
+  if (CalculatedAngles == QAngle(0, 0, 0))
+    CalculatedAngles = Math::CalcAngle(LocalCamera, TargetBonePosition);
+  return CalculatedAngles;
+};
+
 QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
+  bool bone_nearest = false;
   Entity target = getEntity(t);
   if (firing_range) {
     if (!target.isAlive()) {
@@ -324,17 +361,11 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
     }
   }
 
-  Vector LocalCamera = from.GetCamPos();
-  Vector TargetBonePosition;
-  QAngle CalculatedAngles = QAngle(0, 0, 0);
-
   WeaponXEntity curweap = WeaponXEntity();
   curweap.update(from.ptr);
-  float BulletSpeed = curweap.get_projectile_speed();
-  float BulletGrav = curweap.get_projectile_gravity();
-  float zoom_fov = curweap.get_zoom_fov();
   uint32_t weap_id = curweap.get_weap_id();
 
+  float zoom_fov = curweap.get_zoom_fov();
   if (zoom_fov != 0.0f && zoom_fov != 1.0f) {
     max_fov *= zoom_fov / 90.0f;
   }
@@ -356,9 +387,17 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
   default:
     weap_headshot = false;
   }
+
+  Vector TargetBonePositionMin;
+  Vector TargetBonePositionMax;
+  Vector LocalCamera = from.GetCamPos();
+  QAngle ViewAngles = from.GetViewAngles();
+  QAngle SwayAngles = from.GetSwayAngles();
+
   if (weap_headshot) {
-    TargetBonePosition = target.getBonePositionByHitbox(0);
-  } else if (bone_auto) {
+    TargetBonePositionMax = TargetBonePositionMin =
+        target.getBonePositionByHitbox(0);
+  } else if (bone_nearest) {
     // find nearest bone
     float NearestBoneDistance = max_dist;
     for (int i = 0; i < 4; i++) {
@@ -366,63 +405,59 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
       float DistanceFromCrosshair =
           (currentBonePosition - LocalCamera).Length();
       if (DistanceFromCrosshair < NearestBoneDistance) {
-        TargetBonePosition = currentBonePosition;
+        TargetBonePositionMax = TargetBonePositionMin = currentBonePosition;
         NearestBoneDistance = DistanceFromCrosshair;
       }
     }
+  } else if (bone_auto) {
+    TargetBonePositionMax = target.getBonePositionByHitbox(5);
+    TargetBonePositionMin = target.getBonePositionByHitbox(0);
   } else {
-    TargetBonePosition = target.getBonePositionByHitbox(bone);
+    TargetBonePositionMax = TargetBonePositionMin =
+        target.getBonePositionByHitbox(bone);
   }
 
-  if (BulletSpeed > 1.f) {
+  float BulletSpeed = curweap.get_projectile_speed();
+  float BulletGrav = curweap.get_projectile_gravity();
 
-    PredictCtx Ctx;
-    Ctx.StartPos = LocalCamera;
-    Ctx.TargetPos = TargetBonePosition;
-    Ctx.BulletSpeed = BulletSpeed - (BulletSpeed * bulletspeed);
-    Ctx.BulletGravity = BulletGrav + (BulletGrav * bulletgrav);
+  Vector targetVel = target.getAbsVelocity();
 
-    // Get the target's velocity and add it to the prediction context
-    Vector targetVel = target.getAbsVelocity();
+  // Calculate the time since the last frame (in seconds)
+  float deltaTime = 1.0 / game_fps;
 
-    // Calculate the time since the last frame (in seconds)
-    float deltaTime = 1.0 / game_fps;
+  if (local_held_id != -251) {
+    QAngle CalculatedAnglesMin =
+        fun_calc_angles(LocalCamera, TargetBonePositionMin, targetVel,
+                        BulletSpeed, BulletGrav, deltaTime);
+    QAngle CalculatedAnglesMax =
+        fun_calc_angles(LocalCamera, TargetBonePositionMax, targetVel,
+                        BulletSpeed, BulletGrav, deltaTime);
 
-    // Add the target's velocity to the prediction context, with an offset in
-    // the y direction
-    float distanceToTarget = (TargetBonePosition - LocalCamera).Length();
-    float timeToTarget = distanceToTarget / BulletSpeed;
-    Vector targetPosAhead = TargetBonePosition + (targetVel * timeToTarget);
-    Ctx.TargetVel =
-        Vector(targetVel.x, targetVel.y + (targetVel.Length() * deltaTime),
-               targetVel.z);
-    Ctx.TargetPos = targetPosAhead;
+    double fov0 = Math::GetFov(SwayAngles, CalculatedAnglesMin);
+    double fov1 = Math::GetFov(SwayAngles, CalculatedAnglesMax);
+    if ((fov0 + fov1) * 0.5f > max_fov) {
+      return QAngle(0, 0, 0);
+    }
+    if (aim_no_recoil) {
+      CalculatedAnglesMin -= SwayAngles - ViewAngles;
+      CalculatedAnglesMax -= SwayAngles - ViewAngles;
+    }
+    Math::NormalizeAngles(CalculatedAnglesMin);
+    Math::NormalizeAngles(CalculatedAnglesMax);
+    QAngle DeltaMin = CalculatedAnglesMin - ViewAngles;
+    QAngle DeltaMax = CalculatedAnglesMax - ViewAngles;
+    Math::NormalizeAngles(DeltaMin);
+    Math::NormalizeAngles(DeltaMax);
 
-    aim_target.x = Ctx.TargetPos.x;
-    aim_target.y = Ctx.TargetPos.y;
-    aim_target.z = Ctx.TargetPos.z;
+    QAngle Delta = QAngle(0, 0, 0);
+    if (DeltaMin.x * DeltaMax.x > 0)
+      Delta.x = (DeltaMin.x + DeltaMax.x) * 0.5f;
+    if (DeltaMin.y * DeltaMax.y > 0)
+      Delta.y = (DeltaMin.y + DeltaMax.y) * 0.5f;
 
-    if (BulletPredict(Ctx))
-      CalculatedAngles = QAngle{Ctx.AimAngles.x, Ctx.AimAngles.y, 0.f};
-  }
-
-  if (CalculatedAngles == QAngle(0, 0, 0))
-    CalculatedAngles = Math::CalcAngle(LocalCamera, TargetBonePosition);
-  QAngle ViewAngles = from.GetViewAngles();
-  QAngle SwayAngles = from.GetSwayAngles();
-  double fov = Math::GetFov(SwayAngles, CalculatedAngles);
-  if (fov > max_fov) {
-    return QAngle(0, 0, 0);
-  }
-
-  if (aim_no_recoil)
-    CalculatedAngles -= SwayAngles - ViewAngles;
-  Math::NormalizeAngles(CalculatedAngles);
-  QAngle Delta = CalculatedAngles - ViewAngles;
-
-  Math::NormalizeAngles(Delta);
-
-  if (local_held_id == -251) {
+    QAngle SmoothedAngles = ViewAngles + Delta / smooth;
+    return SmoothedAngles;
+  } else {
     uint32_t weapon_id = curweap.get_weap_id();
     int weapon_mod_bitfield = curweap.get_mod_bitfield();
     Vector local_origin = from.getPosition();
@@ -444,11 +479,9 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
     // printf("weap=%d, bitfield=%d, (%.1f, %.1f)\n", weapon_id,
     //        weapon_mod_bitfield, TargetAngles.x, TargetAngles.y);
 
-    Delta = TargetAngles - ViewAngles;
+    QAngle Delta = TargetAngles - ViewAngles;
     return ViewAngles + Delta / skynade_smooth;
   }
-  QAngle SmoothedAngles = ViewAngles + Delta / smooth;
-  return SmoothedAngles;
 }
 
 Entity getEntity(uintptr_t ptr) {
