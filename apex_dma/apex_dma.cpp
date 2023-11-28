@@ -682,7 +682,7 @@ void ClientActions() {
         }
       } else {
         tduckStartTime = std::chrono::steady_clock::time_point();
-        mapRadarTestingEnabled = true;
+        // mapRadarTestingEnabled = true;
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
