@@ -841,7 +841,6 @@ int Overlay::CreateOverlay() {
   // Our state
   bool show_demo_window = false;
   bool show_another_window = false;
-  ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
   running = true;
 
   // Main loop
@@ -921,15 +920,12 @@ int Overlay::CreateOverlay() {
     // Main Map Radar, Needs Manual Setting of cords
     if (IsKeyDown(ImGuiKey_M) && mainradartoggle == 0) {
       mainradartoggle = 1;
-      switch (mainradarmap) {
-      case 0:
+      if (!mainradarmap) {
         mainradarmap = true;
         minimapradar = false;
-        break;
-      case 1:
+      } else {
         mainradarmap = false;
         minimapradar = true;
-        break;
       }
     } else if (!IsKeyDown(ImGuiKey_M) && mainradartoggle == 1) {
       mainradartoggle = 0;
@@ -1060,14 +1056,14 @@ void Overlay::DrawSeerLikeHealth(float x, float y, int shield, int max_shield,
   float shield_step = 25.0f;
 
   int shield_25 = 30;
-  int steps = 5;
+  // steps = 5;
 
-  ImVec2 bg1(x - bar_width / 2 - bg_offset, y);
+  ImVec2 bg1(x - bar_width / 2.0f - bg_offset, y);
   ImVec2 bg2(bg1.x - 10, bg1.y - 16);
   ImVec2 bg3(bg2.x + 5, bg2.y - 7);
   ImVec2 bg4(bg3.x + bar_width + bg_offset, bg3.y);
   ImVec2 bg5(bg4.x + 11, bg4.y + 18);
-  ImVec2 bg6(x + bar_width / 2 + bg_offset, y);
+  ImVec2 bg6(x + bar_width / 2.0f + bg_offset, y);
   DrawHexagonFilled(bg1, bg2, bg3, bg4, bg5, bg6, ImColor(0, 0, 0, 120));
 
   ImVec2 h1(bg1.x + 3, bg1.y - 4);
@@ -1080,7 +1076,7 @@ void Overlay::DrawSeerLikeHealth(float x, float y, int shield, int max_shield,
   DrawQuadFilled(h1, h2, h3, h4, WHITE);
 
   ImColor shieldCracked(97, 97, 97);
-  ImColor shieldCrackedDark(67, 67, 67);
+  // ImColor shieldCrackedDark(67, 67, 67);
 
   ImColor shieldCol;
   ImColor shieldColDark;  // not used, but the real seer q has shadow inside

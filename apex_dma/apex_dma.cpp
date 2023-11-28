@@ -86,10 +86,10 @@ bool playerfilledtoggle = true;
 bool SuperKeyToggle = true;
 // end Terminal Stuff
 bool TDMToggle = false;
-bool item_glow = true;     // item glow
-bool player_glow = false;  // player glow
+bool item_glow = true;      // item glow
+bool player_glow = false;   // player glow
 bool aim_no_recoil = false; // no recoil
-float max_fov = 15;        // Fov you want to use while aiming
+float max_fov = 15;         // Fov you want to use while aiming
 int aim = 2; // 0 no aim, 1 aim with no vis check, 2 aim with vis check
 int local_held_id = 2147483647;
 uint32_t local_weapon_id = 2147483647;
@@ -420,8 +420,8 @@ void ClientActions() {
 
       uint64_t LocalPlayer = 0;
       apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
-      Entity LPlayer = getEntity(LocalPlayer);
-      uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
+      // Entity LPlayer = getEntity(LocalPlayer);
+      // uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
       int attackState = 0;
       apex_mem.Read<int>(g_Base + OFFSET_IN_ATTACK, attackState); // 108
       int tduckState = 0;
@@ -622,8 +622,8 @@ void ClientActions() {
 
       if (keyboard) {
         if (isPressed(AimbotHotKey1) ||
-            isPressed(AimbotHotKey2) &&
-                !isPressed(TriggerBotHotKey)) // Left and Right click
+            (isPressed(AimbotHotKey2) &&
+             !isPressed(TriggerBotHotKey))) // Left and Right click
         {
           aiming = true;
         } else {
@@ -782,7 +782,7 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
       apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
 
       Entity Target = getEntity(aimentity);
-      Entity LPlayer = getEntity(LocalPlayer);
+      //Entity LPlayer = getEntity(LocalPlayer);
 
       if (TriggerBot && IsInCrossHair(Target)) {
         TriggerBotRun();
@@ -1232,7 +1232,6 @@ static void item_glow_t() {
   item_t = true;
   while (item_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    int k = 0;
     while (g_Base != 0) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
       uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
@@ -3887,12 +3886,10 @@ static void item_glow_t() {
           // https://www.unknowncheats.me/forum/members/169606.html for all the
           // weapon ids and item ids code, you are a life saver!
         }
-        k = 1;
         // Change the 60 ms to lower to make the death boxes filker less.
         // std::this_thread::sleep_for(std::chrono::milliseconds(60));
       }
     }
-    k = 0;
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
   }
   item_t = false;
