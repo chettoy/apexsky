@@ -4360,6 +4360,9 @@ void displayMainMenu() {
 
   std::cout << "24 - Toggle 1v1 (Current: " << (onevone ? "on" : "off") << ")"
             << std::endl;
+  
+  std::cout << "25 - Toggle No Recoil (Current: " << (aim_no_recoil ? "on" : "off") << ")"
+            << std::endl;
 
   std::cout << std::endl;
 }
@@ -6151,6 +6154,9 @@ void terminal() {
       } else if (option == 24) {
         onevone = !onevone;
         std::cout << "1v1 " << (onevone ? "on" : "off") << "." << std::endl;
+      } else if (option == 25) {
+        aim_no_recoil = !aim_no_recoil;
+        std::cout << "No Recoil " << (aim_no_recoil ? "on" : "off") << "." << std::endl;
       } else {
         std::cout << "Invalid command. Please try again." << std::endl;
       }
