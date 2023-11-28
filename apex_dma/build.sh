@@ -1,16 +1,11 @@
-#!/bin/bash
-export RUSTFLAGS="-Awarnings"
-cd memflow_lib/memflow-win32-ffi/
-if cargo build --release ; then
-    cd ../memflow-qemu-procfs
+#!/usr/bin/env bash
 
-    if cargo build --release --all-features ; then
-        cd ../../
-        make
-    else
-        echo "Error while building memflow-qemu-procfs"
-    fi
+# Causes bash to print each command before executing it
+set -x
 
-else
-    echo "Error while building memflow-win32-ffi"
-fi
+# Exit immediately when a command fails
+set -eo pipefail
+ 
+mkdir -p build
+cd build
+cmake .. && cmake --build .
