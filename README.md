@@ -136,7 +136,7 @@ sudo apt install libglfw3-dev libfreetype6-dev libvulkan-dev libxrandr-dev libxi
 **Build:**
 
 ```shell
-git clone --recurse https://github.com/chettoy/apex_dma_kvm_pub -b external-overlay
+git clone --recurse https://github.com/chettoy/apex_dma_kvm_pub
 cd apex_dma_kvm_pub/apex_dma
 ./build.sh
 ```
