@@ -37,6 +37,7 @@ extern bool aim_no_recoil;
 extern bool ready;
 extern float max_dist;
 extern float smooth;
+extern float skynade_smooth;
 extern bool MiniMapGuides;
 extern float bulletspeed;
 extern float bulletgrav;
@@ -370,9 +371,15 @@ void Overlay::RenderMenu() {
     } else {
       ImGui::TextColored(WHITE, "%.f", smooth);
     }
-    ImGui::SliderFloat(XorStr("##2"), &smooth, 85.0f, 150.0f, "##");
+    ImGui::SliderFloat(XorStr("##2"), &smooth, 50.0f, 250.0f, "##");
     ImGui::SameLine();
-    ImGui::Text(XorStr("85 To 100 Is Safe"));
+    ImGui::Text(XorStr("85 To 150 Is Safe"));
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
+    ImGui::Text(XorStr("Smooth Skynade Aim:"));
+    ImGui::SameLine();
+    skynade_smooth = smooth * 0.6667f;
+    ImGui::TextColored(WHITE, "%.f", skynade_smooth);
+
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
     ImGui::Text(XorStr("Smooth Preditcion Speed:"));

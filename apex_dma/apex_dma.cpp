@@ -782,7 +782,7 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
       apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
 
       Entity Target = getEntity(aimentity);
-      //Entity LPlayer = getEntity(LocalPlayer);
+      // Entity LPlayer = getEntity(LocalPlayer);
 
       if (TriggerBot && IsInCrossHair(Target)) {
         TriggerBotRun();
@@ -4098,6 +4098,7 @@ void loadSettings() {
 
     settingsFile >> std::boolalpha >> player_glow;
     settingsFile >> smooth;
+    skynade_smooth = smooth * 0.6667f;
     settingsFile >> bone;
     settingsFile >> glowrnot;
     settingsFile >> glowgnot;
@@ -4360,9 +4361,9 @@ void displayMainMenu() {
 
   std::cout << "24 - Toggle 1v1 (Current: " << (onevone ? "on" : "off") << ")"
             << std::endl;
-  
-  std::cout << "25 - Toggle No Recoil (Current: " << (aim_no_recoil ? "on" : "off") << ")"
-            << std::endl;
+
+  std::cout << "25 - Toggle No Recoil (Current: "
+            << (aim_no_recoil ? "on" : "off") << ")" << std::endl;
 
   std::cout << std::endl;
 }
@@ -5888,8 +5889,9 @@ void terminal() {
         std::cin >> newSmooth;
 
         // Check if the new value is within the desired range.
-        if (newSmooth >= 70.0f && newSmooth <= 500.0f) {
+        if (newSmooth >= 50.0f && newSmooth <= 500.0f) {
           smooth = newSmooth;
+          skynade_smooth = smooth * 0.6667f;
           std::cout << "'smooth' value updated to: " << smooth << std::endl;
           printf("The value of 'smooth' is: %f\n", smooth);
         } else {
@@ -6156,7 +6158,8 @@ void terminal() {
         std::cout << "1v1 " << (onevone ? "on" : "off") << "." << std::endl;
       } else if (option == 25) {
         aim_no_recoil = !aim_no_recoil;
-        std::cout << "No Recoil " << (aim_no_recoil ? "on" : "off") << "." << std::endl;
+        std::cout << "No Recoil " << (aim_no_recoil ? "on" : "off") << "."
+                  << std::endl;
       } else {
         std::cout << "Invalid command. Please try again." << std::endl;
       }
