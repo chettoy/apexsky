@@ -1,6 +1,6 @@
 #include "Math.h"
 #include "glowmode.h"
-#include "memory.h"
+#include "memory.hpp"
 #include "offsets.h"
 #include "vector.h"
 #include <cstdint>

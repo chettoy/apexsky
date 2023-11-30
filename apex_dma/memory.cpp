@@ -1,4 +1,34 @@
-#include "memory.h"
+#include "memory.hpp"
+
+struct FindProcessContext {
+  OsInstance<> *os;
+  const char *name;
+  ProcessInstance<> *target_process;
+  bool found;
+};
+
+bool find_process(struct FindProcessContext *find_context, Address addr) {
+
+  if (find_context->found) {
+    return false;
+  }
+
+  if (find_context->os->process_by_address(addr,
+                                           find_context->target_process)) {
+    return true;
+  }
+
+  const struct ProcessInfo *info = find_context->target_process->info();
+
+  if (!strcmp(info->name, find_context->name)) {
+    // abort iteration
+    find_context->found = true;
+    return false;
+  }
+
+  // continue iteration
+  return true;
+}
 
 // Credits: learn_more, stevemk14ebr
 size_t findPattern(const PBYTE rangeStart, size_t len, const char *pattern) {
@@ -52,59 +82,102 @@ void Memory::check_proc() {
 
     if (c != 0x5A4D) {
       status = process_status::FOUND_NO_ACCESS;
-      close_proc();
+      close();
     }
   }
 }
 
-void Memory::open_proc(const char *name) {
-  if (!conn) {
-    ConnectorInventory *inv = inventory_scan();
-    conn = inventory_create_connector(inv, "qemu_procfs", "");
-    inventory_free(inv);
+Memory::Memory() { log_init(LevelFilter::LevelFilter_Info); }
+
+int Memory::open_os() {
+  // load all available plugins
+  inventory = inventory_scan();
+  if (!inventory) {
+    log_error("unable to create inventory");
+    return 1;
+  }
+  printf("inventory initialized: %p\n", inventory);
+
+  const char *conn_name = "qemu";
+  const char *conn_arg = "";
+  const char *os_name = "win32";
+  const char *os_arg = "";
+
+  ConnectorInstance connector;
+  conn = &connector;
+
+  // initialize the connector plugin
+  if (conn) {
+    if (inventory_create_connector(inventory, conn_name, conn_arg,
+                                   &connector)) {
+      printf("unable to initialize connector\n");
+      inventory_free(inventory);
+      return 1;
+    }
+
+    printf("connector initialized: %p\n",
+           connector.container.instance.instance);
   }
 
-  if (conn) {
-    if (!kernel) {
-      kernel = kernel_build(conn);
-    }
+  // initialize the OS plugin
+  if (inventory_create_os(inventory, os_name, os_arg, conn, &os)) {
+    printf("unable to initialize OS\n");
+    inventory_free(inventory);
+    return 1;
+  }
 
-    if (kernel) {
-      Kernel *tmp_ker = kernel_clone(kernel);
-      proc.hProcess = kernel_into_process(tmp_ker, name);
-    }
+  printf("os plugin initialized: %p\n", os.container.instance.instance);
+  return 0;
+}
 
-    if (proc.hProcess) {
-      Win32ModuleInfo *module = process_module_info(proc.hProcess, name);
+int Memory::open_proc(const char *name) {
+  int ret;
+  const char *target_proc = name;
+  const char *target_module = name;
 
-      if (module) {
-        OsProcessModuleInfoObj *obj = module_info_trait(module);
-        proc.baseaddr = os_process_module_base(obj);
-        os_process_module_free(obj);
-        mem = process_virt_mem(proc.hProcess);
-        status = process_status::FOUND_READY;
-      } else {
-        status = process_status::FOUND_NO_ACCESS;
-        close_proc();
-      }
+  // find a specific process based on its name
+  // via process_by_name
+
+  if (!(ret = os.process_by_name(CSliceRef<uint8_t>(target_proc),
+                                 &proc.hProcess))) {
+    const struct ProcessInfo *info = proc.hProcess.info();
+
+    printf("%s process found: 0x%lx] %d %s %s\n", target_proc, info->address,
+           info->pid, info->name, info->path);
+
+    // find the module by its name
+    ModuleInfo module_info;
+    if (!(ret = proc.hProcess.module_by_name(CSliceRef<uint8_t>(target_module),
+                                             &module_info))) {
+      printf("%s module found: 0x%lx] 0x%lx %s %s\n", target_proc,
+             module_info.address, module_info.base, module_info.name,
+             module_info.path);
+
+      proc.baseaddr = module_info.base;
+      status = process_status::FOUND_READY;
     } else {
-      status = process_status::NOT_FOUND;
+      status = process_status::FOUND_NO_ACCESS;
+      close();
+
+      printf("unable to find module: %s\n", target_module);
+      log_debug_errorcode(ret);
     }
   } else {
-    printf("Can't create connector\n");
-    exit(0);
+    status = process_status::NOT_FOUND;
   }
+
+  return ret;
 }
 
-void Memory::close_proc() {
-  if (proc.hProcess) {
-    process_free(proc.hProcess);
-    virt_free(mem);
-  }
+Memory::~Memory() { close(); }
 
-  proc.hProcess = 0;
+void Memory::close() {
   proc.baseaddr = 0;
-  mem = 0;
+  status = process_status::NOT_FOUND;
+  if (inventory) {
+    inventory_free(inventory);
+    log_info("inventory freed");
+  }
 }
 
 uint64_t Memory::ScanPointer(uint64_t ptr_address, const uint32_t offsets[],

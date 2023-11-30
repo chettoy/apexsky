@@ -10,3 +10,6 @@
 [submodule "apex_dma/Client/imgui"]
 	path = apex_dma/Client/imgui
 	url = https://github.com/ocornut/imgui
+[submodule "apex_dma/memflow-win32"]
+	path = apex_dma/memflow-win32
+	url = https://github.com/memflow/memflow-win32

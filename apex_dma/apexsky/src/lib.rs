@@ -1,10 +1,33 @@
-use std::ffi::CStr;
-
-use libc::c_char;
-
+mod config;
 mod math;
 mod pitches;
 mod skynade;
+
+#[macro_use]
+extern crate lazy_static;
+
+// config
+
+#[no_mangle]
+pub extern "C" fn load_settings() -> crate::config::Config {
+    crate::config::get_configuration().unwrap_or_else(|e| {
+        println!("{}", e);
+        println!("Fallback to defalut configuration.");
+        crate::config::Config::default()
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn save_settings(settings: crate::config::Config) -> bool {
+    crate::config::save_configuration(settings)
+        .map(|()| true)
+        .unwrap_or_else(|e| {
+            println!("{}", e);
+            false
+        })
+}
+
+// misc
 
 #[no_mangle]
 pub extern "C" fn add(left: usize, right: usize) -> usize {
@@ -15,6 +38,8 @@ pub extern "C" fn add(left: usize, right: usize) -> usize {
 pub extern "C" fn print_run_as_root() {
     println!("Please run as root!");
 }
+
+// skynade
 
 #[repr(C)]
 pub struct Vector2D {

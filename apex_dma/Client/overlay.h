@@ -10,8 +10,8 @@
 #include <string>
 #include <thread>
 #include <vector>
-// #include "D3DX10Math.h"
 #include "../vector.h"
+#include "../apex_sky.h"
 
 #define GREEN ImColor(0, 255, 0)
 #define RED ImColor(255, 0, 0)

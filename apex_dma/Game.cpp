@@ -13,8 +13,6 @@
 
 extern Memory apex_mem;
 
-extern bool firing_range;
-
 float bulletspeed = 0.08;
 float bulletgrav = 0.05;
 
@@ -22,15 +20,9 @@ float bulletgrav = 0.05;
 extern int glowtype;
 extern int glowtype2;
 // setting up vars, dont edit
-extern float smooth;
-extern float skynade_smooth;
-extern bool aim_no_recoil;
-extern int bone;
-bool bone_auto = true;
+extern settings_t global_settings;
 extern float veltest;
-extern float max_dist;
 extern Vector aim_target;
-float game_fps = 75.0f; // for aimbot calc
 extern int local_held_id;
 extern uint32_t local_weapon_id;
 
@@ -182,9 +174,10 @@ void Entity::enableGlow() {
   // static const int contextId = 5;
   // int settingIndex = 44;
   std::array<unsigned char, 4> highlightFunctionBits = {
-      insidevalue,  // InsideFunction
-      outsidevalue, // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
-      outlinesize,  // OutlineRadius: size * 255 / 8
+      global_settings.inside_value, // InsideFunction
+      global_settings
+          .inside_value, // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
+      global_settings.outline_size, // OutlineRadius: size * 255 / 8
       64 // (EntityVisible << 6) | State & 0x3F | (AfterPostProcess << 7)
   };
   // std::array<float, 3> highlightParameter = { 0, 1, 0 };
@@ -349,9 +342,8 @@ auto fun_calc_angles = [](Vector LocalCamera, Vector TargetBonePosition,
 };
 
 QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
-  bool bone_nearest = false;
   Entity target = getEntity(t);
-  if (firing_range) {
+  if (global_settings.firing_range) {
     if (!target.isAlive()) {
       return QAngle(0, 0, 0);
     }
@@ -397,9 +389,9 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
   if (weap_headshot) {
     TargetBonePositionMax = TargetBonePositionMin =
         target.getBonePositionByHitbox(0);
-  } else if (bone_nearest) {
+  } else if (global_settings.bone_nearest) {
     // find nearest bone
-    float NearestBoneDistance = max_dist;
+    float NearestBoneDistance = global_settings.max_dist;
     for (int i = 0; i < 4; i++) {
       Vector currentBonePosition = target.getBonePositionByHitbox(i);
       float DistanceFromCrosshair =
@@ -409,12 +401,12 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
         NearestBoneDistance = DistanceFromCrosshair;
       }
     }
-  } else if (bone_auto) {
+  } else if (global_settings.bone_auto) {
     TargetBonePositionMax = target.getBonePositionByHitbox(5);
     TargetBonePositionMin = target.getBonePositionByHitbox(0);
   } else {
     TargetBonePositionMax = TargetBonePositionMin =
-        target.getBonePositionByHitbox(bone);
+        target.getBonePositionByHitbox(global_settings.bone);
   }
 
   float BulletSpeed = curweap.get_projectile_speed();
@@ -423,7 +415,7 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
   Vector targetVel = target.getAbsVelocity();
 
   // Calculate the time since the last frame (in seconds)
-  float deltaTime = 1.0 / game_fps;
+  float deltaTime = 1.0 / global_settings.game_fps;
 
   if (local_held_id != -251) {
     QAngle CalculatedAnglesMin =
@@ -438,7 +430,7 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
     if ((fov0 + fov1) * 0.5f > max_fov) {
       return QAngle(0, 0, 0);
     }
-    if (aim_no_recoil) {
+    if (global_settings.aim_no_recoil) {
       CalculatedAnglesMin -= SwayAngles - ViewAngles;
       CalculatedAnglesMax -= SwayAngles - ViewAngles;
     }
@@ -455,7 +447,7 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
     if (DeltaMin.y * DeltaMax.y > 0)
       Delta.y = (DeltaMin.y + DeltaMax.y) * 0.5f;
 
-    QAngle SmoothedAngles = ViewAngles + Delta / smooth;
+    QAngle SmoothedAngles = ViewAngles + Delta / global_settings.smooth;
     return SmoothedAngles;
   } else {
     uint32_t weapon_id = curweap.get_weap_id();
@@ -480,7 +472,7 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
     //        weapon_mod_bitfield, TargetAngles.x, TargetAngles.y);
 
     QAngle Delta = TargetAngles - ViewAngles;
-    return ViewAngles + Delta / skynade_smooth;
+    return ViewAngles + Delta / global_settings.skynade_smooth;
   }
 }
 

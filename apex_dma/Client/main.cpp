@@ -17,209 +17,36 @@ typedef WORD *PWORD;
 uint32_t check = 0xABCD;
 
 // Left and Right Aim key toggle
-bool toggleaim = false;
-bool toggleaim2 = false;
-extern int e;
-extern bool firing_range; // sync
-extern bool active;       // sync
+extern bool active; // sync
 bool ready = false;
 extern visuals v;
-extern int aim;                   // read sync
-bool esp = true;                  // read sync
-extern bool item_glow;            // sync
-extern bool player_glow;          // sync
-extern bool aim_no_recoil;        // sync
 extern bool aiming;               // read sync
 extern uint64_t g_Base;           // write sync
-float max_dist = 3800.0f * 40.0f; // read //Max Distance of ESP 3800 is full map
-extern float smooth;              // Min 100 for safe aimbotting   sync
-extern float max_fov;             // 15 is the sweetspot for 1080p
-// Dynamic Fov
-extern float ADSfov;
-extern float nonADSfov;
+
 // tdm check
-extern int EntTeam;    // sync
-extern int LocTeam;    // sync
-extern bool TDMToggle; // sync
-// triggerbot
-bool triggerbot = false;
-// 1v1
-bool onevone = false;
+extern int EntTeam; // sync
+extern int LocTeam; // sync
+
+extern settings_t global_settings;
 
 extern float bulletspeed; // sync
 extern float bulletgrav;  // sync
 float veltest = 1.00;     // sync
-bool MiniMapGuides = true;
-extern int bone; // 0 Head, 1 Neck, 2 Body, 3 Stomace, 4 Nuts  sync
-// Player Glow Color and Brightness
-extern float glowrnot; // Red Value
-extern float glowgnot; // Green Value
-extern float glowbnot; // Blue Value
-float glowcolornot[3] = {1.0f, 0.0f, 0.0f};
-// more glow stuff
-// glow visable
-extern float glowrviz;
-extern float glowgviz;
-extern float glowbviz;
-float glowcolorviz[3] = {0.0f, 1.0f, 0.0f};
-// knocked
-extern float glowrknocked;
-extern float glowgknocked;
-extern float glowbknocked;
-float glowcolorknocked[3] = {1.0f, 1.0f, 1.0f};
-extern int minimapradardotsize1;
-extern int minimapradardotsize2;
-extern bool minimapradar;
-extern unsigned int radarcolorr; // Red Value
-extern unsigned int radarcolorg; // Green Value
-extern unsigned int radarcolorb; // Blue Value
-float radarcolor[3];
+
 // Full Map Radar
 extern bool mainradartoggle; // Toggle for Main Map radar
-extern bool mainradarmap;    // if the Main Map Radar is enabled
 bool kingscanyon = false;    // Set for map, ONLY ONE THO
 bool stormpoint = true;      // Set for map, ONLY ONE THO
-extern int mainmapradardotsize1;
-extern int mainmapradardotsize2;
-// Ha think i was done ?
-// Item Filter Brute Force!
-extern bool lightbackpack;
-extern bool medbackpack;
-extern bool heavybackpack;
-extern bool goldbackpack;
-// Shield upgrades
-extern bool shieldupgrade1; // white
-extern bool shieldupgrade2; // blue
-extern bool shieldupgrade3; // purple
-extern bool shieldupgrade4; // gold
-extern bool shieldupgrade5; // red
-extern bool shieldupgradehead1;
-extern bool shieldupgradehead2;
-extern bool shieldupgradehead3;
-extern bool shieldupgradehead4;
-extern bool shielddown1;
-extern bool shielddown2;
-extern bool shielddown3;
-extern bool shielddown4;
-// heaing and Misc
-extern bool accelerant;
-extern bool phoenix;
-extern bool healthlarge;
-extern bool healthsmall;
-extern bool shieldbattsmall;
-extern bool shieldbattlarge;
-// Ammo
-extern bool sniperammo;
-extern bool heavyammo;
-extern bool lightammo;
-extern bool energyammo;
-extern bool shotgunammo;
-// Optics
-extern bool optic1xhcog;
-extern bool optic2xhcog;
-extern bool opticholo1x;
-extern bool opticholo1x2x;
-extern bool opticthreat;
-extern bool optic3xhcog;
-extern bool optic2x4x;
-extern bool opticsniper6x;
-extern bool opticsniper4x8x;
-extern bool opticsniperthreat;
-// Magazines
-extern bool sniperammomag1;
-extern bool energyammomag1;
-extern bool lightammomag1;
-extern bool heavyammomag1;
-extern bool sniperammomag2;
-extern bool energyammomag2;
-extern bool lightammomag2;
-extern bool heavyammomag2;
-extern bool sniperammomag3;
-extern bool energyammomag3;
-extern bool lightammomag3;
-extern bool heavyammomag3;
-extern bool sniperammomag4;
-extern bool energyammomag4;
-extern bool lightammomag4;
-extern bool heavyammomag4;
-// Attachments
-extern bool lasersight1;
-extern bool lasersight2;
-extern bool lasersight3;
-extern bool lasersight4;
-extern bool stocksniper1;
-extern bool stocksniper2;
-extern bool stocksniper3;
-extern bool stocksniper4;
-extern bool stockregular1;
-extern bool stockregular2;
-extern bool stockregular3;
-extern bool suppressor1;
-extern bool suppressor2;
-extern bool suppressor3;
-extern bool turbo_charger;
-extern bool skull_piecer;
-extern bool hammer_point;
-extern bool disruptor_rounds;
-extern bool boosted_loader;
-extern bool shotgunbolt1;
-extern bool shotgunbolt2;
-extern bool shotgunbolt3;
-extern bool shotgunbolt4;
-// Nades
-extern bool grenade_frag;
-extern bool grenade_arc_star;
-extern bool grenade_thermite;
-// Kraber
-extern bool weapon_kraber;
-// Shotguns
-extern bool weapon_mastiff;
-extern bool weapon_eva8;
-extern bool weapon_peacekeeper;
-extern bool weapon_mozambique;
-// Energy weapons
-extern bool weapon_lstar;
-extern bool weapon_nemesis;
-extern bool weapon_havoc;
-extern bool weapon_devotion;
-extern bool weapon_triple_take;
-extern bool weapon_prowler;
-extern bool weapon_volt;
-// Heavy Weapons
-extern bool weapon_flatline;
-extern bool weapon_hemlock;
-extern bool weapon_3030_repeater;
-extern bool weapon_rampage;
-extern bool weapon_car_smg;
-// Light weapons
-extern bool weapon_p2020;
-extern bool weapon_re45;
-extern bool weapon_g7_scout;
-extern bool weapon_alternator;
-extern bool weapon_r99;
-extern bool weapon_spitfire;
-extern bool weapon_r301;
-// Snipers.. wingman is the odd one...and the bow..
-extern bool weapon_wingman;
-extern bool weapon_longbow;
-extern bool weapon_charge_rifle;
-extern bool weapon_sentinel;
-extern bool weapon_bow;
-// Aim distance check
-extern float aimdist; // sync
-// item glow brightness
-int itemglowbrightness = 10;
+
 // Map number
 extern int map;
 
-bool thirdperson = false;
 extern int spectators;        // write sync
 extern int allied_spectators; // write sync
 extern bool valid;            // write sync
 extern bool next2;            // read write sync
 
 Vector aim_target = Vector(0, 0, 0);
-bool show_aim_target = true;
 
 extern bool overlay_t;
 
@@ -342,7 +169,7 @@ static void TeamMiniMap(int x, int y, int radius, int team_id,
       ImGui::ColorConvertFloat4ToU32(ImVec4(color.R / 255.0, color.G / 255.0,
                                             color.B / 255.0, color.A / 255.0)));
   ImGui::GetWindowDrawList()->AddCircle(center, radius, colOutline, 12,
-                                        minimapradardotsize2);
+                                        global_settings.mini_map_radar_dot_size2);
 
   // Draw a line pointing in the direction of each player's aim
   const int numPlayers = 3;
@@ -387,90 +214,90 @@ void DrawRadarPointMiniMap(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos,
                                    siz.y, LocalPlayerY, 0.3f, &ck);
   if (eneamyDist >= 0.f && eneamyDist < RadarSettings::distance_Radar) {
     for (int i = 1; i <= 30; i++) {
-      TeamMiniMap(single.x, single.y, minimapradardotsize1, team_id, targetyaw);
+      TeamMiniMap(single.x, single.y, global_settings.mini_map_radar_dot_size1, team_id, targetyaw);
     }
   }
 }
 
 void draw_team_point(int pos_x, int pos_y, int team_id) {
   if (team_id == 1) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {255, 255, 255, 255});
   }
   if (team_id == 2) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {242, 86, 38, 255});
   }
   if (team_id == 3) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {242, 86, 38, 255});
   }
   if (team_id == 4) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {174, 247, 89, 255});
   }
   if (team_id == 5) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {102, 214, 173, 255});
   }
   if (team_id == 6) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {98, 244, 234, 255});
   }
   if (team_id == 7) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {92, 208, 250, 255});
   }
   if (team_id == 8) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {93, 137, 238, 255});
   }
   if (team_id == 9) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {164, 105, 252, 255});
   }
   if (team_id == 10) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {243, 98, 161, 255});
   }
   if (team_id == 11) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {214, 67, 67, 255});
   }
   if (team_id == 12) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {230, 116, 51, 255});
   }
   if (team_id == 13) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {185, 179, 167, 255});
   }
   if (team_id == 14) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {148, 200, 65, 255});
   }
   if (team_id == 15) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {86, 174, 91, 255});
   }
   if (team_id == 16) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {55, 188, 200, 255});
   }
   if (team_id == 17) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {84, 169, 212, 255});
   }
   if (team_id == 18) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {98, 121, 203, 255});
   }
   if (team_id == 19) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {102, 61, 174, 255});
   }
   if (team_id >= 20 && team_id < 36) {
-    TeamN(pos_x, pos_y, mainmapradardotsize1, mainmapradardotsize2,
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
           {218, 73, 145, 255});
   }
 }
@@ -523,7 +350,7 @@ void MiniMapRadar(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos,
       ImVec2 DrawSize = ImGui::GetContentRegionAvail();
       ImVec2 midRadar =
           ImVec2(DrawPos.x + (DrawSize.x / 2), DrawPos.y + (DrawSize.y / 2));
-      if (MiniMapGuides) {
+      if (global_settings.mini_map_guides) {
         ImGui::GetWindowDrawList()->AddLine(
             ImVec2(midRadar.x - DrawSize.x / 2.f, midRadar.y),
             ImVec2(midRadar.x + DrawSize.x / 2.f, midRadar.y),
@@ -656,7 +483,7 @@ void worldToScreenMap(D3DXVECTOR3 origin, int team_id) {
 
 void Overlay::RenderEsp() {
   next2 = false;
-  if (g_Base != 0 && esp) {
+  if (g_Base != 0 && global_settings.esp) {
 
     memset(players, 0, sizeof(players));
 
@@ -668,7 +495,7 @@ void Overlay::RenderEsp() {
                      ImGuiWindowFlags_NoBackground |
                      ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-    if (show_aim_target && aim_target != Vector(0, 0, 0)) {
+    if (global_settings.show_aim_target && aim_target != Vector(0, 0, 0)) {
       Vector bs = Vector();
       WorldToScreen(aim_target, view_matrix_data.matrix, getWidth(),
                     getHeight(), bs);
@@ -677,8 +504,8 @@ void Overlay::RenderEsp() {
           ImColor(1.0f, 0.647f, 0.0f, 0.6f), 10.0f, 0);
     }
 
-    if (!firing_range)
-      while (!next2 && esp) {
+    if (!global_settings.firing_range)
+      while (!next2 && global_settings.esp) {
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
       }
 
@@ -692,19 +519,19 @@ void Overlay::RenderEsp() {
                      std::to_string(players[i].entity_team) + ")";
 
           float alpha; // The farther away, the more transparent
-          if (players[i].dist < aimdist) {
+          if (players[i].dist < global_settings.aim_dist) {
             alpha = 1.0f;
           } else if (players[i].dist > 16000.0f) {
             alpha = 0.4f;
           } else {
             alpha = 1.0f -
-                    ((players[i].dist - aimdist) / (16000.0f - aimdist) * 0.6f);
+                    ((players[i].dist - global_settings.aim_dist) / (16000.0f - global_settings.aim_dist) * 0.6f);
           }
 
           float radardistance = (int)(players[i].dist / 39.62);
 
           // Radar Stuff
-          if (minimapradar == true) {
+          if (global_settings.mini_map_radar == true) {
             MiniMapRadar(players[i].EntityPosition,
                          players[i].LocalPlayerPosition,
                          players[i].localviewangle.y, radardistance,
@@ -737,10 +564,14 @@ void Overlay::RenderEsp() {
               ImColor box_color = ImColor(0.0f, 0.0f, 0.0f, alpha);
               float box_width = 1.0f;
               if (players[i].visible) {
-                box_color = ImColor(glowrviz, glowgviz, glowbviz, alpha);
+                box_color = ImColor(global_settings.glow_r_viz,
+                                    global_settings.glow_g_viz,
+                                    global_settings.glow_b_viz, alpha);
                 box_width = 2.0f;
               } else {
-                box_color = ImColor(glowrnot, glowgnot, glowbnot, alpha);
+                box_color = ImColor(global_settings.glow_r_not,
+                                    global_settings.glow_g_not,
+                                    global_settings.glow_b_not, alpha);
               }
               DrawBox(box_color, players[i].b_x - (players[i].width / 2.0f),
                       players[i].b_y - players[i].height, players[i].width,
@@ -752,7 +583,7 @@ void Overlay::RenderEsp() {
                      ImColor(1.0f, 1.0f, 1.0f, alpha), players[i].name);
           }
           // Full Radar map, Need Manual setting of cords
-          if (mainradarmap == true)
+          if (global_settings.main_radar_map == true)
 
             worldToScreenMap(players[i].EntityPosition, players[i].entity_team);
 
