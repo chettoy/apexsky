@@ -113,6 +113,7 @@ sudo ./apex_dma
 
 1. Please put the overlay window on the top of the VM screen after start. For example, on top of the looking-glass window.
 2. The window can't get the focus at the same time with the VM screen,  please passthrough some keyboard, mouse or joystick into the VM,  otherwise you can't operate the game.
+3. Press insert key on the overlay window to open the overlay menu.
 
 
 
@@ -155,6 +156,11 @@ cd apex_dma_kvm_pub/apex_dma
 
     > First of all, everything related to game state is realized by *access on those specific memory locations*. So we need to use DMA or VM techniques to access memory covertly.
     > AC detects the overlay client, so we re-implement the overlay outside the VM and remove the client.
+
+3.  I feel the aimbot seem not good as KrackerCo's one
+
+    > We added a few new parameters to aimbot, if you turn auto bone off, turn no-recoil on (it's off by default now) and set the aimbot predict fps to 75, aimbot will run the same as it did before with the same smoothing values.
+    > If you want a natural game feel and normal behavior as if you don't use auto-aiming but dramatically increase the hit rate, instead of wanting to lock bullets at a single point, use auto bone and maybe turn off no-recoil.
 
 
 
