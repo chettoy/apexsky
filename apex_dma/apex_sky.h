@@ -37,7 +37,7 @@ typedef struct {
   bool map_radar_testing;
   bool show_aim_target;
   float game_fps;
-  bool use_overlay_fps;
+  bool calc_game_fps;
   bool no_nade_aim;
   bool firing_range;
   int32_t bone;

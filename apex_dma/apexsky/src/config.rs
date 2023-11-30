@@ -37,7 +37,7 @@ pub struct Config {
     pub map_radar_testing: bool,
     pub show_aim_target: bool,
     pub game_fps: f32,
-    pub use_overlay_fps: bool,
+    pub calc_game_fps: bool,
     pub no_nade_aim: bool,
     pub firing_range: bool,
     pub bone: i32,
@@ -229,7 +229,7 @@ impl Default for Config {
             map_radar_testing: false,
             show_aim_target: true,
             game_fps: 75.0,         // Game FPS for aim prediction
-            use_overlay_fps: false, // use overlay fps as predict fps value
+            calc_game_fps: false, // use overlay fps as predict fps value
             // aimbot for nades on or off
             no_nade_aim: false,
             firing_range: false,

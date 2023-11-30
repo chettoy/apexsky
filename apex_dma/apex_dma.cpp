@@ -245,12 +245,15 @@ void ClientActions() {
     bool superGlideStart = false;
     int superGlideTimer = 0;
 
+    // Game fps state
+    int last_checkpoint_frame = 0;
+    std::chrono::milliseconds checkpoint_time;
+
     while (g_Base != 0) {
 
       uint64_t LocalPlayer = 0;
       apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
-      // Entity LPlayer = getEntity(LocalPlayer);
-      // uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
+
       int attackState = 0;
       apex_mem.Read<int>(g_Base + OFFSET_IN_ATTACK, attackState); // 108
       int tduckState = 0;
@@ -263,9 +266,10 @@ void ClientActions() {
       apex_mem.Read<int>(g_Base + OFFSET_IN_ZOOM, zoomState); // 109
 
       int curFrameNumber;
-      float m_traversalProgressTmp = 0.0f;
       apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008,
                          curFrameNumber); // GlobalVars + 0x0008
+
+      float m_traversalProgressTmp = 0.0f;
       float m_traversalProgress;
       // printf("Playerentcount: %i\n", playerentcount);
       // printf("Playerentcount: %i\n", itementcount);
@@ -326,6 +330,20 @@ void ClientActions() {
         }
       }
       frameSleepTimer -= 1;
+
+      // calc game fps
+      if (global_settings.calc_game_fps && curFrameNumber % 100 == 0) {
+        std::chrono::milliseconds ms = duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch());
+        int delta_frame = curFrameNumber - last_checkpoint_frame;
+        if (delta_frame > 90 && delta_frame < 120) {
+          auto duration = ms - checkpoint_time;
+          global_settings.game_fps = delta_frame * 1000.0f / duration.count();
+        }
+        last_checkpoint_frame = curFrameNumber;
+        checkpoint_time = ms;
+      }
+
       // printf("Minimap: %ld\n", minimap);
       // apex_mem.Write(LocalPlayer + 0x270 , 1);
 
@@ -3983,8 +4001,8 @@ void displayMainMenu() {
             << std::endl;
 
   std::cout << "26 - Set Game FPS for Aim Prediction: (Current: ";
-  if (global_settings.use_overlay_fps)
-    std::cout << "use overlay fps";
+  if (global_settings.calc_game_fps)
+    std::cout << "calc game fps";
   else
     std::cout << std::setiosflags(std::ios::fixed) << std::setprecision(1)
               << global_settings.game_fps;
@@ -5806,15 +5824,17 @@ void terminal() {
         std::cout << "Enter a new value for 'Game FPS for Aim Predict': ";
         int tmp_value;
         std::cin >> tmp_value;
-        if (tmp_value > 0 && tmp_value < 500) {
+        if (tmp_value == 0) {
+          global_settings.calc_game_fps = true;
+        } else if (tmp_value > 0 && tmp_value < 500) {
           global_settings.game_fps = tmp_value;
-          global_settings.use_overlay_fps = false;
+          global_settings.calc_game_fps = false;
           std::cout << "Game FPS for Aim Prediction: (Current: ";
-          if (global_settings.use_overlay_fps)
-            std::cout << "use overlay fps";
+          if (global_settings.calc_game_fps)
+            std::cout << "calc game fps";
           else
-            std::cout << std::setiosflags(std::ios::fixed) << std::setprecision(1)
-              << global_settings.game_fps;
+            std::cout << std::setiosflags(std::ios::fixed)
+                      << std::setprecision(1) << global_settings.game_fps;
           std::cout << ")" << std::endl;
         } else {
           std::cout << "Invalid value!" << std::endl;

@@ -576,9 +576,7 @@ void Overlay::RenderMenu() {
 
   ImGui::Text(XorStr("Game FPS for Aim Prediction:"));
   ImGui::SameLine();
-  ImGui::Checkbox(XorStr("Use overlay FPS"), &global_settings.use_overlay_fps);
-  if (global_settings.use_overlay_fps)
-    global_settings.game_fps = ImGui::GetIO().Framerate;
+  ImGui::Checkbox(XorStr("Calc Game FPS"), &global_settings.calc_game_fps);
   ImGui::SliderFloat(XorStr("##gamefps"), &global_settings.game_fps, 1.0f,
                      300.0f, "%.1f");
 
@@ -747,16 +745,19 @@ int Overlay::CreateOverlay() {
       ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!"
                                      // and append into it.
 
-      ImGui::Text("This is some useful text."); // Display some text (you can
-      // use a format strings too)
-      ImGui::Text("fsdfsdad我是中文dfd");
-      ImGui::Text("Kanjis: \xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e (nihongo)");
       ImGui::Checkbox(
           "Demo Window",
           &show_demo_window); // Edit bools storing our window open/close state
 
-      ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+      ImGui::Text("Overlay average %.3f ms/frame (%.1f FPS)",
                   1000.0f / io.Framerate, io.Framerate);
+
+      if (global_settings.calc_game_fps) {
+        ImGui::Text("Game average %.3f ms/frame (%.1f FPS)",
+                    1000.0f / global_settings.game_fps,
+                    global_settings.game_fps);
+      }
+
       ImGui::End();
     }
 
