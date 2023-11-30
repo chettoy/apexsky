@@ -82,7 +82,7 @@ void Memory::check_proc() {
 
     if (c != 0x5A4D) {
       status = process_status::FOUND_NO_ACCESS;
-      close();
+      close_proc();
     }
   }
 }
@@ -157,7 +157,7 @@ int Memory::open_proc(const char *name) {
       status = process_status::FOUND_READY;
     } else {
       status = process_status::FOUND_NO_ACCESS;
-      close();
+      close_proc();
 
       printf("unable to find module: %s\n", target_module);
       log_debug_errorcode(ret);
@@ -169,15 +169,17 @@ int Memory::open_proc(const char *name) {
   return ret;
 }
 
-Memory::~Memory() { close(); }
-
-void Memory::close() {
-  proc.baseaddr = 0;
-  status = process_status::NOT_FOUND;
+Memory::~Memory() {
   if (inventory) {
     inventory_free(inventory);
+    inventory = nullptr;
     log_info("inventory freed");
   }
+}
+
+void Memory::close_proc() {
+  proc.baseaddr = 0;
+  status = process_status::NOT_FOUND;
 }
 
 uint64_t Memory::ScanPointer(uint64_t ptr_address, const uint32_t offsets[],

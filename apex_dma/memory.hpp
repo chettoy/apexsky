@@ -58,7 +58,7 @@ public:
 
   int open_proc(const char *name);
 
-  void close();
+  void close_proc();
 
   template <typename T> bool Read(uint64_t address, T &out);
 
