@@ -229,7 +229,7 @@ impl Default for Config {
             map_radar_testing: false,
             show_aim_target: true,
             game_fps: 75.0,         // Game FPS for aim prediction
-            calc_game_fps: false, // use overlay fps as predict fps value
+            calc_game_fps: false, // Automatic calculation of game fps
             // aimbot for nades on or off
             no_nade_aim: false,
             firing_range: false,
