@@ -59,7 +59,6 @@ int height;
 bool k_leftclick = false;
 bool k_ins = false;
 bool show_menu = false;
-visuals v;
 
 // extern bool IsKeyDown(int vk);
 extern bool IsKeyDown(ImGuiKey imgui_k);
@@ -223,16 +222,18 @@ void Overlay::RenderMenu() {
     ImGui::SliderInt(XorStr("##bone"), &global_settings.bone, 0, 3);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("ESP Options:"));
-    ImGui::Checkbox(XorStr("Box"), &v.box);
+    ImGui::Checkbox(XorStr("Box"), &global_settings.esp_visuals.box);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Line"), &v.line);
+    ImGui::Checkbox(XorStr("Line"), &global_settings.esp_visuals.line);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Distance"), &v.distance);
-    ImGui::Checkbox(XorStr("Health bar"), &v.healthbar);
+    ImGui::Checkbox(XorStr("Distance"), &global_settings.esp_visuals.distance);
+    ImGui::Checkbox(XorStr("Health bar"),
+                    &global_settings.esp_visuals.healthbar);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Shield bar"), &v.shieldbar);
+    ImGui::Checkbox(XorStr("Shield bar"),
+                    &global_settings.esp_visuals.shieldbar);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Name"), &v.name);
+    ImGui::Checkbox(XorStr("Name"), &global_settings.esp_visuals.name);
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
     ImGui::Checkbox(XorStr("Show aimbot target"),
                     &global_settings.show_aim_target);

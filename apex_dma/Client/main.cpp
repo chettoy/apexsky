@@ -19,7 +19,6 @@ uint32_t check = 0xABCD;
 // Left and Right Aim key toggle
 extern bool active; // sync
 bool ready = false;
-extern visuals v;
 extern bool aiming;     // read sync
 extern uint64_t g_Base; // write sync
 
@@ -550,12 +549,12 @@ void Overlay::RenderEsp() {
                          players[i].localviewangle.y, radardistance,
                          players[i].entity_team, players[i].targetyaw);
           }
-          if (v.line)
+          if (global_settings.esp_visuals.line)
             DrawLine(ImVec2((float)(getWidth() / 2.0), (float)getHeight()),
                      ImVec2(players[i].b_x, players[i].b_y), BLUE,
                      1); // LINE FROM MIDDLE SCREEN
 
-          if (v.distance) {
+          if (global_settings.esp_visuals.distance) {
             if (players[i].knocked)
               String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)), RED,
                      distance.c_str()); // DISTANCE
@@ -566,14 +565,14 @@ void Overlay::RenderEsp() {
           }
 
           if (players[i].dist < 16000.0f) {
-            if (v.healthbar)
+            if (global_settings.esp_visuals.healthbar)
               DrawSeerLikeHealth(
                   (players[i].b_x - (players[i].width / 2.0f) + 5),
                   (players[i].b_y - players[i].height - 10), players[i].shield,
                   players[i].maxshield, players[i].armortype,
                   players[i].health); // health bar
 
-            if (v.box) {
+            if (global_settings.esp_visuals.box) {
               ImColor box_color = ImColor(0.0f, 0.0f, 0.0f, alpha);
               float box_width = 1.0f;
               if (players[i].visible) {
@@ -590,7 +589,7 @@ void Overlay::RenderEsp() {
                       players[i].b_y - players[i].height, players[i].width,
                       players[i].height, box_width);
             }
-            if (v.name)
+            if (global_settings.esp_visuals.name)
               String(ImVec2(players[i].boxMiddle,
                             (players[i].b_y - players[i].height - 15)),
                      ImColor(1.0f, 1.0f, 1.0f, alpha), players[i].name);

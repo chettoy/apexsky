@@ -21,15 +21,6 @@
 #define TEAL ImColor(0, 128, 128)
 #define YELLOW ImColor(255, 255, 0)
 
-typedef struct visuals {
-  bool box = true;
-  bool line = false;
-  bool distance = true;
-  bool healthbar = true;
-  bool shieldbar = true;
-  bool name = false;
-} visuals;
-
 class Overlay {
 public:
   std::thread Start();

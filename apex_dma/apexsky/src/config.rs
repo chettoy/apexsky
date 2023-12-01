@@ -1,4 +1,17 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
+
+#[repr(C)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct EspVisuals {
+    pub r#box: bool,
+    pub line: bool,
+    pub distance: bool,
+    pub health_bar: bool,
+    pub shield_bar: bool,
+    pub name: bool,
+}
 
 #[repr(C)]
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -25,6 +38,7 @@ pub struct Config {
     pub non_ads_fov: f32,
     pub aim: i32,
     pub esp: bool,
+    pub esp_visuals: EspVisuals,
     pub mini_map_radar: bool,
     pub mini_map_guides: bool,
     pub mini_map_radar_dot_size1: i32,
@@ -185,6 +199,19 @@ pub struct Config {
     pub loot_weapon_bow: bool,
 }
 
+impl Default for EspVisuals {
+    fn default() -> Self {
+        Self {
+            r#box: true,
+            line: false,
+            distance: true,
+            health_bar: true,
+            shield_bar: true,
+            name: false,
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -217,6 +244,7 @@ impl Default for Config {
             non_ads_fov: 50.0,
             aim: 2, // 0 no aim, 1 aim with no vis check, 2 aim with vis check
             esp: true,
+            esp_visuals: EspVisuals::default(),
             mini_map_radar: true,
             mini_map_guides: true,
             mini_map_radar_dot_size1: 5,
@@ -228,7 +256,7 @@ impl Default for Config {
             max_dist: 3800.0 * 40.0, // Max Distance of ESP 3800 is full map
             map_radar_testing: false,
             show_aim_target: true,
-            game_fps: 75.0,         // Game FPS for aim prediction
+            game_fps: 75.0,       // Game FPS for aim prediction
             calc_game_fps: false, // Automatic calculation of game fps
             // aimbot for nades on or off
             no_nade_aim: false,
@@ -389,11 +417,16 @@ impl Default for Config {
     }
 }
 
-pub fn get_configuration() -> Result<Config, config::ConfigError> {
+pub fn get_config_path() -> PathBuf {
     let base_path = std::env::current_dir().expect("Failed to determine the current directory");
     let configuration_directory = base_path;
+    configuration_directory.join("settings.toml")
+}
+
+pub fn get_configuration() -> Result<Config, config::ConfigError> {
     let settings = config::Config::builder()
-        .add_source(config::File::from(configuration_directory.join("settings.toml")))
+        .add_source(config::Config::try_from::<Config>(&Config::default())?)
+        .add_source(config::File::from(get_config_path()))
         .add_source(config::Environment::with_prefix("APP"))
         .build()?;
 
@@ -404,13 +437,11 @@ pub fn save_configuration(settings_state: Config) -> Result<(), std::io::Error> 
     use std::fs;
     use std::io::Write;
 
-    let base_path = std::env::current_dir().expect("Failed to determine the current directory");
-    let configuration_directory = base_path;
     let mut config_write = fs::OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
-        .open(configuration_directory.join("settings.toml"))?;
+        .open(get_config_path())?;
     let toml_con = toml::to_string(&settings_state).unwrap();
     write!(config_write, "{}", toml_con)?;
     Ok(())

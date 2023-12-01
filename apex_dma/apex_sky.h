@@ -3,6 +3,15 @@
 #include <cstdint>
 
 typedef struct {
+  bool box;
+  bool line;
+  bool distance;
+  bool healthbar;
+  bool shieldbar;
+  bool name;
+} visuals;
+
+typedef struct {
   bool load_settings;
   bool super_key;
   bool keyboard;
@@ -25,6 +34,7 @@ typedef struct {
   float non_ads_fov;
   int32_t aim;
   bool esp;
+  visuals esp_visuals;
   bool mini_map_radar;
   bool mini_map_guides;
   int32_t mini_map_radar_dot_size1;
