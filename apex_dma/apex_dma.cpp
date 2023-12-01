@@ -5683,8 +5683,8 @@ void terminal() {
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
       } else if (option == 15) {
         // player Filled.
-        global_settings.super_key = !global_settings.super_key;
         global_settings.super_key_toggle = !global_settings.super_key_toggle;
+        global_settings.super_key = global_settings.super_key_toggle;
       }
 
       else if (option == 16) {

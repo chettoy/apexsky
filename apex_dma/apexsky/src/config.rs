@@ -191,7 +191,7 @@ impl Default for Config {
             // CONFIG AREA, you can change default values below.
             // Enable Loading of setting file automaticly.
             load_settings: true,
-            super_key: false,
+            super_key: true,
             // Gamepad or Keyboard config, Only one true at once or it wont work.
             keyboard: true,
             gamepad: false,
