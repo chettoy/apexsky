@@ -24,7 +24,7 @@ Memory apex_mem;
 bool active = true;
 uintptr_t aimentity = 0;
 uintptr_t tmp_aimentity = 0;
-uintptr_t lastaimentity = 0;
+uintptr_t locked_aim_entity = 0;
 float aiming_score_max;
 bool aimbot_safety = true;
 int team_player = 0;
@@ -588,7 +588,11 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   Vector EntityPosition = target.getPosition();
   Vector LocalPlayerPosition = LPlayer.getPosition();
   float dist = LocalPlayerPosition.DistTo(EntityPosition);
-  if (dist > global_settings.aim_dist)
+
+  // aim distance check
+  const float skynade_dist = 100.0 * 40.0f;
+  if ((local_held_id == -251 && dist > skynade_dist) ||
+      dist > global_settings.aim_dist)
     return;
 
   // Targeting
@@ -598,8 +602,6 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   bool vis = target.lastVisTime() > lastvis_aim[index];
   float score =
       (fov * fov) * 100 + (dist * 0.025) * 10 + (vis ? 0 : vis_weights);
-  // if (local_held_id == -251 && dist > skynade_dist)
-  //   score += 9999999.0f;
   /*
    fov:dist:score
     1  10m  100
@@ -762,7 +764,7 @@ void DoActions() {
       }
 
       if (lock) // locked target
-        aimentity = lastaimentity;
+        aimentity = locked_aim_entity;
       else // or new target
         aimentity = tmp_aimentity;
     }
@@ -1028,14 +1030,14 @@ static void AimbotLoop() {
       if (global_settings.aim > 0) {
         if (aimentity == 0 || !aiming) {
           lock = false;
-          lastaimentity = 0;
+          locked_aim_entity = 0;
           continue;
         }
         if (aimbot_safety) {
           continue;
         }
         lock = true;
-        lastaimentity = aimentity;
+        locked_aim_entity = aimentity;
 
         Entity LPlayer = getEntity(LocalPlayer);
         if (LocalPlayer == 0)
@@ -1043,7 +1045,7 @@ static void AimbotLoop() {
 
         /* Fine-tuning for each weapon */
         // bow
-        if (HeldID == -255 && weaponID == 2) {
+        if (weaponID == 2) {
           // Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*0.08);
           // Ctx.BulletGravity = BulletGrav + (BulletGrav*0.05);
           bulletspeed = 10.08;
@@ -1055,7 +1057,7 @@ static void AimbotLoop() {
             QAngle Angles_g = CalculateBestBoneAim(LPlayer, aimentity, 999.9f);
             if (Angles_g.x == 0 && Angles_g.y == 0) {
               lock = false;
-              lastaimentity = 0;
+              locked_aim_entity = 0;
               continue;
             }
             LPlayer.SetViewAngles(Angles_g);
@@ -1064,7 +1066,7 @@ static void AimbotLoop() {
           QAngle Angles = CalculateBestBoneAim(LPlayer, aimentity, max_fov);
           if (Angles.x == 0 && Angles.y == 0) {
             lock = false;
-            lastaimentity = 0;
+            locked_aim_entity = 0;
             continue;
           }
           LPlayer.SetViewAngles(Angles);
