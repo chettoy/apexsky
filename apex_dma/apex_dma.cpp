@@ -50,7 +50,7 @@ bool item_t = false;
 uint64_t g_Base;
 bool next2 = false;
 bool valid = false;
-int lock = 0;
+bool lock = false;
 extern float bulletspeed;
 extern float bulletgrav;
 int local_held_id = 2147483647;
@@ -999,6 +999,14 @@ static void EspLoop() {
 }
 
 // Aimbot Loop stuff
+inline static void lock_target(uintptr_t target_ptr) {
+  lock = true;
+  locked_aim_entity = target_ptr;
+}
+inline static void cancel_targeting() {
+  lock = false;
+  locked_aim_entity = 0;
+}
 static void AimbotLoop() {
   aim_t = true;
   while (aim_t) {
@@ -1028,16 +1036,24 @@ static void AimbotLoop() {
       // printf("%d\n", weaponID);
 
       if (global_settings.aim > 0) {
-        if (aimentity == 0 || !aiming) {
-          lock = false;
-          locked_aim_entity = 0;
+        if (aimentity == 0) {
+          cancel_targeting();
           continue;
         }
+
+        Entity target = getEntity(aimentity);
+
+        if (!aiming) {
+          cancel_targeting();
+          // show target indicator before aiming
+          aim_target = target.getPosition();
+          continue;
+        }
+
         if (aimbot_safety) {
           continue;
         }
-        lock = true;
-        locked_aim_entity = aimentity;
+        lock_target(aimentity);
 
         Entity LPlayer = getEntity(LocalPlayer);
         if (LocalPlayer == 0)
@@ -1053,20 +1069,21 @@ static void AimbotLoop() {
         }
 
         if (HeldID == -251) { // auto throw
-          if (!global_settings.no_nade_aim) {
-            QAngle Angles_g = CalculateBestBoneAim(LPlayer, aimentity, 999.9f);
-            if (Angles_g.x == 0 && Angles_g.y == 0) {
-              lock = false;
-              locked_aim_entity = 0;
-              continue;
-            }
-            LPlayer.SetViewAngles(Angles_g);
+          if (global_settings.no_nade_aim) {
+            cancel_targeting();
+            continue;
           }
+          QAngle Angles_g = CalculateBestBoneAim(LPlayer, target, 999.9f);
+          if (Angles_g.x == 0 && Angles_g.y == 0) {
+            cancel_targeting();
+            continue;
+          }
+          LPlayer.SetViewAngles(Angles_g);
+
         } else {
-          QAngle Angles = CalculateBestBoneAim(LPlayer, aimentity, max_fov);
+          QAngle Angles = CalculateBestBoneAim(LPlayer, target, max_fov);
           if (Angles.x == 0 && Angles.y == 0) {
-            lock = false;
-            locked_aim_entity = 0;
+            cancel_targeting();
             continue;
           }
           LPlayer.SetViewAngles(Angles);

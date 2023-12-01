@@ -20,8 +20,8 @@ uint32_t check = 0xABCD;
 extern bool active; // sync
 bool ready = false;
 extern visuals v;
-extern bool aiming;               // read sync
-extern uint64_t g_Base;           // write sync
+extern bool aiming;     // read sync
+extern uint64_t g_Base; // write sync
 
 // tdm check
 extern int EntTeam; // sync
@@ -47,6 +47,7 @@ extern bool valid;            // write sync
 extern bool next2;            // read write sync
 
 Vector aim_target = Vector(0, 0, 0);
+extern bool lock;
 
 extern bool overlay_t;
 
@@ -168,8 +169,8 @@ static void TeamMiniMap(int x, int y, int radius, int team_id,
       center, radius,
       ImGui::ColorConvertFloat4ToU32(ImVec4(color.R / 255.0, color.G / 255.0,
                                             color.B / 255.0, color.A / 255.0)));
-  ImGui::GetWindowDrawList()->AddCircle(center, radius, colOutline, 12,
-                                        global_settings.mini_map_radar_dot_size2);
+  ImGui::GetWindowDrawList()->AddCircle(
+      center, radius, colOutline, 12, global_settings.mini_map_radar_dot_size2);
 
   // Draw a line pointing in the direction of each player's aim
   const int numPlayers = 3;
@@ -214,91 +215,92 @@ void DrawRadarPointMiniMap(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos,
                                    siz.y, LocalPlayerY, 0.3f, &ck);
   if (eneamyDist >= 0.f && eneamyDist < RadarSettings::distance_Radar) {
     for (int i = 1; i <= 30; i++) {
-      TeamMiniMap(single.x, single.y, global_settings.mini_map_radar_dot_size1, team_id, targetyaw);
+      TeamMiniMap(single.x, single.y, global_settings.mini_map_radar_dot_size1,
+                  team_id, targetyaw);
     }
   }
 }
 
 void draw_team_point(int pos_x, int pos_y, int team_id) {
   if (team_id == 1) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {255, 255, 255, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {255, 255, 255, 255});
   }
   if (team_id == 2) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {242, 86, 38, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {242, 86, 38, 255});
   }
   if (team_id == 3) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {242, 86, 38, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {242, 86, 38, 255});
   }
   if (team_id == 4) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {174, 247, 89, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {174, 247, 89, 255});
   }
   if (team_id == 5) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {102, 214, 173, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {102, 214, 173, 255});
   }
   if (team_id == 6) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {98, 244, 234, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {98, 244, 234, 255});
   }
   if (team_id == 7) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {92, 208, 250, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {92, 208, 250, 255});
   }
   if (team_id == 8) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {93, 137, 238, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {93, 137, 238, 255});
   }
   if (team_id == 9) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {164, 105, 252, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {164, 105, 252, 255});
   }
   if (team_id == 10) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {243, 98, 161, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {243, 98, 161, 255});
   }
   if (team_id == 11) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {214, 67, 67, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {214, 67, 67, 255});
   }
   if (team_id == 12) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {230, 116, 51, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {230, 116, 51, 255});
   }
   if (team_id == 13) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {185, 179, 167, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {185, 179, 167, 255});
   }
   if (team_id == 14) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {148, 200, 65, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {148, 200, 65, 255});
   }
   if (team_id == 15) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {86, 174, 91, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {86, 174, 91, 255});
   }
   if (team_id == 16) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {55, 188, 200, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {55, 188, 200, 255});
   }
   if (team_id == 17) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {84, 169, 212, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {84, 169, 212, 255});
   }
   if (team_id == 18) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {98, 121, 203, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {98, 121, 203, 255});
   }
   if (team_id == 19) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {102, 61, 174, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {102, 61, 174, 255});
   }
   if (team_id >= 20 && team_id < 36) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1, global_settings.main_map_radar_dot_size2,
-          {218, 73, 145, 255});
+    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
+          global_settings.main_map_radar_dot_size2, {218, 73, 145, 255});
   }
 }
 
@@ -499,9 +501,20 @@ void Overlay::RenderEsp() {
       Vector bs = Vector();
       WorldToScreen(aim_target, view_matrix_data.matrix, getWidth(),
                     getHeight(), bs);
-      ImGui::GetWindowDrawList()->AddRectFilled(
-          ImVec2(bs.x - 10, bs.y - 10), ImVec2(bs.x + 10, bs.y + 10),
-          ImColor(1.0f, 0.647f, 0.0f, 0.6f), 10.0f, 0);
+      const float indicator_radius = 10.0f;
+      ImColor indicator_color = lock ? ImColor(1.0f, 0.647f, 0.0f, 0.618f)
+                                     : ImColor(1.0f, 1.0f, 1.0f, 0.618f);
+      ImVec2 p1 = ImVec2(bs.x + indicator_radius, bs.y - indicator_radius);
+      ImVec2 p2 = ImVec2(bs.x - indicator_radius, bs.y - indicator_radius);
+      ImVec2 p3 = ImVec2(bs.x - indicator_radius, bs.y + indicator_radius);
+      ImVec2 p4 = ImVec2(bs.x + indicator_radius, bs.y + indicator_radius);
+      ImDrawList &draw_list = *ImGui::GetWindowDrawList();
+      draw_list.AddRect(p2, p4, indicator_color, indicator_radius, 0, 1.6726f);
+      if (lock) {
+        indicator_color = RED;
+        draw_list.AddLine(p1, p3, indicator_color, 2.718f);
+        draw_list.AddLine(p2, p4, indicator_color, 2.718f);
+      }
     }
 
     if (!global_settings.firing_range)
@@ -524,8 +537,8 @@ void Overlay::RenderEsp() {
           } else if (players[i].dist > 16000.0f) {
             alpha = 0.4f;
           } else {
-            alpha = 1.0f -
-                    ((players[i].dist - global_settings.aim_dist) / (16000.0f - global_settings.aim_dist) * 0.6f);
+            alpha = 1.0f - ((players[i].dist - global_settings.aim_dist) /
+                            (16000.0f - global_settings.aim_dist) * 0.6f);
           }
 
           float radardistance = (int)(players[i].dist / 39.62);

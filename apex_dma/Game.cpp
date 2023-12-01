@@ -341,8 +341,7 @@ auto fun_calc_angles = [](Vector LocalCamera, Vector TargetBonePosition,
   return CalculatedAngles;
 };
 
-QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
-  Entity target = getEntity(t);
+QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
   if (global_settings.firing_range) {
     if (!target.isAlive()) {
       return QAngle(0, 0, 0);
@@ -356,6 +355,8 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
   WeaponXEntity curweap = WeaponXEntity();
   curweap.update(from.ptr);
   uint32_t weap_id = curweap.get_weap_id();
+  float BulletSpeed = curweap.get_projectile_speed();
+  float BulletGrav = curweap.get_projectile_gravity();
 
   float zoom_fov = curweap.get_zoom_fov();
   if (zoom_fov != 0.0f && zoom_fov != 1.0f) {
@@ -385,6 +386,10 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
   Vector LocalCamera = from.GetCamPos();
   QAngle ViewAngles = from.GetViewAngles();
   QAngle SwayAngles = from.GetSwayAngles();
+  Vector targetVel = target.getAbsVelocity();
+
+  // Calculate the time since the last frame (in seconds)
+  float deltaTime = 1.0 / global_settings.game_fps;
 
   if (weap_headshot) {
     TargetBonePositionMax = TargetBonePositionMin =
@@ -408,14 +413,6 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
     TargetBonePositionMax = TargetBonePositionMin =
         target.getBonePositionByHitbox(global_settings.bone);
   }
-
-  float BulletSpeed = curweap.get_projectile_speed();
-  float BulletGrav = curweap.get_projectile_gravity();
-
-  Vector targetVel = target.getAbsVelocity();
-
-  // Calculate the time since the last frame (in seconds)
-  float deltaTime = 1.0 / global_settings.game_fps;
 
   if (local_held_id != -251) {
     QAngle CalculatedAnglesMin =
@@ -450,7 +447,6 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
     QAngle SmoothedAngles = ViewAngles + Delta / global_settings.smooth;
     return SmoothedAngles;
   } else {
-    uint32_t weapon_id = curweap.get_weap_id();
     int weapon_mod_bitfield = curweap.get_mod_bitfield();
     Vector local_origin = from.getPosition();
     Vector view_offset = from.getViewOffset();
@@ -458,8 +454,9 @@ QAngle CalculateBestBoneAim(Entity &from, uintptr_t t, float max_fov) {
     //        view_offset.z);
     Vector view_origin = local_origin + view_offset;
     Vector target_origin = target.getPosition();
+    aim_target = target_origin;
     vector2d_t skynade_angles =
-        skynade_angle(weapon_id, weapon_mod_bitfield, BulletGrav / 750.0f,
+        skynade_angle(weap_id, weapon_mod_bitfield, BulletGrav / 750.0f,
                       BulletSpeed, view_origin.x, view_origin.y, view_origin.z,
                       target_origin.x, target_origin.y, target_origin.z);
 
