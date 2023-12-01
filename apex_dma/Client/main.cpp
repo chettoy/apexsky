@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <map>
 #include <random>
+#include <string>
 #include <thread>
 typedef Vector D3DXVECTOR3;
 
@@ -27,6 +28,7 @@ extern int EntTeam; // sync
 extern int LocTeam; // sync
 
 extern settings_t global_settings;
+extern std::vector<TreasureClue> treasure_clues;
 
 extern float bulletspeed; // sync
 extern float bulletgrav;  // sync
@@ -513,6 +515,23 @@ void Overlay::RenderEsp() {
         indicator_color = RED;
         draw_list.AddLine(p1, p3, indicator_color, 2.718f);
         draw_list.AddLine(p2, p4, indicator_color, 2.718f);
+      }
+    }
+
+    if (treasure_clues.size() > 0) {
+      for (int i = 0; i < treasure_clues.size(); i++) {
+        TreasureClue clue = treasure_clues[i];
+        if (clue.position == Vector(0, 0, 0))
+          continue;
+        Vector bs = Vector();
+        WorldToScreen(clue.position, view_matrix_data.matrix, getWidth(),
+                      getHeight(), bs);
+        DrawLine(ImVec2((float)(getWidth() / 2.0), (float)getHeight()),
+                 ImVec2(bs.x, bs.y), ImColor(1.0f, 1.0f, 1.0f, 0.5f), 1.0f);
+        std::string distance = std::to_string(clue.distance / 39.62);
+        distance = std::to_string(clue.item_id) + "(" +
+                   distance.substr(0, distance.find('.')) + "m)";
+        String(ImVec2(bs.x, bs.y), ImColor(212, 175, 55), distance.c_str());
       }
     }
 

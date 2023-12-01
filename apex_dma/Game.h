@@ -186,3 +186,9 @@ enum weapon_id : int32_t {
   idgrenade_arc_star = 161,
   idmax
 };
+
+typedef struct {
+  uint64_t item_id;
+  Vector position;
+  float distance;
+} TreasureClue;
