@@ -67,7 +67,7 @@ std::vector<TreasureClue> treasure_clues;
 // No longer needed here. Edit your configuration file!
 settings_t global_settings;
 
-// uint64_t wish_list[] = {209, 220, 258, 429496729795, 52776987629977800};
+// uint64_t wish_list[] = {209, 220, 234, 242, 258, 429496729795, 52776987629977800};
 uint64_t wish_list[] = {};
 
 // trigger bot
@@ -515,25 +515,25 @@ void ClientActions() {
 
       // Toggle crouch = check for ring
       if (global_settings.map_radar_testing && attackState == 0 &&
-          tduckState == 13) {
+          isPressed(99)) { //KEY_F8
         if (mapRadarTestingEnabled) {
           MapRadarTesting();
         }
 
-        // if (tduckStartTime == std::chrono::steady_clock::time_point()) {
-        //   tduckStartTime = std::chrono::steady_clock::now();
-        // }
+        if (tduckStartTime == std::chrono::steady_clock::time_point()) {
+          tduckStartTime = std::chrono::steady_clock::now();
+        }
 
-        // auto currentTime = std::chrono::steady_clock::now();
-        // auto duration = std::chrono::duration_cast<std::chrono::seconds>(
-        //                     currentTime - tduckStartTime)
-        //                     .count();
-        // if (duration >= 500) {
-        mapRadarTestingEnabled = false;
-        //}
-        // } else {
-        //   tduckStartTime = std::chrono::steady_clock::time_point();
-        //   // mapRadarTestingEnabled = true;
+        auto currentTime = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::seconds>(
+                            currentTime - tduckStartTime)
+                            .count();
+        if (duration >= 500) {
+          mapRadarTestingEnabled = false;
+        }
+      } else {
+        tduckStartTime = std::chrono::steady_clock::time_point();
+        mapRadarTestingEnabled = true;
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1));

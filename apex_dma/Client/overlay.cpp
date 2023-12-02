@@ -62,6 +62,7 @@ bool show_menu = false;
 
 // extern bool IsKeyDown(int vk);
 extern bool IsKeyDown(ImGuiKey imgui_k);
+extern bool isPressed(uint32_t button_code);
 
 static void StaticMessageStart(Overlay &ov) { ov.CreateOverlay(); }
 
@@ -125,7 +126,7 @@ void Overlay::RenderMenu() {
     ImGui::Checkbox(XorStr("Firing Range"), &global_settings.firing_range);
     ImGui::SameLine();
     ImGui::Checkbox(XorStr("TDM Toggle"), &global_settings.tdm_toggle);
-    ImGui::Checkbox(XorStr("Press C duck for MapRadar"),
+    ImGui::Checkbox(XorStr("Press F8 enable MapRadar"),
                     &global_settings.map_radar_testing);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Aiming Distance:"));
@@ -783,26 +784,31 @@ int Overlay::CreateOverlay() {
     //   io.MouseDown[0] = false;
     //   k_leftclick = false;
     // }
-
-    if (IsKeyDown(ImGuiKey_Insert) && !k_ins && ready) {
-      show_menu = !show_menu;
-      k_ins = true;
-    } else if (!IsKeyDown(ImGuiKey_Insert) && k_ins) {
-      k_ins = false;
+    {
+      bool key_insert_pressed = IsKeyDown(ImGuiKey_Insert) || isPressed(72);
+      if (key_insert_pressed && !k_ins && ready) {
+        show_menu = !show_menu;
+        k_ins = true;
+      } else if (!key_insert_pressed && k_ins) {
+        k_ins = false;
+      }
     }
 
     // Main Map Radar, Needs Manual Setting of cords
-    if (IsKeyDown(ImGuiKey_M) && mainradartoggle == 0) {
-      mainradartoggle = 1;
-      if (!global_settings.main_radar_map) {
-        global_settings.main_radar_map = true;
-        global_settings.mini_map_radar = false;
-      } else {
-        global_settings.main_radar_map = false;
-        global_settings.mini_map_radar = true;
+    {
+      bool key_m_pressed = IsKeyDown(ImGuiKey_M) || isPressed(23);
+      if (key_m_pressed && mainradartoggle == 0) {
+        mainradartoggle = 1;
+        if (!global_settings.main_radar_map) {
+          global_settings.main_radar_map = true;
+          global_settings.mini_map_radar = false;
+        } else {
+          global_settings.main_radar_map = false;
+          global_settings.mini_map_radar = true;
+        }
+      } else if (!key_m_pressed && mainradartoggle == 1) {
+        mainradartoggle = 0;
       }
-    } else if (!IsKeyDown(ImGuiKey_M) && mainradartoggle == 1) {
-      mainradartoggle = 0;
     }
 
     if (show_menu)

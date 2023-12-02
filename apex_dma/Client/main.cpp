@@ -373,10 +373,6 @@ void MiniMapRadar(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos,
   ImGui::PopStyleColor();
 }
 
-// bool IsKeyDown(int vk)
-// {
-// 	return (GetAsyncKeyState(vk) & 0x8000) != 0;
-// }
 bool IsKeyDown(ImGuiKey imgui_k) { return ImGui::IsKeyPressed(imgui_k); }
 
 // Full map radar test, Needs Manual setting of cords
