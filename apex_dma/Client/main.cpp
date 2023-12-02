@@ -54,6 +54,7 @@ extern bool overlay_t;
 
 extern player players[100];
 extern Matrix view_matrix_data;
+extern Vector local_pos;
 
 // Radar Code
 #define M_PI 3.14159265358979323846 // matches value in gcc v2 math.h
@@ -515,19 +516,28 @@ void Overlay::RenderEsp() {
     }
 
     if (treasure_clues.size() > 0) {
-      for (int i = 0; i < treasure_clues.size(); i++) {
-        TreasureClue clue = treasure_clues[i];
-        if (clue.position == Vector(0, 0, 0))
-          continue;
-        Vector bs = Vector();
-        WorldToScreen(clue.position, view_matrix_data.matrix, getWidth(),
-                      getHeight(), bs);
-        DrawLine(ImVec2((float)(getWidth() / 2.0), (float)getHeight()),
-                 ImVec2(bs.x, bs.y), ImColor(1.0f, 1.0f, 1.0f, 0.5f), 1.0f);
-        std::string distance = std::to_string(clue.distance / 39.62);
-        distance = std::to_string(clue.item_id) + "(" +
-                   distance.substr(0, distance.find('.')) + "m)";
-        String(ImVec2(bs.x, bs.y), ImColor(212, 175, 55), distance.c_str());
+      Vector bs_loot, bs_local;
+      WorldToScreen(local_pos, view_matrix_data.matrix, getWidth(), getHeight(),
+                    bs_local);
+      if (!(bs_local.x == 0 && bs_local.y == 0)) {
+        for (int i = 0; i < treasure_clues.size(); i++) {
+          TreasureClue clue = treasure_clues[i];
+          if (clue.position == Vector(0, 0, 0))
+            continue;
+          // printf("%f,%f,%f\n",
+          // clue.position.x,clue.position.y,clue.position.z);
+          WorldToScreen(clue.position, view_matrix_data.matrix, getWidth(),
+                        getHeight(), bs_loot);
+          if (bs_loot.x == 0 && bs_loot.y == 0)
+            continue;
+          DrawLine(ImVec2(bs_local.x, bs_local.y), ImVec2(bs_loot.x, bs_loot.y),
+                   ImColor(1.0f, 1.0f, 1.0f, 0.5f), 1.0f);
+          std::string distance = std::to_string(clue.distance / 39.62);
+          distance = std::to_string(clue.item_id) + "(" +
+                     distance.substr(0, distance.find('.')) + "m)";
+          String(ImVec2(bs_loot.x, bs_loot.y), ImColor(212, 175, 55),
+                 distance.c_str());
+        }
       }
     }
 

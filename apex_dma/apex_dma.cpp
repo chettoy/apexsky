@@ -54,6 +54,7 @@ bool valid = false;
 bool lock = false;
 extern float bulletspeed;
 extern float bulletgrav;
+Vector local_pos;
 int local_held_id = 2147483647;
 uint32_t local_weapon_id = 2147483647;
 int playerentcount = 61;
@@ -67,7 +68,8 @@ std::vector<TreasureClue> treasure_clues;
 // No longer needed here. Edit your configuration file!
 settings_t global_settings;
 
-// uint64_t wish_list[] = {209, 220, 234, 242, 258, 429496729795, 52776987629977800};
+// uint64_t wish_list[] = {191, 209, 210, 220,          234,
+//                         242, 258, 260, 429496729795, 52776987629977800};
 uint64_t wish_list[] = {};
 
 // trigger bot
@@ -515,7 +517,7 @@ void ClientActions() {
 
       // Toggle crouch = check for ring
       if (global_settings.map_radar_testing && attackState == 0 &&
-          isPressed(99)) { //KEY_F8
+          isPressed(99)) { // KEY_F8
         if (mapRadarTestingEnabled) {
           MapRadarTesting();
         }
@@ -788,7 +790,7 @@ static void EspLoop() {
   while (esp_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
     while (g_Base != 0 && overlay_t) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
       if (global_settings.esp) {
         valid = false;
 
@@ -811,6 +813,7 @@ static void EspLoop() {
           continue;
         }
         Vector LocalPlayerPosition = LPlayer.getPosition();
+        local_pos = LocalPlayerPosition;
 
         uint64_t viewRenderer = 0;
         apex_mem.Read<uint64_t>(g_Base + OFFSET_RENDER, viewRenderer);
@@ -1111,13 +1114,11 @@ static void item_glow_t() {
       // not show all the death boxes i think.
 
       // for wish list
-      uint64_t LocalPlayer;
-      apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
-      Vector local_pos = getEntity(LocalPlayer).getPosition();
       std::vector<TreasureClue> new_treasure_clues;
       for (int i = 0; i < sizeof(wish_list) / sizeof(uint64_t); i++) {
         TreasureClue clue;
         clue.item_id = wish_list[i];
+        clue.position = Vector(0, 0, 0);
         clue.distance = global_settings.aim_dist * 2;
         new_treasure_clues.push_back(clue);
       }
