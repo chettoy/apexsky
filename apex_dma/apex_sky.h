@@ -146,9 +146,8 @@ typedef struct {
   bool gamepad;
   int aimbot_hot_key_1;
   int aimbot_hot_key_2;
-  int tigger_bot_hot_key;
-  bool autoshoot;
-  bool tigger_bot;
+  int trigger_bot_hot_key;
+  bool auto_shoot;
   bool loot_filled_toggle;
   bool player_filled_toggle;
   bool super_key_toggle;
@@ -201,6 +200,11 @@ typedef struct {
 } settings_t;
 
 typedef struct {
+  settings_t settings;
+  bool terminal_t;
+} global_state_t;
+
+typedef struct {
   float x;
   float y;
 } vector2d_t;
@@ -209,8 +213,12 @@ extern "C" {
 void print_run_as_root();
 uint32_t add(uint32_t lhs, uint32_t rhs);
 
-settings_t load_settings();
-bool save_settings(settings_t settings);
+global_state_t __get_global_states();
+void __update_global_states(global_state_t state);
+void __load_settings();
+bool save_settings();
+
+void run_tui_menu();
 
 /**
  * https://github.com/CasualX/apexdream
@@ -223,3 +231,8 @@ vector2d_t skynade_angle(uint32_t weapon_id, uint32_t weapon_mod_bitfield,
                          float local_view_origin_z, float target_x,
                          float target_y, float target_z);
 }
+
+void load_settings();
+const settings_t global_settings();
+void update_settings(settings_t state);
+void quit_tui_menu();

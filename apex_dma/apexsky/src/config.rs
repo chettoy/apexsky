@@ -152,9 +152,8 @@ pub struct Config {
     pub gamepad: bool,
     pub aimbot_hot_key_1: i32,
     pub aimbot_hot_key_2: i32,
-    pub tigger_bot_hot_key: i32,
-    pub autoshoot: bool,
-    pub tigger_bot: bool,
+    pub trigger_bot_hot_key: i32,
+    pub auto_shoot: bool,
     pub loot_filled_toggle: bool,
     pub player_filled_toggle: bool,
     pub super_key_toggle: bool,
@@ -365,9 +364,8 @@ impl Default for Config {
             aimbot_hot_key_2: 109,
             // Done with Gamepad or Keyboard config
             // triggerbot?
-            tigger_bot_hot_key: 81,
-            autoshoot: true,
-            tigger_bot: false,
+            trigger_bot_hot_key: 81,
+            auto_shoot: true,
             // Terminal Stuff
             loot_filled_toggle: true,
             player_filled_toggle: true,

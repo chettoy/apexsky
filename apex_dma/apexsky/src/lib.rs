@@ -1,31 +1,57 @@
+use global_state::GlobalState;
+
 mod config;
+mod global_state;
 mod math;
+mod menu;
 mod pitches;
 mod skynade;
-mod menu;
 
 #[macro_use]
 extern crate lazy_static;
 
-// config
+use global_state::G_STATE;
 
 #[no_mangle]
-pub extern "C" fn load_settings() -> crate::config::Config {
-    crate::config::get_configuration().unwrap_or_else(|e| {
-        println!("{}", e);
-        println!("Fallback to defalut configuration.");
-        crate::config::Config::default()
-    })
+pub extern "C" fn __get_global_states() -> GlobalState {
+    G_STATE.lock().unwrap().to_owned()
 }
 
 #[no_mangle]
-pub extern "C" fn save_settings(settings: crate::config::Config) -> bool {
+pub extern "C" fn __update_global_states(state: GlobalState) {
+    *G_STATE.lock().unwrap() = state;
+}
+
+// config
+
+#[no_mangle]
+pub extern "C" fn __load_settings() {
+    let settings = crate::config::get_configuration().unwrap_or_else(|e| {
+        println!("{}", e);
+        println!("Fallback to defalut configuration.");
+        crate::config::Config::default()
+    });
+    G_STATE.lock().unwrap().settings = settings;
+}
+
+#[no_mangle]
+pub extern "C" fn save_settings() -> bool {
+    let settings = G_STATE.lock().unwrap().settings.to_owned();
     crate::config::save_configuration(settings)
         .map(|()| true)
         .unwrap_or_else(|e| {
             println!("{}", e);
             false
         })
+}
+
+// menu
+
+#[no_mangle]
+pub extern "C" fn run_tui_menu() {
+    crate::menu::main().unwrap_or_else(|e| {
+        println!("{}", e);
+    });
 }
 
 // misc

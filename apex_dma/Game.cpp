@@ -20,7 +20,6 @@ float bulletgrav = 0.05;
 extern int glowtype;
 extern int glowtype2;
 // setting up vars, dont edit
-extern settings_t global_settings;
 extern float veltest;
 extern Vector aim_target;
 extern int local_held_id;
@@ -170,14 +169,14 @@ unsigned char outsidevalue = 125;
 extern unsigned char insidevalue;
 extern unsigned char insidevalueItem;
 extern unsigned char outlinesize;
-void Entity::enableGlow() {
+void Entity::enableGlow(uint8_t inside_value, uint8_t outline_size) {
   // static const int contextId = 5;
   // int settingIndex = 44;
   std::array<unsigned char, 4> highlightFunctionBits = {
-      global_settings.inside_value, // InsideFunction
-      global_settings
-          .inside_value, // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
-      global_settings.outline_size, // OutlineRadius: size * 255 / 8
+      inside_value, // InsideFunction
+
+      inside_value, // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
+      outline_size, // OutlineRadius: size * 255 / 8
       64 // (EntityVisible << 6) | State & 0x3F | (AfterPostProcess << 7)
   };
   // std::array<float, 3> highlightParameter = { 0, 1, 0 };
@@ -342,7 +341,8 @@ auto fun_calc_angles = [](Vector LocalCamera, Vector TargetBonePosition,
 };
 
 QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
-  if (global_settings.firing_range) {
+  const auto g_settings = global_settings();
+  if (g_settings.firing_range) {
     if (!target.isAlive()) {
       return QAngle(0, 0, 0);
     }
@@ -380,8 +380,8 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
   case idweapon_sentinel:
   case idweapon_triple_take:
   case idweapon_wingman:
-    weap_headshot = (LocalCamera.DistTo(target.getPosition()) <=
-                     global_settings.headshot_dist);
+    weap_headshot =
+        (LocalCamera.DistTo(target.getPosition()) <= g_settings.headshot_dist);
     break;
   default:
     weap_headshot = false;
@@ -391,14 +391,14 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
   Vector TargetBonePositionMax;
 
   // Calculate the time since the last frame (in seconds)
-  float deltaTime = 1.0 / global_settings.game_fps;
+  float deltaTime = 1.0 / g_settings.game_fps;
 
   if (weap_headshot) {
     TargetBonePositionMax = TargetBonePositionMin =
         target.getBonePositionByHitbox(0);
-  } else if (global_settings.bone_nearest) {
+  } else if (g_settings.bone_nearest) {
     // find nearest bone
-    float NearestBoneDistance = global_settings.max_dist;
+    float NearestBoneDistance = g_settings.max_dist;
     for (int i = 0; i < 4; i++) {
       Vector currentBonePosition = target.getBonePositionByHitbox(i);
       float DistanceFromCrosshair =
@@ -408,12 +408,12 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
         NearestBoneDistance = DistanceFromCrosshair;
       }
     }
-  } else if (global_settings.bone_auto) {
+  } else if (g_settings.bone_auto) {
     TargetBonePositionMax = target.getBonePositionByHitbox(5);
     TargetBonePositionMin = target.getBonePositionByHitbox(0);
   } else {
     TargetBonePositionMax = TargetBonePositionMin =
-        target.getBonePositionByHitbox(global_settings.bone);
+        target.getBonePositionByHitbox(g_settings.bone);
   }
 
   if (local_held_id != -251) {
@@ -429,7 +429,7 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
     if ((fov0 + fov1) * 0.5f > max_fov) {
       return QAngle(0, 0, 0);
     }
-    if (global_settings.aim_no_recoil) {
+    if (g_settings.aim_no_recoil) {
       CalculatedAnglesMin -= SwayAngles - ViewAngles;
       CalculatedAnglesMax -= SwayAngles - ViewAngles;
     }
@@ -446,7 +446,7 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
     if (DeltaMin.y * DeltaMax.y > 0)
       Delta.y = (DeltaMin.y + DeltaMax.y) * 0.5f;
 
-    QAngle SmoothedAngles = ViewAngles + Delta / global_settings.smooth;
+    QAngle SmoothedAngles = ViewAngles + Delta / g_settings.smooth;
     return SmoothedAngles;
   } else {
     int weapon_mod_bitfield = curweap.get_mod_bitfield();
@@ -471,7 +471,7 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
     //        weapon_mod_bitfield, TargetAngles.x, TargetAngles.y);
 
     QAngle Delta = TargetAngles - ViewAngles;
-    return ViewAngles + Delta / global_settings.skynade_smooth;
+    return ViewAngles + Delta / g_settings.skynade_smooth;
   }
 }
 
