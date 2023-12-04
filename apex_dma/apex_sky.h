@@ -12,6 +12,134 @@ typedef struct {
 } visuals;
 
 typedef struct {
+  // rev skull
+  bool skull;
+  // Backpacks
+  bool lightbackpack;
+  bool medbackpack;
+  bool heavybackpack;
+  bool goldbackpack;
+  // Shield upgrades
+  bool shieldupgrade1; // white
+  bool shieldupgrade2; // blue
+  bool shieldupgrade3; // purple
+  bool shieldupgrade4; // gold
+  bool shieldupgrade5; // red
+  bool shieldupgradehead1;
+  bool shieldupgradehead2;
+  bool shieldupgradehead3;
+  bool shieldupgradehead4;
+  bool shielddown1;
+  bool shielddown2;
+  bool shielddown3;
+  bool shielddown4;
+  // heaing and Misc
+  bool accelerant;
+  bool phoenix;
+  bool healthlarge;
+  bool healthsmall;
+  bool shieldbattsmall;
+  bool shieldbattlarge;
+  // Ammo
+  bool sniperammo;
+  bool heavyammo;
+  bool lightammo;
+  bool energyammo;
+  bool shotgunammo;
+  // Optics
+  bool optic1xhcog;
+  bool optic2xhcog;
+  bool opticholo1x;
+  bool opticholo1x2x;
+  bool opticthreat;
+  bool optic3xhcog;
+  bool optic2x4x;
+  bool opticsniper6x;
+  bool opticsniper4x8x;
+  bool opticsniperthreat;
+  // Magazines
+  bool sniperammomag1;
+  bool energyammomag1;
+  bool lightammomag1;
+  bool heavyammomag1;
+  bool sniperammomag2;
+  bool energyammomag2;
+  bool lightammomag2;
+  bool heavyammomag2;
+  bool sniperammomag3;
+  bool energyammomag3;
+  bool lightammomag3;
+  bool heavyammomag3;
+  bool sniperammomag4;
+  bool energyammomag4;
+  bool lightammomag4;
+  bool heavyammomag4;
+  // Attachments
+  bool lasersight1;
+  bool lasersight2;
+  bool lasersight3;
+  bool lasersight4;
+  bool stocksniper1;
+  bool stocksniper2;
+  bool stocksniper3;
+  bool stocksniper4;
+  bool stockregular1;
+  bool stockregular2;
+  bool stockregular3;
+  bool suppressor1;
+  bool suppressor2;
+  bool suppressor3;
+  bool turbo_charger;
+  bool skull_piecer;
+  bool hammer_point;
+  bool disruptor_rounds;
+  bool boosted_loader;
+  bool shotgunbolt1;
+  bool shotgunbolt2;
+  bool shotgunbolt3;
+  bool shotgunbolt4;
+  // Nades
+  bool grenade_frag;
+  bool grenade_arc_star;
+  bool grenade_thermite;
+  // Kraber
+  bool weapon_kraber;
+  // Shotguns
+  bool weapon_mastiff;
+  bool weapon_eva8;
+  bool weapon_peacekeeper;
+  bool weapon_mozambique;
+  // Energy weapons
+  bool weapon_lstar;
+  bool weapon_nemesis;
+  bool weapon_havoc;
+  bool weapon_devotion;
+  bool weapon_triple_take;
+  bool weapon_prowler;
+  bool weapon_volt;
+  // Heavy Weapons
+  bool weapon_flatline;
+  bool weapon_hemlock;
+  bool weapon_3030_repeater;
+  bool weapon_rampage;
+  bool weapon_car_smg;
+  // Light weapons
+  bool weapon_p2020;
+  bool weapon_re45;
+  bool weapon_g7_scout;
+  bool weapon_alternator;
+  bool weapon_r99;
+  bool weapon_spitfire;
+  bool weapon_r301;
+  // Snipers.. wingman is the odd one...and the bow..
+  bool weapon_wingman;
+  bool weapon_longbow;
+  bool weapon_charge_rifle;
+  bool weapon_sentinel;
+  bool weapon_bow;
+} loots;
+
+typedef struct {
   bool load_settings;
   bool super_key;
   bool keyboard;
@@ -53,6 +181,7 @@ typedef struct {
   int32_t bone;
   bool bone_nearest;
   bool bone_auto;
+  float headshot_dist;
   float smooth;
   float skynade_smooth;
   uint8_t inside_value;
@@ -68,131 +197,7 @@ typedef struct {
   float glow_b_knocked;
   uint8_t loot_filled;
   uint8_t loot_outline;
-  // rev skull
-  bool loot_skull;
-  // Backpacks
-  bool loot_lightbackpack;
-  bool loot_medbackpack;
-  bool loot_heavybackpack;
-  bool loot_goldbackpack;
-  // Shield upgrades
-  bool loot_shieldupgrade1; // white
-  bool loot_shieldupgrade2; // blue
-  bool loot_shieldupgrade3; // purple
-  bool loot_shieldupgrade4; // gold
-  bool loot_shieldupgrade5; // red
-  bool loot_shieldupgradehead1;
-  bool loot_shieldupgradehead2;
-  bool loot_shieldupgradehead3;
-  bool loot_shieldupgradehead4;
-  bool loot_shielddown1;
-  bool loot_shielddown2;
-  bool loot_shielddown3;
-  bool loot_shielddown4;
-  // heaing and Misc
-  bool loot_accelerant;
-  bool loot_phoenix;
-  bool loot_healthlarge;
-  bool loot_healthsmall;
-  bool loot_shieldbattsmall;
-  bool loot_shieldbattlarge;
-  // Ammo
-  bool loot_sniperammo;
-  bool loot_heavyammo;
-  bool loot_lightammo;
-  bool loot_energyammo;
-  bool loot_shotgunammo;
-  // Optics
-  bool loot_optic1xhcog;
-  bool loot_optic2xhcog;
-  bool loot_opticholo1x;
-  bool loot_opticholo1x2x;
-  bool loot_opticthreat;
-  bool loot_optic3xhcog;
-  bool loot_optic2x4x;
-  bool loot_opticsniper6x;
-  bool loot_opticsniper4x8x;
-  bool loot_opticsniperthreat;
-  // Magazines
-  bool loot_sniperammomag1;
-  bool loot_energyammomag1;
-  bool loot_lightammomag1;
-  bool loot_heavyammomag1;
-  bool loot_sniperammomag2;
-  bool loot_energyammomag2;
-  bool loot_lightammomag2;
-  bool loot_heavyammomag2;
-  bool loot_sniperammomag3;
-  bool loot_energyammomag3;
-  bool loot_lightammomag3;
-  bool loot_heavyammomag3;
-  bool loot_sniperammomag4;
-  bool loot_energyammomag4;
-  bool loot_lightammomag4;
-  bool loot_heavyammomag4;
-  // Attachments
-  bool loot_lasersight1;
-  bool loot_lasersight2;
-  bool loot_lasersight3;
-  bool loot_lasersight4;
-  bool loot_stocksniper1;
-  bool loot_stocksniper2;
-  bool loot_stocksniper3;
-  bool loot_stocksniper4;
-  bool loot_stockregular1;
-  bool loot_stockregular2;
-  bool loot_stockregular3;
-  bool loot_suppressor1;
-  bool loot_suppressor2;
-  bool loot_suppressor3;
-  bool loot_turbo_charger;
-  bool loot_skull_piecer;
-  bool loot_hammer_point;
-  bool loot_disruptor_rounds;
-  bool loot_boosted_loader;
-  bool loot_shotgunbolt1;
-  bool loot_shotgunbolt2;
-  bool loot_shotgunbolt3;
-  bool loot_shotgunbolt4;
-  // Nades
-  bool loot_grenade_frag;
-  bool loot_grenade_arc_star;
-  bool loot_grenade_thermite;
-  // Kraber
-  bool loot_weapon_kraber;
-  // Shotguns
-  bool loot_weapon_mastiff;
-  bool loot_weapon_eva8;
-  bool loot_weapon_peacekeeper;
-  bool loot_weapon_mozambique;
-  // Energy weapons
-  bool loot_weapon_lstar;
-  bool loot_weapon_nemesis;
-  bool loot_weapon_havoc;
-  bool loot_weapon_devotion;
-  bool loot_weapon_triple_take;
-  bool loot_weapon_prowler;
-  bool loot_weapon_volt;
-  // Heavy Weapons
-  bool loot_weapon_flatline;
-  bool loot_weapon_hemlock;
-  bool loot_weapon_3030_repeater;
-  bool loot_weapon_rampage;
-  bool loot_weapon_car_smg;
-  // Light weapons
-  bool loot_weapon_p2020;
-  bool loot_weapon_re45;
-  bool loot_weapon_g7_scout;
-  bool loot_weapon_alternator;
-  bool loot_weapon_r99;
-  bool loot_weapon_spitfire;
-  bool loot_weapon_r301;
-  // Snipers.. wingman is the odd one...and the bow..
-  bool loot_weapon_wingman;
-  bool loot_weapon_longbow;
-  bool loot_weapon_charge_rifle;
-  bool loot_weapon_sentinel;
-  bool loot_weapon_bow;
+  loots loot;
 } settings_t;
 
 typedef struct {

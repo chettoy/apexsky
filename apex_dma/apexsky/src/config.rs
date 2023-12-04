@@ -15,6 +15,136 @@ pub struct EspVisuals {
 
 #[repr(C)]
 #[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct Loot {
+    // rev skull
+    pub skull: bool,
+    // Backpacks
+    pub lightbackpack: bool,
+    pub medbackpack: bool,
+    pub heavybackpack: bool,
+    pub goldbackpack: bool,
+    // Shield upgrades
+    pub shieldupgrade1: bool, // white
+    pub shieldupgrade2: bool, // blue
+    pub shieldupgrade3: bool, // purple
+    pub shieldupgrade4: bool, // gold
+    pub shieldupgrade5: bool, // red
+    pub shieldupgradehead1: bool,
+    pub shieldupgradehead2: bool,
+    pub shieldupgradehead3: bool,
+    pub shieldupgradehead4: bool,
+    pub shielddown1: bool,
+    pub shielddown2: bool,
+    pub shielddown3: bool,
+    pub shielddown4: bool,
+    // heaing and Misc
+    pub accelerant: bool,
+    pub phoenix: bool,
+    pub healthlarge: bool,
+    pub healthsmall: bool,
+    pub shieldbattsmall: bool,
+    pub shieldbattlarge: bool,
+    // Ammo
+    pub sniperammo: bool,
+    pub heavyammo: bool,
+    pub lightammo: bool,
+    pub energyammo: bool,
+    pub shotgunammo: bool,
+    // Optics
+    pub optic1xhcog: bool,
+    pub optic2xhcog: bool,
+    pub opticholo1x: bool,
+    pub opticholo1x2x: bool,
+    pub opticthreat: bool,
+    pub optic3xhcog: bool,
+    pub optic2x4x: bool,
+    pub opticsniper6x: bool,
+    pub opticsniper4x8x: bool,
+    pub opticsniperthreat: bool,
+    // Magazines
+    pub sniperammomag1: bool,
+    pub energyammomag1: bool,
+    pub lightammomag1: bool,
+    pub heavyammomag1: bool,
+    pub sniperammomag2: bool,
+    pub energyammomag2: bool,
+    pub lightammomag2: bool,
+    pub heavyammomag2: bool,
+    pub sniperammomag3: bool,
+    pub energyammomag3: bool,
+    pub lightammomag3: bool,
+    pub heavyammomag3: bool,
+    pub sniperammomag4: bool,
+    pub energyammomag4: bool,
+    pub lightammomag4: bool,
+    pub heavyammomag4: bool,
+    // Attachments
+    pub lasersight1: bool,
+    pub lasersight2: bool,
+    pub lasersight3: bool,
+    pub lasersight4: bool,
+    pub stocksniper1: bool,
+    pub stocksniper2: bool,
+    pub stocksniper3: bool,
+    pub stocksniper4: bool,
+    pub stockregular1: bool,
+    pub stockregular2: bool,
+    pub stockregular3: bool,
+    pub suppressor1: bool,
+    pub suppressor2: bool,
+    pub suppressor3: bool,
+    pub turbo_charger: bool,
+    pub skull_piecer: bool,
+    pub hammer_point: bool,
+    pub disruptor_rounds: bool,
+    pub boosted_loader: bool,
+    pub shotgunbolt1: bool,
+    pub shotgunbolt2: bool,
+    pub shotgunbolt3: bool,
+    pub shotgunbolt4: bool,
+    // Nades
+    pub grenade_frag: bool,
+    pub grenade_arc_star: bool,
+    pub grenade_thermite: bool,
+    // Kraber
+    pub weapon_kraber: bool,
+    // Shotguns
+    pub weapon_mastiff: bool,
+    pub weapon_eva8: bool,
+    pub weapon_peacekeeper: bool,
+    pub weapon_mozambique: bool,
+    // Energy weapons
+    pub weapon_lstar: bool,
+    pub weapon_nemesis: bool,
+    pub weapon_havoc: bool,
+    pub weapon_devotion: bool,
+    pub weapon_triple_take: bool,
+    pub weapon_prowler: bool,
+    pub weapon_volt: bool,
+    // Heavy Weapons
+    pub weapon_flatline: bool,
+    pub weapon_hemlock: bool,
+    pub weapon_3030_repeater: bool,
+    pub weapon_rampage: bool,
+    pub weapon_car_smg: bool,
+    // Light weapons
+    pub weapon_p2020: bool,
+    pub weapon_re45: bool,
+    pub weapon_g7_scout: bool,
+    pub weapon_alternator: bool,
+    pub weapon_r99: bool,
+    pub weapon_spitfire: bool,
+    pub weapon_r301: bool,
+    // Snipers.. wingman is the odd one...and the bow..
+    pub weapon_wingman: bool,
+    pub weapon_longbow: bool,
+    pub weapon_charge_rifle: bool,
+    pub weapon_sentinel: bool,
+    pub weapon_bow: bool,
+}
+
+#[repr(C)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct Config {
     pub load_settings: bool,
     pub super_key: bool,
@@ -57,6 +187,7 @@ pub struct Config {
     pub bone: i32,
     pub bone_nearest: bool,
     pub bone_auto: bool,
+    pub headshot_dist: f32,
     pub smooth: f32,
     pub skynade_smooth: f32,
     pub inside_value: u8,
@@ -72,131 +203,7 @@ pub struct Config {
     pub glow_b_knocked: f32,
     pub loot_filled: u8,
     pub loot_outline: u8,
-    // rev skull
-    pub loot_skull: bool,
-    // Backpacks
-    pub loot_lightbackpack: bool,
-    pub loot_medbackpack: bool,
-    pub loot_heavybackpack: bool,
-    pub loot_goldbackpack: bool,
-    // Shield upgrades
-    pub loot_shieldupgrade1: bool, // white
-    pub loot_shieldupgrade2: bool, // blue
-    pub loot_shieldupgrade3: bool, // purple
-    pub loot_shieldupgrade4: bool, // gold
-    pub loot_shieldupgrade5: bool, // red
-    pub loot_shieldupgradehead1: bool,
-    pub loot_shieldupgradehead2: bool,
-    pub loot_shieldupgradehead3: bool,
-    pub loot_shieldupgradehead4: bool,
-    pub loot_shielddown1: bool,
-    pub loot_shielddown2: bool,
-    pub loot_shielddown3: bool,
-    pub loot_shielddown4: bool,
-    // heaing and Misc
-    pub loot_accelerant: bool,
-    pub loot_phoenix: bool,
-    pub loot_healthlarge: bool,
-    pub loot_healthsmall: bool,
-    pub loot_shieldbattsmall: bool,
-    pub loot_shieldbattlarge: bool,
-    // Ammo
-    pub loot_sniperammo: bool,
-    pub loot_heavyammo: bool,
-    pub loot_lightammo: bool,
-    pub loot_energyammo: bool,
-    pub loot_shotgunammo: bool,
-    // Optics
-    pub loot_optic1xhcog: bool,
-    pub loot_optic2xhcog: bool,
-    pub loot_opticholo1x: bool,
-    pub loot_opticholo1x2x: bool,
-    pub loot_opticthreat: bool,
-    pub loot_optic3xhcog: bool,
-    pub loot_optic2x4x: bool,
-    pub loot_opticsniper6x: bool,
-    pub loot_opticsniper4x8x: bool,
-    pub loot_opticsniperthreat: bool,
-    // Magazines
-    pub loot_sniperammomag1: bool,
-    pub loot_energyammomag1: bool,
-    pub loot_lightammomag1: bool,
-    pub loot_heavyammomag1: bool,
-    pub loot_sniperammomag2: bool,
-    pub loot_energyammomag2: bool,
-    pub loot_lightammomag2: bool,
-    pub loot_heavyammomag2: bool,
-    pub loot_sniperammomag3: bool,
-    pub loot_energyammomag3: bool,
-    pub loot_lightammomag3: bool,
-    pub loot_heavyammomag3: bool,
-    pub loot_sniperammomag4: bool,
-    pub loot_energyammomag4: bool,
-    pub loot_lightammomag4: bool,
-    pub loot_heavyammomag4: bool,
-    // Attachments
-    pub loot_lasersight1: bool,
-    pub loot_lasersight2: bool,
-    pub loot_lasersight3: bool,
-    pub loot_lasersight4: bool,
-    pub loot_stocksniper1: bool,
-    pub loot_stocksniper2: bool,
-    pub loot_stocksniper3: bool,
-    pub loot_stocksniper4: bool,
-    pub loot_stockregular1: bool,
-    pub loot_stockregular2: bool,
-    pub loot_stockregular3: bool,
-    pub loot_suppressor1: bool,
-    pub loot_suppressor2: bool,
-    pub loot_suppressor3: bool,
-    pub loot_turbo_charger: bool,
-    pub loot_skull_piecer: bool,
-    pub loot_hammer_point: bool,
-    pub loot_disruptor_rounds: bool,
-    pub loot_boosted_loader: bool,
-    pub loot_shotgunbolt1: bool,
-    pub loot_shotgunbolt2: bool,
-    pub loot_shotgunbolt3: bool,
-    pub loot_shotgunbolt4: bool,
-    // Nades
-    pub loot_grenade_frag: bool,
-    pub loot_grenade_arc_star: bool,
-    pub loot_grenade_thermite: bool,
-    // Kraber
-    pub loot_weapon_kraber: bool,
-    // Shotguns
-    pub loot_weapon_mastiff: bool,
-    pub loot_weapon_eva8: bool,
-    pub loot_weapon_peacekeeper: bool,
-    pub loot_weapon_mozambique: bool,
-    // Energy weapons
-    pub loot_weapon_lstar: bool,
-    pub loot_weapon_nemesis: bool,
-    pub loot_weapon_havoc: bool,
-    pub loot_weapon_devotion: bool,
-    pub loot_weapon_triple_take: bool,
-    pub loot_weapon_prowler: bool,
-    pub loot_weapon_volt: bool,
-    // Heavy Weapons
-    pub loot_weapon_flatline: bool,
-    pub loot_weapon_hemlock: bool,
-    pub loot_weapon_3030_repeater: bool,
-    pub loot_weapon_rampage: bool,
-    pub loot_weapon_car_smg: bool,
-    // Light weapons
-    pub loot_weapon_p2020: bool,
-    pub loot_weapon_re45: bool,
-    pub loot_weapon_g7_scout: bool,
-    pub loot_weapon_alternator: bool,
-    pub loot_weapon_r99: bool,
-    pub loot_weapon_spitfire: bool,
-    pub loot_weapon_r301: bool,
-    // Snipers.. wingman is the odd one...and the bow..
-    pub loot_weapon_wingman: bool,
-    pub loot_weapon_longbow: bool,
-    pub loot_weapon_charge_rifle: bool,
-    pub loot_weapon_sentinel: bool,
-    pub loot_weapon_bow: bool,
+    pub loot: Loot,
 }
 
 impl Default for EspVisuals {
@@ -208,6 +215,138 @@ impl Default for EspVisuals {
             health_bar: true,
             shield_bar: true,
             name: false,
+        }
+    }
+}
+
+impl Default for Loot {
+    fn default() -> Self {
+        Self {
+            // rev skull
+            skull: true,
+            // Backpacks
+            lightbackpack: false,
+            medbackpack: true,
+            heavybackpack: true,
+            goldbackpack: true,
+            // Shield upgrades
+            shieldupgrade1: false, // white
+            shieldupgrade2: true,  // blue
+            shieldupgrade3: true,  // purple
+            shieldupgrade4: true,  // gold
+            shieldupgrade5: true,  // red
+            shieldupgradehead1: false,
+            shieldupgradehead2: true,
+            shieldupgradehead3: true,
+            shieldupgradehead4: true,
+            shielddown1: false,
+            shielddown2: true,
+            shielddown3: true,
+            shielddown4: true,
+            // heaing and Misc
+            accelerant: false,
+            phoenix: true,
+            healthlarge: true,
+            healthsmall: false,
+            shieldbattsmall: false,
+            shieldbattlarge: true,
+            // Ammo
+            sniperammo: false,
+            heavyammo: true,
+            lightammo: true,
+            energyammo: true,
+            shotgunammo: false,
+            // Optics
+            optic1xhcog: false,
+            optic2xhcog: true,
+            opticholo1x: false,
+            opticholo1x2x: true,
+            opticthreat: false,
+            optic3xhcog: true,
+            optic2x4x: true,
+            opticsniper6x: false,
+            opticsniper4x8x: true,
+            opticsniperthreat: false,
+            // Magazines
+            sniperammomag1: false,
+            energyammomag1: true,
+            lightammomag1: true,
+            heavyammomag1: true,
+            sniperammomag2: false,
+            energyammomag2: true,
+            lightammomag2: true,
+            heavyammomag2: true,
+            sniperammomag3: false,
+            energyammomag3: true,
+            lightammomag3: true,
+            heavyammomag3: true,
+            sniperammomag4: false,
+            energyammomag4: true,
+            lightammomag4: true,
+            heavyammomag4: true,
+            // Attachments
+            lasersight1: false,
+            lasersight2: true,
+            lasersight3: true,
+            lasersight4: true,
+            stocksniper1: false,
+            stocksniper2: true,
+            stocksniper3: true,
+            stocksniper4: true,
+            stockregular1: false,
+            stockregular2: true,
+            stockregular3: true,
+            suppressor1: false,
+            suppressor2: true,
+            suppressor3: true,
+            turbo_charger: false,
+            skull_piecer: false,
+            hammer_point: true,
+            disruptor_rounds: true,
+            boosted_loader: false,
+            shotgunbolt1: false,
+            shotgunbolt2: false,
+            shotgunbolt3: false,
+            shotgunbolt4: false,
+            // Nades
+            grenade_frag: false,
+            grenade_arc_star: false,
+            grenade_thermite: false,
+            // Kraber
+            weapon_kraber: true,
+            // Shotguns
+            weapon_mastiff: false,
+            weapon_eva8: false,
+            weapon_peacekeeper: false,
+            weapon_mozambique: false,
+            // Energy weapons
+            weapon_lstar: true,
+            weapon_nemesis: true,
+            weapon_havoc: false,
+            weapon_devotion: false,
+            weapon_triple_take: false,
+            weapon_prowler: false,
+            weapon_volt: true,
+            // Heavy Weapons
+            weapon_flatline: true,
+            weapon_hemlock: true,
+            weapon_3030_repeater: false,
+            weapon_rampage: false,
+            weapon_car_smg: true,
+            // Light weapons
+            weapon_p2020: false,
+            weapon_re45: true,
+            weapon_g7_scout: false,
+            weapon_alternator: false,
+            weapon_r99: true,
+            weapon_spitfire: true,
+            weapon_r301: true,
+            // Snipers.. wingman is the odd one...and the bow..
+            weapon_wingman: false,
+            weapon_longbow: false,
+            weapon_charge_rifle: false,
+            weapon_sentinel: false,
+            weapon_bow: false,
         }
     }
 }
@@ -240,7 +379,7 @@ impl Default for Config {
             player_glow: false,
             deathbox: false,
             aim_no_recoil: true,
-            ads_fov: 15.0, // Fov you want to use while aiming
+            ads_fov: 12.0, // Fov you want to use while aiming
             non_ads_fov: 50.0,
             aim: 2, // 0 no aim, 1 aim with no vis check, 2 aim with vis check
             esp: true,
@@ -264,6 +403,7 @@ impl Default for Config {
             bone: 2, // bone 0 head, 1 neck, 2 chest, 3 dick shot
             bone_nearest: false,
             bone_auto: true,
+            headshot_dist: 100.0 * 40.0,
             smooth: 120.0, // min 85 no beaming, 100 somewhat beam people, 125 should be safe
             skynade_smooth: 120.0 * 0.6667,
             // Player Glow Color and Brightness.
@@ -288,131 +428,7 @@ impl Default for Config {
             loot_filled: 14, // 0 no fill, 14 100% fill
             loot_outline: 0,
 
-            // rev skull
-            loot_skull: true,
-            // Backpacks
-            loot_lightbackpack: false,
-            loot_medbackpack: true,
-            loot_heavybackpack: true,
-            loot_goldbackpack: true,
-            // Shield upgrades
-            loot_shieldupgrade1: false, // white
-            loot_shieldupgrade2: true,  // blue
-            loot_shieldupgrade3: true,  // purple
-            loot_shieldupgrade4: true,  // gold
-            loot_shieldupgrade5: true,  // red
-            loot_shieldupgradehead1: false,
-            loot_shieldupgradehead2: true,
-            loot_shieldupgradehead3: true,
-            loot_shieldupgradehead4: true,
-            loot_shielddown1: false,
-            loot_shielddown2: true,
-            loot_shielddown3: true,
-            loot_shielddown4: true,
-            // heaing and Misc
-            loot_accelerant: false,
-            loot_phoenix: true,
-            loot_healthlarge: true,
-            loot_healthsmall: false,
-            loot_shieldbattsmall: false,
-            loot_shieldbattlarge: true,
-            // Ammo
-            loot_sniperammo: false,
-            loot_heavyammo: true,
-            loot_lightammo: true,
-            loot_energyammo: true,
-            loot_shotgunammo: false,
-            // Optics
-            loot_optic1xhcog: false,
-            loot_optic2xhcog: true,
-            loot_opticholo1x: false,
-            loot_opticholo1x2x: true,
-            loot_opticthreat: false,
-            loot_optic3xhcog: true,
-            loot_optic2x4x: true,
-            loot_opticsniper6x: false,
-            loot_opticsniper4x8x: true,
-            loot_opticsniperthreat: false,
-            // Magazines
-            loot_sniperammomag1: false,
-            loot_energyammomag1: true,
-            loot_lightammomag1: true,
-            loot_heavyammomag1: true,
-            loot_sniperammomag2: false,
-            loot_energyammomag2: true,
-            loot_lightammomag2: true,
-            loot_heavyammomag2: true,
-            loot_sniperammomag3: false,
-            loot_energyammomag3: true,
-            loot_lightammomag3: true,
-            loot_heavyammomag3: true,
-            loot_sniperammomag4: false,
-            loot_energyammomag4: true,
-            loot_lightammomag4: true,
-            loot_heavyammomag4: true,
-            // Attachments
-            loot_lasersight1: false,
-            loot_lasersight2: true,
-            loot_lasersight3: true,
-            loot_lasersight4: true,
-            loot_stocksniper1: false,
-            loot_stocksniper2: true,
-            loot_stocksniper3: true,
-            loot_stocksniper4: true,
-            loot_stockregular1: false,
-            loot_stockregular2: true,
-            loot_stockregular3: true,
-            loot_suppressor1: false,
-            loot_suppressor2: true,
-            loot_suppressor3: true,
-            loot_turbo_charger: false,
-            loot_skull_piecer: false,
-            loot_hammer_point: true,
-            loot_disruptor_rounds: true,
-            loot_boosted_loader: false,
-            loot_shotgunbolt1: false,
-            loot_shotgunbolt2: false,
-            loot_shotgunbolt3: false,
-            loot_shotgunbolt4: false,
-            // Nades
-            loot_grenade_frag: false,
-            loot_grenade_arc_star: false,
-            loot_grenade_thermite: false,
-            // Kraber
-            loot_weapon_kraber: true,
-            // Shotguns
-            loot_weapon_mastiff: false,
-            loot_weapon_eva8: false,
-            loot_weapon_peacekeeper: false,
-            loot_weapon_mozambique: false,
-            // Energy weapons
-            loot_weapon_lstar: true,
-            loot_weapon_nemesis: true,
-            loot_weapon_havoc: false,
-            loot_weapon_devotion: false,
-            loot_weapon_triple_take: false,
-            loot_weapon_prowler: false,
-            loot_weapon_volt: true,
-            // Heavy Weapons
-            loot_weapon_flatline: true,
-            loot_weapon_hemlock: true,
-            loot_weapon_3030_repeater: false,
-            loot_weapon_rampage: false,
-            loot_weapon_car_smg: true,
-            // Light weapons
-            loot_weapon_p2020: false,
-            loot_weapon_re45: true,
-            loot_weapon_g7_scout: false,
-            loot_weapon_alternator: false,
-            loot_weapon_r99: true,
-            loot_weapon_spitfire: true,
-            loot_weapon_r301: true,
-            // Snipers.. wingman is the odd one...and the bow..
-            loot_weapon_wingman: false,
-            loot_weapon_longbow: false,
-            loot_weapon_charge_rifle: false,
-            loot_weapon_sentinel: false,
-            loot_weapon_bow: false,
+            loot: Loot::default(),
         }
     }
 }

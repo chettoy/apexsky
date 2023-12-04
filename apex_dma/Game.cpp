@@ -363,6 +363,11 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
     max_fov *= zoom_fov / 90.0f;
   }
 
+  Vector LocalCamera = from.GetCamPos();
+  QAngle ViewAngles = from.GetViewAngles();
+  QAngle SwayAngles = from.GetSwayAngles();
+  Vector targetVel = target.getAbsVelocity();
+
   // Find best bone
   bool weap_headshot;
   switch (weap_id) {
@@ -375,7 +380,8 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
   case idweapon_sentinel:
   case idweapon_triple_take:
   case idweapon_wingman:
-    weap_headshot = true;
+    weap_headshot = (LocalCamera.DistTo(target.getPosition()) <=
+                     global_settings.headshot_dist);
     break;
   default:
     weap_headshot = false;
@@ -383,10 +389,6 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
 
   Vector TargetBonePositionMin;
   Vector TargetBonePositionMax;
-  Vector LocalCamera = from.GetCamPos();
-  QAngle ViewAngles = from.GetViewAngles();
-  QAngle SwayAngles = from.GetSwayAngles();
-  Vector targetVel = target.getAbsVelocity();
 
   // Calculate the time since the last frame (in seconds)
   float deltaTime = 1.0 / global_settings.game_fps;
