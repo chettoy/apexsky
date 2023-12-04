@@ -2,6 +2,7 @@ mod config;
 mod math;
 mod pitches;
 mod skynade;
+mod menu;
 
 #[macro_use]
 extern crate lazy_static;
