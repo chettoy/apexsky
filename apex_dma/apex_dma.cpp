@@ -32,6 +32,7 @@ int team_player = 0;
 const int toRead = 100;
 bool aiming = false;
 float max_fov = 10;
+bool trigger_ready = false;
 extern Vector aim_target; // for esp
 
 // Removed but not all the way, dont edit.
@@ -66,14 +67,10 @@ std::vector<TreasureClue> treasure_clues;
 
 // [del]CONFIG AREA, you must set all the true/false to what you want.[/del]
 // No longer needed here. Edit your configuration file!
-settings_t global_settings;
 
 // uint64_t wish_list[] = {191, 209, 210, 220,          234,
 //                         242, 258, 260, 429496729795, 52776987629977800};
 uint64_t wish_list[] = {};
-
-// trigger bot
-bool is_trigger;
 
 void TriggerBotRun() {
   // testing
@@ -142,65 +139,36 @@ int contextId;
 std::array<float, 3> highlightParameter;
 // works
 void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index) {
-  if (global_settings.player_glow >= 1) {
-    if (!Target.isGlowing() ||
-        (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
-      float currentEntityTime = 5000.f;
-      if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
-        if (!(global_settings.firing_range) &&
-            (Target.isKnocked() || !Target.isAlive())) {
-          contextId = 5;
-          settingIndex = 80;
-          highlightParameter = {global_settings.glow_r_knocked,
-                                global_settings.glow_g_knocked,
-                                global_settings.glow_b_knocked};
-        } else if (Target.lastVisTime() > lastvis_aim[index] ||
-                   (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f)) {
-          contextId = 6;
-          settingIndex = 81;
-          highlightParameter = {global_settings.glow_r_viz,
-                                global_settings.glow_g_viz,
-                                global_settings.glow_b_viz};
-        } else {
-          contextId = 7;
-          settingIndex = 82;
-          highlightParameter = {global_settings.glow_r_not,
-                                global_settings.glow_g_not,
-                                global_settings.glow_b_not};
-        }
-        Target.enableGlow();
+  const auto g_settings = global_settings();
+
+  if (!Target.isGlowing() ||
+      (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
+    float currentEntityTime = 5000.f;
+    if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
+      if (!(g_settings.firing_range) &&
+          (Target.isKnocked() || !Target.isAlive())) {
+        contextId = 5;
+        settingIndex = 80;
+        highlightParameter = {g_settings.glow_r_knocked,
+                              g_settings.glow_g_knocked,
+                              g_settings.glow_b_knocked};
+      } else if (Target.lastVisTime() > lastvis_aim[index] ||
+                 (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f)) {
+        contextId = 6;
+        settingIndex = 81;
+        highlightParameter = {g_settings.glow_r_viz, g_settings.glow_g_viz,
+                              g_settings.glow_b_viz};
+      } else {
+        contextId = 7;
+        settingIndex = 82;
+        highlightParameter = {g_settings.glow_r_not, g_settings.glow_g_not,
+                              g_settings.glow_b_not};
       }
-    }
-  } else {
-    if (!Target.isGlowing() ||
-        (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
-      float currentEntityTime = 5000.f;
-      if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
-        if (!(global_settings.firing_range) &&
-            (Target.isKnocked() || !Target.isAlive())) {
-          global_settings.inside_value = 0; // 0 = no fill, 14 = full fill
-          // Outline size
-          global_settings.outline_size = 0; // 0-255
-          contextId = 5;
-          settingIndex = 80;
-          highlightParameter = {0, 0, 0};
-        } else if (Target.lastVisTime() > lastvis_aim[index] ||
-                   (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f)) {
-          global_settings.inside_value = 0; // 0 = no fill, 14 = full fill
-          // Outline size
-          global_settings.outline_size = 0; // 0-255
-          contextId = 6;
-          settingIndex = 81;
-          highlightParameter = {0, 0, 0};
-        } else {
-          global_settings.inside_value = 0; // 0 = no fill, 14 = full fill
-          // Outline size
-          global_settings.outline_size = 0; // 0-255
-          contextId = 7;
-          settingIndex = 82;
-          highlightParameter = {0, 0, 0};
-        }
-        Target.enableGlow();
+      if (g_settings.player_glow) {
+        Target.enableGlow(g_settings.inside_value, g_settings.outline_size);
+      } else {
+        highlightParameter = {0, 0, 0};
+        Target.enableGlow(0, 0);
       }
     }
   }
@@ -257,6 +225,7 @@ void ClientActions() {
     std::chrono::milliseconds checkpoint_time;
 
     while (g_Base != 0) {
+      const auto g_settings = global_settings();
 
       uint64_t LocalPlayer = 0;
       apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
@@ -306,7 +275,7 @@ void ClientActions() {
       lastFrameNumber = curFrameNumber;
 
       if (frameSleepTimer == 0) {
-        if (global_settings.super_key_toggle) {
+        if (g_settings.super_key_toggle) {
           if (m_traversalProgress > 0.85 &&
               m_traversalProgress <
                   0.92) // needs to end at 0.90 for 144 fps and 0.92 for 75 fps
@@ -339,13 +308,15 @@ void ClientActions() {
       frameSleepTimer -= 1;
 
       // calc game fps
-      if (global_settings.calc_game_fps && curFrameNumber % 100 == 0) {
+      if (g_settings.calc_game_fps && curFrameNumber % 100 == 0) {
         std::chrono::milliseconds ms = duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch());
         int delta_frame = curFrameNumber - last_checkpoint_frame;
         if (delta_frame > 90 && delta_frame < 120) {
           auto duration = ms - checkpoint_time;
-          global_settings.game_fps = delta_frame * 1000.0f / duration.count();
+          auto settings_state = g_settings;
+          settings_state.game_fps = delta_frame * 1000.0f / duration.count();
+          update_settings(settings_state);
         }
         last_checkpoint_frame = curFrameNumber;
         checkpoint_time = ms;
@@ -470,33 +441,33 @@ void ClientActions() {
               printf("CTRL Pressed0\n");
       } */
 
-      if (global_settings.keyboard) {
-        if (isPressed(global_settings.aimbot_hot_key_1) ||
-            (isPressed(global_settings.aimbot_hot_key_2) &&
+      if (g_settings.keyboard) {
+        if (isPressed(g_settings.aimbot_hot_key_1) ||
+            (isPressed(g_settings.aimbot_hot_key_2) &&
              !isPressed(
-                 global_settings.tigger_bot_hot_key))) // Left and Right click
+                 g_settings.trigger_bot_hot_key))) // Left and Right click
         {
           aiming = true;
         } else {
           aiming = false;
         }
-        if (isPressed(global_settings.aimbot_hot_key_1) ||
-            !isPressed(global_settings.aimbot_hot_key_2)) {
-          max_fov = global_settings.non_ads_fov;
+        if (isPressed(g_settings.aimbot_hot_key_1) ||
+            !isPressed(g_settings.aimbot_hot_key_2)) {
+          max_fov = g_settings.non_ads_fov;
         }
-        if (isPressed(global_settings.aimbot_hot_key_2)) {
-          max_fov = global_settings.ads_fov;
+        if (isPressed(g_settings.aimbot_hot_key_2)) {
+          max_fov = g_settings.ads_fov;
         }
-        if (isPressed(
-                global_settings.tigger_bot_hot_key)) // Left and Right click
+        if (g_settings.auto_shoot &&
+            isPressed(g_settings.trigger_bot_hot_key)) // Left and Right click
         {
-          global_settings.tigger_bot = true;
+          trigger_ready = true;
         } else {
-          global_settings.tigger_bot = false;
+          trigger_ready = false;
         }
       }
 
-      if (global_settings.gamepad) {
+      if (g_settings.gamepad) {
         // attackState == 120 || zoomState == 119
         if (attackState > 0 || zoomState > 0) {
           aiming = true;
@@ -505,9 +476,9 @@ void ClientActions() {
         }
 
         if (zoomState > 0) {
-          max_fov = global_settings.ads_fov;
+          max_fov = g_settings.ads_fov;
         } else {
-          max_fov = global_settings.non_ads_fov;
+          max_fov = g_settings.non_ads_fov;
         }
       }
 
@@ -516,7 +487,7 @@ void ClientActions() {
           std::chrono::duration_cast<std::chrono::milliseconds>(now1 - start1);
 
       // Toggle crouch = check for ring
-      if (global_settings.map_radar_testing && attackState == 0 &&
+      if (g_settings.map_radar_testing && attackState == 0 &&
           isPressed(99)) { // KEY_F8
         if (mapRadarTestingEnabled) {
           MapRadarTesting();
@@ -546,6 +517,8 @@ void ClientActions() {
 
 void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
                    int index) {
+  const auto g_settings = global_settings();
+
   int entity_team = target.getTeamId();
 
   if (!target.isAlive()) {
@@ -561,9 +534,9 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
     return;
   }
 
-  if (global_settings.tdm_toggle) { // Check if the target entity is on the same
-                                    // team as the
-                                    // local player
+  if (g_settings.tdm_toggle) { // Check if the target entity is on the same
+                               // team as the
+                               // local player
     // int entity_team = Target.getTeamId();
     // printf("Target Team: %i\n", entity_team);
 
@@ -587,9 +560,9 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   }
 
   // Firing range stuff
-  if (!global_settings.firing_range)
+  if (!g_settings.firing_range)
     if (entity_team < 0 || entity_team > 50 ||
-        (entity_team == team_player && !global_settings.onevone))
+        (entity_team == team_player && !g_settings.onevone))
       return;
 
   Vector EntityPosition = target.getPosition();
@@ -599,7 +572,7 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   // aim distance check
   const float skynade_dist = 100.0 * 40.0f;
   if ((local_held_id == -251 && dist > skynade_dist) ||
-      dist > global_settings.aim_dist)
+      dist > g_settings.aim_dist)
     return;
 
   // Targeting
@@ -621,7 +594,7 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
     tmp_aimentity = target.ptr;
   }
 
-  if (global_settings.aim == 2) {
+  if (g_settings.aim == 2) {
     // vis check
     if (aimentity == target.ptr) {
       if (local_held_id != -251 && !vis) {
@@ -640,7 +613,7 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
       Entity Target = getEntity(aimentity);
       // Entity LPlayer = getEntity(LocalPlayer);
 
-      if (global_settings.tigger_bot && IsInCrossHair(Target)) {
+      if (trigger_ready && IsInCrossHair(Target)) {
         TriggerBotRun();
       }
     }
@@ -658,6 +631,8 @@ void DoActions() {
     uint32_t counter = 0;
 
     while (g_Base != 0) {
+      const auto g_settings = global_settings();
+
       char MapName[200] = {0};
       uint64_t MapName_ptr;
       apex_mem.Read<uint64_t>(g_Base + OFFSET_HOST_MAP, MapName_ptr);
@@ -678,12 +653,12 @@ void DoActions() {
         map = 0;
       }
 
-      if (global_settings.firing_range) {
+      if (g_settings.firing_range) {
         playerentcount = 16000;
       } else {
         playerentcount = 61;
       }
-      if (global_settings.deathbox) {
+      if (g_settings.deathbox) {
         itementcount = 15000;
       } else {
         itementcount = 10000;
@@ -710,12 +685,11 @@ void DoActions() {
         continue;
       }
 
-      aiming_score_max =
-          (50 * 50) * 100 + (global_settings.aim_dist * 0.025) * 10;
+      aiming_score_max = (50 * 50) * 100 + (g_settings.aim_dist * 0.025) * 10;
       tmp_aimentity = 0;
       tmp_spec = 0;
       tmp_all_spec = 0;
-      if (global_settings.firing_range) {
+      if (g_settings.firing_range) {
         int c = 0;
         for (int i = 0; i < playerentcount; i++) {
           uint64_t centity = 0;
@@ -726,7 +700,7 @@ void DoActions() {
             continue;
 
           Entity Target = getEntity(centity);
-          if (!Target.isDummy() && !global_settings.onevone) {
+          if (!Target.isDummy() && !g_settings.onevone) {
             continue;
           }
 
@@ -751,7 +725,7 @@ void DoActions() {
           ProcessPlayer(LPlayer, Target, entitylist, i);
 
           int entity_team = Target.getTeamId();
-          if (entity_team == team_player && !global_settings.onevone) {
+          if (entity_team == team_player && !g_settings.onevone) {
             continue;
           }
         }
@@ -791,14 +765,16 @@ static void EspLoop() {
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
     while (g_Base != 0 && overlay_t) {
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
-      if (global_settings.esp) {
+      const auto g_settings = global_settings();
+
+      if (g_settings.esp) {
         valid = false;
 
         uint64_t LocalPlayer = 0;
         apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
         if (LocalPlayer == 0) {
           next2 = true;
-          while (next2 && g_Base != 0 && overlay_t && global_settings.esp) {
+          while (next2 && g_Base != 0 && overlay_t && g_settings.esp) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
           }
           continue;
@@ -807,7 +783,7 @@ static void EspLoop() {
         int team_player = LPlayer.getTeamId();
         if (team_player < 0 || team_player > 50) {
           next2 = true;
-          while (next2 && g_Base != 0 && overlay_t && global_settings.esp) {
+          while (next2 && g_Base != 0 && overlay_t && g_settings.esp) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
           }
           continue;
@@ -826,7 +802,7 @@ static void EspLoop() {
 
         memset(players, 0, sizeof(players));
 
-        if (global_settings.firing_range) {
+        if (g_settings.firing_range) {
           int c = 0;
           // Ammount of ents to loop, dont edit.
           for (int i = 0; i < 61; i++) {
@@ -842,7 +818,7 @@ static void EspLoop() {
 
             Entity Target = getEntity(centity);
 
-            if (!Target.isDummy() && !global_settings.onevone) {
+            if (!Target.isDummy() && !g_settings.onevone) {
               continue;
             }
 
@@ -850,7 +826,7 @@ static void EspLoop() {
               continue;
             }
             int entity_team = Target.getTeamId();
-            if (!global_settings.onevone) {
+            if (!g_settings.onevone) {
               if (entity_team < 0 || entity_team > 50 ||
                   entity_team == team_player) {
                 continue;
@@ -863,7 +839,7 @@ static void EspLoop() {
             Vector EntityPosition = Target.getPosition();
             float dist = LocalPlayerPosition.DistTo(EntityPosition);
 
-            if (dist > global_settings.max_dist || dist < 50.0f) {
+            if (dist > g_settings.max_dist || dist < 50.0f) {
               continue;
             }
 
@@ -872,7 +848,7 @@ static void EspLoop() {
             // 1440p here
             WorldToScreen(EntityPosition, view_matrix_data.matrix, 1920, 1080,
                           bs); // 2560, 1440
-            if (global_settings.esp) {
+            if (g_settings.esp) {
               Vector hs = Vector();
               Vector HeadPosition = Target.getBonePositionByHitbox(0);
               // Change res to your res here, default is 1080p but can copy
@@ -931,7 +907,7 @@ static void EspLoop() {
             }
 
             int entity_team = Target.getTeamId();
-            if (!global_settings.onevone) {
+            if (!g_settings.onevone) {
               if (entity_team < 0 || entity_team > 50 ||
                   entity_team == team_player) {
                 continue;
@@ -944,7 +920,7 @@ static void EspLoop() {
 
             Vector EntityPosition = Target.getPosition();
             float dist = LocalPlayerPosition.DistTo(EntityPosition);
-            if (dist > global_settings.max_dist || dist < 50.0f) {
+            if (dist > g_settings.max_dist || dist < 50.0f) {
               continue;
             }
 
@@ -953,7 +929,7 @@ static void EspLoop() {
             // 1440p here
             WorldToScreen(EntityPosition, view_matrix_data.matrix, 1920, 1080,
                           bs); // 2560, 1440
-            if (global_settings.esp) {
+            if (g_settings.esp) {
               Vector hs = Vector();
               Vector HeadPosition = Target.getBonePositionByHitbox(0);
               // Change res to your res here, default is 1080p but can copy
@@ -997,7 +973,7 @@ static void EspLoop() {
         }
 
         next2 = true;
-        while (next2 && g_Base != 0 && overlay_t && global_settings.esp) {
+        while (next2 && g_Base != 0 && overlay_t && g_settings.esp) {
           std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
       }
@@ -1021,6 +997,7 @@ static void AimbotLoop() {
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
     while (g_Base != 0) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      const auto g_settings = global_settings();
 
       // Read LocalPlayer
       uint64_t LocalPlayer = 0;
@@ -1043,7 +1020,7 @@ static void AimbotLoop() {
       local_weapon_id = weaponID;
       // printf("%d\n", weaponID);
 
-      if (global_settings.aim > 0) {
+      if (g_settings.aim > 0) {
         if (aimentity == 0) {
           cancel_targeting();
           continue;
@@ -1077,7 +1054,7 @@ static void AimbotLoop() {
         }
 
         if (HeldID == -251) { // auto throw
-          if (global_settings.no_nade_aim) {
+          if (g_settings.no_nade_aim) {
             cancel_targeting();
             continue;
           }
@@ -1107,8 +1084,10 @@ static void item_glow_t() {
   item_t = true;
   while (item_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    while (g_Base != 0 && global_settings.item_glow) {
+    const auto g_settings = global_settings();
+    while (g_Base != 0 && g_settings.item_glow) {
       std::this_thread::sleep_for(std::chrono::milliseconds(60));
+      const auto g_settings = global_settings();
       uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
       // item ENTs to loop, 10k-15k is normal. 10k might be better but will
       // not show all the death boxes i think.
@@ -1119,7 +1098,7 @@ static void item_glow_t() {
         TreasureClue clue;
         clue.item_id = wish_list[i];
         clue.position = Vector(0, 0, 0);
-        clue.distance = global_settings.aim_dist * 2;
+        clue.distance = g_settings.aim_dist * 2;
         new_treasure_clues.push_back(clue);
       }
 
@@ -1172,9 +1151,9 @@ static void item_glow_t() {
           }
         }
 
-        if (global_settings.loot.lightbackpack && ItemID == 207) {
+        if (g_settings.loot.lightbackpack && ItemID == 207) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1215,9 +1194,9 @@ static void item_glow_t() {
                 apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr
         + 40 * settingIndex + 8, highlightParameter);
         } */
-        if (global_settings.loot.medbackpack && ItemID == 208) {
+        if (g_settings.loot.medbackpack && ItemID == 208) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1238,9 +1217,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.heavybackpack && ItemID == 209) {
+        if (g_settings.loot.heavybackpack && ItemID == 209) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1261,9 +1240,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.goldbackpack && ItemID == 210) {
+        if (g_settings.loot.goldbackpack && ItemID == 210) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1286,10 +1265,10 @@ static void item_glow_t() {
         }
         // item id would help so much here, cant make them all the same color
         // so went with loba glow for body shield and helmet
-        if (global_settings.loot.shieldupgrade1 &&
+        if (g_settings.loot.shieldupgrade1 &&
             (ItemID == 214748364993 || ItemID == 14073963583897798)) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1318,10 +1297,10 @@ static void item_glow_t() {
           // apex_mem.Write<typeof(highlightParameter)>(highlightSettingsPtr +
           // 40 * settingIndex + 8, highlightParameter);;
         }
-        if (global_settings.loot.shieldupgrade2 &&
+        if (g_settings.loot.shieldupgrade2 &&
             (ItemID == 322122547394 || ItemID == 21110945375846599)) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1342,10 +1321,10 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shieldupgrade3 &&
+        if (g_settings.loot.shieldupgrade3 &&
             (ItemID == 429496729795 || ItemID == 52776987629977800)) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1366,9 +1345,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shieldupgrade4 && (ItemID == 429496729796)) {
+        if (g_settings.loot.shieldupgrade4 && (ItemID == 429496729796)) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1389,9 +1368,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shieldupgrade5 && ItemID == 536870912201) {
+        if (g_settings.loot.shieldupgrade5 && ItemID == 536870912201) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1412,9 +1391,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shieldupgradehead1 && ItemID == 188) {
+        if (g_settings.loot.shieldupgradehead1 && ItemID == 188) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1435,9 +1414,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shieldupgradehead2 && ItemID == 189) {
+        if (g_settings.loot.shieldupgradehead2 && ItemID == 189) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1458,9 +1437,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shieldupgradehead3 && ItemID == 190) {
+        if (g_settings.loot.shieldupgradehead3 && ItemID == 190) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1481,9 +1460,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shieldupgradehead4 && ItemID == 191) {
+        if (g_settings.loot.shieldupgradehead4 && ItemID == 191) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1504,9 +1483,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.accelerant && ItemID == 182) {
+        if (g_settings.loot.accelerant && ItemID == 182) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1527,9 +1506,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.phoenix && ItemID == 183) {
+        if (g_settings.loot.phoenix && ItemID == 183) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1550,11 +1529,11 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.skull &&
+        if (g_settings.loot.skull &&
             strstr(glowName,
                    "mdl/Weapons/skull_grenade/skull_grenade_base_v.rmdl")) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1645,9 +1624,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.healthlarge && ItemID == 184) {
+        if (g_settings.loot.healthlarge && ItemID == 184) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1668,9 +1647,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.healthsmall && ItemID == 185) {
+        if (g_settings.loot.healthsmall && ItemID == 185) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1691,9 +1670,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shieldbattsmall && ItemID == 187) {
+        if (g_settings.loot.shieldbattsmall && ItemID == 187) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1714,9 +1693,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shieldbattlarge && ItemID == 186) {
+        if (g_settings.loot.shieldbattlarge && ItemID == 186) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1737,9 +1716,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.sniperammo && ItemID == 144) {
+        if (g_settings.loot.sniperammo && ItemID == 144) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1760,9 +1739,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.heavyammo && ItemID == 143) {
+        if (g_settings.loot.heavyammo && ItemID == 143) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1783,9 +1762,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.optic1xhcog && ItemID == 215) {
+        if (g_settings.loot.optic1xhcog && ItemID == 215) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1806,9 +1785,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.lightammo && ItemID == 140) {
+        if (g_settings.loot.lightammo && ItemID == 140) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1829,9 +1808,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.energyammo && ItemID == 141) {
+        if (g_settings.loot.energyammo && ItemID == 141) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1852,9 +1831,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shotgunammo && ItemID == 142) {
+        if (g_settings.loot.shotgunammo && ItemID == 142) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1875,9 +1854,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.lasersight1 && ItemID == 229) {
+        if (g_settings.loot.lasersight1 && ItemID == 229) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1898,9 +1877,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.lasersight2 && ItemID == 230) {
+        if (g_settings.loot.lasersight2 && ItemID == 230) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1921,9 +1900,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.lasersight3 && ItemID == 231) {
+        if (g_settings.loot.lasersight3 && ItemID == 231) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1944,9 +1923,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.sniperammomag1 && ItemID == 244) {
+        if (g_settings.loot.sniperammomag1 && ItemID == 244) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1967,9 +1946,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.sniperammomag2 && ItemID == 245) {
+        if (g_settings.loot.sniperammomag2 && ItemID == 245) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -1990,9 +1969,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.sniperammomag3 && ItemID == 246) {
+        if (g_settings.loot.sniperammomag3 && ItemID == 246) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2013,9 +1992,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.sniperammomag4 && ItemID == 247) {
+        if (g_settings.loot.sniperammomag4 && ItemID == 247) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2036,9 +2015,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.energyammomag1 && ItemID == 240) {
+        if (g_settings.loot.energyammomag1 && ItemID == 240) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2059,9 +2038,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.energyammomag2 && ItemID == 241) {
+        if (g_settings.loot.energyammomag2 && ItemID == 241) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2082,9 +2061,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.energyammomag3 && ItemID == 242) {
+        if (g_settings.loot.energyammomag3 && ItemID == 242) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2105,9 +2084,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.energyammomag4 && ItemID == 243) {
+        if (g_settings.loot.energyammomag4 && ItemID == 243) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2128,9 +2107,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.stocksniper1 && ItemID == 255) {
+        if (g_settings.loot.stocksniper1 && ItemID == 255) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2151,9 +2130,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.stocksniper2 && ItemID == 256) {
+        if (g_settings.loot.stocksniper2 && ItemID == 256) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2174,9 +2153,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.stocksniper3 && ItemID == 257) {
+        if (g_settings.loot.stocksniper3 && ItemID == 257) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2197,9 +2176,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.stockregular1 && ItemID == 252) {
+        if (g_settings.loot.stockregular1 && ItemID == 252) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2220,9 +2199,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.stockregular2 && ItemID == 253) {
+        if (g_settings.loot.stockregular2 && ItemID == 253) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2243,9 +2222,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.stockregular3 && ItemID == 254) {
+        if (g_settings.loot.stockregular3 && ItemID == 254) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2266,9 +2245,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shielddown1 && ItemID == 203) {
+        if (g_settings.loot.shielddown1 && ItemID == 203) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2289,9 +2268,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shielddown2 && ItemID == 204) {
+        if (g_settings.loot.shielddown2 && ItemID == 204) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2312,9 +2291,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shielddown3 && ItemID == 205) {
+        if (g_settings.loot.shielddown3 && ItemID == 205) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2335,9 +2314,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shielddown4 && ItemID == 206) {
+        if (g_settings.loot.shielddown4 && ItemID == 206) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2358,9 +2337,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.lightammomag1 && ItemID == 232) {
+        if (g_settings.loot.lightammomag1 && ItemID == 232) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2381,9 +2360,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.lightammomag2 && ItemID == 233) {
+        if (g_settings.loot.lightammomag2 && ItemID == 233) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2404,9 +2383,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.lightammomag3 && ItemID == 234) {
+        if (g_settings.loot.lightammomag3 && ItemID == 234) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2427,9 +2406,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.lightammomag4 && ItemID == 235) {
+        if (g_settings.loot.lightammomag4 && ItemID == 235) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2450,9 +2429,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.heavyammomag1 && ItemID == 236) {
+        if (g_settings.loot.heavyammomag1 && ItemID == 236) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2473,9 +2452,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.heavyammomag2 && ItemID == 237) {
+        if (g_settings.loot.heavyammomag2 && ItemID == 237) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2496,9 +2475,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.heavyammomag3 && ItemID == 238) {
+        if (g_settings.loot.heavyammomag3 && ItemID == 238) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2519,9 +2498,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.heavyammomag4 && ItemID == 239) {
+        if (g_settings.loot.heavyammomag4 && ItemID == 239) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2542,9 +2521,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.optic2xhcog && ItemID == 216) {
+        if (g_settings.loot.optic2xhcog && ItemID == 216) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2565,9 +2544,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.opticholo1x && ItemID == 217) {
+        if (g_settings.loot.opticholo1x && ItemID == 217) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2588,9 +2567,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.opticholo1x2x && ItemID == 218) {
+        if (g_settings.loot.opticholo1x2x && ItemID == 218) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2611,9 +2590,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.opticthreat && ItemID == 219) {
+        if (g_settings.loot.opticthreat && ItemID == 219) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2634,9 +2613,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.optic3xhcog && ItemID == 220) {
+        if (g_settings.loot.optic3xhcog && ItemID == 220) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2657,9 +2636,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.optic2x4x && ItemID == 221) {
+        if (g_settings.loot.optic2x4x && ItemID == 221) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2680,9 +2659,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.opticsniper6x && ItemID == 222) {
+        if (g_settings.loot.opticsniper6x && ItemID == 222) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2703,9 +2682,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.opticsniper4x8x && ItemID == 223) {
+        if (g_settings.loot.opticsniper4x8x && ItemID == 223) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2726,9 +2705,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.opticsniperthreat && ItemID == 224) {
+        if (g_settings.loot.opticsniperthreat && ItemID == 224) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2749,9 +2728,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.suppressor1 && ItemID == 225) {
+        if (g_settings.loot.suppressor1 && ItemID == 225) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2772,9 +2751,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.suppressor2 && ItemID == 226) {
+        if (g_settings.loot.suppressor2 && ItemID == 226) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2795,9 +2774,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.suppressor3 && ItemID == 227) {
+        if (g_settings.loot.suppressor3 && ItemID == 227) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2818,9 +2797,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.turbo_charger && ItemID == 258) {
+        if (g_settings.loot.turbo_charger && ItemID == 258) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2841,9 +2820,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.skull_piecer && ItemID == 260) {
+        if (g_settings.loot.skull_piecer && ItemID == 260) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2864,9 +2843,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.hammer_point && ItemID == 263) {
+        if (g_settings.loot.hammer_point && ItemID == 263) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2887,9 +2866,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.disruptor_rounds && ItemID == 262) {
+        if (g_settings.loot.disruptor_rounds && ItemID == 262) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2910,9 +2889,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.boosted_loader && ItemID == 272) {
+        if (g_settings.loot.boosted_loader && ItemID == 272) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2933,9 +2912,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shotgunbolt1 && ItemID == 248) {
+        if (g_settings.loot.shotgunbolt1 && ItemID == 248) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2956,9 +2935,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shotgunbolt2 && ItemID == 249) {
+        if (g_settings.loot.shotgunbolt2 && ItemID == 249) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -2979,9 +2958,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shotgunbolt3 && ItemID == 250) {
+        if (g_settings.loot.shotgunbolt3 && ItemID == 250) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3002,9 +2981,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.shotgunbolt4 && ItemID == 251) {
+        if (g_settings.loot.shotgunbolt4 && ItemID == 251) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3026,9 +3005,9 @@ static void item_glow_t() {
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
         // Nades
-        if (global_settings.loot.grenade_frag && ItemID == 213) {
+        if (g_settings.loot.grenade_frag && ItemID == 213) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3050,9 +3029,9 @@ static void item_glow_t() {
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
 
-        if (global_settings.loot.grenade_thermite && ItemID == 212) {
+        if (g_settings.loot.grenade_thermite && ItemID == 212) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3073,9 +3052,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.grenade_arc_star && ItemID == 214) {
+        if (g_settings.loot.grenade_arc_star && ItemID == 214) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3097,9 +3076,9 @@ static void item_glow_t() {
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
         // Weapons
-        if (global_settings.loot.weapon_kraber && ItemID == 1) {
+        if (g_settings.loot.weapon_kraber && ItemID == 1) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3120,9 +3099,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_mastiff && ItemID == 3) {
+        if (g_settings.loot.weapon_mastiff && ItemID == 3) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings.loot_filled, // InsideFunction
+              g_settings.loot_filled, // InsideFunction
               125, // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
               64,  // OutlineRadius: size * 255 / 8
               64   // (EntityVisible << 6) | State & 0x3F | (AfterPostProcess <<
@@ -3148,9 +3127,9 @@ static void item_glow_t() {
               highlightSettingsPtr + 0x28 * settingIndex + 8,
               highlightParameter);
         }
-        if (global_settings.loot.weapon_lstar && ItemID == 7) {
+        if (g_settings.loot.weapon_lstar && ItemID == 7) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3172,9 +3151,9 @@ static void item_glow_t() {
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
         // new gun, nemesis
-        if (global_settings.loot.weapon_nemesis && ItemID == 135) {
+        if (g_settings.loot.weapon_nemesis && ItemID == 135) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3196,9 +3175,9 @@ static void item_glow_t() {
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
 
-        if (global_settings.loot.weapon_havoc && ItemID == 13) {
+        if (g_settings.loot.weapon_havoc && ItemID == 13) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3219,9 +3198,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_devotion && ItemID == 18) {
+        if (g_settings.loot.weapon_devotion && ItemID == 18) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3242,9 +3221,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_triple_take && ItemID == 23) {
+        if (g_settings.loot.weapon_triple_take && ItemID == 23) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3265,9 +3244,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_flatline && ItemID == 28) {
+        if (g_settings.loot.weapon_flatline && ItemID == 28) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3288,9 +3267,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_hemlock && ItemID == 33) {
+        if (g_settings.loot.weapon_hemlock && ItemID == 33) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3311,9 +3290,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_g7_scout && ItemID == 39) {
+        if (g_settings.loot.weapon_g7_scout && ItemID == 39) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3334,9 +3313,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_alternator && ItemID == 44) {
+        if (g_settings.loot.weapon_alternator && ItemID == 44) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3357,9 +3336,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_r99 && ItemID == 49) {
+        if (g_settings.loot.weapon_r99 && ItemID == 49) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3380,9 +3359,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_prowler && ItemID == 56) {
+        if (g_settings.loot.weapon_prowler && ItemID == 56) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3403,9 +3382,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_volt && ItemID == 60) {
+        if (g_settings.loot.weapon_volt && ItemID == 60) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3426,9 +3405,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_longbow && ItemID == 65) {
+        if (g_settings.loot.weapon_longbow && ItemID == 65) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3449,9 +3428,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_charge_rifle && ItemID == 70) {
+        if (g_settings.loot.weapon_charge_rifle && ItemID == 70) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3475,9 +3454,9 @@ static void item_glow_t() {
           apex_mem.Read<uint64_t>(centity + OFFSET_ITEM_ID, ItemID);
           // printf("%ld\n", ItemID);
         }
-        if (global_settings.loot.weapon_spitfire && ItemID == 75) {
+        if (g_settings.loot.weapon_spitfire && ItemID == 75) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3498,9 +3477,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_r301 && ItemID == 80) {
+        if (g_settings.loot.weapon_r301 && ItemID == 80) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3521,9 +3500,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_eva8 && ItemID == 85) {
+        if (g_settings.loot.weapon_eva8 && ItemID == 85) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3544,9 +3523,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_peacekeeper && ItemID == 90) {
+        if (g_settings.loot.weapon_peacekeeper && ItemID == 90) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3567,9 +3546,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_mozambique && ItemID == 95) {
+        if (g_settings.loot.weapon_mozambique && ItemID == 95) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3590,9 +3569,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_wingman && ItemID == 106) {
+        if (g_settings.loot.weapon_wingman && ItemID == 106) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3613,9 +3592,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_p2020 && ItemID == 111) {
+        if (g_settings.loot.weapon_p2020 && ItemID == 111) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3636,9 +3615,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_re45 && ItemID == 116) {
+        if (g_settings.loot.weapon_re45 && ItemID == 116) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3659,9 +3638,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_sentinel && ItemID == 122) {
+        if (g_settings.loot.weapon_sentinel && ItemID == 122) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3682,9 +3661,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_bow && ItemID == 127) {
+        if (g_settings.loot.weapon_bow && ItemID == 127) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3705,9 +3684,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_3030_repeater && ItemID == 129) {
+        if (g_settings.loot.weapon_3030_repeater && ItemID == 129) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3728,9 +3707,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_rampage && ItemID == 146) {
+        if (g_settings.loot.weapon_rampage && ItemID == 146) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3751,9 +3730,9 @@ static void item_glow_t() {
           apex_mem.Write<typeof(highlightParameter)>(
               highlightSettingsPtr + 40 * settingIndex + 8, highlightParameter);
         }
-        if (global_settings.loot.weapon_car_smg && ItemID == 151) {
+        if (g_settings.loot.weapon_car_smg && ItemID == 151) {
           std::array<unsigned char, 4> highlightFunctionBits = {
-              global_settings
+              g_settings
                   .loot_filled, // InsideFunction  HIGHLIGHT_FILL_LOOT_SCANNED
               125,              // OutlineFunction OutlineFunction
                                 // HIGHLIGHT_OUTLINE_LOOT_SCANNED
@@ -3786,2476 +3765,22 @@ static void item_glow_t() {
   item_t = false;
 }
 
-// SSH terminal
-//  Function to save settings to a file
-void ItemFilterMenu() {
-  std::cout << "1 - Light weapons" << std::endl;
-  std::cout << "2 - Heavy Weapons" << std::endl;
-  std::cout << "3 - Energy Weapons" << std::endl;
-  std::cout << "4 - Sniper Weapons" << std::endl;
-  std::cout << "5 - Armors" << std::endl;
-  std::cout << "6 - Healing" << std::endl;
-  std::cout << "7 - Nades" << std::endl;
-  std::cout << "8 - Backpacks" << std::endl;
-  std::cout << "9 - Scopes" << std::endl;
-  std::cout << "10 - Back to Main Menu" << std::endl;
-}
-
-const char *boneDescriptions[] = {"Head", "Neck", "Chest", "Gut Shot"};
-void updateGlowColor(float &glowr, float &glowg, float &glowb,
-                     const std::string &setName) {
-  std::cout << "Enter RGB values for " << setName
-            << " (0-1 for each channel):\n";
-  std::cout << "Red: ";
-  std::cin >> glowr;
-
-  std::cout << "Green: ";
-  std::cin >> glowg;
-
-  std::cout << "Blue: ";
-  std::cin >> glowb;
-
-  // Validate and clamp values to the range [0, 1].
-  glowr = std::max(0.0f, std::min(1.0f, glowr));
-  glowg = std::max(0.0f, std::min(1.0f, glowg));
-  glowb = std::max(0.0f, std::min(1.0f, glowb));
-
-  std::cout << setName << " RGB values updated (R: " << glowr
-            << ", G: " << glowg << ", B: " << glowb << ").\n";
-}
-void displayMainMenu() {
-
-  system("clear"); // Use "cls" for Windows
-  std::string userInput;
-  std::cout << "Main Menu:" << std::endl;
-
-  if (global_settings.firing_range) {
-    std::cout << "1 - Firing Range Enabled" << std::endl;
-  } else {
-    std::cout << "1 - Firing Range Disabled" << std::endl;
-  }
-  if (global_settings.tdm_toggle) {
-    std::cout << "2 - TDMToggle Enabled" << std::endl;
-  } else {
-    std::cout << "2 - TDMToggle Disabled" << std::endl;
-  }
-  if (global_settings.keyboard) {
-    std::cout << "3 - Keyboard Enabled" << std::endl;
-  } else {
-    std::cout << "3 - Keyboard Disabled" << std::endl;
-  }
-  if (global_settings.gamepad) {
-    std::cout << "4 - Gamepad Enabled" << std::endl;
-  } else {
-    std::cout << "4 - Gamepad Disabled" << std::endl;
-  }
-  if (global_settings.item_glow) {
-    std::cout << "5 - Item Glow Enabled" << std::endl;
-  } else {
-    std::cout << "5 - Item Glow Disabled" << std::endl;
-  }
-  if (global_settings.player_glow) {
-    std::cout << "6 - Player Glow Enabled" << std::endl;
-  } else {
-    std::cout << "6 - Player Glow Disabled" << std::endl;
-  }
-
-  std::cout << "7 - Change Smooth Value: (Current: ";
-  if (global_settings.smooth < 100.0f) {
-    std::cout << "\033[1;31m"; // Set text color to red for values below 100
-  } else if (global_settings.smooth > 120.0f) {
-    std::cout << "\033[1;32m"; // Set text color to green for values above 120
-  }
-  std::cout << global_settings.smooth
-            << "\033[0m"; // Reset text color to default and close color tag
-  std::cout << ")" << std::endl;
-
-  std::cout << "8 - Change Bone Aim Value: (Current: ";
-  if (global_settings.bone == 0) {
-    std::cout << "Head";
-  } else if (global_settings.bone == 1) {
-    std::cout << "Neck";
-  } else if (global_settings.bone == 2) {
-    std::cout << "Chest";
-  } else if (global_settings.bone == 3) {
-    std::cout << "Gut Shot";
-  } else {
-    std::cout << "Unknown";
-  }
-  std::cout << ")" << std::endl;
-
-  if (global_settings.loot_filled_toggle) {
-    global_settings.loot_filled = 14;
-    std::cout << "9 - Loot Glow Filled" << std::endl;
-  } else {
-    global_settings.loot_filled = 0;
-    std::cout << "9 - Loot Glow Not Filled" << std::endl;
-  }
-  if (global_settings.player_filled_toggle) {
-    global_settings.inside_value = 14;
-    std::cout << "10 - Player Glow Filled" << std::endl;
-  } else {
-    global_settings.inside_value = 0;
-    std::cout << "10 - Player Glow Not Filled" << std::endl;
-  }
-  std::cout << "11 - Player Outline Glow Setting Size" << std::endl;
-  std::cout << "12 - Update Glow Colors" << std::endl;
-  std::cout << "13 - Change ADS FOV: (Current: " << global_settings.ads_fov
-            << ")" << std::endl;
-  std::cout << "14 - Change Non-ADS FOV: (Current: "
-            << global_settings.non_ads_fov << ")" << std::endl;
-
-  if (!global_settings.super_key_toggle) {
-    std::cout << "15 - Super Glide Disabled" << std::endl;
-  } else {
-    std::cout << "15 - Super Glide Enabled" << std::endl;
-  }
-  std::cout << "16 - Item Filter Settings\n" << std::endl;
-  std::cout << "17 - Aiming Key One Setting" << std::endl;
-  std::cout << "18 - Aiming Key Two Setting" << std::endl;
-  std::cout << "19 - Triggerbot Key Setting\n" << std::endl;
-
-  if (global_settings.deathbox) {
-    std::cout << "20 - Death Boxes ON\n" << std::endl;
-  } else {
-    std::cout << "20 - Death Boxes OFF\n" << std::endl;
-  }
-
-  std::cout << "21 - Save Settings" << std::endl;
-  std::cout << "22 - Load Settings\n" << std::endl;
-
-  std::cout << "23 - Toggle NoNadeAim (Current: "
-            << (global_settings.no_nade_aim ? "No Nade Aim"
-                                            : "Throwing aimbot on")
-            << ")" << std::endl;
-
-  std::cout << "24 - Toggle 1v1 (Current: "
-            << (global_settings.onevone ? "on" : "off") << ")" << std::endl;
-
-  std::cout << "25 - Toggle No Recoil (Current: "
-            << (global_settings.aim_no_recoil ? "on" : "off") << ")"
-            << std::endl;
-
-  std::cout << "26 - Set Game FPS for Aim Prediction: (Current: ";
-  if (global_settings.calc_game_fps)
-    std::cout << "calc game fps";
-  else
-    std::cout << std::setiosflags(std::ios::fixed) << std::setprecision(1)
-              << global_settings.game_fps;
-  std::cout << ")" << std::endl;
-
-  std::cout << std::endl;
-}
-
-void displayItemFilterMenu() {
-  std::cout << "Item Filter Menu:" << std::endl;
-  std::cout << "1 - Light weapons" << std::endl;
-  std::cout << "2 - Heavy Weapons" << std::endl;
-  std::cout << "3 - Energy Weapons" << std::endl;
-  std::cout << "4 - Sniper Weapons" << std::endl;
-  std::cout << "5 - Armors" << std::endl;
-  std::cout << "6 - Healing" << std::endl;
-  std::cout << "7 - Nades" << std::endl;
-  std::cout << "8 - Backpacks" << std::endl;
-  std::cout << "9 - Scopes" << std::endl;
-  std::cout << "10 - Back to Main Menu" << std::endl;
-}
-
-void displayLightWeapons() {
-  // Color definitions using ANSI escape codes
-  std::string whiteColor = "\033[1;37m";      // White text
-  std::string blueColor = "\033[1;34m";       // Blue text
-  std::string purpleColor = "\033[1;35m";     // Purple text
-  std::string goldColor = "\033[1;33m";       // Gold text
-  std::string yellowColor = "\033[1;33m";     // Yellow text
-  std::string redColor = "\033[1;31m";        // Red text
-  std::string greenColor = "\033[1;32m";      // Green text
-  std::string tealColor = "\033[1;36m";       // Teal text
-  std::string yellowGoldColor = "\033[1;33m"; // Yellow-gold text
-  std::string resetColor = "\033[0m";         // Reset text color to default
-
-  std::cout << redColor << "Red = Disable" << resetColor << " - " << greenColor
-            << "Green = Enabled" << resetColor << resetColor << std::endl;
-  std::cout << yellowColor << "Light Weapons:\n" << resetColor << std::endl;
-  if (global_settings.loot.weapon_p2020) {
-    std::cout << "1 - " << greenColor << "P2022" << resetColor << std::endl;
-  } else {
-    std::cout << "1 - " << redColor << "P2022" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_re45) {
-    std::cout << "2 - " << greenColor << "RE-45" << resetColor << std::endl;
-  } else {
-    std::cout << "2 - " << redColor << "RE-45" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_alternator) {
-    std::cout << "3 - " << greenColor << "Alternator" << resetColor
-              << std::endl;
-  } else {
-    std::cout << "3 - " << redColor << "Alternator" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_r99) {
-    std::cout << "4 - " << greenColor << "R-99" << resetColor << std::endl;
-  } else {
-    std::cout << "4 - " << redColor << "R-99" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_r301) {
-    std::cout << "5 - " << greenColor << "R-301" << resetColor << std::endl;
-  } else {
-    std::cout << "5 - " << redColor << "R-301" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_spitfire) {
-    std::cout << "6 - " << greenColor << "M600" << resetColor << std::endl;
-  } else {
-    std::cout << "6 - " << redColor << "M600" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_g7_scout) {
-    std::cout << "7 - " << greenColor << "G7 Scout" << resetColor << std::endl;
-  } else {
-    std::cout << "7 - " << redColor << "G7 Scout" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lightammo) {
-    std::cout << "8 - " << greenColor << "Light Ammo\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "8 - " << redColor << "Light Ammo\n"
-              << resetColor << std::endl;
-  }
-  std::cout << "Light Weapon Mags:\n" << std::endl;
-
-  // Display colored options
-
-  if (global_settings.loot.lightammomag1) {
-    std::cout << "9 - " << greenColor << "Light Weapon Mag" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "9 - " << redColor << "Light Weapon Mag" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lightammomag2) {
-    std::cout << "10 - " << greenColor << "Light Weapon Mag" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "10 - " << redColor << "Light Weapon Mag" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lightammomag3) {
-    std::cout << "11 - " << greenColor << "Light Weapon Mag" << resetColor
-              << ": " << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "11 - " << redColor << "Light Weapon Mag" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lightammomag4) {
-    std::cout << "12 - " << greenColor << "Light Weapon Mag" << resetColor
-              << ": " << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "12 - " << redColor << "Light Weapon Mag" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Stocks:\n" << std::endl;
-
-  if (global_settings.loot.stockregular1) {
-    std::cout << "13 - " << greenColor << "Weapon Stock" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "13 - " << redColor << "Weapon Stock" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.stockregular2) {
-    std::cout << "14 - " << greenColor << "Weapon Stock" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "14 - " << redColor << "Weapon Stock" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.stockregular3) {
-    std::cout << "15 - " << greenColor << "Weapon Stock" << resetColor << ": "
-              << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "15 - " << redColor << "Weapon Stock" << resetColor << ": "
-              << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Suppressors:\n" << std::endl;
-
-  if (global_settings.loot.suppressor1) {
-    std::cout << "16 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "16 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.suppressor2) {
-    std::cout << "17 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "17 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.suppressor3) {
-    std::cout << "18 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "18 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Lasers:\n" << std::endl;
-
-  if (global_settings.loot.lasersight1) {
-    std::cout << "19 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "19 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lasersight2) {
-    std::cout << "20 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "20 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lasersight3) {
-    std::cout << "21 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "21 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lasersight4) {
-    std::cout << "22 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "22 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Hop-Ups:\n" << std::endl;
-
-  if (global_settings.loot.turbo_charger) {
-    std::cout << "23 - " << greenColor << "Turbo Charger" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "23 - " << redColor << "Turbo Charger" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.skull_piecer) {
-    std::cout << "24 - " << greenColor << "Skull Piecer" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "24 - " << redColor << "Skull Piecer" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.hammer_point) {
-    std::cout << "25 - " << greenColor << "Hammer Points" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "25 - " << redColor << "Hammer Points" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.disruptor_rounds) {
-    std::cout << "26 - " << greenColor << "Disruptor Rounds" << resetColor
-              << ": " << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "26 - " << redColor << "Disruptor Rounds" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.boosted_loader) {
-    std::cout << "27 - " << greenColor << "Boosted Loader" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "27 - " << redColor << "Boosted Loader" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "28 - Back to Settings Menu\n" << std::endl;
-}
-
-void displayHeavyWeapons() {
-  // Color definitions using ANSI escape codes
-  std::string whiteColor = "\033[1;37m";      // White text
-  std::string blueColor = "\033[1;34m";       // Blue text
-  std::string purpleColor = "\033[1;35m";     // Purple text
-  std::string goldColor = "\033[1;33m";       // Gold text
-  std::string yellowColor = "\033[1;33m";     // Yellow text
-  std::string redColor = "\033[1;31m";        // Red text
-  std::string greenColor = "\033[1;32m";      // Green text
-  std::string tealColor = "\033[1;36m";       // Teal text
-  std::string yellowGoldColor = "\033[1;33m"; // Yellow-gold text
-  std::string resetColor = "\033[0m";         // Reset text color to default
-
-  std::cout << redColor << "Red = Disable" << resetColor << " - " << greenColor
-            << "Green = Enabled" << resetColor << resetColor << std::endl;
-  std::cout << tealColor << "Heavy Weapons:\n" << resetColor << std::endl;
-  if (global_settings.loot.weapon_flatline) {
-    std::cout << "1 - " << greenColor << "Flatline" << resetColor << std::endl;
-  } else {
-    std::cout << "1 - " << redColor << "Flatline" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_hemlock) {
-    std::cout << "2 - " << greenColor << "Hemlock" << resetColor << std::endl;
-  } else {
-    std::cout << "2 - " << redColor << "Hemlock" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_3030_repeater) {
-    std::cout << "3 - " << greenColor << "30-30 Repeater" << resetColor
-              << std::endl;
-  } else {
-    std::cout << "3 - " << redColor << "30-30 Repeater" << resetColor
-              << std::endl;
-  }
-
-  if (global_settings.loot.weapon_rampage) {
-    std::cout << "4 - " << greenColor << "Rampage" << resetColor << std::endl;
-  } else {
-    std::cout << "4 - " << redColor << "Rampage" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_prowler) {
-    std::cout << "5 - " << greenColor << "Prowler" << resetColor << std::endl;
-  } else {
-    std::cout << "5 - " << redColor << "Prowler" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_car_smg) {
-    std::cout << "6 - " << greenColor << "Car SMG" << resetColor << std::endl;
-  } else {
-    std::cout << "6 - " << redColor << "Car SMG" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.heavyammo) {
-    std::cout << "7 - " << greenColor << "Heavy Ammo\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "7 - " << redColor << "Heavy Ammo\n"
-              << resetColor << std::endl;
-  }
-  std::cout << "Heavy Weapon Mags:\n" << std::endl;
-
-  // Display colored options
-
-  if (global_settings.loot.heavyammomag1) {
-    std::cout << "8 - " << greenColor << "Heavy Weapon Mag" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "8 - " << redColor << "Heavy Weapon Mag" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.heavyammomag2) {
-    std::cout << "9 - " << greenColor << "Heavy Weapon Mag" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "9 - " << redColor << "Heavy Weapon Mag" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.heavyammomag3) {
-    std::cout << "10 - " << greenColor << "Heavy Weapon Mag" << resetColor
-              << ": " << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "10 - " << redColor << "Heavy Weapon Mag" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.heavyammomag4) {
-    std::cout << "11 - " << greenColor << "Heavy Weapon Mag" << resetColor
-              << ": " << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "11 - " << redColor << "Heavy Weapon Mag" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Stocks:\n" << std::endl;
-
-  if (global_settings.loot.stockregular1) {
-    std::cout << "12 - " << greenColor << "Weapon Stock" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "12 - " << redColor << "Weapon Stock" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.stockregular2) {
-    std::cout << "13 - " << greenColor << "Weapon Stock" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "13 - " << redColor << "Weapon Stock" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.stockregular3) {
-    std::cout << "14 - " << greenColor << "Weapon Stock" << resetColor << ": "
-              << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "14 - " << redColor << "Weapon Stock" << resetColor << ": "
-              << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Suppressors:\n" << std::endl;
-
-  if (global_settings.loot.suppressor1) {
-    std::cout << "15 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "15 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.suppressor2) {
-    std::cout << "16 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "16 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.suppressor3) {
-    std::cout << "17 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "17 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Lasers:\n" << std::endl;
-
-  if (global_settings.loot.lasersight1) {
-    std::cout << "18 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "18 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lasersight2) {
-    std::cout << "19 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "19 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lasersight3) {
-    std::cout << "20 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "20 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lasersight4) {
-    std::cout << "21 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "21 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Hop-Ups:\n" << std::endl;
-
-  if (global_settings.loot.turbo_charger) {
-    std::cout << "22 - " << greenColor << "Turbo Charger" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "22 - " << redColor << "Turbo Charger" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.skull_piecer) {
-    std::cout << "23 - " << greenColor << "Skull Piecer" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "23 - " << redColor << "Skull Piecer" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.hammer_point) {
-    std::cout << "24 - " << greenColor << "Hammer Points" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "24 - " << redColor << "Hammer Points" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.disruptor_rounds) {
-    std::cout << "25 - " << greenColor << "Disruptor Rounds" << resetColor
-              << ": " << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "25 - " << redColor << "Disruptor Rounds" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.boosted_loader) {
-    std::cout << "26 - " << greenColor << "Boosted Loader" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "26 - " << redColor << "Boosted Loader" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "27 - Back to Settings Menu\n" << std::endl;
-}
-
-void displayEnergyWeapons() {
-  // Color definitions using ANSI escape codes
-  std::string whiteColor = "\033[1;37m";      // White text
-  std::string blueColor = "\033[1;34m";       // Blue text
-  std::string purpleColor = "\033[1;35m";     // Purple text
-  std::string goldColor = "\033[1;33m";       // Gold text
-  std::string yellowColor = "\033[1;33m";     // Yellow text
-  std::string redColor = "\033[1;31m";        // Red text
-  std::string greenColor = "\033[1;32m";      // Green text
-  std::string tealColor = "\033[1;36m";       // Teal text
-  std::string yellowGoldColor = "\033[1;33m"; // Yellow-gold text
-  std::string resetColor = "\033[0m";         // Reset text color to default
-
-  std::cout << redColor << "Red = Disable" << resetColor << " - " << greenColor
-            << "Green = Enabled" << resetColor << resetColor << std::endl;
-  std::cout << yellowGoldColor << "Energy Weapons:\n"
-            << resetColor << std::endl;
-  if (global_settings.loot.weapon_lstar) {
-    std::cout << "1 - " << greenColor << "LSTAR" << resetColor << std::endl;
-  } else {
-    std::cout << "1 - " << redColor << "LSTAR" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_nemesis) {
-    std::cout << "2 - " << greenColor << "Nemesis" << resetColor << std::endl;
-  } else {
-    std::cout << "2 - " << redColor << "Nemesis" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_havoc) {
-    std::cout << "3 - " << greenColor << "Havoc" << resetColor << std::endl;
-  } else {
-    std::cout << "3 - " << redColor << "Havoc" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_devotion) {
-    std::cout << "4 - " << greenColor << "Deovtion" << resetColor << std::endl;
-  } else {
-    std::cout << "4 - " << redColor << "Deovtion" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_triple_take) {
-    std::cout << "5 - " << greenColor << "Tripple Take" << resetColor
-              << std::endl;
-  } else {
-    std::cout << "5 - " << redColor << "Tripple Take" << resetColor
-              << std::endl;
-  }
-
-  if (global_settings.loot.weapon_volt) {
-    std::cout << "6 - " << greenColor << "Volt" << resetColor << std::endl;
-  } else {
-    std::cout << "6 - " << redColor << "Volt" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.energyammo) {
-    std::cout << "7 - " << greenColor << "Energy Ammo\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "7 - " << redColor << "Energy Ammo\n"
-              << resetColor << std::endl;
-  }
-  std::cout << "Energy Weapon Mags:\n" << std::endl;
-
-  // Display colored options
-
-  if (global_settings.loot.energyammomag1) {
-    std::cout << "8 - " << greenColor << "Energy Weapon Mag" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "8 - " << redColor << "Energy Weapon Mag" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.energyammomag2) {
-    std::cout << "9 - " << greenColor << "Energy Weapon Mag" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "9 - " << redColor << "Energy Weapon Mag" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.energyammomag3) {
-    std::cout << "10 - " << greenColor << "Energy Weapon Mag" << resetColor
-              << ": " << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "10 - " << redColor << "Energy Weapon Mag" << resetColor
-              << ": " << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.energyammomag4) {
-    std::cout << "11 - " << greenColor << "Energy Weapon Mag" << resetColor
-              << ": " << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "11 - " << redColor << "Energy Weapon Mag" << resetColor
-              << ": " << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Stocks:\n" << std::endl;
-
-  if (global_settings.loot.stockregular1) {
-    std::cout << "12 - " << greenColor << "Weapon Stock" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "12 - " << redColor << "Weapon Stock" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.stockregular2) {
-    std::cout << "13 - " << greenColor << "Weapon Stock" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "13 - " << redColor << "Weapon Stock" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.stockregular3) {
-    std::cout << "14 - " << greenColor << "Weapon Stock" << resetColor << ": "
-              << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "14 - " << redColor << "Weapon Stock" << resetColor << ": "
-              << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Suppressors:\n" << std::endl;
-
-  if (global_settings.loot.suppressor1) {
-    std::cout << "15 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "15 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.suppressor2) {
-    std::cout << "16 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "16 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.suppressor3) {
-    std::cout << "17 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "17 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Lasers:\n" << std::endl;
-
-  if (global_settings.loot.lasersight1) {
-    std::cout << "18 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "18 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lasersight2) {
-    std::cout << "19 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "19 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lasersight3) {
-    std::cout << "20 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "20 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.lasersight4) {
-    std::cout << "21 - " << greenColor << "Weapon Lasers" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "21 - " << redColor << "Weapon Lasers" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Hop-Ups:\n" << std::endl;
-
-  if (global_settings.loot.turbo_charger) {
-    std::cout << "22 - " << greenColor << "Turbo Charger" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "22 - " << redColor << "Turbo Charger" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.skull_piecer) {
-    std::cout << "23 - " << greenColor << "Skull Piecer" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "23 - " << redColor << "Skull Piecer" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.hammer_point) {
-    std::cout << "24 - " << greenColor << "Hammer Points" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "24 - " << redColor << "Hammer Points" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.disruptor_rounds) {
-    std::cout << "25 - " << greenColor << "Disruptor Rounds" << resetColor
-              << ": " << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "25 - " << redColor << "Disruptor Rounds" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.boosted_loader) {
-    std::cout << "26 - " << greenColor << "Boosted Loader" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "26 - " << redColor << "Boosted Loader" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "27 - Back to Settings Menu\n" << std::endl;
-}
-
-void displaySniperWeapons() {
-  // Color definitions using ANSI escape codes
-  std::string whiteColor = "\033[1;37m";      // White text
-  std::string blueColor = "\033[1;34m";       // Blue text
-  std::string purpleColor = "\033[1;35m";     // Purple text
-  std::string goldColor = "\033[1;33m";       // Gold text
-  std::string yellowColor = "\033[1;33m";     // Yellow text
-  std::string redColor = "\033[1;31m";        // Red text
-  std::string greenColor = "\033[1;32m";      // Green text
-  std::string tealColor = "\033[1;36m";       // Teal text
-  std::string yellowGoldColor = "\033[1;33m"; // Yellow-gold text
-  std::string resetColor = "\033[0m";         // Reset text color to default
-
-  std::cout << redColor << "Red = Disable" << resetColor << " - " << greenColor
-            << "Green = Enabled" << resetColor << resetColor << std::endl;
-  std::cout << yellowGoldColor << "Sniper Weapons:\n"
-            << resetColor << std::endl;
-  if (global_settings.loot.weapon_wingman) {
-    std::cout << "1 - " << greenColor << "Wingman" << resetColor << std::endl;
-  } else {
-    std::cout << "1 - " << redColor << "Wingman" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_longbow) {
-    std::cout << "2 - " << greenColor << "Longbow" << resetColor << std::endl;
-  } else {
-    std::cout << "2 - " << redColor << "Longbow" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_charge_rifle) {
-    std::cout << "3 - " << greenColor << "Charge Rifle" << resetColor
-              << std::endl;
-  } else {
-    std::cout << "3 - " << redColor << "Charge Rifle" << resetColor
-              << std::endl;
-  }
-
-  if (global_settings.loot.weapon_sentinel) {
-    std::cout << "4 - " << greenColor << "Sentinel" << resetColor << std::endl;
-  } else {
-    std::cout << "4 - " << redColor << "Sentinel" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.weapon_bow) {
-    std::cout << "5 - " << greenColor << "Bow" << resetColor << std::endl;
-  } else {
-    std::cout << "5 - " << redColor << "Bow" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.sniperammo) {
-    std::cout << "6 - " << greenColor << "Sniper Ammo\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "6 - " << redColor << "Sniper Ammo\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Sniper Weapon Mags:\n" << std::endl;
-
-  if (global_settings.loot.sniperammomag1) {
-    std::cout << "7 - " << greenColor << "Sniper Ammo Mag:" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "7 - " << redColor << "Sniper Ammo Mag:" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  // Display colored options
-
-  if (global_settings.loot.sniperammomag2) {
-    std::cout << "8 - " << greenColor << "Sniper Ammo Mag:" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "8 - " << redColor << "Sniper Ammo Mag:" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.sniperammomag3) {
-    std::cout << "9 - " << greenColor << "Sniper Ammo Mag:" << resetColor
-              << ": " << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "9 - " << redColor << "Sniper Ammo Mag:" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.sniperammomag4) {
-    std::cout << "10 - " << greenColor << "Sniper Ammo Mag:" << resetColor
-              << ": " << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "10 - " << redColor << "Sniper Ammo Mag:" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Sniper Stocks:\n" << std::endl;
-
-  if (global_settings.loot.stocksniper1) {
-    std::cout << "11 - " << greenColor << "Sniper Stock" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "11 - " << redColor << "Sniper Stock" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.stocksniper2) {
-    std::cout << "12 - " << greenColor << "Sniper Stock" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "12 - " << redColor << "Sniper Stock" << resetColor << ": "
-              << blueColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.stocksniper3) {
-    std::cout << "13 - " << greenColor << "Sniper Stock" << resetColor << ": "
-              << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "13 - " << redColor << "Sniper Stock" << resetColor << ": "
-              << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Suppressors:\n" << std::endl;
-
-  if (global_settings.loot.suppressor1) {
-    std::cout << "14 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "14 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.suppressor2) {
-    std::cout << "15 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "15 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.suppressor3) {
-    std::cout << "16 - " << greenColor << "Weapon Suppressors" << resetColor
-              << ": " << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "16 - " << redColor << "Weapon Suppressors" << resetColor
-              << ": " << purpleColor << "Purple\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Weapon Hop-Ups:\n" << std::endl;
-
-  if (global_settings.loot.turbo_charger) {
-    std::cout << "17 - " << greenColor << "Turbo Chager" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "17 - " << redColor << "Turbo Chager" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.skull_piecer) {
-    std::cout << "18 - " << greenColor << "Skull Piecer" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "18 - " << redColor << "Skull Piecer" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.hammer_point) {
-    std::cout << "19 - " << greenColor << "Hammer Points" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "19 - " << redColor << "Hammer Points" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.disruptor_rounds) {
-    std::cout << "20 - " << greenColor << "Disruptor Rounds" << resetColor
-              << ": " << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "20 - " << redColor << "Disruptor Rounds" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.boosted_loader) {
-    std::cout << "21 - " << greenColor << "Boosted Loader" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "21 - " << redColor << "Boosted Loader" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "22 - Back to Settings Menu\n" << std::endl;
-}
-
-void displayArmors() {
-  // Color definitions using ANSI escape codes
-  std::string whiteColor = "\033[1;37m";      // White text
-  std::string blueColor = "\033[1;34m";       // Blue text
-  std::string purpleColor = "\033[1;35m";     // Purple text
-  std::string goldColor = "\033[1;33m";       // Gold text
-  std::string yellowColor = "\033[1;33m";     // Yellow text
-  std::string redColor = "\033[1;31m";        // Red text
-  std::string greenColor = "\033[1;32m";      // Green text
-  std::string tealColor = "\033[1;36m";       // Teal text
-  std::string yellowGoldColor = "\033[1;33m"; // Yellow-gold text
-  std::string resetColor = "\033[0m";         // Reset text color to default
-
-  std::cout << redColor << "Red = Disable" << resetColor << " - " << greenColor
-            << "Green = Enabled" << resetColor << resetColor << std::endl;
-  std::cout << whiteColor << "Armors:\n" << resetColor << std::endl;
-
-  if (global_settings.loot.shieldupgrade1) {
-    std::cout << "1 - " << greenColor << "White Armor" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "1 - " << redColor << "White Armor" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shieldupgrade2) {
-    std::cout << "2 - " << greenColor << "Blue Armor" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "2 - " << redColor << "Blue Armor" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shieldupgrade3) {
-    std::cout << "3 - " << greenColor << "Purple Armor" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "3 - " << redColor << "Purple Armor" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shieldupgrade4) {
-    std::cout << "4 - " << greenColor << "Gold Armor" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "4 - " << redColor << "Gold Armor" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shieldupgrade5) {
-    std::cout << "5 - " << greenColor << "Red Armor" << resetColor << ": "
-              << redColor << "Red\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "5 - " << redColor << "Red Armor" << resetColor << ": "
-              << redColor << "Red\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Helmets:\n" << std::endl;
-
-  if (global_settings.loot.shieldupgradehead1) {
-    std::cout << "6 - " << greenColor << "Helmet" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "6 - " << redColor << "Helmet" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shieldupgradehead2) {
-    std::cout << "7 - " << greenColor << "Helmet" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "7 - " << redColor << "Helmet" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shieldupgradehead3) {
-    std::cout << "8 - " << greenColor << "Helmet" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "8 - " << redColor << "Helmet" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shieldupgradehead4) {
-    std::cout << "9 - " << greenColor << "Helmet" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "9 - " << redColor << "Helmet" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "Knockdown Shields:\n" << std::endl;
-
-  if (global_settings.loot.shielddown1) {
-    std::cout << "10 - " << greenColor << "Knockdown Shield" << resetColor
-              << ": " << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "10 - " << redColor << "Knockdown Shield" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shielddown2) {
-    std::cout << "11 - " << greenColor << "Knockdown Shield" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "11 - " << redColor << "Knockdown Shield" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shielddown3) {
-    std::cout << "12 - " << greenColor << "Knockdown Shield" << resetColor
-              << ": " << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "12 - " << redColor << "Knockdown Shield" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shielddown4) {
-    std::cout << "13 - " << greenColor << "Knockdown Shield" << resetColor
-              << ": " << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "13 - " << redColor << "Knockdown Shield" << resetColor << ": "
-              << goldColor << "Gold\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "14 - Back to Settings Menu\n" << std::endl;
-}
-
-void displayHealing() {
-  // Color definitions using ANSI escape codes
-  std::string whiteColor = "\033[1;37m";      // White text
-  std::string blueColor = "\033[1;34m";       // Blue text
-  std::string purpleColor = "\033[1;35m";     // Purple text
-  std::string goldColor = "\033[1;33m";       // Gold text
-  std::string yellowColor = "\033[1;33m";     // Yellow text
-  std::string redColor = "\033[1;31m";        // Red text
-  std::string greenColor = "\033[1;32m";      // Green text
-  std::string tealColor = "\033[1;36m";       // Teal text
-  std::string yellowGoldColor = "\033[1;33m"; // Yellow-gold text
-  std::string resetColor = "\033[0m";         // Reset text color to default
-
-  std::cout << redColor << "Red = Disable" << resetColor << " - " << greenColor
-            << "Green = Enabled" << resetColor << resetColor << std::endl;
-  std::cout << whiteColor << "Healing Items:\n" << resetColor << std::endl;
-
-  if (global_settings.loot.accelerant) {
-    std::cout << "1 - " << greenColor << "Accelerant" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "1 - " << redColor << "Accelerant" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.phoenix) {
-    std::cout << "2 - " << greenColor << "Phoenix" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "2 - " << redColor << "Phoenix" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.healthlarge) {
-    std::cout << "3 - " << greenColor << "Large Health" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "3 - " << redColor << "Large Health" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shieldbattsmall) {
-    std::cout << "4 - " << greenColor << "Small Shield Batt" << resetColor
-              << ": " << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "4 - " << redColor << "Small Shield Batt" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.shieldbattlarge) {
-    std::cout << "5 - " << greenColor << "Large Shield Batt" << resetColor
-              << ": " << blueColor << "Blue\n"
-              << resetColor << std::endl;
-  } else {
-    std::cout << "5 - " << redColor << "Large Shield Batt" << resetColor << ": "
-              << blueColor << "Blue\n"
-              << resetColor << std::endl;
-  }
-
-  std::cout << "6 - Back to Settings Menu\n" << std::endl;
-}
-
-void displayNades() {
-  // Color definitions using ANSI escape codes
-  std::string whiteColor = "\033[1;37m";      // White text
-  std::string blueColor = "\033[1;34m";       // Blue text
-  std::string purpleColor = "\033[1;35m";     // Purple text
-  std::string goldColor = "\033[1;33m";       // Gold text
-  std::string yellowColor = "\033[1;33m";     // Yellow text
-  std::string redColor = "\033[1;31m";        // Red text
-  std::string greenColor = "\033[1;32m";      // Green text
-  std::string tealColor = "\033[1;36m";       // Teal text
-  std::string yellowGoldColor = "\033[1;33m"; // Yellow-gold text
-  std::string resetColor = "\033[0m";         // Reset text color to default
-
-  std::cout << redColor << "Red = Disable" << resetColor << " - " << greenColor
-            << "Green = Enabled" << resetColor << resetColor << std::endl;
-  std::cout << whiteColor << "Nade Items:\n" << resetColor << std::endl;
-
-  if (global_settings.loot.grenade_frag) {
-    std::cout << "1 - " << greenColor << "Frag Grenade" << resetColor << ": "
-              << redColor << "Red" << resetColor << std::endl;
-  } else {
-    std::cout << "1 - " << redColor << "Frag Grenade" << resetColor << ": "
-              << redColor << "Red" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.grenade_arc_star) {
-    std::cout << "2 - " << greenColor << "Arc Star" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "2 - " << redColor << "Arc Star" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.grenade_thermite) {
-    std::cout << "3 - " << greenColor << "Thermite" << resetColor << ": "
-              << redColor << "Red" << resetColor << std::endl;
-  } else {
-    std::cout << "3 - " << redColor << "Thermite" << resetColor << ": "
-              << redColor << "Red" << resetColor << std::endl;
-  }
-
-  std::cout << "4 - Back to Settings Menu\n" << std::endl;
-}
-
-void displayBackpacks() {
-  // Color definitions using ANSI escape codes
-  std::string whiteColor = "\033[1;37m";      // White text
-  std::string blueColor = "\033[1;34m";       // Blue text
-  std::string purpleColor = "\033[1;35m";     // Purple text
-  std::string goldColor = "\033[1;33m";       // Gold text
-  std::string yellowColor = "\033[1;33m";     // Yellow text
-  std::string redColor = "\033[1;31m";        // Red text
-  std::string greenColor = "\033[1;32m";      // Green text
-  std::string tealColor = "\033[1;36m";       // Teal text
-  std::string yellowGoldColor = "\033[1;33m"; // Yellow-gold text
-  std::string resetColor = "\033[0m";         // Reset text color to default
-
-  std::cout << redColor << "Red = Disable" << resetColor << " - " << greenColor
-            << "Green = Enabled" << resetColor << resetColor << std::endl;
-  std::cout << whiteColor << "Backpacks:\n" << resetColor << std::endl;
-
-  if (global_settings.loot.lightbackpack) {
-    std::cout << "1 - " << greenColor << "Light Backpack" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "1 - " << redColor << "Light Backpack" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.medbackpack) {
-    std::cout << "2 - " << greenColor << "Medium Backpack" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "2 - " << redColor << "Medium Backpack" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.heavybackpack) {
-    std::cout << "3 - " << greenColor << "Heavy Backpack" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "3 - " << redColor << "Heavy Backpack" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.goldbackpack) {
-    std::cout << "4 - " << greenColor << "Gold Backpack" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "4 - " << redColor << "Gold Backpack" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  std::cout << "5 - Back to Settings Menu\n" << std::endl;
-}
-
-void displayScopes() {
-  // Color definitions using ANSI escape codes
-  std::string whiteColor = "\033[1;37m";      // White text
-  std::string blueColor = "\033[1;34m";       // Blue text
-  std::string purpleColor = "\033[1;35m";     // Purple text
-  std::string goldColor = "\033[1;33m";       // Gold text
-  std::string yellowColor = "\033[1;33m";     // Yellow text
-  std::string redColor = "\033[1;31m";        // Red text
-  std::string greenColor = "\033[1;32m";      // Green text
-  std::string tealColor = "\033[1;36m";       // Teal text
-  std::string yellowGoldColor = "\033[1;33m"; // Yellow-gold text
-  std::string resetColor = "\033[0m";         // Reset text color to default
-
-  std::cout << redColor << "Red = Disable" << resetColor << " - " << greenColor
-            << "Green = Enabled" << resetColor << resetColor << std::endl;
-  std::cout << whiteColor << "Scopes:\n" << resetColor << std::endl;
-
-  if (global_settings.loot.optic1xhcog) {
-    std::cout << "1 - " << greenColor << "1x HCOG" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "1 - " << redColor << "1x HCOG" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.optic2xhcog) {
-    std::cout << "2 - " << greenColor << "2x HCOG" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "2 - " << redColor << "2x HCOG" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.opticholo1x) {
-    std::cout << "3 - " << greenColor << "1x HOLO" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  } else {
-    std::cout << "3 - " << redColor << "1x HOLO" << resetColor << ": "
-              << whiteColor << "White" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.opticholo1x2x) {
-    std::cout << "4 - " << greenColor << "1x-2x HOLO" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "4 - " << redColor << "1x-2x HOLO" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.opticthreat) {
-    std::cout << "5 - " << greenColor << "Optic Threat" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "5 - " << redColor << "Optic Threat" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.optic3xhcog) {
-    std::cout << "6 - " << greenColor << "3x HCOG" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "6 - " << redColor << "3x HCOG" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.optic2x4x) {
-    std::cout << "7 - " << greenColor << "2x-4x HCOG" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "7 - " << redColor << "2x-4x HCOG" << resetColor << ": "
-              << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.opticsniper6x) {
-    std::cout << "8 - " << greenColor << "6x Sniper Optic" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  } else {
-    std::cout << "8 - " << redColor << "6x Sniper Optic" << resetColor << ": "
-              << blueColor << "Blue" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.opticsniper4x8x) {
-    std::cout << "9 - " << greenColor << "4x-8x Sniper Optic" << resetColor
-              << ": " << purpleColor << "Purple" << resetColor << std::endl;
-  } else {
-    std::cout << "9 - " << redColor << "4x-8x Sniper Optic" << resetColor
-              << ": " << purpleColor << "Purple" << resetColor << std::endl;
-  }
-
-  if (global_settings.loot.opticsniperthreat) {
-    std::cout << "10 - " << greenColor << "Sniper Threat" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  } else {
-    std::cout << "10 - " << redColor << "Sniper Threat" << resetColor << ": "
-              << goldColor << "Gold" << resetColor << std::endl;
-  }
-
-  std::cout << "11 - Back to Settings Menu\n" << std::endl;
-}
-
-int getMenuOption() {
-  int option;
-  std::cout << "Enter a command ##: ";
-  std::cin >> option;
-  return option;
-}
-// keycode stuff
-void printKeyCodes() {
-  std::cout << "Key Codes:" << std::endl;
-  std::cout << "108 Left mouse button (mouse1)" << std::endl;
-  std::cout << "109 Right mouse button (mouse2)" << std::endl;
-  std::cout << "110 Middle mouse button (mouse3)" << std::endl;
-  std::cout << "111 Side mouse button (mouse4)" << std::endl;
-  std::cout << "112 Side mouse button (mouse5)" << std::endl;
-  std::cout << "79 SHIFT key" << std::endl;
-  std::cout << "81 ALT key" << std::endl;
-  std::cout << "83 CTRL key" << std::endl;
-  std::cout << "1 KEY_0" << std::endl;
-  std::cout << "2 KEY_1" << std::endl;
-  std::cout << "3 KEY_2" << std::endl;
-  std::cout << "4 KEY_3" << std::endl;
-  std::cout << "5 KEY_4" << std::endl;
-  std::cout << "6 KEY_5" << std::endl;
-  std::cout << "7 KEY_6" << std::endl;
-  std::cout << "8 KEY_7" << std::endl;
-  std::cout << "9 KEY_8" << std::endl;
-  std::cout << "10 KEY_9" << std::endl;
-  std::cout << "11 KEY_A" << std::endl;
-  std::cout << "12 KEY_B" << std::endl;
-  std::cout << "13 KEY_C" << std::endl;
-  std::cout << "14 KEY_D" << std::endl;
-  std::cout << "15 KEY_E" << std::endl;
-  std::cout << "16 KEY_F" << std::endl;
-  std::cout << "17 KEY_G" << std::endl;
-  std::cout << "18 KEY_H" << std::endl;
-  std::cout << "19 KEY_I" << std::endl;
-  std::cout << "20 KEY_J" << std::endl;
-  std::cout << "21 KEY_K" << std::endl;
-  std::cout << "22 KEY_L" << std::endl;
-  std::cout << "23 KEY_M" << std::endl;
-  std::cout << "24 KEY_N" << std::endl;
-  std::cout << "25 KEY_O" << std::endl;
-  std::cout << "26 KEY_P" << std::endl;
-  std::cout << "27 KEY_Q" << std::endl;
-  std::cout << "28 KEY_R" << std::endl;
-  std::cout << "29 KEY_S" << std::endl;
-  std::cout << "30 KEY_T" << std::endl;
-  std::cout << "31 KEY_U" << std::endl;
-  std::cout << "32 KEY_V" << std::endl;
-  std::cout << "33 KEY_W" << std::endl;
-  std::cout << "34 KEY_X" << std::endl;
-  std::cout << "35 KEY_Y" << std::endl;
-  std::cout << "36 KEY_Z" << std::endl;
-  std::cout << "37 KEY_PAD_0" << std::endl;
-  std::cout << "38 KEY_PAD_1" << std::endl;
-  std::cout << "39 KEY_PAD_2" << std::endl;
-  std::cout << "40 KEY_PAD_3" << std::endl;
-  std::cout << "41 KEY_PAD_4" << std::endl;
-  std::cout << "42 KEY_PAD_5" << std::endl;
-  std::cout << "43 KEY_PAD_6" << std::endl;
-  std::cout << "44 KEY_PAD_7" << std::endl;
-  std::cout << "45 KEY_PAD_8" << std::endl;
-  std::cout << "46 KEY_PAD_9" << std::endl;
-  std::cout << "47 KEY_PAD_DIVIDE" << std::endl;
-  std::cout << "48 KEY_PAD_MULTIPLY" << std::endl;
-  std::cout << "49 KEY_PAD_MINUS" << std::endl;
-  std::cout << "50 KEY_PAD_PLUS" << std::endl;
-  std::cout << "51 KEY_PAD_ENTER" << std::endl;
-  std::cout << "52 KEY_PAD_DECIMAL" << std::endl;
-  std::cout << "65 KEY_SPACE" << std::endl;
-  std::cout << "67 KEY_TAB" << std::endl;
-  std::cout << "68 KEY_CAPSLOCK" << std::endl;
-  std::cout << "69 KEY_NUMLOCK" << std::endl;
-  std::cout << "70 KEY_ESCAPE" << std::endl;
-  std::cout << "71 KEY_SCROLLLOCK" << std::endl;
-  std::cout << "72 KEY_INSERT" << std::endl;
-  std::cout << "73 KEY_DELETE" << std::endl;
-  std::cout << "74 KEY_HOME" << std::endl;
-  std::cout << "75 KEY_END" << std::endl;
-  std::cout << "76 KEY_PAGEUP" << std::endl;
-  std::cout << "77 KEY_PAGEDOWN" << std::endl;
-  std::cout << "78 KEY_BREAK" << std::endl;
-  std::cout << "88 KEY_UP" << std::endl;
-  std::cout << "89 KEY_LEFT" << std::endl;
-  std::cout << "90 KEY_DOWN" << std::endl;
-  std::cout << "91 KEY_RIGHT" << std::endl;
-  std::cout << "92 KEY_F1" << std::endl;
-  std::cout << "93 KEY_F2" << std::endl;
-  std::cout << "94 KEY_F3" << std::endl;
-  std::cout << "95 KEY_F4" << std::endl;
-  std::cout << "96 KEY_F5" << std::endl;
-  std::cout << "97 KEY_F6" << std::endl;
-  std::cout << "98 KEY_F7" << std::endl;
-  std::cout << "99 KEY_F8" << std::endl;
-  std::cout << "100 KEY_F9" << std::endl;
-  std::cout << "101 KEY_F10" << std::endl;
-  std::cout << "102 KEY_F11" << std::endl;
-  std::cout << "103 KEY_F12" << std::endl;
-}
-
 extern void start_overlay();
 
 void terminal() {
-  bool exitProgram = false;
-  int menuLevel = 0; // 0 for Main Menu, 1 for Settings Menu, 2 for Submenu
-
-  while (!exitProgram) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(600));
-    system("clear"); // Use "cls" for Windows
-
-    if (menuLevel == 0) {
-      displayMainMenu();
-    } else if (menuLevel == 1) {
-      displayItemFilterMenu();
-    } else if (menuLevel == 2) {
-      displayLightWeapons();
-    } else if (menuLevel == 3) {
-      displayHeavyWeapons();
-    } else if (menuLevel == 4) {
-      displayEnergyWeapons();
-    } else if (menuLevel == 5) {
-      displaySniperWeapons();
-    } else if (menuLevel == 6) {
-      displayArmors();
-    } else if (menuLevel == 7) {
-      displayHealing();
-    } else if (menuLevel == 8) {
-      displayNades();
-    } else if (menuLevel == 9) {
-      displayBackpacks();
-    } else if (menuLevel == 10) {
-      displayScopes();
-    }
-
-    int option = getMenuOption();
-
-    // Main Menu
-    if (menuLevel == 0) // displayMainMenu();
-    {
-      std::string userInput;
-      if (option == 1) {
-        // Toggle the firing_range.
-        global_settings.firing_range = !global_settings.firing_range;
-
-        if (global_settings.firing_range) {
-          std::cout << "Firing Range ON.\n";
-        } else {
-          std::cout << "Firing Range OFF.\n";
-        }
-      } else if (option == 2) {
-        // Toggle TDM.
-        global_settings.tdm_toggle = !global_settings.tdm_toggle;
-
-        if (global_settings.tdm_toggle) {
-          std::cout << "TDM ON.\n";
-        } else {
-          std::cout << "TDM OFF.\n";
-        }
-      } else if (option == 3) {
-        // Keyboard Enable.
-        global_settings.keyboard = true;
-        global_settings.gamepad = false;
-        std::cout << "Keyboard ON.\n";
-      } else if (option == 4) {
-        // Gamepad Enable.
-        global_settings.keyboard = false;
-        global_settings.gamepad = true;
-        std::cout << "Gamepad ON.\n";
-      } else if (option == 5) {
-        // Toggle TDM.
-        global_settings.item_glow = !global_settings.item_glow;
-
-        if (global_settings.item_glow) {
-          std::cout << "Item Glow ON.\n";
-        } else {
-          std::cout << "Item Glow OFF.\n";
-        }
-      } else if (option == 6) {
-        // Toggle TDM.
-        global_settings.player_glow = !global_settings.player_glow;
-
-        if (global_settings.player_glow) {
-          std::cout << "Player Glow ON.\n";
-        } else {
-          std::cout << "Player Glow OFF.\n";
-        }
-      } else if (option == 7) {
-        // Command to change the 'smooth' value.
-        std::cout << "Enter a new value for 'smooth' (70 to 200): ";
-        float newSmooth;
-        std::cin >> newSmooth;
-
-        // Check if the new value is within the desired range.
-        if (newSmooth >= 50.0f && newSmooth <= 500.0f) {
-          global_settings.smooth = newSmooth;
-          global_settings.skynade_smooth = global_settings.smooth * 0.6667f;
-          std::cout << "'smooth' value updated to: " << global_settings.smooth
-                    << std::endl;
-          printf("The value of 'smooth' is: %f\n", global_settings.smooth);
-        } else {
-          std::cout
-              << "Invalid value. 'smooth' value must be between 70 and 500."
-              << std::endl;
-        }
-
-        // Clear the input buffer to prevent any issues with future input.
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      } else if (option == 8) {
-        // Command to change the 'smooth' value.
-        std::cout << "Enter a new value for 'bone' (0 to 3): ";
-        int newBone;
-        std::cin >> newBone;
-
-        // Check if the new value is within the desired range.
-        if (newBone >= 0 && newBone <= 3) {
-          global_settings.bone = newBone;
-          std::cout << "'bone' value updated to: " << global_settings.bone
-                    << std::endl;
-        } else {
-          std::cout << "Invalid value. 'bone' value must be between 0 and 3."
-                    << std::endl;
-        }
-
-        // Clear the input buffer to prevent any issues with future input.
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      } else if (option == 9) {
-        // Loot Filled.
-        global_settings.loot_filled_toggle =
-            !global_settings.loot_filled_toggle;
-
-        if (global_settings.loot_filled_toggle) {
-          global_settings.loot_filled = 14;
-          std::cout << "Loot Glow Filled.\n";
-        } else {
-          global_settings.loot_filled = 0;
-          std::cout << "Loot Glow Not Filled.\n";
-        }
-      }
-
-      else if (option == 10) {
-        // player Filled.
-        global_settings.player_filled_toggle =
-            !global_settings.player_filled_toggle;
-
-        if (global_settings.player_filled_toggle) {
-          global_settings.inside_value = 14;
-          std::cout << "Player Glow Filled.\n";
-        } else {
-          global_settings.inside_value = 0;
-          std::cout << "Player Glow Not Filled.\n";
-        }
-      } else if (option == 11) {
-        // Command to change the 'Player Outlines' value.
-        std::cout << "Enter a new value for Player Outlines (0 to 255): ";
-        int newoutlinesize;
-        std::cin >> newoutlinesize;
-
-        // Check if the new value is within the desired range.
-        if (newoutlinesize >= 0 && newoutlinesize <= 255) {
-          global_settings.outline_size = newoutlinesize;
-          std::cout << "Player Outline updated to: "
-                    << global_settings.outline_size << std::endl;
-        } else {
-          std::cout
-              << "Invalid value. 'outlinesize' value must be between 0 and 255."
-              << std::endl;
-        }
-
-        // Clear the input buffer to prevent any issues with future input.
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      } else if (option == 12) {
-        // Select a glow set (1 for "Not Visible," 2 for "Visible," 3 for
-        // "Knocked").
-        std::cout << "Select Glow: 1 - Not Visible, 2 - Visible, 3 - Knocked "
-                     "(can do fractions IE: 0.863: ";
-        std::cin >> userInput;
-        int selectedSet = std::stoi(userInput);
-
-        switch (selectedSet) {
-        case 1:
-          updateGlowColor(global_settings.glow_r_not,
-                          global_settings.glow_g_not,
-                          global_settings.glow_b_not, "'Not Visible'");
-          break;
-        case 2:
-          updateGlowColor(global_settings.glow_r_viz,
-                          global_settings.glow_g_viz,
-                          global_settings.glow_b_viz, "'Visible'");
-          break;
-        case 3:
-          updateGlowColor(global_settings.glow_r_knocked,
-                          global_settings.glow_g_knocked,
-                          global_settings.glow_b_knocked, "'Knocked'");
-          break;
-        default:
-          std::cout << "Invalid set selection. Please choose 1-3.\n";
-          break;
-        }
-      } else if (option == 13) {
-        // Command to change the 'smooth' value.
-        std::cout << "Enter a new value for 'ADS FOV' (1 to 50): ";
-        float newADSfov;
-        std::cin >> newADSfov;
-
-        // Check if the new value is within the desired range.
-        if (newADSfov >= 0.0f && newADSfov <= 50.0f) {
-          global_settings.ads_fov = newADSfov;
-          std::cout << "'ADS FOV' value updated to: " << global_settings.ads_fov
-                    << std::endl;
-          printf("The value of 'ADS FOV' is: %f\n", global_settings.ads_fov);
-        } else {
-          std::cout
-              << "Invalid value. 'ADS FOV' value must be between 85 and 200."
-              << std::endl;
-        }
-
-        // Clear the input buffer to prevent any issues with future input.
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      } else if (option == 14) {
-        // Command to change the 'smooth' value.
-        std::cout << "Enter a new value for 'Non-ADS FOV' (1 to 50): ";
-        float newnonADSfov;
-        std::cin >> newnonADSfov;
-
-        // Check if the new value is within the desired range.
-        if (newnonADSfov >= 0.0f && newnonADSfov <= 50.0f) {
-          global_settings.non_ads_fov = newnonADSfov;
-          std::cout << "'Non-ADS FOV' value updated to: "
-                    << global_settings.non_ads_fov << std::endl;
-          printf("The value of 'Non-ADS FOV' is: %f\n",
-                 global_settings.non_ads_fov);
-        } else {
-          std::cout << "Invalid value. 'Non-ADS FOV' value must be between 85 "
-                       "and 200."
-                    << std::endl;
-        }
-
-        // Clear the input buffer to prevent any issues with future input.
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      } else if (option == 15) {
-        // player Filled.
-        global_settings.super_key_toggle = !global_settings.super_key_toggle;
-        global_settings.super_key = global_settings.super_key_toggle;
-      }
-
-      else if (option == 16) {
-        //  displayItemFilterMenu
-        menuLevel = 1;
-      }
-      // Keycode stuff
-
-      else if (option == 17) {
-        // Optionally print the key codes before updating
-        std::cout << "Do you want to see the key codes before updating? (1 for "
-                     "yes, 0 for no): ";
-        int showKeyCodesBeforeUpdate;
-        std::cin >> showKeyCodesBeforeUpdate;
-
-        if (showKeyCodesBeforeUpdate == 1) {
-          printKeyCodes();
-        }
-
-        // Command to change the 'AimbotHotKey1' value.
-        std::cout << "Enter a new value for 'AimbotHotKey1' (e.g., 108 for "
-                     "Left mouse button): ";
-        int newAimbotHotKey1;
-        std::cin >> newAimbotHotKey1;
-
-        // Check if the new value is within the desired range (e.g., 0-255 for
-        // key codes).
-        if (newAimbotHotKey1 >= 0 && newAimbotHotKey1 <= 255) {
-          global_settings.aimbot_hot_key_1 = newAimbotHotKey1;
-          std::cout << "'AimbotHotKey1' value updated to: "
-                    << global_settings.aimbot_hot_key_1 << std::endl;
-          printf("The value of 'AimbotHotKey1' is: %d\n",
-                 global_settings.aimbot_hot_key_1);
-        } else {
-          std::cout << "Invalid value. 'AimbotHotKey1' value must be between 0 "
-                       "and 255."
-                    << std::endl;
-        }
-
-        // Clear the input buffer to prevent any issues with future input.
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      }
-
-      else if (option == 18) {
-        // Optionally print the key codes before updating
-        std::cout << "Do you want to see the key codes before updating? (1 for "
-                     "yes, 0 for no): ";
-        int showKeyCodesBeforeUpdate;
-        std::cin >> showKeyCodesBeforeUpdate;
-
-        if (showKeyCodesBeforeUpdate == 1) {
-          printKeyCodes();
-        }
-        // Command to change the 'AimbotHotKey2' value.
-        std::cout << "Enter a new value for 'AimbotHotKey2' (e.g., 109 for "
-                     "Right mouse button): ";
-        printKeyCodes();
-        int newAimbotHotKey2;
-        std::cin >> newAimbotHotKey2;
-
-        // Check if the new value is within the desired range (e.g., 0-255 for
-        // key codes).
-        if (newAimbotHotKey2 >= 0 && newAimbotHotKey2 <= 255) {
-          global_settings.aimbot_hot_key_2 = newAimbotHotKey2;
-          std::cout << "'AimbotHotKey2' value updated to: "
-                    << global_settings.aimbot_hot_key_2 << std::endl;
-          printf("The value of 'AimbotHotKey2' is: %d\n",
-                 global_settings.aimbot_hot_key_2);
-        } else {
-          std::cout << "Invalid value. 'AimbotHotKey2' value must be between 0 "
-                       "and 255."
-                    << std::endl;
-        }
-
-        // Clear the input buffer to prevent any issues with future input.
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      } else if (option == 19) {
-        // Optionally print the key codes before updating
-        std::cout << "Do you want to see the key codes before updating? (1 for "
-                     "yes, 0 for no): ";
-        int showKeyCodesBeforeUpdate;
-        std::cin >> showKeyCodesBeforeUpdate;
-
-        if (showKeyCodesBeforeUpdate == 1) {
-          printKeyCodes();
-        }
-        // Command to change the 'TriggerBotHotKey' value.
-        std::cout << "Enter a new value for 'TriggerBotHotKey': ";
-        printKeyCodes();
-        int newTriggerBotHotKey;
-        std::cin >> newTriggerBotHotKey;
-
-        // Check if the new value is within the desired range (e.g., 0-255 for
-        // key codes).
-        if (newTriggerBotHotKey >= 0 && newTriggerBotHotKey <= 255) {
-          global_settings.tigger_bot_hot_key = newTriggerBotHotKey;
-          std::cout << "'TriggerBotHotKey' value updated to: "
-                    << global_settings.tigger_bot_hot_key << std::endl;
-          printf("The value of 'TriggerBotHotKey' is: %d\n",
-                 global_settings.tigger_bot_hot_key);
-        } else {
-          std::cout << "Invalid value. 'TriggerBotHotKey' value must be "
-                       "between 0 and 255."
-                    << std::endl;
-        }
-
-        // Clear the input buffer to prevent any issues with future input.
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      } else if (option == 20) {
-        global_settings.deathbox = !global_settings.deathbox;
-        std::cout << "Death Boxes " << (global_settings.deathbox ? "on" : "off")
-                  << "." << std::endl;
-      } else if (option == 21) {
-        std::cout << (save_settings(global_settings) ? "Saved" : "Error")
-                  << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-      } else if (option == 22) {
-        global_settings = load_settings();
-        std::cout << "global_settings updated!" << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-      } else if (option == 23) {
-        global_settings.no_nade_aim = !global_settings.no_nade_aim;
-        std::cout << "NoNadeAim "
-                  << (global_settings.no_nade_aim ? "on" : "off") << "."
-                  << std::endl;
-      } else if (option == 24) {
-        global_settings.onevone = !global_settings.onevone;
-        std::cout << "1v1 " << (global_settings.onevone ? "on" : "off") << "."
-                  << std::endl;
-      } else if (option == 25) {
-        global_settings.aim_no_recoil = !global_settings.aim_no_recoil;
-        std::cout << "No Recoil "
-                  << (global_settings.aim_no_recoil ? "on" : "off") << "."
-                  << std::endl;
-      } else if (option == 26) {
-        std::cout << "Enter a new value for 'Game FPS for Aim Predict': ";
-        int tmp_value;
-        std::cin >> tmp_value;
-        if (tmp_value == 0) {
-          global_settings.calc_game_fps = true;
-        } else if (tmp_value > 0 && tmp_value < 500) {
-          global_settings.game_fps = tmp_value;
-          global_settings.calc_game_fps = false;
-          std::cout << "Game FPS for Aim Prediction: (Current: ";
-          if (global_settings.calc_game_fps)
-            std::cout << "calc game fps";
-          else
-            std::cout << std::setiosflags(std::ios::fixed)
-                      << std::setprecision(1) << global_settings.game_fps;
-          std::cout << ")" << std::endl;
-        } else {
-          std::cout << "Invalid value!" << std::endl;
-        }
-      } else {
-        std::cout << "Invalid command. Please try again." << std::endl;
-      }
-    }
-
-    // Filter Item Menu
-    else if (menuLevel == 1) {
-      if (option == 1) {
-        // Light Weapons
-        menuLevel = 2;
-      } else if (option == 2) {
-        // Heavy weapons
-        menuLevel = 3;
-      } else if (option == 3) {
-        // Return to the Main Menu.
-        menuLevel = 4;
-      } else if (option == 4) {
-        // Return to the Main Menu.
-        menuLevel = 5;
-      } else if (option == 5) {
-        // Return to the Main Menu.
-        menuLevel = 6;
-      } else if (option == 6) {
-        // Return to the Main Menu.
-        menuLevel = 7;
-      } else if (option == 7) {
-        // Return to the Main Menu.
-        menuLevel = 8;
-      } else if (option == 8) {
-        // Return to the Main Menu.
-        menuLevel = 9;
-      } else if (option == 9) {
-        // Return to the Main Menu.
-        menuLevel = 10;
-      } else if (option == 10) {
-        // Return to the Main Menu.
-        menuLevel = 0;
-      } else {
-        std::cout << "Invalid command. Please try again." << std::endl;
-      }
-    }
-
-    // Light weapons
-    else if (menuLevel == 2) // light
-    {
-      if (option == 1) {
-        global_settings.loot.weapon_p2020 = !global_settings.loot.weapon_p2020;
-      } else if (option == 2) {
-        global_settings.loot.weapon_re45 = !global_settings.loot.weapon_re45;
-      } else if (option == 3) {
-        global_settings.loot.weapon_alternator =
-            !global_settings.loot.weapon_alternator;
-      } else if (option == 4) {
-        global_settings.loot.weapon_r99 = !global_settings.loot.weapon_r99;
-      } else if (option == 5) {
-        global_settings.loot.weapon_r301 = !global_settings.loot.weapon_r301;
-      } else if (option == 6) {
-        global_settings.loot.weapon_spitfire =
-            !global_settings.loot.weapon_spitfire;
-      } else if (option == 7) {
-        global_settings.loot.weapon_g7_scout =
-            !global_settings.loot.weapon_g7_scout;
-      } else if (option == 8) {
-        global_settings.loot.lightammo = !global_settings.loot.lightammo;
-      } else if (option == 9) {
-        global_settings.loot.lightammomag1 =
-            !global_settings.loot.lightammomag1;
-      } else if (option == 10) {
-        global_settings.loot.lightammomag2 =
-            !global_settings.loot.lightammomag2;
-      } else if (option == 11) {
-        global_settings.loot.lightammomag3 =
-            !global_settings.loot.lightammomag3;
-      } else if (option == 12) {
-        global_settings.loot.lightammomag4 =
-            !global_settings.loot.lightammomag4;
-      } else if (option == 13) {
-        global_settings.loot.stockregular1 =
-            !global_settings.loot.stockregular1;
-      } else if (option == 14) {
-        global_settings.loot.stockregular2 =
-            !global_settings.loot.stockregular2;
-      } else if (option == 15) {
-        global_settings.loot.stockregular3 =
-            !global_settings.loot.stockregular3;
-      } else if (option == 16) {
-        global_settings.loot.suppressor1 = !global_settings.loot.suppressor1;
-      } else if (option == 17) {
-        global_settings.loot.suppressor2 = !global_settings.loot.suppressor2;
-      } else if (option == 18) {
-        global_settings.loot.suppressor3 = !global_settings.loot.suppressor3;
-      } else if (option == 19) {
-        global_settings.loot.lasersight1 = !global_settings.loot.lasersight1;
-      } else if (option == 20) {
-        global_settings.loot.lasersight2 = !global_settings.loot.lasersight2;
-      } else if (option == 21) {
-        global_settings.loot.lasersight3 = !global_settings.loot.lasersight3;
-      } else if (option == 22) {
-        global_settings.loot.lasersight4 = !global_settings.loot.lasersight4;
-      } else if (option == 23) {
-        global_settings.loot.turbo_charger =
-            !global_settings.loot.turbo_charger;
-      } else if (option == 24) {
-        global_settings.loot.skull_piecer = !global_settings.loot.skull_piecer;
-      } else if (option == 25) {
-        global_settings.loot.hammer_point = !global_settings.loot.hammer_point;
-      } else if (option == 26) {
-        global_settings.loot.disruptor_rounds =
-            !global_settings.loot.disruptor_rounds;
-      } else if (option == 27) {
-        global_settings.loot.boosted_loader =
-            !global_settings.loot.boosted_loader;
-      } else if (option == 28) {
-        menuLevel = 1;
-      }
-
-      else {
-        std::cout << "Invalid command. Please try again." << std::endl;
-      }
-    }
-
-    // Heavy weapons
-    else if (menuLevel == 3) // heavy
-    {
-      if (option == 1) {
-        global_settings.loot.weapon_flatline =
-            !global_settings.loot.weapon_flatline;
-      } else if (option == 2) {
-        global_settings.loot.weapon_hemlock =
-            !global_settings.loot.weapon_hemlock;
-      } else if (option == 3) {
-        global_settings.loot.weapon_3030_repeater =
-            !global_settings.loot.weapon_3030_repeater;
-      } else if (option == 4) {
-        global_settings.loot.weapon_rampage =
-            !global_settings.loot.weapon_rampage;
-      } else if (option == 5) {
-        global_settings.loot.weapon_prowler =
-            !global_settings.loot.weapon_prowler;
-      } else if (option == 6) {
-        global_settings.loot.weapon_car_smg =
-            !global_settings.loot.weapon_car_smg;
-      } else if (option == 7) {
-        global_settings.loot.heavyammo = !global_settings.loot.heavyammo;
-      } else if (option == 8) {
-        global_settings.loot.heavyammomag1 =
-            !global_settings.loot.heavyammomag1;
-      } else if (option == 9) {
-        global_settings.loot.heavyammomag2 =
-            !global_settings.loot.heavyammomag2;
-      } else if (option == 10) {
-        global_settings.loot.heavyammomag3 =
-            !global_settings.loot.heavyammomag3;
-      } else if (option == 11) {
-        global_settings.loot.heavyammomag4 =
-            !global_settings.loot.heavyammomag4;
-      } else if (option == 12) {
-        global_settings.loot.stockregular1 =
-            !global_settings.loot.stockregular1;
-      } else if (option == 13) {
-        global_settings.loot.stockregular2 =
-            !global_settings.loot.stockregular2;
-      } else if (option == 14) {
-        global_settings.loot.stockregular3 =
-            !global_settings.loot.stockregular3;
-      } else if (option == 15) {
-        global_settings.loot.suppressor1 = !global_settings.loot.suppressor1;
-      } else if (option == 16) {
-        global_settings.loot.suppressor2 = !global_settings.loot.suppressor2;
-      } else if (option == 17) {
-        global_settings.loot.suppressor3 = !global_settings.loot.suppressor3;
-      } else if (option == 18) {
-        global_settings.loot.lasersight1 = !global_settings.loot.lasersight1;
-      } else if (option == 19) {
-        global_settings.loot.lasersight2 = !global_settings.loot.lasersight2;
-      } else if (option == 20) {
-        global_settings.loot.lasersight3 = !global_settings.loot.lasersight3;
-      } else if (option == 21) {
-        global_settings.loot.lasersight4 = !global_settings.loot.lasersight4;
-      } else if (option == 22) {
-        global_settings.loot.turbo_charger =
-            !global_settings.loot.turbo_charger;
-      } else if (option == 23) {
-        global_settings.loot.skull_piecer = !global_settings.loot.skull_piecer;
-      } else if (option == 24) {
-        global_settings.loot.hammer_point = !global_settings.loot.hammer_point;
-      } else if (option == 25) {
-        global_settings.loot.disruptor_rounds =
-            !global_settings.loot.disruptor_rounds;
-      } else if (option == 26) {
-        global_settings.loot.boosted_loader =
-            !global_settings.loot.boosted_loader;
-      } else if (option == 27) {
-        menuLevel = 1;
-      } else {
-        std::cout << "Invalid command. Please try again." << std::endl;
-      }
-    }
-
-    // Energy weapons
-    else if (menuLevel == 4) // energy
-    {
-      if (option == 1) {
-        global_settings.loot.weapon_lstar = !global_settings.loot.weapon_lstar;
-      } else if (option == 2) {
-        global_settings.loot.weapon_nemesis =
-            !global_settings.loot.weapon_nemesis;
-      } else if (option == 3) {
-        global_settings.loot.weapon_havoc = !global_settings.loot.weapon_havoc;
-      } else if (option == 4) {
-        global_settings.loot.weapon_devotion =
-            !global_settings.loot.weapon_devotion;
-      } else if (option == 5) {
-        global_settings.loot.weapon_triple_take =
-            !global_settings.loot.weapon_triple_take;
-      } else if (option == 6) {
-        global_settings.loot.weapon_volt = !global_settings.loot.weapon_volt;
-      } else if (option == 7) {
-        global_settings.loot.energyammo = !global_settings.loot.energyammo;
-      } else if (option == 8) {
-        global_settings.loot.energyammomag1 =
-            !global_settings.loot.energyammomag1;
-      } else if (option == 9) {
-        global_settings.loot.energyammomag2 =
-            !global_settings.loot.energyammomag2;
-      } else if (option == 10) {
-        global_settings.loot.energyammomag3 =
-            !global_settings.loot.energyammomag3;
-      } else if (option == 11) {
-        global_settings.loot.energyammomag4 =
-            !global_settings.loot.energyammomag4;
-      } else if (option == 12) {
-        global_settings.loot.stockregular1 =
-            !global_settings.loot.stockregular1;
-      } else if (option == 13) {
-        global_settings.loot.stockregular2 =
-            !global_settings.loot.stockregular2;
-      } else if (option == 14) {
-        global_settings.loot.stockregular3 =
-            !global_settings.loot.stockregular3;
-      } else if (option == 15) {
-        global_settings.loot.suppressor1 = !global_settings.loot.suppressor1;
-      } else if (option == 16) {
-        global_settings.loot.suppressor2 = !global_settings.loot.suppressor2;
-      } else if (option == 17) {
-        global_settings.loot.suppressor3 = !global_settings.loot.suppressor3;
-      } else if (option == 18) {
-        global_settings.loot.lasersight1 = !global_settings.loot.lasersight1;
-      } else if (option == 19) {
-        global_settings.loot.lasersight2 = !global_settings.loot.lasersight2;
-      } else if (option == 20) {
-        global_settings.loot.lasersight3 = !global_settings.loot.lasersight3;
-      } else if (option == 21) {
-        global_settings.loot.lasersight4 = !global_settings.loot.lasersight4;
-      } else if (option == 22) {
-        global_settings.loot.turbo_charger =
-            !global_settings.loot.turbo_charger;
-      } else if (option == 23) {
-        global_settings.loot.skull_piecer = !global_settings.loot.skull_piecer;
-      } else if (option == 24) {
-        global_settings.loot.hammer_point = !global_settings.loot.hammer_point;
-      } else if (option == 25) {
-        global_settings.loot.disruptor_rounds =
-            !global_settings.loot.disruptor_rounds;
-      } else if (option == 26) {
-        global_settings.loot.boosted_loader =
-            !global_settings.loot.boosted_loader;
-      } else if (option == 27) {
-        menuLevel = 1;
-      } else {
-        std::cout << "Invalid command. Please try again." << std::endl;
-      }
-    }
-
-    // Sniper weapons
-    else if (menuLevel == 5) // Sniper
-    {
-      if (option == 1) {
-        global_settings.loot.weapon_wingman =
-            !global_settings.loot.weapon_wingman;
-      } else if (option == 2) {
-        global_settings.loot.weapon_longbow =
-            !global_settings.loot.weapon_longbow;
-      } else if (option == 3) {
-        global_settings.loot.weapon_charge_rifle =
-            !global_settings.loot.weapon_charge_rifle;
-      } else if (option == 4) {
-        global_settings.loot.weapon_sentinel =
-            !global_settings.loot.weapon_sentinel;
-      } else if (option == 5) {
-        global_settings.loot.weapon_bow = !global_settings.loot.weapon_bow;
-      } else if (option == 6) {
-        global_settings.loot.sniperammo = !global_settings.loot.sniperammo;
-      } else if (option == 7) {
-        global_settings.loot.sniperammomag1 =
-            !global_settings.loot.sniperammomag1;
-      } else if (option == 8) {
-        global_settings.loot.sniperammomag2 =
-            !global_settings.loot.sniperammomag2;
-      } else if (option == 9) {
-        global_settings.loot.sniperammomag3 =
-            !global_settings.loot.sniperammomag3;
-      } else if (option == 10) {
-        global_settings.loot.sniperammomag4 =
-            !global_settings.loot.sniperammomag4;
-      } else if (option == 11) {
-        global_settings.loot.stocksniper1 = !global_settings.loot.stocksniper1;
-      } else if (option == 12) {
-        global_settings.loot.stocksniper2 = !global_settings.loot.stocksniper2;
-      } else if (option == 13) {
-        global_settings.loot.stocksniper3 = !global_settings.loot.stocksniper3;
-      } else if (option == 14) {
-        global_settings.loot.suppressor1 = !global_settings.loot.suppressor1;
-      } else if (option == 15) {
-        global_settings.loot.suppressor2 = !global_settings.loot.suppressor2;
-      } else if (option == 16) {
-        global_settings.loot.suppressor3 = !global_settings.loot.suppressor3;
-      } else if (option == 17) {
-        global_settings.loot.turbo_charger =
-            !global_settings.loot.turbo_charger;
-      } else if (option == 18) {
-        global_settings.loot.skull_piecer = !global_settings.loot.skull_piecer;
-      } else if (option == 19) {
-        global_settings.loot.hammer_point = !global_settings.loot.hammer_point;
-      } else if (option == 20) {
-        global_settings.loot.disruptor_rounds =
-            !global_settings.loot.disruptor_rounds;
-      } else if (option == 21) {
-        global_settings.loot.boosted_loader =
-            !global_settings.loot.boosted_loader;
-      } else if (option == 22) {
-        menuLevel = 1;
-      } else {
-        std::cout << "Invalid command. Please try again." << std::endl;
-      }
-    }
-
-    // Armors
-    else if (menuLevel == 6) {
-      if (option == 1) {
-        global_settings.loot.shieldupgrade1 =
-            !global_settings.loot.shieldupgrade1;
-      } else if (option == 2) {
-        global_settings.loot.shieldupgrade2 =
-            !global_settings.loot.shieldupgrade2;
-      } else if (option == 3) {
-        global_settings.loot.shieldupgrade3 =
-            !global_settings.loot.shieldupgrade3;
-      } else if (option == 4) {
-        global_settings.loot.shieldupgrade4 =
-            !global_settings.loot.shieldupgrade4;
-      } else if (option == 5) {
-        global_settings.loot.shieldupgrade5 =
-            !global_settings.loot.shieldupgrade5;
-      } else if (option == 6) {
-        global_settings.loot.shieldupgradehead1 =
-            !global_settings.loot.shieldupgradehead1;
-      } else if (option == 7) {
-        global_settings.loot.shieldupgradehead2 =
-            !global_settings.loot.shieldupgradehead2;
-      } else if (option == 8) {
-        global_settings.loot.shieldupgradehead3 =
-            !global_settings.loot.shieldupgradehead3;
-      } else if (option == 9) {
-        global_settings.loot.shieldupgradehead4 =
-            !global_settings.loot.shieldupgradehead4;
-      } else if (option == 10) {
-        global_settings.loot.shielddown1 = !global_settings.loot.shielddown1;
-      } else if (option == 11) {
-        global_settings.loot.shielddown2 = !global_settings.loot.shielddown2;
-      } else if (option == 12) {
-        global_settings.loot.shielddown3 = !global_settings.loot.shielddown3;
-      } else if (option == 13) {
-        global_settings.loot.shielddown4 = !global_settings.loot.shielddown4;
-      } else if (option == 14) {
-        menuLevel = 1;
-      } else {
-        std::cout << "Invalid command. Please try again." << std::endl;
-      }
-    }
-
-    // Healing Items
-    else if (menuLevel == 7) {
-      if (option == 1) {
-        global_settings.loot.accelerant = !global_settings.loot.accelerant;
-      } else if (option == 2) {
-        global_settings.loot.phoenix = !global_settings.loot.phoenix;
-      } else if (option == 3) {
-        global_settings.loot.healthlarge = !global_settings.loot.healthlarge;
-      } else if (option == 4) {
-        global_settings.loot.healthsmall = !global_settings.loot.healthsmall;
-      } else if (option == 5) {
-        global_settings.loot.shieldbattsmall =
-            !global_settings.loot.shieldbattsmall;
-      } else if (option == 6) {
-        menuLevel = 1;
-      } else {
-        std::cout << "Invalid command. Please try again." << std::endl;
-      }
-    }
-
-    // Nades
-    else if (menuLevel == 8) {
-      if (option == 1) {
-        global_settings.loot.grenade_frag = !global_settings.loot.grenade_frag;
-      } else if (option == 2) {
-        global_settings.loot.grenade_arc_star =
-            !global_settings.loot.grenade_arc_star;
-      } else if (option == 3) {
-        global_settings.loot.grenade_thermite =
-            !global_settings.loot.grenade_thermite;
-      } else if (option == 4) {
-        menuLevel = 1;
-      } else {
-        std::cout << "Invalid command. Please try again." << std::endl;
-      }
-    }
-
-    // Backpacks
-    else if (menuLevel == 9) {
-      if (option == 1) {
-        global_settings.loot.lightbackpack =
-            !global_settings.loot.lightbackpack;
-      } else if (option == 2) {
-        global_settings.loot.medbackpack = !global_settings.loot.medbackpack;
-      } else if (option == 3) {
-        global_settings.loot.heavybackpack =
-            !global_settings.loot.heavybackpack;
-      } else if (option == 4) {
-        global_settings.loot.goldbackpack = !global_settings.loot.goldbackpack;
-      } else if (option == 5) {
-        menuLevel = 1;
-      } else {
-        std::cout << "Invalid command. Please try again." << std::endl;
-      }
-    }
-
-    // Scopes
-    else if (menuLevel == 10) {
-      if (option == 1) {
-        global_settings.loot.optic1xhcog = !global_settings.loot.optic1xhcog;
-      } else if (option == 2) {
-        global_settings.loot.optic2xhcog = !global_settings.loot.optic2xhcog;
-      } else if (option == 3) {
-        global_settings.loot.opticholo1x = !global_settings.loot.opticholo1x;
-      } else if (option == 4) {
-        global_settings.loot.opticholo1x2x =
-            !global_settings.loot.opticholo1x2x;
-      } else if (option == 5) {
-        global_settings.loot.opticthreat = !global_settings.loot.opticthreat;
-      } else if (option == 6) {
-        global_settings.loot.optic3xhcog = !global_settings.loot.optic3xhcog;
-      } else if (option == 7) {
-        global_settings.loot.optic2x4x = !global_settings.loot.optic2x4x;
-      } else if (option == 8) {
-        global_settings.loot.opticsniper6x =
-            !global_settings.loot.opticsniper6x;
-      } else if (option == 9) {
-        global_settings.loot.opticsniper4x8x =
-            !global_settings.loot.opticsniper4x8x;
-      } else if (option == 10) {
-        global_settings.loot.opticsniperthreat =
-            !global_settings.loot.opticsniperthreat;
-      }
-
-      else if (option == 11) {
-        menuLevel = 1;
-      } else {
-        std::cout << "Invalid command. Please try again." << std::endl;
-      }
-    }
-  }
+  run_tui_menu();
   terminal_t = false;
 }
 
 int main(int argc, char *argv[]) {
-  global_settings = load_settings();
+  load_settings();
 
   if (geteuid() != 0) {
     // run as root..
     print_run_as_root();
+
+    // test menu
+    run_tui_menu();
     return 0;
   }
 

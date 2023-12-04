@@ -22,7 +22,6 @@
 using namespace std;
 
 extern float veltest;
-extern settings_t global_settings;
 extern int local_held_id;
 extern uint32_t local_weapon_id;
 extern bool ready;
@@ -70,9 +69,11 @@ void Overlay::RenderMenu() {
   static bool aim_enable = false;
   static bool vis_check = false;
 
-  if (global_settings.aim > 0) {
+  auto g_settings = global_settings();
+
+  if (g_settings.aim > 0) {
     aim_enable = true;
-    if (global_settings.aim > 1) {
+    if (g_settings.aim > 1) {
       vis_check = true;
     } else {
       vis_check = false;
@@ -92,47 +93,47 @@ void Overlay::RenderMenu() {
   //{
   if (ImGui::CollapsingHeader("Main Toggle Settings")) {
     menu1 = 1;
-    ImGui::Checkbox(XorStr("ESP On/Off"), &global_settings.esp);
+    ImGui::Checkbox(XorStr("ESP On/Off"), &g_settings.esp);
     // ImGui::SameLine();
     // ImGui::Checkbox(XorStr("Thirdperson"), &thirdperson);
 
-    ImGui::Checkbox(XorStr("Glow Items"), &global_settings.item_glow);
+    ImGui::Checkbox(XorStr("Glow Items"), &g_settings.item_glow);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Mini-Map Radar"), &global_settings.mini_map_radar);
+    ImGui::Checkbox(XorStr("Mini-Map Radar"), &g_settings.mini_map_radar);
 
-    ImGui::Checkbox(XorStr("Glow Players"), &global_settings.player_glow);
+    ImGui::Checkbox(XorStr("Glow Players"), &g_settings.player_glow);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Mini-Map Guide"), &global_settings.mini_map_guides);
+    ImGui::Checkbox(XorStr("Mini-Map Guide"), &g_settings.mini_map_guides);
 
     ImGui::Checkbox(XorStr("AIM On/Off"), &aim_enable);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("1v1"), &global_settings.onevone);
+    ImGui::Checkbox(XorStr("1v1"), &g_settings.onevone);
 
     if (aim_enable) {
       ImGui::Checkbox(XorStr("Visibility Check"), &vis_check);
       ImGui::SameLine();
-      ImGui::Checkbox(XorStr("No Recoil"), &global_settings.aim_no_recoil);
+      ImGui::Checkbox(XorStr("No Recoil"), &g_settings.aim_no_recoil);
       ImGui::SameLine();
-      ImGui::Checkbox(XorStr("No Nade Aim"), &global_settings.no_nade_aim);
+      ImGui::Checkbox(XorStr("No Nade Aim"), &g_settings.no_nade_aim);
       if (vis_check) {
-        global_settings.aim = 2;
+        g_settings.aim = 2;
       } else {
-        global_settings.aim = 1;
+        g_settings.aim = 1;
       }
     } else {
-      global_settings.aim = 0;
+      g_settings.aim = 0;
     }
 
-    ImGui::Checkbox(XorStr("Firing Range"), &global_settings.firing_range);
+    ImGui::Checkbox(XorStr("Firing Range"), &g_settings.firing_range);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("TDM Toggle"), &global_settings.tdm_toggle);
+    ImGui::Checkbox(XorStr("TDM Toggle"), &g_settings.tdm_toggle);
     ImGui::Checkbox(XorStr("Press F8 enable MapRadar"),
-                    &global_settings.map_radar_testing);
+                    &g_settings.map_radar_testing);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Aiming Distance:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.f meters", global_settings.aim_dist / 39.62);
-    ImGui::SliderFloat(XorStr("##Aim Distance"), &global_settings.aim_dist,
+    ImGui::TextColored(GREEN, "%.f meters", g_settings.aim_dist / 39.62);
+    ImGui::SliderFloat(XorStr("##Aim Distance"), &g_settings.aim_dist,
                        10.0f * 39.62, 1600.0f * 39.62, "##");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Aiming Keys:"));
@@ -155,9 +156,8 @@ void Overlay::RenderMenu() {
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Max distance for everything:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%d meters",
-                       (int)(global_settings.max_dist / 40));
-    ImGui::SliderFloat(XorStr("##1"), &global_settings.max_dist, 100.0f * 40,
+    ImGui::TextColored(GREEN, "%d meters", (int)(g_settings.max_dist / 40));
+    ImGui::SliderFloat(XorStr("##1"), &g_settings.max_dist, 100.0f * 40,
                        3800.0f * 40, "##");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
@@ -165,15 +165,15 @@ void Overlay::RenderMenu() {
     ImGui::Dummy(ImVec2(0.0f, 4.0f));
     ImGui::Text(XorStr("non-ADS:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.f", global_settings.non_ads_fov);
-    ImGui::SliderFloat(XorStr("##nonADSfov"), &global_settings.non_ads_fov,
-                       5.0f, 50.0f, "##");
+    ImGui::TextColored(GREEN, "%.f", g_settings.non_ads_fov);
+    ImGui::SliderFloat(XorStr("##nonADSfov"), &g_settings.non_ads_fov, 5.0f,
+                       50.0f, "##");
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("ADS:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.f", global_settings.ads_fov);
-    ImGui::SliderFloat(XorStr("##ADSfov"), &global_settings.ads_fov, 5.0f,
-                       50.0f, "##");
+    ImGui::TextColored(GREEN, "%.f", g_settings.ads_fov);
+    ImGui::SliderFloat(XorStr("##ADSfov"), &g_settings.ads_fov, 5.0f, 50.0f,
+                       "##");
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Current:"));
     ImGui::SameLine();
@@ -183,22 +183,21 @@ void Overlay::RenderMenu() {
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Smooth Aim Value:"));
     ImGui::SameLine();
-    if (global_settings.smooth < 100.0f) {
-      ImGui::TextColored(RED, "%.f", global_settings.smooth);
-    } else if (global_settings.smooth > 120.0f) {
-      ImGui::TextColored(GREEN, "%.f", global_settings.smooth);
+    if (g_settings.smooth < 100.0f) {
+      ImGui::TextColored(RED, "%.f", g_settings.smooth);
+    } else if (g_settings.smooth > 120.0f) {
+      ImGui::TextColored(GREEN, "%.f", g_settings.smooth);
     } else {
-      ImGui::TextColored(WHITE, "%.f", global_settings.smooth);
+      ImGui::TextColored(WHITE, "%.f", g_settings.smooth);
     }
-    ImGui::SliderFloat(XorStr("##2"), &global_settings.smooth, 50.0f, 250.0f,
-                       "##");
+    ImGui::SliderFloat(XorStr("##2"), &g_settings.smooth, 50.0f, 250.0f, "##");
     ImGui::SameLine();
     ImGui::Text(XorStr("85 To 150 Is Safe"));
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Smooth Skynade Aim:"));
     ImGui::SameLine();
-    global_settings.skynade_smooth = global_settings.smooth * 0.6667f;
-    ImGui::TextColored(WHITE, "%.f", global_settings.skynade_smooth);
+    g_settings.skynade_smooth = g_settings.smooth * 0.6667f;
+    ImGui::TextColored(WHITE, "%.f", g_settings.skynade_smooth);
 
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
@@ -220,81 +219,75 @@ void Overlay::RenderMenu() {
 
     ImGui::Text(XorStr("Max Headshot Distance:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.1f", global_settings.headshot_dist);
-    ImGui::SliderFloat(XorStr("##headshot_dist"),
-                       &global_settings.headshot_dist, 0.0f,
-                       global_settings.aim_dist, "##");
+    ImGui::TextColored(GREEN, "%.1f", g_settings.headshot_dist);
+    ImGui::SliderFloat(XorStr("##headshot_dist"), &g_settings.headshot_dist,
+                       0.0f, g_settings.aim_dist, "##");
     ImGui::SameLine();
     ImGui::Text(XorStr("Disable sniper headshots when out of range"));
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
     ImGui::Text(XorStr("Aiming Bone:"));
-    ImGui::Checkbox(XorStr("Auto"), &global_settings.bone_auto);
+    ImGui::Checkbox(XorStr("Auto"), &g_settings.bone_auto);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Nearest"), &global_settings.bone_nearest);
+    ImGui::Checkbox(XorStr("Nearest"), &g_settings.bone_nearest);
     ImGui::Text(XorStr("0=Head, 1=Neck, 2=Chest, 3=Stomach"));
-    ImGui::SliderInt(XorStr("##bone"), &global_settings.bone, 0, 3);
+    ImGui::SliderInt(XorStr("##bone"), &g_settings.bone, 0, 3);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("ESP Options:"));
-    ImGui::Checkbox(XorStr("Box"), &global_settings.esp_visuals.box);
+    ImGui::Checkbox(XorStr("Box"), &g_settings.esp_visuals.box);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Line"), &global_settings.esp_visuals.line);
+    ImGui::Checkbox(XorStr("Line"), &g_settings.esp_visuals.line);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Distance"), &global_settings.esp_visuals.distance);
-    ImGui::Checkbox(XorStr("Health bar"),
-                    &global_settings.esp_visuals.healthbar);
+    ImGui::Checkbox(XorStr("Distance"), &g_settings.esp_visuals.distance);
+    ImGui::Checkbox(XorStr("Health bar"), &g_settings.esp_visuals.healthbar);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Shield bar"),
-                    &global_settings.esp_visuals.shieldbar);
+    ImGui::Checkbox(XorStr("Shield bar"), &g_settings.esp_visuals.shieldbar);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Name"), &global_settings.esp_visuals.name);
+    ImGui::Checkbox(XorStr("Name"), &g_settings.esp_visuals.name);
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
-    ImGui::Checkbox(XorStr("Show aimbot target"),
-                    &global_settings.show_aim_target);
+    ImGui::Checkbox(XorStr("Show aimbot target"), &g_settings.show_aim_target);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Player Glow Visable:"));
-    float glowcolorviz[] = {global_settings.glow_r_viz,
-                            global_settings.glow_g_viz,
-                            global_settings.glow_b_viz};
+    float glowcolorviz[] = {g_settings.glow_r_viz, g_settings.glow_g_viz,
+                            g_settings.glow_b_viz};
     ImGui::ColorEdit3("##Glow Color Picker Visable", glowcolorviz);
     {
-      global_settings.glow_r_viz = glowcolorviz[0];
-      global_settings.glow_g_viz = glowcolorviz[1];
-      global_settings.glow_b_viz = glowcolorviz[2];
+      g_settings.glow_r_viz = glowcolorviz[0];
+      g_settings.glow_g_viz = glowcolorviz[1];
+      g_settings.glow_b_viz = glowcolorviz[2];
     }
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Player Glow Not Visable:"));
-    float glowcolornot[] = {global_settings.glow_r_not,
-                            global_settings.glow_g_not,
-                            global_settings.glow_b_not};
+    float glowcolornot[] = {g_settings.glow_r_not, g_settings.glow_g_not,
+                            g_settings.glow_b_not};
     ImGui::ColorEdit3("##Glow Color Not Visable", glowcolornot);
     {
-      global_settings.glow_r_not = glowcolornot[0];
-      global_settings.glow_g_not = glowcolornot[1];
-      global_settings.glow_b_not = glowcolornot[2];
+      g_settings.glow_r_not = glowcolornot[0];
+      g_settings.glow_g_not = glowcolornot[1];
+      g_settings.glow_b_not = glowcolornot[2];
     }
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Player Glow Knocked:"));
-    float glowcolorknocked[] = {global_settings.glow_r_knocked,
-                                global_settings.glow_g_knocked,
-                                global_settings.glow_b_knocked};
+    float glowcolorknocked[] = {g_settings.glow_r_knocked,
+                                g_settings.glow_g_knocked,
+                                g_settings.glow_b_knocked};
     ImGui::ColorEdit3("##Glow Color Knocked", glowcolorknocked);
     {
-      global_settings.glow_r_knocked = glowcolorknocked[0];
-      global_settings.glow_g_knocked = glowcolorknocked[1];
-      global_settings.glow_b_knocked = glowcolorknocked[2];
+      g_settings.glow_r_knocked = glowcolorknocked[0];
+      g_settings.glow_g_knocked = glowcolorknocked[1];
+      g_settings.glow_b_knocked = glowcolorknocked[2];
     }
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(
         XorStr("Saving and Loading. Need to Save Once to make the file."));
     // Saving
     if (ImGui::Button("Save Config")) {
-      save_settings(global_settings);
+      save_settings();
     }
     ImGui::SameLine();
     // Loading
     if (ImGui::Button("Load Config")) {
-      global_settings = load_settings();
+      load_settings();
     }
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     if (menu1 == 1) {
@@ -309,14 +302,14 @@ void Overlay::RenderMenu() {
     // Dot Size for both mini and main map
     ImGui::Text(XorStr("MiniMap Radar Dot Size"));
     ImGui::SliderInt(XorStr("MiniMap Dot Size"),
-                     &global_settings.mini_map_radar_dot_size1, 1, 10);
+                     &g_settings.mini_map_radar_dot_size1, 1, 10);
     ImGui::SliderInt(XorStr("MiniMap Outer Ring Thickness"),
-                     &global_settings.mini_map_radar_dot_size2, 1, 10);
+                     &g_settings.mini_map_radar_dot_size2, 1, 10);
     ImGui::Text(XorStr("Main Map Radar Dot Size"));
     ImGui::SliderInt(XorStr("Main Map Dot Width"),
-                     &global_settings.main_map_radar_dot_size1, 1, 10);
+                     &g_settings.main_map_radar_dot_size1, 1, 10);
     ImGui::SliderInt(XorStr("Main Map Dot length"),
-                     &global_settings.main_map_radar_dot_size2, 1, 10);
+                     &g_settings.main_map_radar_dot_size2, 1, 10);
     /*//Radar Color
     ImGui::Text(XorStr("Radar Color Picker:"));
     ImGui::ColorEdit3("##Radar Color Picker", radarcolor);
@@ -338,150 +331,128 @@ void Overlay::RenderMenu() {
     menu3 = 1;
     ImGui::Text(XorStr("Ammo"));
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
-    ImGui::Checkbox(XorStr("Sniper Ammo"), &global_settings.loot.sniperammo);
+    ImGui::Checkbox(XorStr("Sniper Ammo"), &g_settings.loot.sniperammo);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Heavy Ammo"), &global_settings.loot.heavyammo);
+    ImGui::Checkbox(XorStr("Heavy Ammo"), &g_settings.loot.heavyammo);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Light Ammo"), &global_settings.loot.lightammo);
-    ImGui::Checkbox(XorStr("Energy Ammo"), &global_settings.loot.energyammo);
+    ImGui::Checkbox(XorStr("Light Ammo"), &g_settings.loot.lightammo);
+    ImGui::Checkbox(XorStr("Energy Ammo"), &g_settings.loot.energyammo);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Shotgun Ammo"), &global_settings.loot.shotgunammo);
+    ImGui::Checkbox(XorStr("Shotgun Ammo"), &g_settings.loot.shotgunammo);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Ammo Mags"));
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
-    ImGui::Checkbox(XorStr("Sniper lv3"), &global_settings.loot.sniperammomag3);
-    ImGui::Checkbox(XorStr("Sniper lv4"), &global_settings.loot.sniperammomag4);
+    ImGui::Checkbox(XorStr("Sniper lv3"), &g_settings.loot.sniperammomag3);
+    ImGui::Checkbox(XorStr("Sniper lv4"), &g_settings.loot.sniperammomag4);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Heavy lv3"), &global_settings.loot.heavyammomag3);
-    ImGui::Checkbox(XorStr("Heavy lv4"), &global_settings.loot.heavyammomag4);
-    ImGui::Checkbox(XorStr("Light lv3"), &global_settings.loot.lightammomag3);
-    ImGui::Checkbox(XorStr("Light lv4"), &global_settings.loot.lightammomag4);
+    ImGui::Checkbox(XorStr("Heavy lv3"), &g_settings.loot.heavyammomag3);
+    ImGui::Checkbox(XorStr("Heavy lv4"), &g_settings.loot.heavyammomag4);
+    ImGui::Checkbox(XorStr("Light lv3"), &g_settings.loot.lightammomag3);
+    ImGui::Checkbox(XorStr("Light lv4"), &g_settings.loot.lightammomag4);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Energy lv3"), &global_settings.loot.energyammomag3);
-    ImGui::Checkbox(XorStr("Energy lv4"), &global_settings.loot.energyammomag4);
+    ImGui::Checkbox(XorStr("Energy lv3"), &g_settings.loot.energyammomag3);
+    ImGui::Checkbox(XorStr("Energy lv4"), &g_settings.loot.energyammomag4);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("HCOGs"));
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
-    ImGui::Checkbox(XorStr("1x HCOG"), &global_settings.loot.optic1xhcog);
+    ImGui::Checkbox(XorStr("1x HCOG"), &g_settings.loot.optic1xhcog);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("2x HCOG"), &global_settings.loot.optic2xhcog);
+    ImGui::Checkbox(XorStr("2x HCOG"), &g_settings.loot.optic2xhcog);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("3x HCOG"), &global_settings.loot.optic3xhcog);
+    ImGui::Checkbox(XorStr("3x HCOG"), &g_settings.loot.optic3xhcog);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("2-4x"), &global_settings.loot.optic2x4x);
+    ImGui::Checkbox(XorStr("2-4x"), &g_settings.loot.optic2x4x);
     ImGui::Text(XorStr("Snipers"));
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
-    ImGui::Checkbox(XorStr("Sniper 6x"), &global_settings.loot.opticsniper6x);
+    ImGui::Checkbox(XorStr("Sniper 6x"), &g_settings.loot.opticsniper6x);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Sniper 4-8x"),
-                    &global_settings.loot.opticsniper4x8x);
+    ImGui::Checkbox(XorStr("Sniper 4-8x"), &g_settings.loot.opticsniper4x8x);
     ImGui::SameLine();
     ImGui::Checkbox(XorStr("Sniper Threat"),
-                    &global_settings.loot.opticsniperthreat);
+                    &g_settings.loot.opticsniperthreat);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Holo's"));
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
-    ImGui::Checkbox(XorStr("1x Holo"), &global_settings.loot.opticholo1x);
+    ImGui::Checkbox(XorStr("1x Holo"), &g_settings.loot.opticholo1x);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("2x Holo"), &global_settings.loot.opticholo1x2x);
+    ImGui::Checkbox(XorStr("2x Holo"), &g_settings.loot.opticholo1x2x);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("1x Threat"), &global_settings.loot.opticthreat);
+    ImGui::Checkbox(XorStr("1x Threat"), &g_settings.loot.opticthreat);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Backpacks"));
-    ImGui::Checkbox(XorStr("Light Backpack"),
-                    &global_settings.loot.lightbackpack);
+    ImGui::Checkbox(XorStr("Light Backpack"), &g_settings.loot.lightbackpack);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Medium Backpack"),
-                    &global_settings.loot.medbackpack);
+    ImGui::Checkbox(XorStr("Medium Backpack"), &g_settings.loot.medbackpack);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Heavy Backpack"),
-                    &global_settings.loot.heavybackpack);
+    ImGui::Checkbox(XorStr("Heavy Backpack"), &g_settings.loot.heavybackpack);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Shield's"));
-    ImGui::Checkbox(XorStr("Armor blue"), &global_settings.loot.shieldupgrade2);
-    ImGui::Checkbox(XorStr("Armor purple"),
-                    &global_settings.loot.shieldupgrade3);
-    ImGui::Checkbox(XorStr("Armor gold"), &global_settings.loot.shieldupgrade4);
-    ImGui::Checkbox(XorStr("Armor red"), &global_settings.loot.shieldupgrade5);
+    ImGui::Checkbox(XorStr("Armor blue"), &g_settings.loot.shieldupgrade2);
+    ImGui::Checkbox(XorStr("Armor purple"), &g_settings.loot.shieldupgrade3);
+    ImGui::Checkbox(XorStr("Armor gold"), &g_settings.loot.shieldupgrade4);
+    ImGui::Checkbox(XorStr("Armor red"), &g_settings.loot.shieldupgrade5);
     ImGui::SameLine();
     ImGui::Checkbox(XorStr("Helmets blue"),
-                    &global_settings.loot.shieldupgradehead2);
+                    &g_settings.loot.shieldupgradehead2);
     ImGui::Checkbox(XorStr("Helmets purple"),
-                    &global_settings.loot.shieldupgradehead3);
+                    &g_settings.loot.shieldupgradehead3);
     ImGui::Checkbox(XorStr("Helmets gold"),
-                    &global_settings.loot.shieldupgradehead4);
+                    &g_settings.loot.shieldupgradehead4);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Knockdown blue"),
-                    &global_settings.loot.shielddown2);
-    ImGui::Checkbox(XorStr("Knockdown purple"),
-                    &global_settings.loot.shielddown3);
-    ImGui::Checkbox(XorStr("Knockdown gold"),
-                    &global_settings.loot.shielddown4);
+    ImGui::Checkbox(XorStr("Knockdown blue"), &g_settings.loot.shielddown2);
+    ImGui::Checkbox(XorStr("Knockdown purple"), &g_settings.loot.shielddown3);
+    ImGui::Checkbox(XorStr("Knockdown gold"), &g_settings.loot.shielddown4);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::TextColored(GREEN, "Heals for Health");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
-    ImGui::Checkbox(XorStr("Large Health"), &global_settings.loot.healthlarge);
+    ImGui::Checkbox(XorStr("Large Health"), &g_settings.loot.healthlarge);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Small Health"), &global_settings.loot.healthsmall);
+    ImGui::Checkbox(XorStr("Small Health"), &g_settings.loot.healthsmall);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Phoenix Kit"), &global_settings.loot.phoenix);
+    ImGui::Checkbox(XorStr("Phoenix Kit"), &g_settings.loot.phoenix);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::TextColored(BLUE, "Heals for Shields");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
-    ImGui::Checkbox(XorStr("Large Shield"),
-                    &global_settings.loot.shieldbattlarge);
+    ImGui::Checkbox(XorStr("Large Shield"), &g_settings.loot.shieldbattlarge);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Small Shield"),
-                    &global_settings.loot.shieldbattsmall);
+    ImGui::Checkbox(XorStr("Small Shield"), &g_settings.loot.shieldbattsmall);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Ultimate Accelerant"),
-                    &global_settings.loot.accelerant);
+    ImGui::Checkbox(XorStr("Ultimate Accelerant"), &g_settings.loot.accelerant);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Attachements"));
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
-    ImGui::Checkbox(XorStr("Lasersight2"), &global_settings.loot.lasersight2);
-    ImGui::Checkbox(XorStr("Lasersight3"), &global_settings.loot.lasersight3);
-    ImGui::Checkbox(XorStr("Lasersight4"), &global_settings.loot.lasersight4);
+    ImGui::Checkbox(XorStr("Lasersight2"), &g_settings.loot.lasersight2);
+    ImGui::Checkbox(XorStr("Lasersight3"), &g_settings.loot.lasersight3);
+    ImGui::Checkbox(XorStr("Lasersight4"), &g_settings.loot.lasersight4);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Sniper Stock 2"),
-                    &global_settings.loot.stocksniper2);
-    ImGui::Checkbox(XorStr("Sniper Stock 3"),
-                    &global_settings.loot.stocksniper3);
-    ImGui::Checkbox(XorStr("Sniper Stock 4"),
-                    &global_settings.loot.stocksniper4);
+    ImGui::Checkbox(XorStr("Sniper Stock 2"), &g_settings.loot.stocksniper2);
+    ImGui::Checkbox(XorStr("Sniper Stock 3"), &g_settings.loot.stocksniper3);
+    ImGui::Checkbox(XorStr("Sniper Stock 4"), &g_settings.loot.stocksniper4);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Regular Stock 2"),
-                    &global_settings.loot.stockregular2);
-    ImGui::Checkbox(XorStr("Regular Stock 3"),
-                    &global_settings.loot.stockregular3);
-    ImGui::Checkbox(XorStr("Suppressor 1"), &global_settings.loot.suppressor1);
-    ImGui::Checkbox(XorStr("Suppressor 2"), &global_settings.loot.suppressor2);
-    ImGui::Checkbox(XorStr("Suppressor 3"), &global_settings.loot.suppressor3);
+    ImGui::Checkbox(XorStr("Regular Stock 2"), &g_settings.loot.stockregular2);
+    ImGui::Checkbox(XorStr("Regular Stock 3"), &g_settings.loot.stockregular3);
+    ImGui::Checkbox(XorStr("Suppressor 1"), &g_settings.loot.suppressor1);
+    ImGui::Checkbox(XorStr("Suppressor 2"), &g_settings.loot.suppressor2);
+    ImGui::Checkbox(XorStr("Suppressor 3"), &g_settings.loot.suppressor3);
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
     ImGui::Text(XorStr("Weapon Mods"));
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
-    ImGui::Checkbox(XorStr("Turbo Charger"),
-                    &global_settings.loot.turbo_charger);
-    ImGui::Checkbox(XorStr("Skull Piecer"), &global_settings.loot.skull_piecer);
-    ImGui::Checkbox(XorStr("Hammer Point"), &global_settings.loot.hammer_point);
+    ImGui::Checkbox(XorStr("Turbo Charger"), &g_settings.loot.turbo_charger);
+    ImGui::Checkbox(XorStr("Skull Piecer"), &g_settings.loot.skull_piecer);
+    ImGui::Checkbox(XorStr("Hammer Point"), &g_settings.loot.hammer_point);
     ImGui::Checkbox(XorStr("Disruptor Rounds"),
-                    &global_settings.loot.disruptor_rounds);
-    ImGui::Checkbox(XorStr("Boosted Loader"),
-                    &global_settings.loot.boosted_loader);
-    ImGui::Checkbox(XorStr("Shotgunbolt 1"),
-                    &global_settings.loot.shotgunbolt1);
-    ImGui::Checkbox(XorStr("Shotgunbolt 2"),
-                    &global_settings.loot.shotgunbolt2);
-    ImGui::Checkbox(XorStr("Shotgunbolt 3"),
-                    &global_settings.loot.shotgunbolt3);
-    ImGui::Checkbox(XorStr("Shotgunbolt 4"),
-                    &global_settings.loot.shotgunbolt4);
+                    &g_settings.loot.disruptor_rounds);
+    ImGui::Checkbox(XorStr("Boosted Loader"), &g_settings.loot.boosted_loader);
+    ImGui::Checkbox(XorStr("Shotgunbolt 1"), &g_settings.loot.shotgunbolt1);
+    ImGui::Checkbox(XorStr("Shotgunbolt 2"), &g_settings.loot.shotgunbolt2);
+    ImGui::Checkbox(XorStr("Shotgunbolt 3"), &g_settings.loot.shotgunbolt3);
+    ImGui::Checkbox(XorStr("Shotgunbolt 4"), &g_settings.loot.shotgunbolt4);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     {
       ImGui::Text(XorStr("Loot Glow Filled:"));
-      int lootfilled_value = global_settings.loot_filled;
+      int lootfilled_value = g_settings.loot_filled;
       ImGui::SliderInt(XorStr("##lootfilled"), &lootfilled_value, 0, 14, "%d");
-      global_settings.loot_filled = lootfilled_value;
+      g_settings.loot_filled = lootfilled_value;
     }
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     if (menu3 == 1) {
@@ -496,79 +467,74 @@ void Overlay::RenderMenu() {
     // Light Weapons
     ImGui::TextColored(ORANGE, "Light Weapons");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
-    ImGui::Checkbox(XorStr("P2020"), &global_settings.loot.weapon_p2020);
+    ImGui::Checkbox(XorStr("P2020"), &g_settings.loot.weapon_p2020);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("RE-45"), &global_settings.loot.weapon_re45);
+    ImGui::Checkbox(XorStr("RE-45"), &g_settings.loot.weapon_re45);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("R-99"), &global_settings.loot.weapon_r99);
+    ImGui::Checkbox(XorStr("R-99"), &g_settings.loot.weapon_r99);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("G7 Scout"), &global_settings.loot.weapon_g7_scout);
-    ImGui::Checkbox(XorStr("Spitfire"), &global_settings.loot.weapon_spitfire);
+    ImGui::Checkbox(XorStr("G7 Scout"), &g_settings.loot.weapon_g7_scout);
+    ImGui::Checkbox(XorStr("Spitfire"), &g_settings.loot.weapon_spitfire);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("R-301"), &global_settings.loot.weapon_r301);
+    ImGui::Checkbox(XorStr("R-301"), &g_settings.loot.weapon_r301);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Alternator "),
-                    &global_settings.loot.weapon_alternator);
+    ImGui::Checkbox(XorStr("Alternator "), &g_settings.loot.weapon_alternator);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     // Heavy Weapons
     ImGui::TextColored(TEAL, "Heavy Weapons");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
-    ImGui::Checkbox(XorStr("C.A.R."), &global_settings.loot.weapon_car_smg);
+    ImGui::Checkbox(XorStr("C.A.R."), &g_settings.loot.weapon_car_smg);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Flatline"), &global_settings.loot.weapon_flatline);
+    ImGui::Checkbox(XorStr("Flatline"), &g_settings.loot.weapon_flatline);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Hemlok"), &global_settings.loot.weapon_hemlock);
-    ImGui::Checkbox(XorStr("Prowler "), &global_settings.loot.weapon_prowler);
+    ImGui::Checkbox(XorStr("Hemlok"), &g_settings.loot.weapon_hemlock);
+    ImGui::Checkbox(XorStr("Prowler "), &g_settings.loot.weapon_prowler);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("30-30"),
-                    &global_settings.loot.weapon_3030_repeater);
-    ImGui::Checkbox(XorStr("Rampage"), &global_settings.loot.weapon_rampage);
+    ImGui::Checkbox(XorStr("30-30"), &g_settings.loot.weapon_3030_repeater);
+    ImGui::Checkbox(XorStr("Rampage"), &g_settings.loot.weapon_rampage);
     // Energy Weapons
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::TextColored(YELLOW, "Energy Weapons");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
-    ImGui::Checkbox(XorStr("Triple Take"),
-                    &global_settings.loot.weapon_triple_take);
+    ImGui::Checkbox(XorStr("Triple Take"), &g_settings.loot.weapon_triple_take);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("L-STAR"), &global_settings.loot.weapon_lstar);
+    ImGui::Checkbox(XorStr("L-STAR"), &g_settings.loot.weapon_lstar);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Volt"), &global_settings.loot.weapon_volt);
-    ImGui::Checkbox(XorStr("Devotion "), &global_settings.loot.weapon_devotion);
+    ImGui::Checkbox(XorStr("Volt"), &g_settings.loot.weapon_volt);
+    ImGui::Checkbox(XorStr("Devotion "), &g_settings.loot.weapon_devotion);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("HAVOC"), &global_settings.loot.weapon_havoc);
-    ImGui::Checkbox(XorStr("Nemesis"), &global_settings.loot.weapon_nemesis);
+    ImGui::Checkbox(XorStr("HAVOC"), &g_settings.loot.weapon_havoc);
+    ImGui::Checkbox(XorStr("Nemesis"), &g_settings.loot.weapon_nemesis);
 
     // Shotgun Weapons
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::TextColored(RED, "Shotgun Weapons");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
-    ImGui::Checkbox(XorStr("EVA-8"), &global_settings.loot.weapon_eva8);
+    ImGui::Checkbox(XorStr("EVA-8"), &g_settings.loot.weapon_eva8);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Mozambique"),
-                    &global_settings.loot.weapon_mozambique);
+    ImGui::Checkbox(XorStr("Mozambique"), &g_settings.loot.weapon_mozambique);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Peacekeeper"),
-                    &global_settings.loot.weapon_peacekeeper);
+    ImGui::Checkbox(XorStr("Peacekeeper"), &g_settings.loot.weapon_peacekeeper);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Mastiff"), &global_settings.loot.weapon_mastiff);
+    ImGui::Checkbox(XorStr("Mastiff"), &g_settings.loot.weapon_mastiff);
     // Sniper Weapons
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::TextColored(BLUE, "Sniper Weapons");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Checkbox(XorStr("Charge Rifle"),
-                    &global_settings.loot.weapon_charge_rifle);
+                    &g_settings.loot.weapon_charge_rifle);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Longbow"), &global_settings.loot.weapon_longbow);
+    ImGui::Checkbox(XorStr("Longbow"), &g_settings.loot.weapon_longbow);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Sentinel"), &global_settings.loot.weapon_sentinel);
-    ImGui::Checkbox(XorStr("Wingman "), &global_settings.loot.weapon_wingman);
+    ImGui::Checkbox(XorStr("Sentinel"), &g_settings.loot.weapon_sentinel);
+    ImGui::Checkbox(XorStr("Wingman "), &g_settings.loot.weapon_wingman);
     // KRABER
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Special Weapons"));
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Checkbox(XorStr("Kraber .50-Cal Sniper"),
-                    &global_settings.loot.weapon_kraber);
-    ImGui::Checkbox(XorStr("Bocek Bow"), &global_settings.loot.weapon_bow);
+                    &g_settings.loot.weapon_kraber);
+    ImGui::Checkbox(XorStr("Bocek Bow"), &g_settings.loot.weapon_bow);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     if (menu4 == 1) {
       ImGui::GetStateStorage()->SetInt(ImGui::GetID("Item Filter Settings"), 0);
@@ -591,13 +557,15 @@ void Overlay::RenderMenu() {
 
   ImGui::Text(XorStr("Game FPS for Aim Prediction:"));
   ImGui::SameLine();
-  ImGui::Checkbox(XorStr("Calc Game FPS"), &global_settings.calc_game_fps);
-  ImGui::SliderFloat(XorStr("##gamefps"), &global_settings.game_fps, 1.0f,
-                     300.0f, "%.1f");
+  ImGui::Checkbox(XorStr("Calc Game FPS"), &g_settings.calc_game_fps);
+  ImGui::SliderFloat(XorStr("##gamefps"), &g_settings.game_fps, 1.0f, 300.0f,
+                     "%.1f");
 
   ImGui::Dummy(ImVec2(0.0f, 5.0f));
   ImGui::Text(XorStr("external-overlay test build"));
   ImGui::End();
+
+  update_settings(g_settings);
 }
 
 void Overlay::RenderInfo() {
@@ -624,17 +592,18 @@ void Overlay::RenderInfo() {
   ImGui::Text("--");
   ImGui::SameLine();
   // Aim is on = 2, On but No Vis Check = 1, Off = 0
+  const auto g_settings = global_settings();
   if (lock) {
     ImGui::TextColored(aimbot_safety ? GREEN : ORANGE, "[TARGET LOCK!]");
   } else if (local_held_id == -251) {
     ImGui::TextColored(BLUE, "Skynade On");
-  } else if (global_settings.aim == 2) {
+  } else if (g_settings.aim == 2) {
     ImGui::TextColored(GREEN, "Aim On");
 
-  } else if (global_settings.aim == 0) {
+  } else if (g_settings.aim == 0) {
     ImGui::TextColored(RED, "Aim Off");
   } else {
-    ImGui::TextColored(RED, "Aim On %d", global_settings.aim);
+    ImGui::TextColored(RED, "Aim On %d", g_settings.aim);
   }
   ImGui::SameLine();
   // if (triggerbot) {
@@ -767,10 +736,10 @@ int Overlay::CreateOverlay() {
       ImGui::Text("Overlay average %.3f ms/frame (%.1f FPS)",
                   1000.0f / io.Framerate, io.Framerate);
 
-      if (global_settings.calc_game_fps) {
+      const auto g_settings = global_settings();
+      if (g_settings.calc_game_fps) {
         ImGui::Text("Game average %.3f ms/frame (%.1f FPS)",
-                    1000.0f / global_settings.game_fps,
-                    global_settings.game_fps);
+                    1000.0f / g_settings.game_fps, g_settings.game_fps);
       }
 
       ImGui::End();
@@ -812,13 +781,15 @@ int Overlay::CreateOverlay() {
       bool key_m_pressed = IsKeyDown(ImGuiKey_M) || isPressed(23);
       if (key_m_pressed && mainradartoggle == 0) {
         mainradartoggle = 1;
-        if (!global_settings.main_radar_map) {
-          global_settings.main_radar_map = true;
-          global_settings.mini_map_radar = false;
+        auto g_settings = global_settings();
+        if (!g_settings.main_radar_map) {
+          g_settings.main_radar_map = true;
+          g_settings.mini_map_radar = false;
         } else {
-          global_settings.main_radar_map = false;
-          global_settings.mini_map_radar = true;
+          g_settings.main_radar_map = false;
+          g_settings.mini_map_radar = true;
         }
+        update_settings(g_settings);
       } else if (!key_m_pressed && mainradartoggle == 1) {
         mainradartoggle = 0;
       }

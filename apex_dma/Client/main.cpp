@@ -27,7 +27,6 @@ extern uint64_t g_Base; // write sync
 extern int EntTeam; // sync
 extern int LocTeam; // sync
 
-extern settings_t global_settings;
 extern std::vector<TreasureClue> treasure_clues;
 
 extern float bulletspeed; // sync
@@ -172,7 +171,8 @@ static void TeamMiniMap(int x, int y, int radius, int team_id,
       ImGui::ColorConvertFloat4ToU32(ImVec4(color.R / 255.0, color.G / 255.0,
                                             color.B / 255.0, color.A / 255.0)));
   ImGui::GetWindowDrawList()->AddCircle(
-      center, radius, colOutline, 12, global_settings.mini_map_radar_dot_size2);
+      center, radius, colOutline, 12,
+      global_settings().mini_map_radar_dot_size2);
 
   // Draw a line pointing in the direction of each player's aim
   const int numPlayers = 3;
@@ -217,92 +217,94 @@ void DrawRadarPointMiniMap(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos,
                                    siz.y, LocalPlayerY, 0.3f, &ck);
   if (eneamyDist >= 0.f && eneamyDist < RadarSettings::distance_Radar) {
     for (int i = 1; i <= 30; i++) {
-      TeamMiniMap(single.x, single.y, global_settings.mini_map_radar_dot_size1,
-                  team_id, targetyaw);
+      TeamMiniMap(single.x, single.y,
+                  global_settings().mini_map_radar_dot_size1, team_id,
+                  targetyaw);
     }
   }
 }
 
 void draw_team_point(int pos_x, int pos_y, int team_id) {
+  const auto g_settings = global_settings();
   if (team_id == 1) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {255, 255, 255, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {255, 255, 255, 255});
   }
   if (team_id == 2) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {242, 86, 38, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {242, 86, 38, 255});
   }
   if (team_id == 3) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {242, 86, 38, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {242, 86, 38, 255});
   }
   if (team_id == 4) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {174, 247, 89, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {174, 247, 89, 255});
   }
   if (team_id == 5) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {102, 214, 173, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {102, 214, 173, 255});
   }
   if (team_id == 6) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {98, 244, 234, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {98, 244, 234, 255});
   }
   if (team_id == 7) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {92, 208, 250, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {92, 208, 250, 255});
   }
   if (team_id == 8) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {93, 137, 238, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {93, 137, 238, 255});
   }
   if (team_id == 9) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {164, 105, 252, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {164, 105, 252, 255});
   }
   if (team_id == 10) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {243, 98, 161, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {243, 98, 161, 255});
   }
   if (team_id == 11) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {214, 67, 67, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {214, 67, 67, 255});
   }
   if (team_id == 12) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {230, 116, 51, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {230, 116, 51, 255});
   }
   if (team_id == 13) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {185, 179, 167, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {185, 179, 167, 255});
   }
   if (team_id == 14) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {148, 200, 65, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {148, 200, 65, 255});
   }
   if (team_id == 15) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {86, 174, 91, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {86, 174, 91, 255});
   }
   if (team_id == 16) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {55, 188, 200, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {55, 188, 200, 255});
   }
   if (team_id == 17) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {84, 169, 212, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {84, 169, 212, 255});
   }
   if (team_id == 18) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {98, 121, 203, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {98, 121, 203, 255});
   }
   if (team_id == 19) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {102, 61, 174, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {102, 61, 174, 255});
   }
   if (team_id >= 20 && team_id < 36) {
-    TeamN(pos_x, pos_y, global_settings.main_map_radar_dot_size1,
-          global_settings.main_map_radar_dot_size2, {218, 73, 145, 255});
+    TeamN(pos_x, pos_y, g_settings.main_map_radar_dot_size1,
+          g_settings.main_map_radar_dot_size2, {218, 73, 145, 255});
   }
 }
 
@@ -354,7 +356,7 @@ void MiniMapRadar(D3DXVECTOR3 EneamyPos, D3DXVECTOR3 LocalPos,
       ImVec2 DrawSize = ImGui::GetContentRegionAvail();
       ImVec2 midRadar =
           ImVec2(DrawPos.x + (DrawSize.x / 2), DrawPos.y + (DrawSize.y / 2));
-      if (global_settings.mini_map_guides) {
+      if (global_settings().mini_map_guides) {
         ImGui::GetWindowDrawList()->AddLine(
             ImVec2(midRadar.x - DrawSize.x / 2.f, midRadar.y),
             ImVec2(midRadar.x + DrawSize.x / 2.f, midRadar.y),
@@ -483,7 +485,8 @@ void worldToScreenMap(D3DXVECTOR3 origin, int team_id) {
 
 void Overlay::RenderEsp() {
   next2 = false;
-  if (g_Base != 0 && global_settings.esp) {
+  const auto g_settings = global_settings();
+  if (g_Base != 0 && g_settings.esp) {
 
     memset(players, 0, sizeof(players));
 
@@ -495,7 +498,7 @@ void Overlay::RenderEsp() {
                      ImGuiWindowFlags_NoBackground |
                      ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-    if (global_settings.show_aim_target && aim_target != Vector(0, 0, 0)) {
+    if (g_settings.show_aim_target && aim_target != Vector(0, 0, 0)) {
       Vector bs = Vector();
       WorldToScreen(aim_target, view_matrix_data.matrix, getWidth(),
                     getHeight(), bs);
@@ -541,8 +544,8 @@ void Overlay::RenderEsp() {
       }
     }
 
-    if (!global_settings.firing_range)
-      while (!next2 && global_settings.esp) {
+    if (!g_settings.firing_range)
+      while (!next2 && g_settings.esp) {
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
       }
 
@@ -556,30 +559,30 @@ void Overlay::RenderEsp() {
                      std::to_string(players[i].entity_team) + ")";
 
           float alpha; // The farther away, the more transparent
-          if (players[i].dist < global_settings.aim_dist) {
+          if (players[i].dist < g_settings.aim_dist) {
             alpha = 1.0f;
           } else if (players[i].dist > 16000.0f) {
             alpha = 0.4f;
           } else {
-            alpha = 1.0f - ((players[i].dist - global_settings.aim_dist) /
-                            (16000.0f - global_settings.aim_dist) * 0.6f);
+            alpha = 1.0f - ((players[i].dist - g_settings.aim_dist) /
+                            (16000.0f - g_settings.aim_dist) * 0.6f);
           }
 
           float radardistance = (int)(players[i].dist / 39.62);
 
           // Radar Stuff
-          if (global_settings.mini_map_radar == true) {
+          if (g_settings.mini_map_radar == true) {
             MiniMapRadar(players[i].EntityPosition,
                          players[i].LocalPlayerPosition,
                          players[i].localviewangle.y, radardistance,
                          players[i].entity_team, players[i].targetyaw);
           }
-          if (global_settings.esp_visuals.line)
+          if (g_settings.esp_visuals.line)
             DrawLine(ImVec2((float)(getWidth() / 2.0), (float)getHeight()),
                      ImVec2(players[i].b_x, players[i].b_y), BLUE,
                      1); // LINE FROM MIDDLE SCREEN
 
-          if (global_settings.esp_visuals.distance) {
+          if (g_settings.esp_visuals.distance) {
             if (players[i].knocked)
               String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)), RED,
                      distance.c_str()); // DISTANCE
@@ -590,37 +593,37 @@ void Overlay::RenderEsp() {
           }
 
           if (players[i].dist < 16000.0f) {
-            if (global_settings.esp_visuals.healthbar)
+            if (g_settings.esp_visuals.healthbar)
               DrawSeerLikeHealth(
                   (players[i].b_x - (players[i].width / 2.0f) + 5),
                   (players[i].b_y - players[i].height - 10), players[i].shield,
                   players[i].maxshield, players[i].armortype,
                   players[i].health); // health bar
 
-            if (global_settings.esp_visuals.box) {
+            if (g_settings.esp_visuals.box) {
               ImColor box_color = ImColor(0.0f, 0.0f, 0.0f, alpha);
               float box_width = 1.0f;
               if (players[i].visible) {
-                box_color = ImColor(global_settings.glow_r_viz,
-                                    global_settings.glow_g_viz,
-                                    global_settings.glow_b_viz, alpha);
+                box_color =
+                    ImColor(g_settings.glow_r_viz, g_settings.glow_g_viz,
+                            g_settings.glow_b_viz, alpha);
                 box_width = 2.0f;
               } else {
-                box_color = ImColor(global_settings.glow_r_not,
-                                    global_settings.glow_g_not,
-                                    global_settings.glow_b_not, alpha);
+                box_color =
+                    ImColor(g_settings.glow_r_not, g_settings.glow_g_not,
+                            g_settings.glow_b_not, alpha);
               }
               DrawBox(box_color, players[i].b_x - (players[i].width / 2.0f),
                       players[i].b_y - players[i].height, players[i].width,
                       players[i].height, box_width);
             }
-            if (global_settings.esp_visuals.name)
+            if (g_settings.esp_visuals.name)
               String(ImVec2(players[i].boxMiddle,
                             (players[i].b_y - players[i].height - 15)),
                      ImColor(1.0f, 1.0f, 1.0f, alpha), players[i].name);
           }
           // Full Radar map, Need Manual setting of cords
-          if (global_settings.main_radar_map == true)
+          if (g_settings.main_radar_map == true)
 
             worldToScreenMap(players[i].EntityPosition, players[i].entity_team);
 

@@ -61,7 +61,7 @@ include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends)
 
 # apex_dma
 add_executable(apex_dma
-    apex_dma.cpp Game.cpp Math.cpp memory.cpp
+    apex_dma.cpp apex_sky.cpp Game.cpp Math.cpp memory.cpp
     ${PROJECT_SOURCE_DIR}/Client/main.cpp
     ${PROJECT_SOURCE_DIR}/Client/overlay.cpp
     ${PROJECT_SOURCE_DIR}/Client/impl/render/font.cpp

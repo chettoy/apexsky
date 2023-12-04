@@ -6,10 +6,23 @@ set -x
 # Exit immediately when a command fails
 set -eo pipefail
  
-cd apexsky
-cargo build --release
+rm -rf ./build ../build
+
+cd memflow
+cargo clean
 cd ..
 
-mkdir -p build
-cd build
-cmake .. && cmake --build .
+cd memflow-qemu
+cargo clean
+cd ..
+
+cd memflow-win32
+cargo clean
+cd ..
+
+cd apexsky
+cargo clean
+cd ..
+
+echo Done
+
