@@ -1,5 +1,3 @@
-use std::{collections::HashMap, fmt::Debug};
-
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Style, Stylize},
@@ -7,9 +5,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-
 use crate::{config, global_state::G_STATE};
-
 use super::{alert, prompt};
 
 pub struct TerminalMenu<'a> {
@@ -2304,6 +2300,7 @@ where
         Span::styled(")", Style::default().fg(Color::DarkGray)),
     ]))
 }
+
 fn span_enabled(v: bool) -> Span<'static> {
     Span::styled(
         text_enabled(v),
@@ -2312,6 +2309,7 @@ fn span_enabled(v: bool) -> Span<'static> {
 }
 fn item_enabled(label: &str, v: bool) -> ListItem {
     format_item(label, span_enabled(v))
+
 }
 fn item_text(label: &str) -> ListItem {
     ListItem::new(Line::from(format_label(label)))
