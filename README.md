@@ -89,10 +89,14 @@ Game version (Steam Only right now): v3.0.51.45
     * KrackerCo Fork's no-overlay features.
     * KrackerCo Fork's Client features.
     * Optional glow box to replace the player glow (If you want to prevent screenshot detection or want to broadcast live)
-    * Show player nickname next to health shield bars
     * Sky Grenade
     * Improved target locking
-    * Automatic target bone selection
+    * Multiple bone selection effects
+    * Calculate and display the game frame rate
+    * Aiming Target Indicator
+    * Edit and Save your config file
+    * Interactive Terminal Menu
+    * Player armor glows with color
 
 
 
