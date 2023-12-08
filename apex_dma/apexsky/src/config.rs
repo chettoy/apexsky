@@ -147,6 +147,7 @@ pub struct Loot {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct Config {
     pub load_settings: bool,
+    pub no_overlay: bool,
     pub super_key: bool,
     pub keyboard: bool,
     pub gamepad: bool,
@@ -161,6 +162,7 @@ pub struct Config {
     pub tdm_toggle: bool,
     pub item_glow: bool,
     pub player_glow: bool,
+    pub player_glow_armor_color: bool,
     pub deathbox: bool,
     pub aim_no_recoil: bool,
     pub ads_fov: f32,
@@ -187,6 +189,7 @@ pub struct Config {
     pub bone_nearest: bool,
     pub bone_auto: bool,
     pub headshot_dist: f32,
+    pub skynade_dist: f32,
     pub smooth: f32,
     pub skynade_smooth: f32,
     pub inside_value: u8,
@@ -356,6 +359,7 @@ impl Default for Config {
             // CONFIG AREA, you can change default values below.
             // Enable Loading of setting file automaticly.
             load_settings: true,
+            no_overlay: true,
             super_key: true,
             // Gamepad or Keyboard config, Only one true at once or it wont work.
             keyboard: true,
@@ -375,6 +379,7 @@ impl Default for Config {
             tdm_toggle: false,
             item_glow: true,
             player_glow: false,
+            player_glow_armor_color: true,
             deathbox: false,
             aim_no_recoil: true,
             ads_fov: 12.0, // Fov you want to use while aiming
@@ -389,7 +394,7 @@ impl Default for Config {
             main_radar_map: false, // if the Main Map Radar is enabled
             main_map_radar_dot_size1: 5,
             main_map_radar_dot_size2: 5,
-            aim_dist: 200.0 * 40.0,
+            aim_dist: 300.0 * 40.0,
             max_dist: 3800.0 * 40.0, // Max Distance of ESP 3800 is full map
             map_radar_testing: false,
             show_aim_target: true,
@@ -402,6 +407,7 @@ impl Default for Config {
             bone_nearest: false,
             bone_auto: true,
             headshot_dist: 100.0 * 40.0,
+            skynade_dist: 80.0 * 40.0,
             smooth: 120.0, // min 85 no beaming, 100 somewhat beam people, 125 should be safe
             skynade_smooth: 120.0 * 0.6667,
             // Player Glow Color and Brightness.

@@ -463,31 +463,46 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
             format_item(
                 " 8 - Change Bone Aim Value",
                 Span::styled(
-                    match settings.bone {
-                        0 => "Head",
-                        1 => "Neck",
-                        2 => "Chest",
-                        3 => "Gut Shut",
-                        _ => "Unknown",
+                    if settings.bone_auto {
+                        "Auto"
+                    } else if settings.bone_nearest {
+                        "Nearest"
+                    } else {
+                        match settings.bone {
+                            0 => "Head",
+                            1 => "Neck",
+                            2 => "Chest",
+                            3 => "Gut Shut",
+                            _ => "Unknown",
+                        }
                     },
                     Style::new().white(),
                 ),
             ),
             "New value for 'bone': 
+            x => Auto
             0 => Head
             1 => Neck
             2 => Chest
             3 => Gut Shut
             ",
             |val| {
-                if let Some(new_val) = val.parse::<u8>().ok() {
+                if val.trim() == "x" {
+                    let settings = &mut G_STATE.lock().unwrap().settings;
+                    settings.bone_auto = true;
+                    return None;
+                } else if let Some(new_val) = val.parse::<u8>().ok() {
                     if vec![0, 1, 2, 3].contains(&new_val) {
                         let settings = &mut G_STATE.lock().unwrap().settings;
                         settings.bone = new_val.into();
+                        settings.bone_auto = false;
                         return None;
                     }
+                    return Some(
+                        "Invalid value. 'bone' value must be between 0 and 3.".to_string(),
+                    );
                 }
-                Some("Invalid value. 'bone' value must be between 0 and 3.".to_string())
+                Some("Invalid value. ".to_string())
             },
         )
         .add_item(
@@ -659,7 +674,7 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
         settings.aim_no_recoil,
         aim_no_recoil
     );
-    menu.add_input_item(
+    menu = menu.add_input_item(
         format_item(
             "26 - Set Game FPS for Aim Prediction",
             Span::styled(
@@ -686,8 +701,36 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
             }
             None
         },
-    )
-    .into()
+    );
+    menu = add_toggle_item!(
+        menu,
+        "27 - Toggle F8 Map Radar",
+        settings.map_radar_testing,
+        map_radar_testing
+    );
+    menu = add_toggle_item!(
+        menu,
+        "28 - Toggle Player Armor Glow Color",
+        settings.player_glow_armor_color,
+        player_glow_armor_color
+    );
+    menu.add_dummy_item()
+        .add_item(
+            format_item(
+                "29 - Toggle Overlay",
+                if settings.no_overlay {
+                    Span::styled("no-overlay", Style::default().white())
+                } else {
+                    Span::styled("external-overlay", Style::default().green())
+                },
+            ),
+            |_| {
+                let settings = &mut G_STATE.lock().unwrap().settings;
+                settings.no_overlay = !settings.no_overlay;
+                None
+            },
+        )
+        .into()
 }
 
 fn build_glow_color_menu(settings: &config::Config) -> MenuState<'static> {

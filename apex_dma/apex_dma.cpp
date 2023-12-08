@@ -5,6 +5,7 @@
 #include <array>
 #include <cfloat>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib> // For the system() function
 #include <iomanip>
@@ -161,8 +162,42 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index) {
       } else {
         contextId = 7;
         settingIndex = 82;
-        highlightParameter = {g_settings.glow_r_not, g_settings.glow_g_not,
-                              g_settings.glow_b_not};
+        if (g_settings.player_glow_armor_color) {
+          int shield = Target.getShield();
+          if (shield <= 50) { // white
+            highlightParameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
+          } else if (shield <= 75) { // blue
+            highlightParameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
+          } else if (shield <= 100) { // purple
+            highlightParameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
+          } else if (shield <= 125) { // red
+            highlightParameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
+          } else {
+            highlightParameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
+          }
+          //   switch (shield_level) {
+          //   case 1: // white
+          //     highlightParameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
+          //     break;
+          //   case 2: // blue
+          //     highlightParameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
+          //     break;
+          //   case 3: // purple
+          //     highlightParameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
+          //     break;
+          //   case 4: // gold
+          //     highlightParameter = {255 / 255.0, 255 / 255.0, 79 / 255.0};
+          //     break;
+          //   case 5: // red
+          //     highlightParameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
+          //     break;
+          //   default:
+          //     highlightParameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
+          //   }
+        } else {
+          highlightParameter = {g_settings.glow_r_not, g_settings.glow_g_not,
+                                g_settings.glow_b_not};
+        }
       }
       if (g_settings.player_glow) {
         Target.enableGlow(g_settings.inside_value, g_settings.outline_size);
@@ -271,14 +306,23 @@ void ClientActions() {
       if (curFrameNumber > lastFrameNumber) {
         frameSleepTimer = 10; // <- middle of the frame // needs 5 for 144fps
                               // and 10 for 75 fps
+        if (abs(g_settings.game_fps - 144.0) <
+            abs(g_settings.game_fps - 75.0)) {
+          frameSleepTimer = 5;
+        }
       }
       lastFrameNumber = curFrameNumber;
 
       if (frameSleepTimer == 0) {
         if (g_settings.super_key_toggle) {
+          float magic_number = 0.92;
+          if (abs(g_settings.game_fps - 144.0) <
+              abs(g_settings.game_fps - 75.0)) {
+            magic_number = 0.90;
+          }
           if (m_traversalProgress > 0.85 &&
-              m_traversalProgress <
-                  0.92) // needs to end at 0.90 for 144 fps and 0.92 for 75 fps
+              m_traversalProgress < magic_number) // needs to end at 0.90 for
+                                                  // 144 fps and 0.92 for 75 fps
           {
             superGlideStart = true;
           }
@@ -570,14 +614,12 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   float dist = LocalPlayerPosition.DistTo(EntityPosition);
 
   // aim distance check
-  const float skynade_dist = 100.0 * 40.0f;
-  if ((local_held_id == -251 && dist > skynade_dist) ||
+  if ((local_held_id == -251 && dist > g_settings.skynade_dist) ||
       dist > g_settings.aim_dist)
     return;
 
   // Targeting
   const float vis_weights = 12.5f;
-  // float skynade_dist = aimdist / 2;
   float fov = CalculateFov(LPlayer, target);
   bool vis = target.lastVisTime() > lastvis_aim[index];
   float score =
@@ -3815,6 +3857,7 @@ int main(int argc, char *argv[]) {
         overlay_t = false;
         item_t = false;
         g_Base = 0;
+        quit_tui_menu();
 
         aimbot_thr.~thread();
         esp_thr.~thread();
@@ -3846,7 +3889,6 @@ int main(int argc, char *argv[]) {
         // updateInsideValue_thr = std::thread(updateInsideValue);
         TriggerBotRun_thr = std::thread(TriggerBotRun);
         terminal_thr = std::thread(terminal);
-        overlay_thr = std::thread(start_overlay);
         itemglow_thr = std::thread(item_glow_t);
         aimbot_thr.detach();
         esp_thr.detach();
@@ -3856,11 +3898,20 @@ int main(int argc, char *argv[]) {
         // updateInsideValue_thr.detach();
         TriggerBotRun_thr.detach();
         terminal_thr.detach();
-        overlay_thr.detach();
         itemglow_thr.detach();
       }
     } else {
       apex_mem.check_proc();
+      if (global_settings().no_overlay) {
+        if (overlay_t) {
+          overlay_t = false;
+        }
+      } else {
+        if (!overlay_t) {
+          overlay_thr = std::thread(start_overlay);
+          overlay_thr.detach();
+        }
+      }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }

@@ -141,6 +141,7 @@ typedef struct {
 
 typedef struct {
   bool load_settings;
+  bool no_overlay;
   bool super_key;
   bool keyboard;
   bool gamepad;
@@ -155,6 +156,7 @@ typedef struct {
   bool tdm_toggle;
   bool item_glow;
   bool player_glow;
+  bool player_glow_armor_color;
   bool deathbox;
   bool aim_no_recoil;
   float ads_fov;
@@ -181,6 +183,7 @@ typedef struct {
   bool bone_nearest;
   bool bone_auto;
   float headshot_dist;
+  float skynade_dist;
   float smooth;
   float skynade_smooth;
   uint8_t inside_value;
