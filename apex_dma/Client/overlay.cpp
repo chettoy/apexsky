@@ -21,10 +21,10 @@
 
 using namespace std;
 
+extern bool overlay_t;
 extern float veltest;
 extern int local_held_id;
 extern uint32_t local_weapon_id;
-extern bool ready;
 extern float bulletspeed;
 extern float bulletgrav;
 
@@ -219,10 +219,10 @@ void Overlay::RenderMenu() {
 
     ImGui::Text(XorStr("Max Headshot Distance:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.1f", g_settings.headshot_dist);
+    ImGui::TextColored(GREEN, "%d meters",
+                       (int)(g_settings.headshot_dist / 40.0f));
     ImGui::SliderFloat(XorStr("##headshot_dist"), &g_settings.headshot_dist,
                        0.0f, g_settings.aim_dist, "##");
-    ImGui::SameLine();
     ImGui::Text(XorStr("Disable sniper headshots when out of range"));
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
@@ -699,8 +699,9 @@ int Overlay::CreateOverlay() {
 
   // Main loop
   while (!glfwWindowShouldClose(window)) {
-    if (!running)
+    if (!running || !overlay_t) {
       break;
+    }
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to
     // tell if dear imgui wants to use your inputs.
@@ -768,7 +769,7 @@ int Overlay::CreateOverlay() {
     // }
     {
       bool key_insert_pressed = IsKeyDown(ImGuiKey_Insert) || isPressed(72);
-      if (key_insert_pressed && !k_ins && ready) {
+      if (key_insert_pressed && !k_ins) {
         show_menu = !show_menu;
         k_ins = true;
       } else if (!key_insert_pressed && k_ins) {
@@ -838,8 +839,8 @@ std::thread Overlay::Start() {
 }
 
 void Overlay::Clear() {
-  running = 0;
-  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  running = false;
+  printf("running=%b\n", running);
 }
 
 int Overlay::getWidth() { return width; }

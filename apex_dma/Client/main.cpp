@@ -640,26 +640,10 @@ void start_overlay() {
   overlay_t = true;
 
   Overlay ov1 = Overlay();
-  printf(XorStr("Waiting for The Extra Ban .... Never Gonna Get it!\n"));
-
-  std::thread ui_thr = ov1.Start();
-  ui_thr.detach();
-
-  // while (check == 0xABCD) {
-  //   printf(XorStr("Never Gonna Get it!\n"));
-  //   std::this_thread::sleep_for(std::chrono::seconds(1));
-  // }
-  ready = true;
-
-  while (overlay_t) {
-    // if (IsKeyDown(ImGuiKey_F4)) {
-    //   active = false;
-    //   break;
-    // }
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-  ready = false;
-  ov1.Clear();
+  // std::thread ui_thr = ov1.Start();
+  // ui_thr.detach();
+  ov1.CreateOverlay();
+  overlay_t = false;
 }
 
 // int main(int argc, char **argv) {
