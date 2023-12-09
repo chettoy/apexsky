@@ -59,9 +59,10 @@ jobs:
     - name: Archive production artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: apex_dma_overlay
+        name: apex_dma_kvm_build
         path: |
           build/apex_dma
-          build/libmemflow_qemu_procfs.so
+          build/libmemflow_qemu.so
+          build/libmemflow_win32.so
         retention-days: 5
 
