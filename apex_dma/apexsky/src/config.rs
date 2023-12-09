@@ -192,8 +192,8 @@ pub struct Config {
     pub skynade_dist: f32,
     pub smooth: f32,
     pub skynade_smooth: f32,
-    pub inside_value: u8,
-    pub outline_size: u8,
+    pub player_glow_inside_value: u8,
+    pub player_glow_outline_size: u8,
     pub glow_r_not: f32,
     pub glow_g_not: f32,
     pub glow_b_not: f32,
@@ -412,8 +412,8 @@ impl Default for Config {
             skynade_smooth: 120.0 * 0.6667,
             // Player Glow Color and Brightness.
             // inside fill
-            inside_value: 14, // 0 = no fill, 14 = full fill
-            outline_size: 32, // 0-255
+            player_glow_inside_value: 14, // 0 = no fill, 14 = full fill
+            player_glow_outline_size: 32, // 0-255
             // Not Visable
             glow_r_not: 1.0, // Red 0-1, higher is brighter color.
             glow_g_not: 0.0,

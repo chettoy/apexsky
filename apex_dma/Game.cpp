@@ -161,57 +161,51 @@ bool Entity::isGlowing() { return *(int *)(buffer + OFFSET_GLOW_ENABLE) == 7; }
 bool Entity::isZooming() { return *(int *)(buffer + OFFSET_ZOOMING) == 1; }
 
 extern uint64_t g_Base;
-extern int settingIndex;
-extern int contextId;
-extern std::array<float, 3> highlightParameter;
-// custom glow colo RGB
-unsigned char outsidevalue = 125;
-extern unsigned char insidevalue;
-extern unsigned char insidevalueItem;
-extern unsigned char outlinesize;
-void Entity::enableGlow(uint8_t inside_value, uint8_t outline_size) {
+
+
+void Entity::enableGlow(int context_id, int setting_index, uint8_t inside_value,
+                        uint8_t outline_size,
+                        std::array<float, 3> highlight_parameter) {
   // static const int contextId = 5;
   // int settingIndex = 44;
+  const unsigned char outsidevalue = 125;
   std::array<unsigned char, 4> highlightFunctionBits = {
       inside_value, // InsideFunction
-
-      inside_value, // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
+      outsidevalue, // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
       outline_size, // OutlineRadius: size * 255 / 8
       64 // (EntityVisible << 6) | State & 0x3F | (AfterPostProcess << 7)
   };
-  // std::array<float, 3> highlightParameter = { 0, 1, 0 };
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, contextId);
+  apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, context_id);
   apex_mem.Write<unsigned char>(
-      ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId, settingIndex);
+      ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + context_id, setting_index);
 
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 1);
-  apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 1,
-                                settingIndex);
+  // apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 1);
+  // apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 1,
+  //                               setting_index);
 
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
-  apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 2,
-                                settingIndex);
+  // apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
+  // apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 2,
+  //                               setting_index);
 
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 3);
-  apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 3,
-                                settingIndex);
+  // apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 3);
+  // apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 3,
+  //                               setting_index);
 
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 4);
-  apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 4,
-                                settingIndex);
-  // apex_mem.Write<int>(ptr + 0x298 + contextId, settingIndex);
-  long highlightSettingsPtr;
-  apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+  // apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 4);
+  // apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 4,
+  //                               setting_index);
+  // // apex_mem.Write<int>(ptr + 0x298 + contextId, settingIndex);
+  long highlight_settings_ptr;
+  apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
   apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 2);
   apex_mem.Write<typeof(highlightFunctionBits)>(
-      highlightSettingsPtr + HIGHLIGHT_TYPE_SIZE * settingIndex + 4,
+      highlight_settings_ptr + HIGHLIGHT_TYPE_SIZE * setting_index + 4,
       highlightFunctionBits);
-  apex_mem.Write<typeof(highlightParameter)>(
-      highlightSettingsPtr + HIGHLIGHT_TYPE_SIZE * settingIndex + 8,
-      highlightParameter);
+  apex_mem.Write<typeof(highlight_parameter)>(
+      highlight_settings_ptr + HIGHLIGHT_TYPE_SIZE * setting_index + 8,
+      highlight_parameter);
   apex_mem.Write(g_Base + 0x270, 1);
   apex_mem.Write(ptr + 0x270, 1);
-  // printf("%f\n", deltaTime2);
 }
 void Entity::disableGlow() {
 

@@ -186,8 +186,8 @@ typedef struct {
   float skynade_dist;
   float smooth;
   float skynade_smooth;
-  uint8_t inside_value;
-  uint8_t outline_size;
+  uint8_t player_glow_inside_value;
+  uint8_t player_glow_outline_size;
   float glow_r_not;
   float glow_g_not;
   float glow_b_not;

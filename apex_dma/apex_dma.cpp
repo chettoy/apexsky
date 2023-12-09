@@ -134,13 +134,13 @@ float lastvis_esp[toRead];
 float lastvis_aim[toRead];
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
-int glowtype3;
-int settingIndex;
-int contextId;
-std::array<float, 3> highlightParameter;
+
 // works
 void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index) {
   const auto g_settings = global_settings();
+  int context_id = 0;
+  int setting_index = 0;
+  std::array<float, 3> highlight_parameter = {0, 0, 0};
 
   if (!Target.isGlowing() ||
       (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
@@ -148,32 +148,32 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index) {
     if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
       if (!(g_settings.firing_range) &&
           (Target.isKnocked() || !Target.isAlive())) {
-        contextId = 5;
-        settingIndex = 80;
-        highlightParameter = {g_settings.glow_r_knocked,
-                              g_settings.glow_g_knocked,
-                              g_settings.glow_b_knocked};
+        context_id = 5;
+        setting_index = 80;
+        highlight_parameter = {g_settings.glow_r_knocked,
+                               g_settings.glow_g_knocked,
+                               g_settings.glow_b_knocked};
       } else if (Target.lastVisTime() > lastvis_aim[index] ||
                  (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f)) {
-        contextId = 6;
-        settingIndex = 81;
-        highlightParameter = {g_settings.glow_r_viz, g_settings.glow_g_viz,
-                              g_settings.glow_b_viz};
+        context_id = 6;
+        setting_index = 81;
+        highlight_parameter = {g_settings.glow_r_viz, g_settings.glow_g_viz,
+                               g_settings.glow_b_viz};
       } else {
-        contextId = 7;
-        settingIndex = 82;
+        context_id = 7;
+        setting_index = 82;
         if (g_settings.player_glow_armor_color) {
           int shield = Target.getShield();
           if (shield <= 50) { // white
-            highlightParameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
+            highlight_parameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
           } else if (shield <= 75) { // blue
-            highlightParameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
+            highlight_parameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
           } else if (shield <= 100) { // purple
-            highlightParameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
+            highlight_parameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
           } else if (shield <= 125) { // red
-            highlightParameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
+            highlight_parameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
           } else {
-            highlightParameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
+            highlight_parameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
           }
           //   switch (shield_level) {
           //   case 1: // white
@@ -195,15 +195,16 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index) {
           //     highlightParameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
           //   }
         } else {
-          highlightParameter = {g_settings.glow_r_not, g_settings.glow_g_not,
-                                g_settings.glow_b_not};
+          highlight_parameter = {g_settings.glow_r_not, g_settings.glow_g_not,
+                                 g_settings.glow_b_not};
         }
       }
       if (g_settings.player_glow) {
-        Target.enableGlow(g_settings.inside_value, g_settings.outline_size);
+        Target.enableGlow(
+            context_id, setting_index, g_settings.player_glow_inside_value,
+            g_settings.player_glow_outline_size, highlight_parameter);
       } else {
-        highlightParameter = {0, 0, 0};
-        Target.enableGlow(0, 0);
+        Target.enableGlow(context_id, setting_index, 0, 0, highlight_parameter);
       }
     }
   }
@@ -228,12 +229,6 @@ uint64_t PlayerLocal;
 int PlayerLocalTeamID;
 int EntTeam;
 int LocTeam;
-
-using Clock = std::chrono::steady_clock;
-std::chrono::time_point<std::chrono::steady_clock> start1, now1;
-std::chrono::milliseconds duration1;
-
-void loop() { start1 = Clock::now(); }
 
 std::chrono::steady_clock::time_point tduckStartTime;
 bool mapRadarTestingEnabled = true;
@@ -526,10 +521,6 @@ void ClientActions() {
         }
       }
 
-      now1 = Clock::now();
-      duration1 =
-          std::chrono::duration_cast<std::chrono::milliseconds>(now1 - start1);
-
       // Toggle crouch = check for ring
       if (g_settings.map_radar_testing && attackState == 0 &&
           isPressed(99)) { // KEY_F8
@@ -797,7 +788,8 @@ void DoActions() {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-player players[toRead];
+// player players[toRead];
+std::vector<player> players(toRead);
 Matrix view_matrix_data = {};
 
 // ESP loop.. this helps right?
@@ -842,7 +834,8 @@ static void EspLoop() {
 
         uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
 
-        memset(players, 0, sizeof(players));
+        //memset(players, 0, sizeof(players));
+        players.clear();
 
         if (g_settings.firing_range) {
           int c = 0;

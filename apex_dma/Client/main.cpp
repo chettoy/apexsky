@@ -2,11 +2,13 @@
 #include "../Game.h"
 #include "imgui.h"
 #include "overlay.h"
+#include <cstddef>
 #include <cstdio>
 #include <map>
 #include <random>
 #include <string>
 #include <thread>
+#include <vector>
 typedef Vector D3DXVECTOR3;
 
 typedef uint8_t *PBYTE;
@@ -51,7 +53,8 @@ extern bool lock;
 
 extern bool overlay_t;
 
-extern player players[100];
+//extern player players[100];
+extern std::vector<player> players;
 extern Matrix view_matrix_data;
 extern Vector local_pos;
 
@@ -488,7 +491,8 @@ void Overlay::RenderEsp() {
   const auto g_settings = global_settings();
   if (g_Base != 0 && g_settings.esp) {
 
-    memset(players, 0, sizeof(players));
+    // memset(players, 0, sizeof(players));
+    players.clear();
 
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2((float)getWidth(), (float)getHeight()));
@@ -523,7 +527,7 @@ void Overlay::RenderEsp() {
       WorldToScreen(local_pos, view_matrix_data.matrix, getWidth(), getHeight(),
                     bs_local);
       if (!(bs_local.x == 0 && bs_local.y == 0)) {
-        for (int i = 0; i < treasure_clues.size(); i++) {
+        for (size_t i = 0; i < treasure_clues.size(); i++) {
           TreasureClue clue = treasure_clues[i];
           if (clue.position == Vector(0, 0, 0))
             continue;

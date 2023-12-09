@@ -519,7 +519,7 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
             |_| {
                 let settings = &mut G_STATE.lock().unwrap().settings;
                 settings.player_filled_toggle = !settings.player_filled_toggle;
-                settings.inside_value = if settings.player_filled_toggle { 14 } else { 0 };
+                settings.player_glow_inside_value = if settings.player_filled_toggle { 14 } else { 0 };
                 None
             },
         )
@@ -529,10 +529,10 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
             |val| {
                 if let Some(new_val) = val.parse::<u8>().ok() {
                     let settings = &mut G_STATE.lock().unwrap().settings;
-                    settings.outline_size = new_val; //[0, 255]
+                    settings.player_glow_outline_size = new_val; //[0, 255]
                     return Some(format!(
                         "Player Outline updated to: {}",
-                        settings.outline_size
+                        settings.player_glow_outline_size
                     ));
                 }
                 Some("Invalid value. 'outlinesize' value must be between 0 and 255.".to_string())
