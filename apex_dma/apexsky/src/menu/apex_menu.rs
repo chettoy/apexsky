@@ -840,23 +840,26 @@ fn build_glow_color_menu(
     settings: config::Config,
 ) -> MenuState<'static> {
     fn parse_rgb(val: &String) -> Result<(f32, f32, f32), String> {
+        let i18n_bundle = get_fluent_bundle();
         let val: Vec<&str> = val.split(" ").collect();
         if val.len() != 3 {
-            return Err(format!("Expecting 3 values but getting {}!", val.len()));
+            let mut args = FluentArgs::new();
+            args.set("getting", val.len());
+            return Err(i18n_msg_format!(i18n_bundle, InfoExpectingValueCount, args).to_string());
         }
         let r = val[0].parse::<f32>().ok();
         let g = val[1].parse::<f32>().ok();
         let b = val[2].parse::<f32>().ok();
         if r.is_none() || g.is_none() || b.is_none() {
-            return Err(format!("This input cannot be parsed as values!"));
+            return Err(i18n_msg!(i18n_bundle, InfoCannotParseInputValues).to_string());
         }
         let (r, g, b) = (r.unwrap(), g.unwrap(), b.unwrap());
         if r < 0.0 || r > 1.0 || g < 0.0 || g > 1.0 || b < 0.0 || b > 1.0 {
-            return Err(format!("Values out of range!"));
+            return Err(i18n_msg!(i18n_bundle, InfoValuesOutOfRange).to_string());
         }
         Ok((r, g, b))
     }
-    fn menu_item_rgb(label: &str, (r, g, b): (f32, f32, f32)) -> ListItem {
+    fn menu_item_rgb(label: String, (r, g, b): (f32, f32, f32)) -> ListItem<'static> {
         ListItem::new(Line::from(vec![
             format_label(label),
             Span::styled(
@@ -871,29 +874,49 @@ fn build_glow_color_menu(
             ),
         ]))
     }
-    fn prompt_text_rgb(label: &str) -> String {
-        format!(
-            "Enter RGB values for \"{}\":
-    (0-1 for each channel)
-    e.g. 
-    1 0 0
-    0.5 0.5 0.5",
-            label
-        )
+    macro_rules! prompt_text_rgb {
+        ( $i18n_bundle:expr, $label_id:ident ) => {{
+            let label = i18n_msg!($i18n_bundle, $label_id);
+            let mut args = FluentArgs::new();
+            args.set("item_label", label);
+            i18n_msg_format!($i18n_bundle, InputPromptColorRgb, args).to_string()
+        }};
+    }
+    macro_rules! color_item_label {
+        ( $i18n_bundle:expr, $label_id:ident ) => {{
+            let label = i18n_msg!($i18n_bundle, $label_id);
+            let mut args = FluentArgs::new();
+            args.set("item_label", label);
+            i18n_msg_format!($i18n_bundle, MenuItemGlowColors, args).to_string()
+        }};
+    }
+    macro_rules! text_color_updated {
+        ( $i18n_bundle:expr, $label_id:ident, $r:expr, $g:expr, $b:expr ) => {{
+            let label = i18n_msg!($i18n_bundle, $label_id);
+            let mut args = FluentArgs::new();
+            args.set("item_label", label);
+            args.set("r", $r);
+            args.set("g", $g);
+            args.set("b", $b);
+            i18n_msg_format!($i18n_bundle, InfoGlowColorsUpdated, args).to_string()
+        }};
     }
 
     MenuBuilder::new()
-        .title("Glow Color Menu")
+        .title(i18n_msg!(i18n_bundle, GlowColorMenuTitle))
         .add_input_item(
             menu_item_rgb(
-                "1 - Glow Colors (Not Visible Target)",
+                format!(
+                    "1 - {}",
+                    color_item_label!(i18n_bundle, ColorItemNotVizTarget)
+                ),
                 (
                     settings.glow_r_not,
                     settings.glow_g_not,
                     settings.glow_b_not,
                 ),
             ),
-            &prompt_text_rgb("Not Visible Target"),
+            &prompt_text_rgb!(i18n_bundle, ColorItemNotVizTarget),
             |val| match parse_rgb(&val) {
                 Ok((r, g, b)) => {
                     let settings = &mut G_STATE.lock().unwrap().settings;
@@ -902,9 +925,13 @@ fn build_glow_color_menu(
                         settings.glow_g_not,
                         settings.glow_b_not,
                     ) = (r, g, b);
-                    Some(format!(
-                        "Glow Colors \"Not Visible Target\" updated (R: {}, G: {}, B: {}).",
-                        settings.glow_r_not, settings.glow_g_not, settings.glow_b_not
+                    let i18n_bundle = get_fluent_bundle();
+                    Some(text_color_updated!(
+                        i18n_bundle,
+                        ColorItemNotVizTarget,
+                        settings.glow_r_not,
+                        settings.glow_g_not,
+                        settings.glow_b_not
                     ))
                 }
                 Err(e) => Some(e),
@@ -912,14 +939,14 @@ fn build_glow_color_menu(
         )
         .add_input_item(
             menu_item_rgb(
-                "2 - Glow Colors (Visible Target)",
+                format!("2 - {}", color_item_label!(i18n_bundle, ColorItemVizTarget)),
                 (
                     settings.glow_r_viz,
                     settings.glow_g_viz,
                     settings.glow_b_viz,
                 ),
             ),
-            &prompt_text_rgb("Visible Target"),
+            &prompt_text_rgb!(i18n_bundle, ColorItemVizTarget),
             |val| match parse_rgb(&val) {
                 Ok((r, g, b)) => {
                     let settings = &mut G_STATE.lock().unwrap().settings;
@@ -928,9 +955,13 @@ fn build_glow_color_menu(
                         settings.glow_g_viz,
                         settings.glow_b_viz,
                     ) = (r, g, b);
-                    Some(format!(
-                        "Glow Colors \"Visible Target\" updated (R: {}, G: {}, B: {}).",
-                        settings.glow_r_viz, settings.glow_g_viz, settings.glow_b_viz
+                    let i18n_bundle = get_fluent_bundle();
+                    Some(text_color_updated!(
+                        i18n_bundle,
+                        ColorItemVizTarget,
+                        settings.glow_r_viz,
+                        settings.glow_g_viz,
+                        settings.glow_b_viz
                     ))
                 }
                 Err(e) => Some(e),
@@ -938,14 +969,17 @@ fn build_glow_color_menu(
         )
         .add_input_item(
             menu_item_rgb(
-                "3 - Glow Colors (Knocked Target)",
+                format!(
+                    "3 - {}",
+                    color_item_label!(i18n_bundle, ColorItemKnockedTarget)
+                ),
                 (
                     settings.glow_r_knocked,
                     settings.glow_g_knocked,
                     settings.glow_b_knocked,
                 ),
             ),
-            &prompt_text_rgb("Knocked Target"),
+            &prompt_text_rgb!(i18n_bundle, ColorItemKnockedTarget),
             |val| match parse_rgb(&val) {
                 Ok((r, g, b)) => {
                     let settings = &mut G_STATE.lock().unwrap().settings;
@@ -954,9 +988,13 @@ fn build_glow_color_menu(
                         settings.glow_g_knocked,
                         settings.glow_b_knocked,
                     ) = (r, g, b);
-                    Some(format!(
-                        "Glow Colors \"Knocked Target\" updated (R: {}, G: {}, B: {}).",
-                        settings.glow_r_knocked, settings.glow_g_knocked, settings.glow_b_knocked
+                    let i18n_bundle = get_fluent_bundle();
+                    Some(text_color_updated!(
+                        i18n_bundle,
+                        ColorItemKnockedTarget,
+                        settings.glow_r_knocked,
+                        settings.glow_g_knocked,
+                        settings.glow_b_knocked
                     ))
                 }
                 Err(e) => Some(e),
@@ -964,7 +1002,10 @@ fn build_glow_color_menu(
         )
         .add_dummy_item()
         .add_item(
-            item_text("4 - Back to Main Menu"),
+            item_text(format!(
+                "4 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -977,69 +1018,93 @@ fn build_hotkey_menu(
     i18n_bundle: FluentBundle<FluentResource>,
     settings: config::Config,
 ) -> MenuState<'static> {
-    fn menu_item_keycode(label: &str, value: i32) -> ListItem {
+    fn menu_item_keycode(label: String, value: i32) -> ListItem<'static> {
         ListItem::new(Line::from(vec![
             format_label(label),
             Span::styled(format!("{}", value), Style::default().white().underlined()),
         ]))
     }
-    fn prompt_text_keycode(label: &str) -> String {
-        format!(
-            "Enter a new value for \"{}\":
-     (e.g., 108 for Left mouse button)",
-            label
-        )
+    macro_rules! prompt_text_keycode {
+        ( $i18n_bundle:expr, $label_id:ident ) => {{
+            let label = i18n_msg!($i18n_bundle, $label_id);
+            let mut args = FluentArgs::new();
+            args.set("item_label", label);
+            i18n_msg_format!($i18n_bundle, InputPromptKeycode, args).to_string()
+        }};
+    }
+    macro_rules! text_invalid_keycode {
+        ( $i18n_bundle:expr, $label_id:ident ) => {{
+            let label = i18n_msg!($i18n_bundle, $label_id);
+            let mut args = FluentArgs::new();
+            args.set("item_label", label);
+            i18n_msg_format!($i18n_bundle, InfoInvalidKeycode, args).to_string()
+        }};
     }
 
     MenuBuilder::new()
-        .title("Hotkey Menu")
+        .title(i18n_msg!(i18n_bundle, HotkeyMenuTitle))
         .add_input_item(
-            menu_item_keycode("1 - Aimbot Hot Key 1", settings.aimbot_hot_key_1),
-            &prompt_text_keycode("AimbotHotKey1"),
+            menu_item_keycode(
+                format!("1 - {}", i18n_msg!(i18n_bundle, HotkeyItemAimbot1)),
+                settings.aimbot_hot_key_1,
+            ),
+            &prompt_text_keycode!(i18n_bundle, HotkeyItemAimbot1),
             |val| {
                 if let Some(keycode) = val.parse::<u8>().ok() {
                     let settings = &mut G_STATE.lock().unwrap().settings;
                     settings.aimbot_hot_key_1 = keycode as i32;
                     return None;
                 }
-                Some("Invalid value. 'AimbotHotKey1' value must be between 0 and 255.".to_string())
+                let i18n_bundle = get_fluent_bundle();
+                Some(text_invalid_keycode!(i18n_bundle, HotkeyItemAimbot1))
             },
         )
         .add_input_item(
-            menu_item_keycode("2 - Aimbot Hot Key 2", settings.aimbot_hot_key_2),
-            &prompt_text_keycode("AimbotHotKey2"),
+            menu_item_keycode(
+                format!("2 - {}", i18n_msg!(i18n_bundle, HotkeyItemAimbot2)),
+                settings.aimbot_hot_key_2,
+            ),
+            &prompt_text_keycode!(i18n_bundle, HotkeyItemAimbot2),
             |val| {
                 if let Some(keycode) = val.parse::<u8>().ok() {
                     let settings = &mut G_STATE.lock().unwrap().settings;
                     settings.aimbot_hot_key_2 = keycode as i32;
                     return None;
                 }
-                Some("Invalid value. 'AimbotHotKey2' value must be between 0 and 255.".to_string())
+                let i18n_bundle = get_fluent_bundle();
+                Some(text_invalid_keycode!(i18n_bundle, HotkeyItemAimbot2))
             },
         )
         .add_input_item(
-            menu_item_keycode("3 - Trigger Bot Hot Key", settings.trigger_bot_hot_key),
-            &prompt_text_keycode("TriggerBotHotKey"),
+            menu_item_keycode(
+                format!("3 - {}", i18n_msg!(i18n_bundle, HotkeyItemTriggerBot)),
+                settings.trigger_bot_hot_key,
+            ),
+            &prompt_text_keycode!(i18n_bundle, HotkeyItemTriggerBot),
             |val| {
                 if let Some(keycode) = val.parse::<u8>().ok() {
                     let settings = &mut G_STATE.lock().unwrap().settings;
                     settings.trigger_bot_hot_key = keycode as i32;
                     return None;
                 }
-                Some(
-                    "Invalid value. 'TriggerBotHotKey' value must be between 0 and 255."
-                        .to_string(),
-                )
+                let i18n_bundle = get_fluent_bundle();
+                Some(text_invalid_keycode!(i18n_bundle, HotkeyItemTriggerBot))
             },
         )
         .add_dummy_item()
-        .add_item(item_text("4 - Key Codes"), |handler: &mut TerminalMenu| {
-            handler.nav_menu(MenuLevel::KeyCodesMenu);
-            None
-        })
+        .add_item(
+            item_text(format!("4 - {}", i18n_msg!(i18n_bundle, MenuItemKeyCodes))),
+            |handler: &mut TerminalMenu| {
+                handler.nav_menu(MenuLevel::KeyCodesMenu);
+                None
+            },
+        )
         .add_dummy_item()
         .add_item(
-            item_text("5 - Back to Main Menu"),
+            item_text(format!(
+                "5 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1050,10 +1115,10 @@ fn build_hotkey_menu(
 
 fn build_item_filter_menu(
     i18n_bundle: FluentBundle<FluentResource>,
-    settings: config::Config,
+    _settings: config::Config,
 ) -> MenuState<'static> {
     MenuBuilder::new()
-        .title("Item Filter Menu")
+        .title(i18n_msg!(i18n_bundle, ItemFilterMenuTitle))
         .add_item(
             item_text("1 - Light weapons"),
             |handle: &mut TerminalMenu| {
@@ -1103,7 +1168,10 @@ fn build_item_filter_menu(
             None
         })
         .add_item(
-            item_text("10 - Back to Main Menu"),
+            item_text(format!(
+                "10 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1304,7 +1372,10 @@ fn build_light_weapons_menu(
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("28 - Back to Settings Menu"),
+            item_text(format!(
+                "28 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1519,7 +1590,10 @@ fn build_heavy_weapons_menu(
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("27 - Back to Settings Menu"),
+            item_text(format!(
+                "27 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1724,7 +1798,10 @@ fn build_energy_weapons_menu(
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("27 - Back to Settings Menu"),
+            item_text(format!(
+                "27 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1901,7 +1978,10 @@ fn build_sniper_weapons_menu(
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("22 - Back to Settings Menu"),
+            item_text(format!(
+                "22 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -2029,7 +2109,10 @@ fn build_armors_menu(
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("14 - Back to Settings Menu"),
+            item_text(format!(
+                "14 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -2100,7 +2183,10 @@ fn build_healing_menu(
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("7 - Back to Settings Menu"),
+            item_text(format!(
+                "7 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -2150,7 +2236,10 @@ fn build_nades_menu(
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("4 - Back to Settings Menu"),
+            item_text(format!(
+                "4 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -2207,7 +2296,10 @@ fn build_backpacks_menu(
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("5 - Back to Settings Menu"),
+            item_text(format!(
+                "5 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -2306,7 +2398,10 @@ fn build_scopes_menu(
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("11 - Back to Settings Menu"),
+            item_text(format!(
+                "11 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -2420,7 +2515,7 @@ fn build_key_codes_menu(
         )
         .add_dummy_item()
         .add_item(
-            item_text("Back to Main Menu"),
+            item_text(i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
