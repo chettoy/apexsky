@@ -267,11 +267,10 @@ pub fn alert(model: &mut Model, dialog_text: String) {
 
 fn editing_render(f: &mut Frame, key_input: &String, value_input: &String) {
     let popup_block = Block::default()
-        .title("Enter a new value")
         .borders(Borders::NONE)
         .style(Style::default().bg(Color::DarkGray));
 
-    let area = centered_rect(60, 25, f.size());
+    let area = centered_rect(60, 35, f.size());
     f.render_widget(popup_block, area);
     // ANCHOR_END: editing_popup
 
