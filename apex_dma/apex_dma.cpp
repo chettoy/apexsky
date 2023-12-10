@@ -834,7 +834,7 @@ static void EspLoop() {
 
         uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
 
-        //memset(players, 0, sizeof(players));
+        // memset(players, 0, sizeof(players));
         players.clear();
 
         if (g_settings.firing_range) {
@@ -1119,10 +1119,13 @@ static void item_glow_t() {
   item_t = true;
   while (item_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    const auto g_settings = global_settings();
-    while (g_Base != 0 && g_settings.item_glow) {
+    while (g_Base != 0) {
       std::this_thread::sleep_for(std::chrono::milliseconds(60));
       const auto g_settings = global_settings();
+      if (!g_settings.item_glow) {
+        break;
+      }
+
       uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
       // item ENTs to loop, 10k-15k is normal. 10k might be better but will
       // not show all the death boxes i think.
