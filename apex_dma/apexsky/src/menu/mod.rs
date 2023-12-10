@@ -270,7 +270,19 @@ fn editing_render(f: &mut Frame, key_input: &String, value_input: &String) {
         .borders(Borders::NONE)
         .style(Style::default().bg(Color::DarkGray));
 
-    let area = centered_rect(60, 35, f.size());
+    let frame_size = f.size();
+    let graph_width = frame_size.width as f32 / 2.0;
+    let graph_height = frame_size.height as f32;
+    let ratio = if graph_width > graph_height {
+        graph_height / graph_width
+    } else {
+        graph_width / graph_height
+    };
+    let area = centered_rect(
+        (100.0 * ratio).round() as u16,
+        (100.0 * ratio / 1.618 * graph_width / graph_height).round() as u16,
+        frame_size,
+    );
     f.render_widget(popup_block, area);
     // ANCHOR_END: editing_popup
 
@@ -299,7 +311,19 @@ fn dialog_render(f: &mut Frame, dialog_text: &String) {
         .borders(Borders::NONE)
         .style(Style::default().bg(Color::White));
 
-    let area = centered_rect(60, 25, f.size());
+    let frame_size = f.size();
+    let graph_width = frame_size.width as f32 / 2.0;
+    let graph_height = frame_size.height as f32;
+    let ratio = if graph_width > graph_height {
+        graph_height / graph_width
+    } else {
+        graph_width / graph_height
+    };
+    let area = centered_rect(
+        (80.0 * ratio).round() as u16,
+        (80.0 * ratio / 1.618 * graph_width / graph_height).round() as u16,
+        frame_size,
+    );
     f.render_widget(popup_block, area);
     let text_block = Block::default().borders(Borders::ALL);
 
