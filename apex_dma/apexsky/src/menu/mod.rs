@@ -11,7 +11,7 @@ use self::apex_menu::TerminalMenu;
 
 // ANCHOR: model
 #[derive(Debug)]
-pub(super) struct Model {
+pub struct Model {
     counter: i32,
     running_state: RunningState,
     key_input: String,

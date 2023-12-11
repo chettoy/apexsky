@@ -105,15 +105,17 @@ pub enum MessageId {
     LightWeaponsSection,
     WeaponP2020,
     WeaponRe45,
+    WeaponAlternator,
     WeaponR99,
     WeaponR301,
     WeaponM600,
     WeaponG7Scout,
-    LightAmmo,
+    LootLightAmmo,
     LightWeaponMagsSection,
     LootLightWeaponMag,
     WeaponStocksSection,
-    LootWeaponStock,
+    LootStandardStock,
+    LootSniperStock,
     WeaponSuppressorsSection,
     LootWeaponSuppressors,
     WeaponLasersSection,
@@ -141,7 +143,7 @@ pub enum MessageId {
     WeaponNemesis,
     WeaponHavoc,
     WeaponDeovtion,
-    WeaponTrippleTake,
+    WeaponTripleTake,
     WeaponVolt,
     LootEnergyAmmo,
     EnergyWeaponMagsSection,
@@ -158,7 +160,8 @@ pub enum MessageId {
     LootSniperWeaponMag,
     ArmorsMenuTitle,
     ArmorsSection,
-    LootArmor,
+    LootBodyShield,
+    LootEvoShield,
     HelmetsSection,
     LootHelmet,
     KnockdownShieldsSection,
@@ -190,7 +193,7 @@ pub enum MessageId {
     Loot1x2xHolo,
     LootOpticThreat,
     Loot3xHcog,
-    Loot2x4xHcog,
+    Loot2x4xAog,
     Loot6xSniperOptic,
     Loot4x8xSniperOptic,
     LootSniperThreat,
@@ -201,6 +204,13 @@ pub enum MessageId {
     Keycode111Mouse4Side,
     Keycode112Mouse5Side,
     MenuItemBackToHotkeyMenu,
+    MenuValuePrefix,
+    MenuValueSuffix,
+    LootLevel1Name,
+    LootLevel2Name,
+    LootLevel3Name,
+    LootLevel4Name,
+    LootLevel5Name,
 }
 
 pub fn get_fluent_bundle() -> FluentBundle<FluentResource> {
@@ -210,6 +220,10 @@ pub fn get_fluent_bundle() -> FluentBundle<FluentResource> {
 
 fn get_bundle<'a>(accept_locale: &'a str) -> FluentBundle<FluentResource> {
     let (locale, ftl_string) = match accept_locale {
+        "zh-TW" => (
+            "zh-TW",
+            include_str!("../resource/i18n/zh-TW.ftl").to_owned(),
+        ),
         "zh-CN" => (
             "zh-CN",
             include_str!("../resource/i18n/zh-CN.ftl").to_owned(),

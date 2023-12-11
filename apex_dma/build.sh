@@ -6,6 +6,8 @@ set -x
 # Exit immediately when a command fails
 set -eo pipefail
  
+cargo --version
+
 cd apexsky
 cargo build --release
 cd ..
