@@ -160,41 +160,52 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index) {
         highlight_parameter = {g_settings.glow_r_viz, g_settings.glow_g_viz,
                                g_settings.glow_b_viz};
       } else {
-        context_id = 7;
-        setting_index = 82;
         if (g_settings.player_glow_armor_color) {
           int shield = Target.getShield();
           if (shield <= 50) { // white
+            setting_index = 91;
             highlight_parameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
           } else if (shield <= 75) { // blue
+            setting_index = 92;
             highlight_parameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
           } else if (shield <= 100) { // purple
+            setting_index = 93;
             highlight_parameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
           } else if (shield <= 125) { // red
+            setting_index = 95;
             highlight_parameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
           } else {
+            setting_index = 90;
             highlight_parameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
           }
           //   switch (shield_level) {
           //   case 1: // white
+          //     setting_index = 91;
           //     highlightParameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
           //     break;
           //   case 2: // blue
+          //     setting_index = 92;
           //     highlightParameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
           //     break;
           //   case 3: // purple
+          //     setting_index = 93;
           //     highlightParameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
           //     break;
           //   case 4: // gold
+          //     setting_index = 94;
           //     highlightParameter = {255 / 255.0, 255 / 255.0, 79 / 255.0};
           //     break;
           //   case 5: // red
+          //     setting_index = 95;
           //     highlightParameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
           //     break;
           //   default:
+          //     setting_index = 90;
           //     highlightParameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
           //   }
         } else {
+          context_id = 7;
+          setting_index = 82;
           highlight_parameter = {g_settings.glow_r_not, g_settings.glow_g_not,
                                  g_settings.glow_b_not};
         }
