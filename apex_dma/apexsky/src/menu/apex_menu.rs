@@ -1,5 +1,6 @@
 use super::{alert, prompt};
-use crate::{config, global_state::G_STATE};
+use crate::{config, global_state::G_STATE, i18n::get_fluent_bundle, i18n_msg, i18n_msg_format};
+use fluent::{FluentArgs, FluentBundle, FluentResource};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Style, Stylize},
@@ -7,7 +8,8 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use std::{collections::HashMap, fmt::Debug};
+use std::{borrow::Cow, collections::HashMap, fmt::Debug};
+use unicode_width::UnicodeWidthStr;
 
 pub struct TerminalMenu<'a> {
     app_model: super::Model,
@@ -18,7 +20,7 @@ pub struct TerminalMenu<'a> {
 
 #[derive(Clone)]
 struct MenuState<'a> {
-    title: &'a str,
+    title: Cow<'a, str>,
     items: Vec<ListItem<'a>>,
     handler: HashMap<usize, Box<fn(&mut TerminalMenu<'_>) -> Option<String>>>,
     input_handlers: HashMap<usize, (String, Box<fn(String) -> Option<String>>)>,
@@ -33,7 +35,10 @@ impl<'a> Debug for MenuState<'a> {
             .field("title", &self.title)
             .field("items", &self.items)
             .field("handler", &self.handler.keys())
+            .field("input_handlers", &self.input_handlers.keys())
+            .field("num_ids", &self.num_ids)
             .field("nav_index", &self.nav_index)
+            .field("scroll_top", &self.scroll_top)
             .finish()
     }
 }
@@ -69,7 +74,7 @@ impl<'a> TerminalMenu<'a> {
         instance
     }
 
-    pub fn app_model(&self) -> &super::Model {
+    pub(crate) fn app_model(&self) -> &super::Model {
         &self.app_model
     }
 
@@ -167,21 +172,22 @@ impl<'a> TerminalMenu<'a> {
         self.menu_level.push(menu_level);
 
         let data = G_STATE.lock().unwrap().settings.to_owned();
+        let i18n_bundle = get_fluent_bundle();
         let mut new_menu_state = match self.get_menu_level() {
-            MenuLevel::MainMenu => build_main_menu(&data),
-            MenuLevel::GlowColorMenu => build_glow_color_menu(&data),
-            MenuLevel::ItemFilterMenu => build_item_filter_menu(&data),
-            MenuLevel::LightWeaponsMenu => build_light_weapons_menu(&data),
-            MenuLevel::HeavyWeaponsMenu => build_heavy_weapons_menu(&data),
-            MenuLevel::EnergyWeaponsMenu => build_energy_weapons_menu(&data),
-            MenuLevel::SniperWeaponsMenu => build_sniper_weapons_menu(&data),
-            MenuLevel::ArmorsMenu => build_armors_menu(&data),
-            MenuLevel::HealingMenu => build_healing_menu(&data),
-            MenuLevel::NadesMenu => build_nades_menu(&data),
-            MenuLevel::BackpacksMenu => build_backpacks_menu(&data),
-            MenuLevel::ScopesMenu => build_scopes_menu(&data),
-            MenuLevel::KeyCodesMenu => build_key_codes_menu(&data),
-            MenuLevel::HotkeyMenu => build_hotkey_menu(&data),
+            MenuLevel::MainMenu => build_main_menu(i18n_bundle, data),
+            MenuLevel::GlowColorMenu => build_glow_color_menu(i18n_bundle, data),
+            MenuLevel::ItemFilterMenu => build_item_filter_menu(i18n_bundle, data),
+            MenuLevel::LightWeaponsMenu => build_light_weapons_menu(i18n_bundle, data),
+            MenuLevel::HeavyWeaponsMenu => build_heavy_weapons_menu(i18n_bundle, data),
+            MenuLevel::EnergyWeaponsMenu => build_energy_weapons_menu(i18n_bundle, data),
+            MenuLevel::SniperWeaponsMenu => build_sniper_weapons_menu(i18n_bundle, data),
+            MenuLevel::ArmorsMenu => build_armors_menu(i18n_bundle, data),
+            MenuLevel::HealingMenu => build_healing_menu(i18n_bundle, data),
+            MenuLevel::NadesMenu => build_nades_menu(i18n_bundle, data),
+            MenuLevel::BackpacksMenu => build_backpacks_menu(i18n_bundle, data),
+            MenuLevel::ScopesMenu => build_scopes_menu(i18n_bundle, data),
+            MenuLevel::KeyCodesMenu => build_key_codes_menu(i18n_bundle, data),
+            MenuLevel::HotkeyMenu => build_hotkey_menu(i18n_bundle, data),
         };
         new_menu_state.nav_index = nav_index;
         self.menu_state = Some(new_menu_state);
@@ -209,7 +215,7 @@ impl<'a> TerminalMenu<'a> {
             ])
             .split(f.size());
 
-        f.render_widget(block_title(state.title), chunks[0]);
+        f.render_widget(block_title(state.title.to_owned()), chunks[0]);
         f.render_widget(
             render_selected_list(&state.items, state.nav_index, state.scroll_top),
             chunks[1],
@@ -219,7 +225,7 @@ impl<'a> TerminalMenu<'a> {
 
 #[derive(Debug)]
 pub struct MenuBuilder<'a> {
-    title: &'a str,
+    title: Cow<'a, str>,
     list_items: Vec<ListItem<'a>>,
     handlers: HashMap<usize, Box<fn(&mut TerminalMenu<'_>) -> Option<String>>>,
     input_handlers: HashMap<usize, (String, Box<fn(String) -> Option<String>>)>,
@@ -230,7 +236,7 @@ pub struct MenuBuilder<'a> {
 impl<'a> MenuBuilder<'a> {
     fn new() -> MenuBuilder<'a> {
         MenuBuilder {
-            title: "",
+            title: std::borrow::Cow::Borrowed(""),
             list_items: Vec::new(),
             handlers: HashMap::new(),
             input_handlers: HashMap::new(),
@@ -239,8 +245,11 @@ impl<'a> MenuBuilder<'a> {
         }
     }
 
-    fn title(mut self, value: &'a str) -> MenuBuilder {
-        self.title = value;
+    fn title<T>(mut self, value: T) -> MenuBuilder<'a>
+    where
+        T: Into<String>,
+    {
+        self.title = value.into().into();
         self
     }
 
@@ -308,7 +317,10 @@ impl<'a> MenuBuilder<'a> {
         self
     }
 
-    fn add_text_item(mut self, label: &'a str) -> MenuBuilder {
+    fn add_text_item<T>(mut self, label: T) -> MenuBuilder<'a>
+    where
+        T: Into<String>,
+    {
         self.list_items.push(item_text(label));
         self
     }
@@ -320,10 +332,10 @@ impl<'a> MenuBuilder<'a> {
 }
 
 macro_rules! add_toggle_item {
-    ( $builder:ident, $label:expr, $value:expr, $x:ident ) => {{
+    ( $builder:ident, $i18n_bundle:expr, $label:expr, $value:expr, $x:ident ) => {{
         MenuBuilder::add_item(
             $builder,
-            item_enabled($label, $value),
+            item_enabled($i18n_bundle, $label, $value),
             |_handle: &mut TerminalMenu| {
                 let settings = &mut G_STATE.lock().unwrap().settings;
                 settings.$x = !settings.$x;
@@ -342,7 +354,8 @@ enum LootLevel {
 }
 
 macro_rules! add_pick_item {
-    ( $builder:ident, $label:expr, $value:expr, $x:ident ) => {{
+    ( $builder:ident, $i18n_bundle:expr, $label_prefix:expr, $label_id:ident, $value:expr, $x:ident ) => {{
+        let label = i18n_msg!($i18n_bundle, $label_id);
         let (pick_color, pick_mark) = if $value {
             (Color::Green, "[x]")
         } else {
@@ -351,8 +364,9 @@ macro_rules! add_pick_item {
         MenuBuilder::add_item(
             $builder,
             ListItem::new(Line::from(vec![
-                Span::styled(format!("{} ", $label), Style::new().fg(pick_color)),
-                Span::styled(pick_mark, Style::new().white()),
+                Span::styled($label_prefix, Style::default().white()),
+                Span::styled(format!("{} ", label), Style::default().fg(pick_color)),
+                Span::styled(pick_mark, Style::default().white()),
             ])),
             |_handle: &mut TerminalMenu| {
                 let settings = &mut G_STATE.lock().unwrap().settings;
@@ -364,13 +378,14 @@ macro_rules! add_pick_item {
 }
 
 macro_rules! add_colored_loot_item {
-    ( $builder:ident, $label:expr, $loot_level:expr, $value:expr, $x:ident ) => {{
+    ( $builder:ident, $i18n_bundle:expr, $label_prefix:expr, $label_id:ident, $loot_level:expr, $value:expr, $x:ident ) => {{
+        let label = i18n_msg!($i18n_bundle, $label_id);
         let (color_label, color) = match $loot_level {
-            LootLevel::White => ("White", Color::White),
-            LootLevel::Blue => ("Blue", Color::Blue),
-            LootLevel::Purple => ("Purple", Color::Magenta),
-            LootLevel::Gold => ("Gold", Color::Yellow),
-            LootLevel::Red => ("Red", Color::Red),
+            LootLevel::White => (i18n_msg!($i18n_bundle, LootLevel1Name), Color::White),
+            LootLevel::Blue => (i18n_msg!($i18n_bundle, LootLevel2Name), Color::Blue),
+            LootLevel::Purple => (i18n_msg!($i18n_bundle, LootLevel3Name), Color::Magenta),
+            LootLevel::Gold => (i18n_msg!($i18n_bundle, LootLevel4Name), Color::Yellow),
+            LootLevel::Red => (i18n_msg!($i18n_bundle, LootLevel5Name), Color::Red),
         };
         let (pick_color, pick_mark) = if $value {
             (Color::Green, "[x]")
@@ -380,9 +395,10 @@ macro_rules! add_colored_loot_item {
         MenuBuilder::add_item(
             $builder,
             ListItem::new(Line::from(vec![
-                Span::styled(format!("{}: ", $label), Style::new().fg(pick_color)),
-                Span::styled(format!("{} ", color_label), Style::new().fg(color)),
-                Span::styled(pick_mark, Style::new().white()),
+                Span::styled($label_prefix, Style::default().white()),
+                Span::styled(format!("{}: ", label), Style::default().fg(pick_color)),
+                Span::styled(format!("{} ", color_label), Style::default().fg(color)),
+                Span::styled(pick_mark, Style::default().white()),
             ])),
             |_handle: &mut TerminalMenu| {
                 let settings = &mut G_STATE.lock().unwrap().settings;
@@ -407,34 +423,71 @@ impl<'a> Into<MenuState<'a>> for MenuBuilder<'a> {
     }
 }
 
-fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title("Main Menu");
+fn build_main_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
+    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, MainMenuTitle));
     menu = add_toggle_item!(
         menu,
-        " 1 - Firing Range",
+        &i18n_bundle,
+        format!(" 1 - {}", i18n_msg!(i18n_bundle, MenuItemFiringRange)),
         settings.firing_range,
         firing_range
     );
-    menu = add_toggle_item!(menu, " 2 - TDMToggle", settings.tdm_toggle, tdm_toggle);
+    menu = add_toggle_item!(
+        menu,
+        &i18n_bundle,
+        format!(" 2 - {}", i18n_msg!(i18n_bundle, MenuItemTdmToggle)),
+        settings.tdm_toggle,
+        tdm_toggle
+    );
     menu = menu
-        .add_item(item_enabled(" 3 - Keyboard", settings.keyboard), |_| {
-            let settings = &mut G_STATE.lock().unwrap().settings;
-            settings.keyboard = !settings.keyboard;
-            settings.gamepad = !settings.keyboard;
-            None
-        })
-        .add_item(item_enabled(" 4 - Gamepad", settings.gamepad), |_| {
-            let settings = &mut G_STATE.lock().unwrap().settings;
-            settings.gamepad = !settings.gamepad;
-            settings.keyboard = !settings.gamepad;
-            None
-        });
-    menu = add_toggle_item!(menu, " 5 - Item Glow", settings.item_glow, item_glow);
-    menu = add_toggle_item!(menu, " 6 - Player Glow", settings.player_glow, player_glow);
+        .add_item(
+            item_enabled(
+                &i18n_bundle,
+                format!(" 3 - {}", i18n_msg!(i18n_bundle, MenuItemKeyboard)),
+                settings.keyboard,
+            ),
+            |_| {
+                let settings = &mut G_STATE.lock().unwrap().settings;
+                settings.keyboard = !settings.keyboard;
+                settings.gamepad = !settings.keyboard;
+                None
+            },
+        )
+        .add_item(
+            item_enabled(
+                &i18n_bundle,
+                format!(" 4 - {}", i18n_msg!(i18n_bundle, MenuItemGamepad)),
+                settings.gamepad,
+            ),
+            |_| {
+                let settings = &mut G_STATE.lock().unwrap().settings;
+                settings.gamepad = !settings.gamepad;
+                settings.keyboard = !settings.gamepad;
+                None
+            },
+        );
+    menu = add_toggle_item!(
+        menu,
+        &i18n_bundle,
+        format!(" 5 - {}", i18n_msg!(i18n_bundle, MenuItemItemGlow)),
+        settings.item_glow,
+        item_glow
+    );
+    menu = add_toggle_item!(
+        menu,
+        &i18n_bundle,
+        format!(" 6 - {}", i18n_msg!(i18n_bundle, MenuItemPlayerGlow)),
+        settings.player_glow,
+        player_glow
+    );
     menu = menu
         .add_input_item(
             format_item(
-                " 7 - Smooth Value",
+                &i18n_bundle,
+                format!(" 7 - {}", i18n_msg!(i18n_bundle, MenuItemSmoothValue)),
                 Span::styled(
                     format!("{}", settings.smooth),
                     Style::default().fg(if settings.smooth < 90.0 {
@@ -446,7 +499,7 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
                     }),
                 ),
             ),
-            "New value for 'smooth' (50 to 500): ",
+            &i18n_msg!(i18n_bundle, InputPromptSmoothValue),
             |val| {
                 if let Some(new_val) = val.parse::<u16>().ok() {
                     if new_val >= 50 && new_val <= 500 {
@@ -456,37 +509,35 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
                         return None;
                     }
                 }
-                Some("Invalid value. 'smooth' value must be between 70 and 500.".to_string())
+                let i18n_bundle = get_fluent_bundle();
+                Some(i18n_msg!(i18n_bundle, InfoInvalidSmoothValue).to_string())
             },
         )
         .add_input_item(
             format_item(
-                " 8 - Change Bone Aim Value",
+                &i18n_bundle,
+                format!(" 8 - {}", i18n_msg!(i18n_bundle, MenuItemChangeBoneAim)),
                 Span::styled(
                     if settings.bone_auto {
-                        "Auto"
+                        i18n_msg!(i18n_bundle, MenuValueBoneAuto)
                     } else if settings.bone_nearest {
-                        "Nearest"
+                        i18n_msg!(i18n_bundle, MenuValueBoneNearest)
                     } else {
                         match settings.bone {
-                            0 => "Head",
-                            1 => "Neck",
-                            2 => "Chest",
-                            3 => "Gut Shut",
-                            _ => "Unknown",
+                            0 => i18n_msg!(i18n_bundle, MenuValueBoneHead),
+                            1 => i18n_msg!(i18n_bundle, MenuValueBoneNeck),
+                            2 => i18n_msg!(i18n_bundle, MenuValueBoneChest),
+                            3 => i18n_msg!(i18n_bundle, MenuValueBoneGutShut),
+                            _ => i18n_msg!(i18n_bundle, MenuValueBoneUnknown),
                         }
-                    },
+                    }
+                    .to_string(),
                     Style::new().white(),
                 ),
             ),
-            "New value for 'bone': 
-            x => Auto
-            0 => Head
-            1 => Neck
-            2 => Chest
-            3 => Gut Shut
-            ",
+            &i18n_msg!(i18n_bundle, InputPromptBoneValue),
             |val| {
+                let i18n_bundle = get_fluent_bundle();
                 if val.trim() == "x" {
                     let settings = &mut G_STATE.lock().unwrap().settings;
                     settings.bone_auto = true;
@@ -498,15 +549,17 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
                         settings.bone_auto = false;
                         return None;
                     }
-                    return Some(
-                        "Invalid value. 'bone' value must be between 0 and 3.".to_string(),
-                    );
+                    return Some(i18n_msg!(i18n_bundle, InfoInvalidBoneValue).to_string());
                 }
-                Some("Invalid value. ".to_string())
+                Some(i18n_msg!(i18n_bundle, InfoInvalidValue).to_string())
             },
         )
         .add_item(
-            item_enabled(" 9 - Loot Glow Filled", settings.loot_filled_toggle),
+            item_enabled(
+                &i18n_bundle,
+                format!(" 9 - {}", i18n_msg!(i18n_bundle, MenuItemLootGlowFilled)),
+                settings.loot_filled_toggle,
+            ),
             |_| {
                 let settings = &mut G_STATE.lock().unwrap().settings;
                 settings.loot_filled_toggle = !settings.loot_filled_toggle;
@@ -515,31 +568,44 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
             },
         )
         .add_item(
-            item_enabled("10 - Player Glow Filled", settings.player_filled_toggle),
+            item_enabled(
+                &i18n_bundle,
+                format!("10 - {}", i18n_msg!(i18n_bundle, MenuItemPlayerGlowFilled)),
+                settings.player_filled_toggle,
+            ),
             |_| {
                 let settings = &mut G_STATE.lock().unwrap().settings;
                 settings.player_filled_toggle = !settings.player_filled_toggle;
-                settings.player_glow_inside_value = if settings.player_filled_toggle { 14 } else { 0 };
+                settings.player_glow_inside_value =
+                    if settings.player_filled_toggle { 14 } else { 0 };
                 None
             },
         )
         .add_input_item(
-            item_text("11 - Player Outline Glow Setting Size"),
-            "Player Outlines (0 to 255): ",
+            item_text(format!(
+                "11 - {}",
+                i18n_msg!(i18n_bundle, MenuItemPlayerOutlineSize)
+            )),
+            &i18n_msg!(i18n_bundle, InputPromptPlayerOutlines),
             |val| {
+                let i18n_bundle = get_fluent_bundle();
                 if let Some(new_val) = val.parse::<u8>().ok() {
                     let settings = &mut G_STATE.lock().unwrap().settings;
                     settings.player_glow_outline_size = new_val; //[0, 255]
-                    return Some(format!(
-                        "Player Outline updated to: {}",
-                        settings.player_glow_outline_size
-                    ));
+                    return Some({
+                        let mut args = FluentArgs::new();
+                        args.set("value", settings.player_glow_outline_size);
+                        i18n_msg_format!(i18n_bundle, InfoPlayerOutlineUpdated, args).to_string()
+                    });
                 }
-                Some("Invalid value. 'outlinesize' value must be between 0 and 255.".to_string())
+                Some(i18n_msg!(i18n_bundle, InfoInvalidOutlineSize).to_string())
             },
         )
         .add_item(
-            item_text("12 - Update Glow Colors"),
+            item_text(format!(
+                "12 - {}",
+                i18n_msg!(i18n_bundle, MenuItemUpdateGlowColors)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::GlowColorMenu);
                 None
@@ -547,14 +613,14 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
         )
         .add_input_item(
             format_item(
-                "13 - Change ADS FOV",
+                &i18n_bundle,
+                format!("13 - {}", i18n_msg!(i18n_bundle, MenuItemChangeAdsFov)),
                 Span::styled(
                     format!("{}", settings.ads_fov),
                     Style::default().fg(Color::White),
                 ),
             ),
-            "New value for 'ADS FOV': 
-            (1 to 50)",
+            &i18n_msg!(i18n_bundle, InputPromptAdsFov),
             |val| {
                 if let Some(new_val) = val.parse::<f32>().ok() {
                     if new_val >= 1.0 && new_val <= 50.0 {
@@ -563,19 +629,20 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
                         return None;
                     }
                 }
-                Some("Invalid value. 'ADS FOV' value must be between 1.0 and 50.".to_string())
+                let i18n_bundle = get_fluent_bundle();
+                Some(i18n_msg!(i18n_bundle, InfoInvalidAdsFov).to_string())
             },
         )
         .add_input_item(
             format_item(
-                "14 - Change Non-ADS FOV",
+                &i18n_bundle,
+                format!("14 - {}", i18n_msg!(i18n_bundle, MenuItemChangeNonAdsFov)),
                 Span::styled(
                     format!("{}", settings.non_ads_fov),
                     Style::default().fg(Color::White),
                 ),
             ),
-            "New value for 'Non-ADS FOV': 
-            (1 to 50)",
+            &i18n_msg!(i18n_bundle, InputPromptNonAdsFov),
             |val| {
                 if let Some(new_val) = val.parse::<f32>().ok() {
                     if new_val >= 1.0 && new_val <= 50.0 {
@@ -584,25 +651,33 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
                         return None;
                     }
                 }
-                Some("Invalid value. 'Non-ADS FOV' value must be between 1.0 and 50.".to_string())
+                let i18n_bundle = get_fluent_bundle();
+                Some(i18n_msg!(i18n_bundle, InfoInvalidNonAdsFov).to_string())
             },
         );
     menu = add_toggle_item!(
         menu,
-        "15 - Super Glide",
+        &i18n_bundle,
+        format!("15 - {}", i18n_msg!(i18n_bundle, MenuItemSuperGlide)),
         settings.super_key_toggle,
         super_key_toggle
     );
     menu = menu
         .add_item(
-            item_text("16 - Item Filter Settings"),
+            item_text(format!(
+                "16 - {}",
+                i18n_msg!(i18n_bundle, MenuItemItemFilterSettings)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::ItemFilterMenu);
                 None
             },
         )
         .add_item(
-            item_text("17 - Hot Key Setting"),
+            item_text(format!(
+                "17 - {}",
+                i18n_msg!(i18n_bundle, MenuItemHotkeySettings)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::HotkeyMenu);
                 None
@@ -620,44 +695,67 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
                 if settings.settings.load_settings {
                     None
                 } else {
-                    Some("Hello World".to_string())
+                    let i18n_bundle = get_fluent_bundle();
+                    Some(i18n_msg!(i18n_bundle, HelloWorld).to_string())
                 }
             },
         );
     menu.next_id();
-    menu = add_toggle_item!(menu, "20 - Death Boxes", settings.deathbox, deathbox);
+    menu = add_toggle_item!(
+        menu,
+        &i18n_bundle,
+        format!("20 - {}", i18n_msg!(i18n_bundle, MenuItemDeathBoxes)),
+        settings.deathbox,
+        deathbox
+    );
     menu = menu
         .add_dummy_item()
-        .add_item(item_text("21 - Save Settings"), |_| {
-            Some(
-                if crate::save_settings() {
-                    "Saved"
-                } else {
-                    "Failed"
-                }
-                .to_string(),
-            )
-        })
-        .add_item(item_text("22 - Load Settings"), |_| {
-            let mut result = "Loaded".to_string();
-            let settings = crate::config::get_configuration().unwrap_or_else(|e| {
-                result = format!("{}", e);
-                result += "\nFallback to defalut configuration.";
-                crate::config::Config::default()
-            });
-            G_STATE.lock().unwrap().settings = settings;
-            Some(result)
-        })
+        .add_item(
+            item_text(format!(
+                "21 - {}",
+                i18n_msg!(i18n_bundle, MenuItemSaveSettings)
+            )),
+            |_| {
+                let i18n_bundle = get_fluent_bundle();
+                Some(
+                    if crate::save_settings() {
+                        i18n_msg!(i18n_bundle, InfoSaved)
+                    } else {
+                        i18n_msg!(i18n_bundle, InfoFailed)
+                    }
+                    .to_string(),
+                )
+            },
+        )
+        .add_item(
+            item_text(format!(
+                "22 - {}",
+                i18n_msg!(i18n_bundle, MenuItemLoadSettings)
+            )),
+            |_| {
+                let i18n_bundle = get_fluent_bundle();
+                let mut result = i18n_msg!(i18n_bundle, InfoLoaded).to_string();
+                let settings = crate::config::get_configuration().unwrap_or_else(|e| {
+                    let i18n_bundle = get_fluent_bundle();
+                    result = format!("{}\n{}", e, i18n_msg!(i18n_bundle, InfoFallbackConfig));
+                    crate::config::Config::default()
+                });
+                G_STATE.lock().unwrap().settings = settings;
+                Some(result)
+            },
+        )
         .add_dummy_item()
         .add_item(
             format_item(
-                "23 - Toggle NoNadeAim",
+                &i18n_bundle,
+                format!("23 - {}", i18n_msg!(i18n_bundle, MenuItemToggleNadeAim)),
                 Span::styled(
                     if settings.no_nade_aim {
-                        "No Nade Aim"
+                        i18n_msg!(i18n_bundle, MenuValueNoNadeAim)
                     } else {
-                        "Throwing aimbot on"
-                    },
+                        i18n_msg!(i18n_bundle, MenuValueNadeAimOn)
+                    }
+                    .to_string(),
                     Style::default().fg(Color::White),
                 ),
             ),
@@ -667,28 +765,34 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
                 None
             },
         );
-    menu = add_toggle_item!(menu, "24 - Toggle 1v1", settings.onevone, onevone);
     menu = add_toggle_item!(
         menu,
-        "25 - Toggle No Recoil",
+        &i18n_bundle,
+        format!("24 - {}", i18n_msg!(i18n_bundle, MenuItemToggleOnevone)),
+        settings.onevone,
+        onevone
+    );
+    menu = add_toggle_item!(
+        menu,
+        &i18n_bundle,
+        format!("25 - {}", i18n_msg!(i18n_bundle, MenuItemToggleNoRecoil)),
         settings.aim_no_recoil,
         aim_no_recoil
     );
     menu = menu.add_input_item(
         format_item(
-            "26 - Set Game FPS for Aim Prediction",
+            &i18n_bundle,
+            format!("26 - {}", i18n_msg!(i18n_bundle, MenuItemSetFpsPredict)),
             Span::styled(
                 if settings.calc_game_fps {
-                    format!("calc game fps")
+                    i18n_msg!(i18n_bundle, MenuValueCalcFps).to_string()
                 } else {
                     format!("{:.1}", settings.game_fps)
                 },
                 Style::default().fg(Color::White),
             ),
         ),
-        "New value for 'Game FPS for Aim Predict':
-        (0 to 500) 
-        0 => calc game fps",
+        &i18n_msg!(i18n_bundle, InputPromptFpsPredict),
         |val| {
             if let Some(new_val) = val.parse::<u16>().ok() {
                 let settings = &mut G_STATE.lock().unwrap().settings;
@@ -704,24 +808,36 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
     );
     menu = add_toggle_item!(
         menu,
-        "27 - Toggle F8 Map Radar",
+        &i18n_bundle,
+        format!("27 - {}", i18n_msg!(i18n_bundle, MenuItemBigMapFeat)),
         settings.map_radar_testing,
         map_radar_testing
     );
     menu = add_toggle_item!(
         menu,
-        "28 - Toggle Player Armor Glow Color",
+        &i18n_bundle,
+        format!(
+            "28 - {}",
+            i18n_msg!(i18n_bundle, MenuItemPlayerArmorGlowColor)
+        ),
         settings.player_glow_armor_color,
         player_glow_armor_color
     );
     menu.add_dummy_item()
         .add_item(
             format_item(
-                "29 - Toggle Overlay",
+                &i18n_bundle,
+                format!("29 - {}", i18n_msg!(i18n_bundle, MenuItemToggleOverlay)),
                 if settings.no_overlay {
-                    Span::styled("no-overlay", Style::default().white())
+                    Span::styled(
+                        i18n_msg!(i18n_bundle, MenuValueNoOverlay).to_string(),
+                        Style::default().white(),
+                    )
                 } else {
-                    Span::styled("external-overlay", Style::default().green())
+                    Span::styled(
+                        i18n_msg!(i18n_bundle, MenuValueExternalOverlay).to_string(),
+                        Style::default().green(),
+                    )
                 },
             ),
             |_| {
@@ -733,27 +849,33 @@ fn build_main_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_glow_color_menu(settings: &config::Config) -> MenuState<'static> {
+fn build_glow_color_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
     fn parse_rgb(val: &String) -> Result<(f32, f32, f32), String> {
+        let i18n_bundle = get_fluent_bundle();
         let val: Vec<&str> = val.split(" ").collect();
         if val.len() != 3 {
-            return Err(format!("Expecting 3 values but getting {}!", val.len()));
+            let mut args = FluentArgs::new();
+            args.set("getting", val.len());
+            return Err(i18n_msg_format!(i18n_bundle, InfoExpectingValueCount, args).to_string());
         }
         let r = val[0].parse::<f32>().ok();
         let g = val[1].parse::<f32>().ok();
         let b = val[2].parse::<f32>().ok();
         if r.is_none() || g.is_none() || b.is_none() {
-            return Err(format!("This input cannot be parsed as values!"));
+            return Err(i18n_msg!(i18n_bundle, InfoCannotParseInputValues).to_string());
         }
         let (r, g, b) = (r.unwrap(), g.unwrap(), b.unwrap());
         if r < 0.0 || r > 1.0 || g < 0.0 || g > 1.0 || b < 0.0 || b > 1.0 {
-            return Err(format!("Values out of range!"));
+            return Err(i18n_msg!(i18n_bundle, InfoValuesOutOfRange).to_string());
         }
         Ok((r, g, b))
     }
-    fn menu_item_rgb(label: &str, (r, g, b): (f32, f32, f32)) -> ListItem {
+    fn menu_item_rgb(label: String, (r, g, b): (f32, f32, f32)) -> ListItem<'static> {
         ListItem::new(Line::from(vec![
-            Span::styled(format!("{: <40}", label), Style::default().white()),
+            format_label(label),
             Span::styled(
                 format!("{},{},{}", r, g, b),
                 Style::default()
@@ -766,29 +888,49 @@ fn build_glow_color_menu(settings: &config::Config) -> MenuState<'static> {
             ),
         ]))
     }
-    fn prompt_text_rgb(label: &str) -> String {
-        format!(
-            "Enter RGB values for \"{}\":
-    (0-1 for each channel)
-    e.g. 
-    1 0 0
-    0.5 0.5 0.5",
-            label
-        )
+    macro_rules! prompt_text_rgb {
+        ( $i18n_bundle:expr, $label_id:ident ) => {{
+            let label = i18n_msg!($i18n_bundle, $label_id);
+            let mut args = FluentArgs::new();
+            args.set("item_label", label);
+            i18n_msg_format!($i18n_bundle, InputPromptColorRgb, args).to_string()
+        }};
+    }
+    macro_rules! color_item_label {
+        ( $i18n_bundle:expr, $label_id:ident ) => {{
+            let label = i18n_msg!($i18n_bundle, $label_id);
+            let mut args = FluentArgs::new();
+            args.set("item_label", label);
+            i18n_msg_format!($i18n_bundle, MenuItemGlowColors, args).to_string()
+        }};
+    }
+    macro_rules! text_color_updated {
+        ( $i18n_bundle:expr, $label_id:ident, $r:expr, $g:expr, $b:expr ) => {{
+            let label = i18n_msg!($i18n_bundle, $label_id);
+            let mut args = FluentArgs::new();
+            args.set("item_label", label);
+            args.set("r", $r);
+            args.set("g", $g);
+            args.set("b", $b);
+            i18n_msg_format!($i18n_bundle, InfoGlowColorsUpdated, args).to_string()
+        }};
     }
 
     MenuBuilder::new()
-        .title("Glow Color Menu")
+        .title(i18n_msg!(i18n_bundle, GlowColorMenuTitle))
         .add_input_item(
             menu_item_rgb(
-                "1 - Glow Colors (Not Visible Target)",
+                format!(
+                    "1 - {}",
+                    color_item_label!(i18n_bundle, ColorItemNotVizTarget)
+                ),
                 (
                     settings.glow_r_not,
                     settings.glow_g_not,
                     settings.glow_b_not,
                 ),
             ),
-            &prompt_text_rgb("Not Visible Target"),
+            &prompt_text_rgb!(i18n_bundle, ColorItemNotVizTarget),
             |val| match parse_rgb(&val) {
                 Ok((r, g, b)) => {
                     let settings = &mut G_STATE.lock().unwrap().settings;
@@ -797,9 +939,13 @@ fn build_glow_color_menu(settings: &config::Config) -> MenuState<'static> {
                         settings.glow_g_not,
                         settings.glow_b_not,
                     ) = (r, g, b);
-                    Some(format!(
-                        "Glow Colors \"Not Visible Target\" updated (R: {}, G: {}, B: {}).",
-                        settings.glow_r_not, settings.glow_g_not, settings.glow_b_not
+                    let i18n_bundle = get_fluent_bundle();
+                    Some(text_color_updated!(
+                        i18n_bundle,
+                        ColorItemNotVizTarget,
+                        settings.glow_r_not,
+                        settings.glow_g_not,
+                        settings.glow_b_not
                     ))
                 }
                 Err(e) => Some(e),
@@ -807,14 +953,14 @@ fn build_glow_color_menu(settings: &config::Config) -> MenuState<'static> {
         )
         .add_input_item(
             menu_item_rgb(
-                "2 - Glow Colors (Visible Target)",
+                format!("2 - {}", color_item_label!(i18n_bundle, ColorItemVizTarget)),
                 (
                     settings.glow_r_viz,
                     settings.glow_g_viz,
                     settings.glow_b_viz,
                 ),
             ),
-            &prompt_text_rgb("Visible Target"),
+            &prompt_text_rgb!(i18n_bundle, ColorItemVizTarget),
             |val| match parse_rgb(&val) {
                 Ok((r, g, b)) => {
                     let settings = &mut G_STATE.lock().unwrap().settings;
@@ -823,9 +969,13 @@ fn build_glow_color_menu(settings: &config::Config) -> MenuState<'static> {
                         settings.glow_g_viz,
                         settings.glow_b_viz,
                     ) = (r, g, b);
-                    Some(format!(
-                        "Glow Colors \"Visible Target\" updated (R: {}, G: {}, B: {}).",
-                        settings.glow_r_viz, settings.glow_g_viz, settings.glow_b_viz
+                    let i18n_bundle = get_fluent_bundle();
+                    Some(text_color_updated!(
+                        i18n_bundle,
+                        ColorItemVizTarget,
+                        settings.glow_r_viz,
+                        settings.glow_g_viz,
+                        settings.glow_b_viz
                     ))
                 }
                 Err(e) => Some(e),
@@ -833,14 +983,17 @@ fn build_glow_color_menu(settings: &config::Config) -> MenuState<'static> {
         )
         .add_input_item(
             menu_item_rgb(
-                "3 - Glow Colors (Knocked Target)",
+                format!(
+                    "3 - {}",
+                    color_item_label!(i18n_bundle, ColorItemKnockedTarget)
+                ),
                 (
                     settings.glow_r_knocked,
                     settings.glow_g_knocked,
                     settings.glow_b_knocked,
                 ),
             ),
-            &prompt_text_rgb("Knocked Target"),
+            &prompt_text_rgb!(i18n_bundle, ColorItemKnockedTarget),
             |val| match parse_rgb(&val) {
                 Ok((r, g, b)) => {
                     let settings = &mut G_STATE.lock().unwrap().settings;
@@ -849,9 +1002,13 @@ fn build_glow_color_menu(settings: &config::Config) -> MenuState<'static> {
                         settings.glow_g_knocked,
                         settings.glow_b_knocked,
                     ) = (r, g, b);
-                    Some(format!(
-                        "Glow Colors \"Knocked Target\" updated (R: {}, G: {}, B: {}).",
-                        settings.glow_r_knocked, settings.glow_g_knocked, settings.glow_b_knocked
+                    let i18n_bundle = get_fluent_bundle();
+                    Some(text_color_updated!(
+                        i18n_bundle,
+                        ColorItemKnockedTarget,
+                        settings.glow_r_knocked,
+                        settings.glow_g_knocked,
+                        settings.glow_b_knocked
                     ))
                 }
                 Err(e) => Some(e),
@@ -859,7 +1016,10 @@ fn build_glow_color_menu(settings: &config::Config) -> MenuState<'static> {
         )
         .add_dummy_item()
         .add_item(
-            item_text("4 - Back to Main Menu"),
+            item_text(format!(
+                "4 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -868,70 +1028,97 @@ fn build_glow_color_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_hotkey_menu(settings: &config::Config) -> MenuState<'static> {
-    fn menu_item_keycode(label: &str, value: i32) -> ListItem {
+fn build_hotkey_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
+    fn menu_item_keycode(label: String, value: i32) -> ListItem<'static> {
         ListItem::new(Line::from(vec![
-            Span::styled(format!("{: <40}", label), Style::default().white()),
+            format_label(label),
             Span::styled(format!("{}", value), Style::default().white().underlined()),
         ]))
     }
-    fn prompt_text_keycode(label: &str) -> String {
-        format!(
-            "Enter a new value for \"{}\":
-     (e.g., 108 for Left mouse button)",
-            label
-        )
+    macro_rules! prompt_text_keycode {
+        ( $i18n_bundle:expr, $label_id:ident ) => {{
+            let label = i18n_msg!($i18n_bundle, $label_id);
+            let mut args = FluentArgs::new();
+            args.set("item_label", label);
+            i18n_msg_format!($i18n_bundle, InputPromptKeycode, args).to_string()
+        }};
+    }
+    macro_rules! text_invalid_keycode {
+        ( $i18n_bundle:expr, $label_id:ident ) => {{
+            let label = i18n_msg!($i18n_bundle, $label_id);
+            let mut args = FluentArgs::new();
+            args.set("item_label", label);
+            i18n_msg_format!($i18n_bundle, InfoInvalidKeycode, args).to_string()
+        }};
     }
 
     MenuBuilder::new()
-        .title("Hotkey Menu")
+        .title(i18n_msg!(i18n_bundle, HotkeyMenuTitle))
         .add_input_item(
-            menu_item_keycode("1 - Aimbot Hot Key 1", settings.aimbot_hot_key_1),
-            &prompt_text_keycode("AimbotHotKey1"),
+            menu_item_keycode(
+                format!("1 - {}", i18n_msg!(i18n_bundle, HotkeyItemAimbot1)),
+                settings.aimbot_hot_key_1,
+            ),
+            &prompt_text_keycode!(i18n_bundle, HotkeyItemAimbot1),
             |val| {
                 if let Some(keycode) = val.parse::<u8>().ok() {
                     let settings = &mut G_STATE.lock().unwrap().settings;
                     settings.aimbot_hot_key_1 = keycode as i32;
                     return None;
                 }
-                Some("Invalid value. 'AimbotHotKey1' value must be between 0 and 255.".to_string())
+                let i18n_bundle = get_fluent_bundle();
+                Some(text_invalid_keycode!(i18n_bundle, HotkeyItemAimbot1))
             },
         )
         .add_input_item(
-            menu_item_keycode("2 - Aimbot Hot Key 2", settings.aimbot_hot_key_2),
-            &prompt_text_keycode("AimbotHotKey2"),
+            menu_item_keycode(
+                format!("2 - {}", i18n_msg!(i18n_bundle, HotkeyItemAimbot2)),
+                settings.aimbot_hot_key_2,
+            ),
+            &prompt_text_keycode!(i18n_bundle, HotkeyItemAimbot2),
             |val| {
                 if let Some(keycode) = val.parse::<u8>().ok() {
                     let settings = &mut G_STATE.lock().unwrap().settings;
                     settings.aimbot_hot_key_2 = keycode as i32;
                     return None;
                 }
-                Some("Invalid value. 'AimbotHotKey2' value must be between 0 and 255.".to_string())
+                let i18n_bundle = get_fluent_bundle();
+                Some(text_invalid_keycode!(i18n_bundle, HotkeyItemAimbot2))
             },
         )
         .add_input_item(
-            menu_item_keycode("3 - Trigger Bot Hot Key", settings.trigger_bot_hot_key),
-            &prompt_text_keycode("TriggerBotHotKey"),
+            menu_item_keycode(
+                format!("3 - {}", i18n_msg!(i18n_bundle, HotkeyItemTriggerBot)),
+                settings.trigger_bot_hot_key,
+            ),
+            &prompt_text_keycode!(i18n_bundle, HotkeyItemTriggerBot),
             |val| {
                 if let Some(keycode) = val.parse::<u8>().ok() {
                     let settings = &mut G_STATE.lock().unwrap().settings;
                     settings.trigger_bot_hot_key = keycode as i32;
                     return None;
                 }
-                Some(
-                    "Invalid value. 'TriggerBotHotKey' value must be between 0 and 255."
-                        .to_string(),
-                )
+                let i18n_bundle = get_fluent_bundle();
+                Some(text_invalid_keycode!(i18n_bundle, HotkeyItemTriggerBot))
             },
         )
         .add_dummy_item()
-        .add_item(item_text("4 - Key Codes"), |handler: &mut TerminalMenu| {
-            handler.nav_menu(MenuLevel::KeyCodesMenu);
-            None
-        })
+        .add_item(
+            item_text(format!("4 - {}", i18n_msg!(i18n_bundle, MenuItemKeyCodes))),
+            |handler: &mut TerminalMenu| {
+                handler.nav_menu(MenuLevel::KeyCodesMenu);
+                None
+            },
+        )
         .add_dummy_item()
         .add_item(
-            item_text("5 - Back to Main Menu"),
+            item_text(format!(
+                "5 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -940,59 +1127,80 @@ fn build_hotkey_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_item_filter_menu(_settings: &config::Config) -> MenuState<'static> {
+fn build_item_filter_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    _settings: config::Config,
+) -> MenuState<'static> {
     MenuBuilder::new()
-        .title("Item Filter Menu")
+        .title(i18n_msg!(i18n_bundle, ItemFilterMenuTitle))
         .add_item(
-            item_text("1 - Light weapons"),
+            item_text(format!("1 - {}", i18n_msg!(i18n_bundle, ItemLightWeapons))),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::LightWeaponsMenu);
                 None
             },
         )
         .add_item(
-            item_text("2 - Heavy Weapons"),
+            item_text(format!("2 - {}", i18n_msg!(i18n_bundle, ItemHeavyWeapons))),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::HeavyWeaponsMenu);
                 None
             },
         )
         .add_item(
-            item_text("3 - Energy Weapons"),
+            item_text(format!("3 - {}", i18n_msg!(i18n_bundle, ItemEnergyWeapons))),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::EnergyWeaponsMenu);
                 None
             },
         )
         .add_item(
-            item_text("4 - Sniper Weapons"),
+            item_text(format!("4 - {}", i18n_msg!(i18n_bundle, ItemSniperWeapons))),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::SniperWeaponsMenu);
                 None
             },
         )
-        .add_item(item_text("5 - Armors"), |handle: &mut TerminalMenu| {
-            handle.nav_menu(MenuLevel::ArmorsMenu);
-            None
-        })
-        .add_item(item_text("6 - Healing"), |handle: &mut TerminalMenu| {
-            handle.nav_menu(MenuLevel::HealingMenu);
-            None
-        })
-        .add_item(item_text("7 - Nades"), |handle: &mut TerminalMenu| {
-            handle.nav_menu(MenuLevel::NadesMenu);
-            None
-        })
-        .add_item(item_text("8 - Backpacks"), |handle: &mut TerminalMenu| {
-            handle.nav_menu(MenuLevel::BackpacksMenu);
-            None
-        })
-        .add_item(item_text("9 - Scopes"), |handle: &mut TerminalMenu| {
-            handle.nav_menu(MenuLevel::ScopesMenu);
-            None
-        })
         .add_item(
-            item_text("10 - Back to Main Menu"),
+            item_text(format!("5 - {}", i18n_msg!(i18n_bundle, ItemArmors))),
+            |handle: &mut TerminalMenu| {
+                handle.nav_menu(MenuLevel::ArmorsMenu);
+                None
+            },
+        )
+        .add_item(
+            item_text(format!("6 - {}", i18n_msg!(i18n_bundle, ItemHealing))),
+            |handle: &mut TerminalMenu| {
+                handle.nav_menu(MenuLevel::HealingMenu);
+                None
+            },
+        )
+        .add_item(
+            item_text(format!("7 - {}", i18n_msg!(i18n_bundle, ItemNades))),
+            |handle: &mut TerminalMenu| {
+                handle.nav_menu(MenuLevel::NadesMenu);
+                None
+            },
+        )
+        .add_item(
+            item_text(format!("8 - {}", i18n_msg!(i18n_bundle, ItemBackpacks))),
+            |handle: &mut TerminalMenu| {
+                handle.nav_menu(MenuLevel::BackpacksMenu);
+                None
+            },
+        )
+        .add_item(
+            item_text(format!("9 - {}", i18n_msg!(i18n_bundle, ItemScopes))),
+            |handle: &mut TerminalMenu| {
+                handle.nav_menu(MenuLevel::ScopesMenu);
+                None
+            },
+        )
+        .add_item(
+            item_text(format!(
+                "10 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1001,72 +1209,124 @@ fn build_item_filter_menu(_settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_light_weapons_menu(settings: &config::Config) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title("Light Weapons Menu");
+fn build_light_weapons_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
+    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, LightWeaponsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
-                Span::from("Red = Disable").red(),
+                Span::from(i18n_msg!(i18n_bundle, RedIsDisable).to_string()).red(),
                 Span::from(" - ").dark_gray(),
-                Span::from("Green = Enabled").green(),
+                Span::from(i18n_msg!(i18n_bundle, GreedIsEnabled).to_string()).green(),
             ])),
             |_| None,
         )
         .no_id()
         .add_dummy_item()
-        .add_text_item("Light Weapons:")
+        .add_text_item(i18n_msg!(i18n_bundle, LightWeaponsSection))
         .add_dummy_item();
-    menu = add_pick_item!(menu, "1 - P2020", settings.loot.weapon_p2020, weapon_p2020);
-    menu = add_pick_item!(menu, "2 - RE-45", settings.loot.weapon_re45, weapon_re45);
     menu = add_pick_item!(
         menu,
-        "3 - Alternator",
+        i18n_bundle,
+        "1 - ",
+        WeaponP2020,
+        settings.loot.weapon_p2020,
+        weapon_p2020
+    );
+    menu = add_pick_item!(
+        menu,
+        i18n_bundle,
+        "2 - ",
+        WeaponRe45,
+        settings.loot.weapon_re45,
+        weapon_re45
+    );
+    menu = add_pick_item!(
+        menu,
+        i18n_bundle,
+        "3 - ",
+        WeaponAlternator,
         settings.loot.weapon_alternator,
         weapon_alternator
     );
-    menu = add_pick_item!(menu, "4 - R-99", settings.loot.weapon_r99, weapon_r99);
-    menu = add_pick_item!(menu, "5 - R-301", settings.loot.weapon_r301, weapon_r301);
     menu = add_pick_item!(
         menu,
-        "6 - M600",
+        i18n_bundle,
+        "4 - ",
+        WeaponR99,
+        settings.loot.weapon_r99,
+        weapon_r99
+    );
+    menu = add_pick_item!(
+        menu,
+        i18n_bundle,
+        "5 - ",
+        WeaponR301,
+        settings.loot.weapon_r301,
+        weapon_r301
+    );
+    menu = add_pick_item!(
+        menu,
+        i18n_bundle,
+        "6 - ",
+        WeaponM600,
         settings.loot.weapon_spitfire,
         weapon_spitfire
     );
     menu = add_pick_item!(
         menu,
-        "7 - G7 Scout",
+        i18n_bundle,
+        "7 - ",
+        WeaponG7Scout,
         settings.loot.weapon_g7_scout,
         weapon_g7_scout
     );
-    menu = add_pick_item!(menu, "8 - Light Ammo", settings.loot.lightammo, lightammo);
+    menu = add_pick_item!(
+        menu,
+        i18n_bundle,
+        "8 - ",
+        LootLightAmmo,
+        settings.loot.lightammo,
+        lightammo
+    );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Light Weapon Mags:")
+        .add_text_item(i18n_msg!(i18n_bundle, LightWeaponMagsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "9 - Light Weapon Mag",
+        i18n_bundle,
+        "9 - ",
+        LootLightWeaponMag,
         LootLevel::White,
         settings.loot.lightammomag1,
         lightammomag1
     );
     menu = add_colored_loot_item!(
         menu,
-        "10 - Light Weapon Mag",
+        i18n_bundle,
+        "10 - ",
+        LootLightWeaponMag,
         LootLevel::Blue,
         settings.loot.lightammomag2,
         lightammomag2
     );
     menu = add_colored_loot_item!(
         menu,
-        "11 - Light Weapon Mag",
+        i18n_bundle,
+        "11 - ",
+        LootLightWeaponMag,
         LootLevel::Purple,
         settings.loot.lightammomag3,
         lightammomag3
     );
     menu = add_colored_loot_item!(
         menu,
-        "12 - Light Weapon Mag",
+        i18n_bundle,
+        "12 - ",
+        LootLightWeaponMag,
         LootLevel::Gold,
         settings.loot.lightammomag4,
         lightammomag4
@@ -1074,123 +1334,156 @@ fn build_light_weapons_menu(settings: &config::Config) -> MenuState<'static> {
 
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Stocks:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponStocksSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "13 - Weapon Stock",
+        i18n_bundle,
+        "13 - ",
+        LootStandardStock,
         LootLevel::White,
         settings.loot.stockregular1,
         stockregular1
     );
     menu = add_colored_loot_item!(
         menu,
-        "14 - Weapon Stock",
+        i18n_bundle,
+        "14 - ",
+        LootStandardStock,
         LootLevel::Blue,
         settings.loot.stockregular2,
         stockregular2
     );
     menu = add_colored_loot_item!(
         menu,
-        "15 - Weapon Stock",
+        i18n_bundle,
+        "15 - ",
+        LootStandardStock,
         LootLevel::Purple,
         settings.loot.stockregular3,
         stockregular3
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Suppressors:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponSuppressorsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "16 - Weapon Suppressors",
+        i18n_bundle,
+        "16 - ",
+        LootWeaponSuppressors,
         LootLevel::White,
         settings.loot.suppressor1,
         suppressor1
     );
     menu = add_colored_loot_item!(
         menu,
-        "17 - Weapon Suppressors",
+        i18n_bundle,
+        "17 - ",
+        LootWeaponSuppressors,
         LootLevel::Blue,
         settings.loot.suppressor2,
         suppressor2
     );
     menu = add_colored_loot_item!(
         menu,
-        "18 - Weapon Suppressors",
+        i18n_bundle,
+        "18 - ",
+        LootWeaponSuppressors,
         LootLevel::Purple,
         settings.loot.suppressor3,
         suppressor3
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Lasers:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponLasersSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "19 - Weapon Lasers",
+        i18n_bundle,
+        "19 - ",
+        LootWeaponLasers,
         LootLevel::White,
         settings.loot.lasersight1,
         lasersight1
     );
     menu = add_colored_loot_item!(
         menu,
-        "20 - Weapon Lasers",
+        i18n_bundle,
+        "20 - ",
+        LootWeaponLasers,
         LootLevel::Blue,
         settings.loot.lasersight2,
         lasersight2
     );
     menu = add_colored_loot_item!(
         menu,
-        "21 - Weapon Lasers",
+        i18n_bundle,
+        "21 - ",
+        LootWeaponLasers,
         LootLevel::Purple,
         settings.loot.lasersight3,
         lasersight3
     );
     menu = add_colored_loot_item!(
         menu,
-        "22 - Weapon Lasers",
+        i18n_bundle,
+        "22 - ",
+        LootWeaponLasers,
         LootLevel::Gold,
         settings.loot.lasersight4,
         lasersight4
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Hop-Ups:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponHopUpsSection))
         .add_dummy_item();
     menu = add_pick_item!(
         menu,
-        "23 - Turbo Charger",
+        i18n_bundle,
+        "23 - ",
+        LootTurboCharger,
         settings.loot.turbo_charger,
         turbo_charger
     );
     menu = add_pick_item!(
         menu,
-        "24 - Skull Piecer",
+        i18n_bundle,
+        "24 - ",
+        LootSkullPiecer,
         settings.loot.skull_piecer,
         skull_piecer
     );
     menu = add_pick_item!(
         menu,
-        "25 - Hammer Points",
+        i18n_bundle,
+        "25 - ",
+        LootHammerPoints,
         settings.loot.hammer_point,
         hammer_point
     );
     menu = add_pick_item!(
         menu,
-        "26 - Disruptor Rounds",
+        i18n_bundle,
+        "26 - ",
+        LootDisruptorRounds,
         settings.loot.disruptor_rounds,
         disruptor_rounds
     );
     menu = add_pick_item!(
         menu,
-        "27 - Boosted Loader",
+        i18n_bundle,
+        "27 - ",
+        LootBoostedLoader,
         settings.loot.boosted_loader,
         boosted_loader
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("28 - Back to Settings Menu"),
+            item_text(format!(
+                "28 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1199,86 +1492,116 @@ fn build_light_weapons_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_heavy_weapons_menu(settings: &config::Config) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title("Heavy Weapons Menu");
+fn build_heavy_weapons_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
+    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, HeavyWeaponsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
-                Span::from("Red = Disable").red(),
+                Span::from(i18n_msg!(i18n_bundle, RedIsDisable).to_string()).red(),
                 Span::from(" - ").dark_gray(),
-                Span::from("Green = Enabled").green(),
+                Span::from(i18n_msg!(i18n_bundle, GreedIsEnabled).to_string()).green(),
             ])),
             |_| None,
         )
         .no_id()
         .add_dummy_item()
-        .add_text_item("Heavy Weapons:")
+        .add_text_item(i18n_msg!(i18n_bundle, HeavyWeaponsSection))
         .add_dummy_item();
     menu = add_pick_item!(
         menu,
-        "1 - Flatline",
+        i18n_bundle,
+        "1 - ",
+        WeaponFlatline,
         settings.loot.weapon_flatline,
         weapon_flatline
     );
     menu = add_pick_item!(
         menu,
-        "2 - Hemlock",
+        i18n_bundle,
+        "2 - ",
+        WeaponHemlock,
         settings.loot.weapon_hemlock,
         weapon_hemlock
     );
     menu = add_pick_item!(
         menu,
-        "3 - 30-30 Repeater",
+        i18n_bundle,
+        "3 - ",
+        Weapon3030Repeater,
         settings.loot.weapon_3030_repeater,
         weapon_3030_repeater
     );
     menu = add_pick_item!(
         menu,
-        "4 - Rampage",
+        i18n_bundle,
+        "4 - ",
+        WeaponRampage,
         settings.loot.weapon_rampage,
         weapon_rampage
     );
     menu = add_pick_item!(
         menu,
-        "5 - Prowler",
+        i18n_bundle,
+        "5 - ",
+        WeaponProwler,
         settings.loot.weapon_prowler,
         weapon_prowler
     );
     menu = add_pick_item!(
         menu,
-        "6 - Car SMG",
+        i18n_bundle,
+        "6 - ",
+        WeaponCarSmg,
         settings.loot.weapon_car_smg,
         weapon_car_smg
     );
-    menu = add_pick_item!(menu, "7 - Heavy Ammo", settings.loot.heavyammo, heavyammo);
+    menu = add_pick_item!(
+        menu,
+        i18n_bundle,
+        "7 - ",
+        LootHeavyAmmo,
+        settings.loot.heavyammo,
+        heavyammo
+    );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Heavy Weapon Mags:")
+        .add_text_item(i18n_msg!(i18n_bundle, HeavyWeaponMagsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "8 - Heavy Weapon Mag",
+        i18n_bundle,
+        "8 - ",
+        LootHeavyWeaponMag,
         LootLevel::White,
         settings.loot.heavyammomag1,
         heavyammomag1
     );
     menu = add_colored_loot_item!(
         menu,
-        "9 - Heavy Weapon Mag",
+        i18n_bundle,
+        "9 - ",
+        LootHeavyWeaponMag,
         LootLevel::Blue,
         settings.loot.heavyammomag2,
         heavyammomag2
     );
     menu = add_colored_loot_item!(
         menu,
-        "10 - Heavy Weapon Mag",
+        i18n_bundle,
+        "10 - ",
+        LootHeavyWeaponMag,
         LootLevel::Purple,
         settings.loot.heavyammomag3,
         heavyammomag3
     );
     menu = add_colored_loot_item!(
         menu,
-        "11 - Heavy Weapon Mag",
+        i18n_bundle,
+        "11 - ",
+        LootHeavyWeaponMag,
         LootLevel::Gold,
         settings.loot.heavyammomag4,
         heavyammomag4
@@ -1286,123 +1609,156 @@ fn build_heavy_weapons_menu(settings: &config::Config) -> MenuState<'static> {
 
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Stocks:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponStocksSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "12 - Weapon Stock",
+        i18n_bundle,
+        "12 - ",
+        LootStandardStock,
         LootLevel::White,
         settings.loot.stockregular1,
         stockregular1
     );
     menu = add_colored_loot_item!(
         menu,
-        "13 - Weapon Stock",
+        i18n_bundle,
+        "13 - ",
+        LootStandardStock,
         LootLevel::Blue,
         settings.loot.stockregular2,
         stockregular2
     );
     menu = add_colored_loot_item!(
         menu,
-        "14 - Weapon Stock",
+        i18n_bundle,
+        "14 - ",
+        LootStandardStock,
         LootLevel::Purple,
         settings.loot.stockregular3,
         stockregular3
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Suppressors:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponSuppressorsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "15 - Weapon Suppressors",
+        i18n_bundle,
+        "15 - ",
+        LootWeaponSuppressors,
         LootLevel::White,
         settings.loot.suppressor1,
         suppressor1
     );
     menu = add_colored_loot_item!(
         menu,
-        "16 - Weapon Suppressors",
+        i18n_bundle,
+        "16 - ",
+        LootWeaponSuppressors,
         LootLevel::Blue,
         settings.loot.suppressor2,
         suppressor2
     );
     menu = add_colored_loot_item!(
         menu,
-        "17 - Weapon Suppressors",
+        i18n_bundle,
+        "17 - ",
+        LootWeaponSuppressors,
         LootLevel::Purple,
         settings.loot.suppressor3,
         suppressor3
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Lasers:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponLasersSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "18 - Weapon Lasers",
+        i18n_bundle,
+        "18 - ",
+        LootWeaponLasers,
         LootLevel::White,
         settings.loot.lasersight1,
         lasersight1
     );
     menu = add_colored_loot_item!(
         menu,
-        "19 - Weapon Lasers",
+        i18n_bundle,
+        "19 - ",
+        LootWeaponLasers,
         LootLevel::Blue,
         settings.loot.lasersight2,
         lasersight2
     );
     menu = add_colored_loot_item!(
         menu,
-        "20 - Weapon Lasers",
+        i18n_bundle,
+        "20 - ",
+        LootWeaponLasers,
         LootLevel::Purple,
         settings.loot.lasersight3,
         lasersight3
     );
     menu = add_colored_loot_item!(
         menu,
-        "21 - Weapon Lasers",
+        i18n_bundle,
+        "21 - ",
+        LootWeaponLasers,
         LootLevel::Gold,
         settings.loot.lasersight4,
         lasersight4
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Hop-Ups:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponHopUpsSection))
         .add_dummy_item();
     menu = add_pick_item!(
         menu,
-        "22 - Turbo Charger",
+        i18n_bundle,
+        "22 - ",
+        LootTurboCharger,
         settings.loot.turbo_charger,
         turbo_charger
     );
     menu = add_pick_item!(
         menu,
-        "23 - Skull Piecer",
+        i18n_bundle,
+        "23 - ",
+        LootSkullPiecer,
         settings.loot.skull_piecer,
         skull_piecer
     );
     menu = add_pick_item!(
         menu,
-        "24 - Hammer Points",
+        i18n_bundle,
+        "24 - ",
+        LootHammerPoints,
         settings.loot.hammer_point,
         hammer_point
     );
     menu = add_pick_item!(
         menu,
-        "25 - Disruptor Rounds",
+        i18n_bundle,
+        "25 - ",
+        LootDisruptorRounds,
         settings.loot.disruptor_rounds,
         disruptor_rounds
     );
     menu = add_pick_item!(
         menu,
-        "26 - Boosted Loader",
+        i18n_bundle,
+        "26 - ",
+        LootBoostedLoader,
         settings.loot.boosted_loader,
         boosted_loader
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("27 - Back to Settings Menu"),
+            item_text(format!(
+                "27 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1411,76 +1767,116 @@ fn build_heavy_weapons_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_energy_weapons_menu(settings: &config::Config) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title("Energy Weapons Menu");
+fn build_energy_weapons_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
+    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, EnergyWeaponsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
-                Span::from("Red = Disable").red(),
+                Span::from(i18n_msg!(i18n_bundle, RedIsDisable).to_string()).red(),
                 Span::from(" - ").dark_gray(),
-                Span::from("Green = Enabled").green(),
+                Span::from(i18n_msg!(i18n_bundle, GreedIsEnabled).to_string()).green(),
             ])),
             |_| None,
         )
         .no_id()
         .add_dummy_item()
-        .add_text_item("Energy Weapons:")
+        .add_text_item(i18n_msg!(i18n_bundle, EnergyWeaponsSection))
         .add_dummy_item();
-    menu = add_pick_item!(menu, "1 - LSTAR", settings.loot.weapon_lstar, weapon_lstar);
     menu = add_pick_item!(
         menu,
-        "2 - Nemesis",
+        i18n_bundle,
+        "1 - ",
+        WeaponLStar,
+        settings.loot.weapon_lstar,
+        weapon_lstar
+    );
+    menu = add_pick_item!(
+        menu,
+        i18n_bundle,
+        "2 - ",
+        WeaponNemesis,
         settings.loot.weapon_nemesis,
         weapon_nemesis
     );
-    menu = add_pick_item!(menu, "3 - Havoc", settings.loot.weapon_havoc, weapon_havoc);
     menu = add_pick_item!(
         menu,
-        "4 - Deovtion",
+        i18n_bundle,
+        "3 - ",
+        WeaponHavoc,
+        settings.loot.weapon_havoc,
+        weapon_havoc
+    );
+    menu = add_pick_item!(
+        menu,
+        i18n_bundle,
+        "4 - ",
+        WeaponDeovtion,
         settings.loot.weapon_devotion,
         weapon_devotion
     );
     menu = add_pick_item!(
         menu,
-        "5 - Tripple Take",
+        i18n_bundle,
+        "5 - ",
+        WeaponTripleTake,
         settings.loot.weapon_triple_take,
         weapon_triple_take
     );
-    menu = add_pick_item!(menu, "6 - Volt", settings.loot.weapon_volt, weapon_volt);
     menu = add_pick_item!(
         menu,
-        "7 - Energy Ammo",
+        i18n_bundle,
+        "6 - ",
+        WeaponVolt,
+        settings.loot.weapon_volt,
+        weapon_volt
+    );
+    menu = add_pick_item!(
+        menu,
+        i18n_bundle,
+        "7 - ",
+        LootEnergyAmmo,
         settings.loot.energyammo,
         energyammo
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Energy Weapon Mags:")
+        .add_text_item(i18n_msg!(i18n_bundle, EnergyWeaponMagsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "8 - Energy Weapon Mag",
+        i18n_bundle,
+        "8 - ",
+        LootEnergyWeaponMag,
         LootLevel::White,
         settings.loot.energyammomag1,
         energyammomag1
     );
     menu = add_colored_loot_item!(
         menu,
-        "9 - Energy Weapon Mag",
+        i18n_bundle,
+        "9 - ",
+        LootEnergyWeaponMag,
         LootLevel::Blue,
         settings.loot.energyammomag2,
         energyammomag2
     );
     menu = add_colored_loot_item!(
         menu,
-        "10 - Energy Weapon Mag",
+        i18n_bundle,
+        "10 - ",
+        LootEnergyWeaponMag,
         LootLevel::Purple,
         settings.loot.energyammomag3,
         energyammomag3
     );
     menu = add_colored_loot_item!(
         menu,
-        "11 - Energy Weapon Mag",
+        i18n_bundle,
+        "11 - ",
+        LootEnergyWeaponMag,
         LootLevel::Gold,
         settings.loot.energyammomag4,
         energyammomag4
@@ -1488,123 +1884,156 @@ fn build_energy_weapons_menu(settings: &config::Config) -> MenuState<'static> {
 
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Stocks:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponStocksSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "12 - Weapon Stock",
+        i18n_bundle,
+        "12 - ",
+        LootStandardStock,
         LootLevel::White,
         settings.loot.stockregular1,
         stockregular1
     );
     menu = add_colored_loot_item!(
         menu,
-        "13 - Weapon Stock",
+        i18n_bundle,
+        "13 - ",
+        LootStandardStock,
         LootLevel::Blue,
         settings.loot.stockregular2,
         stockregular2
     );
     menu = add_colored_loot_item!(
         menu,
-        "14 - Weapon Stock",
+        i18n_bundle,
+        "14 - ",
+        LootStandardStock,
         LootLevel::Purple,
         settings.loot.stockregular3,
         stockregular3
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Suppressors:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponSuppressorsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "15 - Weapon Suppressors",
+        i18n_bundle,
+        "15 - ",
+        LootWeaponSuppressors,
         LootLevel::White,
         settings.loot.suppressor1,
         suppressor1
     );
     menu = add_colored_loot_item!(
         menu,
-        "16 - Weapon Suppressors",
+        i18n_bundle,
+        "16 - ",
+        LootWeaponSuppressors,
         LootLevel::Blue,
         settings.loot.suppressor2,
         suppressor2
     );
     menu = add_colored_loot_item!(
         menu,
-        "17 - Weapon Suppressors",
+        i18n_bundle,
+        "17 - ",
+        LootWeaponSuppressors,
         LootLevel::Purple,
         settings.loot.suppressor3,
         suppressor3
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Lasers:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponLasersSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "18 - Weapon Lasers",
+        i18n_bundle,
+        "18 - ",
+        LootWeaponLasers,
         LootLevel::White,
         settings.loot.lasersight1,
         lasersight1
     );
     menu = add_colored_loot_item!(
         menu,
-        "19 - Weapon Lasers",
+        i18n_bundle,
+        "19 - ",
+        LootWeaponLasers,
         LootLevel::Blue,
         settings.loot.lasersight2,
         lasersight2
     );
     menu = add_colored_loot_item!(
         menu,
-        "20 - Weapon Lasers",
+        i18n_bundle,
+        "20 - ",
+        LootWeaponLasers,
         LootLevel::Purple,
         settings.loot.lasersight3,
         lasersight3
     );
     menu = add_colored_loot_item!(
         menu,
-        "21 - Weapon Lasers",
+        i18n_bundle,
+        "21 - ",
+        LootWeaponLasers,
         LootLevel::Gold,
         settings.loot.lasersight4,
         lasersight4
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Hop-Ups:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponHopUpsSection))
         .add_dummy_item();
     menu = add_pick_item!(
         menu,
-        "22 - Turbo Charger",
+        i18n_bundle,
+        "22 - ",
+        LootTurboCharger,
         settings.loot.turbo_charger,
         turbo_charger
     );
     menu = add_pick_item!(
         menu,
-        "23 - Skull Piecer",
+        i18n_bundle,
+        "23 - ",
+        LootSkullPiecer,
         settings.loot.skull_piecer,
         skull_piecer
     );
     menu = add_pick_item!(
         menu,
-        "24 - Hammer Points",
+        i18n_bundle,
+        "24 - ",
+        LootHammerPoints,
         settings.loot.hammer_point,
         hammer_point
     );
     menu = add_pick_item!(
         menu,
-        "25 - Disruptor Rounds",
+        i18n_bundle,
+        "25 - ",
+        LootDisruptorRounds,
         settings.loot.disruptor_rounds,
         disruptor_rounds
     );
     menu = add_pick_item!(
         menu,
-        "26 - Boosted Loader",
+        i18n_bundle,
+        "26 - ",
+        LootBoostedLoader,
         settings.loot.boosted_loader,
         boosted_loader
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("27 - Back to Settings Menu"),
+            item_text(format!(
+                "27 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1613,80 +2042,108 @@ fn build_energy_weapons_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_sniper_weapons_menu(settings: &config::Config) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title("Sniper Weapons Menu");
+fn build_sniper_weapons_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
+    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, SniperWeaponsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
-                Span::from("Red = Disable").red(),
+                Span::from(i18n_msg!(i18n_bundle, RedIsDisable).to_string()).red(),
                 Span::from(" - ").dark_gray(),
-                Span::from("Green = Enabled").green(),
+                Span::from(i18n_msg!(i18n_bundle, GreedIsEnabled).to_string()).green(),
             ])),
             |_| None,
         )
         .no_id()
         .add_dummy_item()
-        .add_text_item("Sniper Weapons:")
+        .add_text_item(i18n_msg!(i18n_bundle, SniperWeaponsSection))
         .add_dummy_item();
     menu = add_pick_item!(
         menu,
-        "1 - Wingman",
+        i18n_bundle,
+        "1 - ",
+        WeaponWingman,
         settings.loot.weapon_wingman,
         weapon_wingman
     );
     menu = add_pick_item!(
         menu,
-        "2 - Longbow",
+        i18n_bundle,
+        "2 - ",
+        WeaponLongbow,
         settings.loot.weapon_longbow,
         weapon_longbow
     );
     menu = add_pick_item!(
         menu,
-        "3 - Charge Rifle",
+        i18n_bundle,
+        "3 - ",
+        WeaponChargeRifle,
         settings.loot.weapon_charge_rifle,
         weapon_charge_rifle
     );
     menu = add_pick_item!(
         menu,
-        "4 - Sentinel",
+        i18n_bundle,
+        "4 - ",
+        WeaponSentinel,
         settings.loot.weapon_sentinel,
         weapon_sentinel
     );
-    menu = add_pick_item!(menu, "5 - Bow", settings.loot.weapon_bow, weapon_bow);
     menu = add_pick_item!(
         menu,
-        "6 - Sniper Ammo",
+        i18n_bundle,
+        "5 - ",
+        WeaponBow,
+        settings.loot.weapon_bow,
+        weapon_bow
+    );
+    menu = add_pick_item!(
+        menu,
+        i18n_bundle,
+        "6 - ",
+        LootSniperAmmo,
         settings.loot.sniperammo,
         sniperammo
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Sniper Weapon Mags:")
+        .add_text_item(i18n_msg!(i18n_bundle, SniperWeaponMagsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "7 - Sniper Weapon Mag",
+        i18n_bundle,
+        "7 - ",
+        LootSniperWeaponMag,
         LootLevel::White,
         settings.loot.sniperammomag1,
         sniperammomag1
     );
     menu = add_colored_loot_item!(
         menu,
-        "8 - Sniper Weapon Mag",
+        i18n_bundle,
+        "8 - ",
+        LootSniperWeaponMag,
         LootLevel::Blue,
         settings.loot.sniperammomag2,
         sniperammomag2
     );
     menu = add_colored_loot_item!(
         menu,
-        "9 - Sniper Weapon Mag",
+        i18n_bundle,
+        "9 - ",
+        LootSniperWeaponMag,
         LootLevel::Purple,
         settings.loot.sniperammomag3,
         sniperammomag3
     );
     menu = add_colored_loot_item!(
         menu,
-        "10 - Sniper Weapon Mag",
+        i18n_bundle,
+        "10 - ",
+        LootSniperWeaponMag,
         LootLevel::Gold,
         settings.loot.sniperammomag4,
         sniperammomag4
@@ -1694,91 +2151,116 @@ fn build_sniper_weapons_menu(settings: &config::Config) -> MenuState<'static> {
 
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Stocks:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponStocksSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "11 - Weapon Stock",
+        i18n_bundle,
+        "11 - ",
+        LootSniperStock,
         LootLevel::White,
-        settings.loot.stockregular1,
-        stockregular1
+        settings.loot.stocksniper1,
+        stocksniper1
     );
     menu = add_colored_loot_item!(
         menu,
-        "12 - Weapon Stock",
+        i18n_bundle,
+        "12 - ",
+        LootSniperStock,
         LootLevel::Blue,
-        settings.loot.stockregular2,
-        stockregular2
+        settings.loot.stocksniper2,
+        stocksniper2
     );
     menu = add_colored_loot_item!(
         menu,
-        "13 - Weapon Stock",
+        i18n_bundle,
+        "13 - ",
+        LootSniperStock,
         LootLevel::Purple,
-        settings.loot.stockregular3,
-        stockregular3
+        settings.loot.stocksniper3,
+        stocksniper3
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Suppressors:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponSuppressorsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "14 - Weapon Suppressors",
+        i18n_bundle,
+        "14 - ",
+        LootWeaponSuppressors,
         LootLevel::White,
         settings.loot.suppressor1,
         suppressor1
     );
     menu = add_colored_loot_item!(
         menu,
-        "15 - Weapon Suppressors",
+        i18n_bundle,
+        "15 - ",
+        LootWeaponSuppressors,
         LootLevel::Blue,
         settings.loot.suppressor2,
         suppressor2
     );
     menu = add_colored_loot_item!(
         menu,
-        "16 - Weapon Suppressors",
+        i18n_bundle,
+        "16 - ",
+        LootWeaponSuppressors,
         LootLevel::Purple,
         settings.loot.suppressor3,
         suppressor3
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Weapon Hop-Ups:")
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponHopUpsSection))
         .add_dummy_item();
     menu = add_pick_item!(
         menu,
-        "17 - Turbo Charger",
+        i18n_bundle,
+        "17 - ",
+        LootTurboCharger,
         settings.loot.turbo_charger,
         turbo_charger
     );
     menu = add_pick_item!(
         menu,
-        "18 - Skull Piecer",
+        i18n_bundle,
+        "18 - ",
+        LootSkullPiecer,
         settings.loot.skull_piecer,
         skull_piecer
     );
     menu = add_pick_item!(
         menu,
-        "19 - Hammer Points",
+        i18n_bundle,
+        "19 - ",
+        LootHammerPoints,
         settings.loot.hammer_point,
         hammer_point
     );
     menu = add_pick_item!(
         menu,
-        "20 - Disruptor Rounds",
+        i18n_bundle,
+        "20 - ",
+        LootDisruptorRounds,
         settings.loot.disruptor_rounds,
         disruptor_rounds
     );
     menu = add_pick_item!(
         menu,
-        "21 - Boosted Loader",
+        i18n_bundle,
+        "21 - ",
+        LootBoostedLoader,
         settings.loot.boosted_loader,
         boosted_loader
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("22 - Back to Settings Menu"),
+            item_text(format!(
+                "22 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1787,123 +2269,155 @@ fn build_sniper_weapons_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_armors_menu(settings: &config::Config) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title("Armors Menu");
+fn build_armors_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
+    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, ArmorsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
-                Span::from("Red = Disable").red(),
+                Span::from(i18n_msg!(i18n_bundle, RedIsDisable).to_string()).red(),
                 Span::from(" - ").dark_gray(),
-                Span::from("Green = Enabled").green(),
+                Span::from(i18n_msg!(i18n_bundle, GreedIsEnabled).to_string()).green(),
             ])),
             |_| None,
         )
         .no_id()
         .add_dummy_item()
-        .add_text_item("Armors:")
+        .add_text_item(i18n_msg!(i18n_bundle, ArmorsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "1 - Armor",
+        i18n_bundle,
+        "1 - ",
+        LootEvoShield,
         LootLevel::White,
         settings.loot.shieldupgrade1,
         shieldupgrade1
     );
     menu = add_colored_loot_item!(
         menu,
-        "2 - Armor",
+        i18n_bundle,
+        "2 - ",
+        LootEvoShield,
         LootLevel::Blue,
         settings.loot.shieldupgrade2,
         shieldupgrade2
     );
     menu = add_colored_loot_item!(
         menu,
-        "3 - Armor",
+        i18n_bundle,
+        "3 - ",
+        LootEvoShield,
         LootLevel::Purple,
         settings.loot.shieldupgrade3,
         shieldupgrade3
     );
     menu = add_colored_loot_item!(
         menu,
-        "4 - Armor",
+        i18n_bundle,
+        "4 - ",
+        LootBodyShield,
         LootLevel::Gold,
         settings.loot.shieldupgrade4,
         shieldupgrade4
     );
     menu = add_colored_loot_item!(
         menu,
-        "5 - Armor",
+        i18n_bundle,
+        "5 - ",
+        LootEvoShield,
         LootLevel::Red,
         settings.loot.shieldupgrade5,
         shieldupgrade5
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Helmets:")
+        .add_text_item(i18n_msg!(i18n_bundle, HelmetsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "6 - Helmet",
+        i18n_bundle,
+        "6 - ",
+        LootHelmet,
         LootLevel::White,
         settings.loot.shieldupgradehead1,
         shieldupgradehead1
     );
     menu = add_colored_loot_item!(
         menu,
-        "7 - Helmet",
+        i18n_bundle,
+        "7 - ",
+        LootHelmet,
         LootLevel::Blue,
         settings.loot.shieldupgradehead2,
         shieldupgradehead2
     );
     menu = add_colored_loot_item!(
         menu,
-        "8 - Helmet",
+        i18n_bundle,
+        "8 - ",
+        LootHelmet,
         LootLevel::Purple,
         settings.loot.shieldupgradehead3,
         shieldupgradehead3
     );
     menu = add_colored_loot_item!(
         menu,
-        "9 - Helmet",
+        i18n_bundle,
+        "9 - ",
+        LootHelmet,
         LootLevel::Gold,
         settings.loot.shieldupgradehead4,
         shieldupgradehead4
     );
     menu = menu
         .add_dummy_item()
-        .add_text_item("Knockdown Shields:")
+        .add_text_item(i18n_msg!(i18n_bundle, KnockdownShieldsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "10 - Knockdown Shield",
+        i18n_bundle,
+        "10 - ",
+        LootKnockdownShield,
         LootLevel::White,
         settings.loot.shielddown1,
         shielddown1
     );
     menu = add_colored_loot_item!(
         menu,
-        "11 - Knockdown Shield",
+        i18n_bundle,
+        "11 - ",
+        LootKnockdownShield,
         LootLevel::Blue,
         settings.loot.shielddown2,
         shielddown2
     );
     menu = add_colored_loot_item!(
         menu,
-        "12 - Knockdown Shield",
+        i18n_bundle,
+        "12 - ",
+        LootKnockdownShield,
         LootLevel::Purple,
         settings.loot.shielddown3,
         shielddown3
     );
     menu = add_colored_loot_item!(
         menu,
-        "13 - Knockdown Shield",
+        i18n_bundle,
+        "13 - ",
+        LootKnockdownShield,
         LootLevel::Gold,
         settings.loot.shielddown4,
         shielddown4
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("14 - Back to Settings Menu"),
+            item_text(format!(
+                "14 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1912,66 +2426,84 @@ fn build_armors_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_healing_menu(settings: &config::Config) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title("Healing Items Menu");
+fn build_healing_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
+    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, HealingItemsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
-                Span::from("Red = Disable").red(),
+                Span::from(i18n_msg!(i18n_bundle, RedIsDisable).to_string()).red(),
                 Span::from(" - ").dark_gray(),
-                Span::from("Green = Enabled").green(),
+                Span::from(i18n_msg!(i18n_bundle, GreedIsEnabled).to_string()).green(),
             ])),
             |_| None,
         )
         .no_id()
         .add_dummy_item()
-        .add_text_item("Healing Items:")
+        .add_text_item(i18n_msg!(i18n_bundle, HealingItemsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "1 - Accelerant",
+        i18n_bundle,
+        "1 - ",
+        LootAccelerant,
         LootLevel::Blue,
         settings.loot.accelerant,
         accelerant
     );
     menu = add_colored_loot_item!(
         menu,
-        "2 - Phoenix",
+        i18n_bundle,
+        "2 - ",
+        LootPhoenix,
         LootLevel::Purple,
         settings.loot.phoenix,
         phoenix
     );
     menu = add_colored_loot_item!(
         menu,
-        "3 - Small Health",
+        i18n_bundle,
+        "3 - ",
+        LootSmallHealth,
         LootLevel::White,
         settings.loot.healthsmall,
         healthsmall
     );
     menu = add_colored_loot_item!(
         menu,
-        "4 - Large Health",
+        i18n_bundle,
+        "4 - ",
+        LootLargeHealth,
         LootLevel::White,
         settings.loot.healthlarge,
         healthlarge
     );
     menu = add_colored_loot_item!(
         menu,
-        "5 - Small Shield Batt",
+        i18n_bundle,
+        "5 - ",
+        LootSmallShieldBatt,
         LootLevel::White,
         settings.loot.shieldbattsmall,
         shieldbattsmall
     );
     menu = add_colored_loot_item!(
         menu,
-        "6 - Large Shield Batt",
+        i18n_bundle,
+        "6 - ",
+        LootLargeShieldBatt,
         LootLevel::White,
         settings.loot.shieldbattlarge,
         shieldbattlarge
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("7 - Back to Settings Menu"),
+            item_text(format!(
+                "7 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -1980,45 +2512,57 @@ fn build_healing_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_nades_menu(settings: &config::Config) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title("Nade Items Menu");
+fn build_nades_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
+    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, NadesMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
-                Span::from("Red = Disable").red(),
+                Span::from(i18n_msg!(i18n_bundle, RedIsDisable).to_string()).red(),
                 Span::from(" - ").dark_gray(),
-                Span::from("Green = Enabled").green(),
+                Span::from(i18n_msg!(i18n_bundle, GreedIsEnabled).to_string()).green(),
             ])),
             |_| None,
         )
         .no_id()
         .add_dummy_item()
-        .add_text_item("Nade Items:")
+        .add_text_item(i18n_msg!(i18n_bundle, NadeItemsSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "1 - Frag Grenade",
+        i18n_bundle,
+        "1 - ",
+        LootFragGrenade,
         LootLevel::Red,
         settings.loot.grenade_frag,
         grenade_frag
     );
     menu = add_colored_loot_item!(
         menu,
-        "2 - Arc Star",
+        i18n_bundle,
+        "2 - ",
+        LootArcStar,
         LootLevel::Blue,
         settings.loot.grenade_arc_star,
         grenade_arc_star
     );
     menu = add_colored_loot_item!(
         menu,
-        "3 - Thermite",
+        i18n_bundle,
+        "3 - ",
+        LootThermite,
         LootLevel::Red,
         settings.loot.grenade_thermite,
         grenade_thermite
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("4 - Back to Settings Menu"),
+            item_text(format!(
+                "4 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -2027,52 +2571,66 @@ fn build_nades_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_backpacks_menu(settings: &config::Config) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title("Backpacks Menu");
+fn build_backpacks_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
+    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, BackpacksMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
-                Span::from("Red = Disable").red(),
+                Span::from(i18n_msg!(i18n_bundle, RedIsDisable).to_string()).red(),
                 Span::from(" - ").dark_gray(),
-                Span::from("Green = Enabled").green(),
+                Span::from(i18n_msg!(i18n_bundle, GreedIsEnabled).to_string()).green(),
             ])),
             |_| None,
         )
         .no_id()
         .add_dummy_item()
-        .add_text_item("Backpacks:")
+        .add_text_item(i18n_msg!(i18n_bundle, BackpacksSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "1 - Light Backpack",
+        i18n_bundle,
+        "1 - ",
+        LootLightBackpack,
         LootLevel::White,
         settings.loot.lightbackpack,
         lightbackpack
     );
     menu = add_colored_loot_item!(
         menu,
-        "2 - Medium Backpack",
+        i18n_bundle,
+        "2 - ",
+        LootMediumBackpack,
         LootLevel::Blue,
         settings.loot.medbackpack,
         medbackpack
     );
     menu = add_colored_loot_item!(
         menu,
-        "3 - Heavy Backpack",
+        i18n_bundle,
+        "3 - ",
+        LootHeavyBackpack,
         LootLevel::Purple,
         settings.loot.heavybackpack,
         heavybackpack
     );
     menu = add_colored_loot_item!(
         menu,
-        "4 - Gold Backpack",
+        i18n_bundle,
+        "4 - ",
+        LootGoldBackpack,
         LootLevel::Gold,
         settings.loot.goldbackpack,
         goldbackpack
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("5 - Back to Settings Menu"),
+            item_text(format!(
+                "5 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -2081,94 +2639,120 @@ fn build_backpacks_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_scopes_menu(settings: &config::Config) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title("Scopes Menu");
+fn build_scopes_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Config,
+) -> MenuState<'static> {
+    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, ScopesMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
-                Span::from("Red = Disable").red(),
+                Span::from(i18n_msg!(i18n_bundle, RedIsDisable).to_string()).red(),
                 Span::from(" - ").dark_gray(),
-                Span::from("Green = Enabled").green(),
+                Span::from(i18n_msg!(i18n_bundle, GreedIsEnabled).to_string()).green(),
             ])),
             |_| None,
         )
         .no_id()
         .add_dummy_item()
-        .add_text_item("Scopes:")
+        .add_text_item(i18n_msg!(i18n_bundle, ScopesSection))
         .add_dummy_item();
     menu = add_colored_loot_item!(
         menu,
-        "1 - 1x HCOG",
+        i18n_bundle,
+        "1 - ",
+        Loot1xHcog,
         LootLevel::White,
         settings.loot.optic1xhcog,
         optic1xhcog
     );
     menu = add_colored_loot_item!(
         menu,
-        "2 - 2x HCOG",
+        i18n_bundle,
+        "2 - ",
+        Loot2xHcog,
         LootLevel::Blue,
         settings.loot.optic2xhcog,
         optic2xhcog
     );
     menu = add_colored_loot_item!(
         menu,
-        "3 - 1x HOLO",
+        i18n_bundle,
+        "3 - ",
+        Loot1xHolo,
         LootLevel::White,
         settings.loot.opticholo1x,
         opticholo1x
     );
     menu = add_colored_loot_item!(
         menu,
-        "4 - 1x-2x HOLO",
+        i18n_bundle,
+        "4 - ",
+        Loot1x2xHolo,
         LootLevel::Blue,
         settings.loot.opticholo1x2x,
         opticholo1x2x
     );
     menu = add_colored_loot_item!(
         menu,
-        "5 - Optic Threat",
+        i18n_bundle,
+        "5 - ",
+        LootOpticThreat,
         LootLevel::Gold,
         settings.loot.opticthreat,
         opticthreat
     );
     menu = add_colored_loot_item!(
         menu,
-        "6 - 3x HCOG",
+        i18n_bundle,
+        "6 - ",
+        Loot3xHcog,
         LootLevel::Purple,
         settings.loot.optic3xhcog,
         optic3xhcog
     );
     menu = add_colored_loot_item!(
         menu,
-        "7 - 2x-4x HCOG",
+        i18n_bundle,
+        "7 - ",
+        Loot2x4xAog,
         LootLevel::Purple,
         settings.loot.optic2x4x,
         optic2x4x
     );
     menu = add_colored_loot_item!(
         menu,
-        "8 - 6x Sniper Optic",
+        i18n_bundle,
+        "8 - ",
+        Loot6xSniperOptic,
         LootLevel::Blue,
         settings.loot.opticsniper6x,
         opticsniper6x
     );
     menu = add_colored_loot_item!(
         menu,
-        "9 - 4x-8x Sniper Optic",
+        i18n_bundle,
+        "9 - ",
+        Loot4x8xSniperOptic,
         LootLevel::Purple,
         settings.loot.opticsniper4x8x,
         opticsniper4x8x
     );
     menu = add_colored_loot_item!(
         menu,
-        "10 - Sniper Threat",
+        i18n_bundle,
+        "10 - ",
+        LootSniperThreat,
         LootLevel::Gold,
         settings.loot.opticsniperthreat,
         opticsniperthreat
     );
     menu.add_dummy_item()
         .add_item(
-            item_text("11 - Back to Settings Menu"),
+            item_text(format!(
+                "11 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -2177,14 +2761,17 @@ fn build_scopes_menu(settings: &config::Config) -> MenuState<'static> {
         .into()
 }
 
-fn build_key_codes_menu(_settings: &config::Config) -> MenuState<'static> {
+fn build_key_codes_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    _settings: config::Config,
+) -> MenuState<'static> {
     MenuBuilder::new()
-        .title("Key Codes:")
-        .add_text_item("108 Left mouse button (mouse1)")
-        .add_text_item("109 Right mouse button (mouse2)")
-        .add_text_item("110 Middle mouse button (mouse3)")
-        .add_text_item("111 Side mouse button (mouse4)")
-        .add_text_item("112 Side mouse button (mouse5)")
+        .title(i18n_msg!(i18n_bundle, HotkeyMenuTitle))
+        .add_text_item(i18n_msg!(i18n_bundle, Keycode108Mouse1Left))
+        .add_text_item(i18n_msg!(i18n_bundle, Keycode109Mouse2Right))
+        .add_text_item(i18n_msg!(i18n_bundle, Keycode110Mouse3Middle))
+        .add_text_item(i18n_msg!(i18n_bundle, Keycode111Mouse4Side))
+        .add_text_item(i18n_msg!(i18n_bundle, Keycode112Mouse5Side))
         .add_text_item("79 SHIFT key")
         .add_text_item("81 ALT key")
         .add_text_item("83 CTRL key")
@@ -2271,7 +2858,7 @@ fn build_key_codes_menu(_settings: &config::Config) -> MenuState<'static> {
         .add_text_item("103 KEY_F12")
         .add_dummy_item()
         .add_item(
-            item_text("Back to Hotkey Menu"),
+            item_text(i18n_msg!(i18n_bundle, MenuItemBackToHotkeyMenu)),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::HotkeyMenu);
                 None
@@ -2279,7 +2866,7 @@ fn build_key_codes_menu(_settings: &config::Config) -> MenuState<'static> {
         )
         .add_dummy_item()
         .add_item(
-            item_text("Back to Main Menu"),
+            item_text(i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)),
             |handle: &mut TerminalMenu| {
                 handle.nav_menu(MenuLevel::MainMenu);
                 None
@@ -2309,63 +2896,89 @@ fn render_selected_list<'a>(
     )
 }
 
-fn text_enabled(v: bool) -> &'static str {
-    // if v {
-    //     "on"
-    // } else {
-    //     "off"
-    // }
-    if v {
-        "Enabled"
-    } else {
-        "Disabled"
-    }
-}
 fn format_label<T>(label: T) -> Span<'static>
 where
     T: Into<String>,
 {
     Span::styled(
-        format!("{: <40}", label.into()),
+        {
+            //format!("{: <40}", label.into())
+            const LABEL_SIZE: usize = 40;
+            let mut labal_text: String = label.into();
+            let label_width = UnicodeWidthStr::width(labal_text.as_str());
+            if label_width < LABEL_SIZE {
+                let space_count = LABEL_SIZE - label_width;
+                labal_text += &(" ".repeat(space_count));
+            }
+            labal_text
+        },
         Style::default().fg(Color::White),
     )
 }
-fn format_value(label: &str) -> Span {
-    Span::styled(format!("{: <40}", label), Style::default().fg(Color::Green))
-}
-fn format_item<T>(label: T, value: Span) -> ListItem
+fn format_item<'a, T>(
+    i18n_bundle: &FluentBundle<FluentResource>,
+    label: T,
+    value: Span<'a>,
+) -> ListItem<'a>
 where
     T: Into<String>,
 {
     ListItem::new(Line::from(vec![
         format_label(label.into()),
-        Span::styled(" (Current: ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            i18n_msg!(i18n_bundle, MenuValuePrefix).to_string(),
+            Style::default().fg(Color::DarkGray),
+        ),
         value,
-        Span::styled(")", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            i18n_msg!(i18n_bundle, MenuValueSuffix).to_string(),
+            Style::default().fg(Color::DarkGray),
+        ),
     ]))
 }
-fn span_enabled(v: bool) -> Span<'static> {
+fn span_enabled(i18n_bundle: &FluentBundle<FluentResource>, v: bool) -> Span<'static> {
     Span::styled(
-        text_enabled(v),
+        if v {
+            i18n_msg!(i18n_bundle, MenuValueEnabled)
+        } else {
+            i18n_msg!(i18n_bundle, MenuValueDisabled)
+        }
+        .to_string(),
         Style::default().fg(if v { Color::Green } else { Color::White }),
     )
 }
-fn item_enabled(label: &str, v: bool) -> ListItem {
-    format_item(label, span_enabled(v))
+fn item_enabled<T>(
+    i18n_bundle: &FluentBundle<FluentResource>,
+    label: T,
+    v: bool,
+) -> ListItem<'static>
+where
+    T: Into<String>,
+{
+    format_item(i18n_bundle, label, span_enabled(i18n_bundle, v))
 }
-fn item_text(label: &str) -> ListItem {
+fn item_text<T>(label: T) -> ListItem<'static>
+where
+    T: Into<String>,
+{
     ListItem::new(Line::from(format_label(label)))
 }
 fn item_dummy() -> ListItem<'static> {
     ListItem::new(Line::from("‌​‌‌​​​‌‌‌‍‌​‌‌​‌​​​‌‍‌​‌‌​​‌​‌‌‍‌​‌‌‌​‌​​‌‍‌​‌‌‌​‌​​‌‍‌​‌‌​‌‌‌‌‌‍‌​‌‌‌‌​​‌‌‍‌​‌‌​​​​‌‌‍‌​‌‌‌​​​​‌‍‌​‌‌​​‌​‌‌‍‌​‌‌‌‌​​​‌‍‌​‌‌‌​‌​​‌‍‌​‌‌‌​‌​‌‌‍‌​‌‌​‌​​‌‌‍‌​‌‌​‌‌​‌‌‍‌​‌‌​​‌​‌‌‍‌​‌‌​‌‌‌​‌‍‌​‌‌‌​‌​‌‌"))
 }
-fn block_title(title: &str) -> Paragraph<'_> {
+fn block_title<T>(title: T) -> Paragraph<'static>
+where
+    T: Into<String>,
+{
     let title_block = Block::default()
         .borders(Borders::ALL)
         .style(Style::default());
 
-    let title =
-        Paragraph::new(Text::styled(title, Style::default().fg(Color::Green))).block(title_block);
+    let title = Paragraph::new(Text::styled(
+        title.into(),
+        Style::default().fg(Color::Green),
+    ))
+    .block(title_block);
     title
 }
 
