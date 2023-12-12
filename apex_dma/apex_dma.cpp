@@ -289,6 +289,7 @@ void ClientActions() {
       if (!apex_mem.Read<float>(local_player_ptr + OFFSET_TIME_BASE,
                                 world_time)) {
         // memory_io_panic("read time_base");
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
         break;
       }
       if (!apex_mem.Read<float>(local_player_ptr + OFFSET_TRAVERSAL_STARTTIME,

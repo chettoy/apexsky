@@ -87,16 +87,17 @@ Game version (Steam Only right now): v3.0.51.45
 3. chettoy Fork's features
 
     * KrackerCo Fork's no-overlay features.
-    * KrackerCo Fork's Client features.
-    * Optional glow box to replace the player glow (If you want to prevent screenshot detection or want to broadcast live)
+    * KrackerCo Fork's Client features. (overlay)
+    * Optional glow box to replace the player glow (If you want to prevent screenshot detection or want to broadcast live) (overlay)
     * Sky Grenade
     * Improved target locking
     * Multiple bone selection effects
     * Calculate and display the game frame rate
-    * Aiming Target Indicator
+    * Aiming Target Indicator (overlay)
     * Edit and Save your config file
     * Interactive Terminal Menu
     * Player armor glows with color
+    * Multilingual Support
 
 
 
@@ -107,17 +108,28 @@ Look forward to your testing and feedback.
 
 ## Getting Started
 
-Click on *Actions* to download the auto-built artifacts.
+There are really only two steps:
+
+1. Run the game on a windows guest in a kvm virtual machine.
+2. Run the compiled apex_dma program on the Linux host.
+    ```shell
+    sudo ./apex_dma
+    ```
 
 
 
-```shell
-sudo ./apex_dma
-```
+Additional information:
+
 
 1. Please put the overlay window on the top of the VM screen after start. For example, on top of the looking-glass window.
 2. The window can't get the focus at the same time with the VM screen,  please passthrough some keyboard, mouse or joystick into the VM,  otherwise you can't operate the game.
 3. Press insert key on the overlay window to open the overlay menu.
+
+
+
+Click on *[Actions](https://github.com/chettoy/apex_dma_kvm_pub/actions)* to download the auto-built artifacts.
+
+Or compile it yourself.
 
 
 
