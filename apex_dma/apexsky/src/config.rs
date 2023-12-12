@@ -163,6 +163,7 @@ pub struct Config {
     pub item_glow: bool,
     pub player_glow: bool,
     pub player_glow_armor_color: bool,
+    pub weapon_model_glow: bool,
     pub deathbox: bool,
     pub aim_no_recoil: bool,
     pub ads_fov: f32,
@@ -380,6 +381,7 @@ impl Default for Config {
             item_glow: true,
             player_glow: false,
             player_glow_armor_color: true,
+            weapon_model_glow: false,
             deathbox: false,
             aim_no_recoil: true,
             ads_fov: 12.0, // Fov you want to use while aiming

@@ -97,6 +97,7 @@ Game version (Steam Only right now): v3.0.51.45
     * Edit and Save your config file
     * Interactive Terminal Menu
     * Player armor glows with color
+    * Weapon model glow and spectated indicator
     * Multilingual Support
 
 

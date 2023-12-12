@@ -68,6 +68,7 @@
 #define OFFSET_M_CUSTOMSCRIPTINT 0x1588 //m_customScriptInt //updated 11/20/2023
 #define OFFSET_YAW 0x226c - 0x8 //m_currentFramePlayer.m_ammoPoolCount - 0x8 //updated 11/20/2023
 #define OFFSET_TIME_BASE 0x20b8 //m_currentFramePlayer.timeBase //updated 11/20/2023
+#define OFFSET_VIEW_MODELS 0x2d50 //m_hViewModels //updated 11/20/2023
  
 //#define OFFSET_GLOW_T1 0x262+ 0x30 //16256 = enabled, 0 = disabled
 //#define OFFSET_GLOW_T2 0x2dc+ 0x30 //1193322764 = enabled, 0 = disabled

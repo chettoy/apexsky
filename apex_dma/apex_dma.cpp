@@ -255,6 +255,22 @@ void memory_io_panic(const char *info) {
   exit(0);
 }
 
+// Define rainbow color function
+void rainbowColor(int frame_number, std::array<float, 3> &colors) {
+  const float frequency = 0.1; // Adjust the speed of color change
+  const float amplitude = 0.5; // Adjust the amplitude of color change
+
+  // Use the sine function to generate rainbow color variation
+  float r = sin(frequency * frame_number + 0) * amplitude + 0.5;
+  float g = sin(frequency * frame_number + 2) * amplitude + 0.5;
+  float b = sin(frequency * frame_number + 4) * amplitude + 0.5;
+
+  // Clamp the colors to the range [0, 1]
+  colors[0] = fmax(0, fmin(1, r));
+  colors[1] = fmax(0, fmin(1, g));
+  colors[2] = fmax(0, fmin(1, b));
+}
+
 void ClientActions() {
   cactions_t = true;
   while (cactions_t) {
@@ -410,6 +426,23 @@ void ClientActions() {
           last_checkpoint_frame = curFrameNumber;
           checkpoint_time = ms;
         }
+      }
+
+      Entity local_ent = getEntity(local_player_ptr);
+      if (g_settings.weapon_model_glow) {
+        std::array<float, 3> highlight_color;
+        if (spectators > 0) {
+          highlight_color = {1, 0, 0};
+        } else if (allied_spectators > 0) {
+          highlight_color = {0, 1, 0};
+        } else {
+          rainbowColor(curFrameNumber, highlight_color);
+        }
+        // printf("R: %f, G: %f, B: %f\n", highlight_color[0],
+        // highlight_color[1], highlight_color[2]);
+        local_ent.glow_weapon_model(g_Base, true, highlight_color);
+      } else {
+        local_ent.glow_weapon_model(g_Base, false, {0, 0, 0});
       }
 
       // printf("Minimap: %ld\n", minimap);

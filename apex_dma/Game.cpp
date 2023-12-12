@@ -178,22 +178,6 @@ void Entity::enableGlow(int context_id, int setting_index, uint8_t inside_value,
   apex_mem.Write<unsigned char>(
       ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + context_id, setting_index);
 
-  // apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 1);
-  // apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 1,
-  //                               setting_index);
-
-  // apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
-  // apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 2,
-  //                               setting_index);
-
-  // apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 3);
-  // apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 3,
-  //                               setting_index);
-
-  // apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 4);
-  // apex_mem.Write<unsigned char>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 4,
-  //                               setting_index);
-  // // apex_mem.Write<int>(ptr + 0x298 + contextId, settingIndex);
   long highlight_settings_ptr;
   apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
   apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 2);
@@ -203,8 +187,8 @@ void Entity::enableGlow(int context_id, int setting_index, uint8_t inside_value,
   apex_mem.Write<typeof(highlight_parameter)>(
       highlight_settings_ptr + HIGHLIGHT_TYPE_SIZE * setting_index + 8,
       highlight_parameter);
-  apex_mem.Write(g_Base + 0x270, 1);
-  apex_mem.Write(ptr + 0x270, 1);
+  // apex_mem.Write(g_Base + 0x270, 1);
+  // apex_mem.Write(ptr + 0x270, 1);
 }
 void Entity::disableGlow() {
 
@@ -234,6 +218,44 @@ void Entity::get_name(uint64_t g_Base, uint64_t index, char *name) {
   uint64_t name_ptr = 0;
   apex_mem.Read<uint64_t>(g_Base + OFFSET_NAME_LIST + index, name_ptr);
   apex_mem.ReadArray<char>(name_ptr, name, 32);
+}
+
+void Entity::glow_weapon_model(uint64_t g_Base, bool enable_glow,
+                               std::array<float, 3> highlight_colors) {
+  uint64_t view_model_handle;
+  apex_mem.Read<uint64_t>(ptr + OFFSET_VIEW_MODELS, view_model_handle);
+  view_model_handle &= 0xFFFF;
+  uint64_t view_model_ptr = 0;
+  apex_mem.Read<uint64_t>(g_Base + OFFSET_ENTITYLIST + (view_model_handle << 5),
+                          view_model_ptr);
+
+  // printf("handle=%lu, ptr=%lu, \n", view_model_handle, view_model_ptr);
+
+  // uint64_t name_ptr;
+  // char name_str[200];
+  // apex_mem.Read<uint64_t>(view_model_ptr + OFFSET_MODELNAME, name_ptr);
+  // apex_mem.ReadArray<char>(name_ptr, name_str, 200);
+  // printf("name=%s\n", name_str);
+
+  std::array<unsigned char, 4> highlightFunctionBits = {0, 125, 64, 64};
+  static const int contextId = 0;
+  int settingIndex = 99;
+
+  if (!enable_glow) {
+    highlightFunctionBits = {0, 125, 0, 64};
+    settingIndex = 0;
+  }
+
+  apex_mem.Write<int>(view_model_ptr + OFFSET_GLOW_ENABLE, contextId);
+  apex_mem.Write<unsigned char>(
+      view_model_ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId,
+      settingIndex);
+  long highlightSettingsPtr;
+  apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
+  apex_mem.Write<typeof(highlightFunctionBits)>(
+      highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits);
+  apex_mem.Write<typeof(highlight_colors)>(
+      highlightSettingsPtr + 40 * settingIndex + 8, highlight_colors);
 }
 
 // Items
@@ -459,7 +481,7 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
     if (skynade_angles.x == 0 && skynade_angles.y == 0) {
       return ViewAngles;
     }
-    
+
     const float PIS_IN_180 = 57.2957795130823208767981548141051703f;
     QAngle TargetAngles = QAngle(-skynade_angles.x * PIS_IN_180,
                                  skynade_angles.y * PIS_IN_180, 0);

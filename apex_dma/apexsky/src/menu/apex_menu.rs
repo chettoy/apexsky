@@ -823,30 +823,47 @@ fn build_main_menu(
         settings.player_glow_armor_color,
         player_glow_armor_color
     );
-    menu.add_dummy_item()
-        .add_item(
-            format_item(
-                &i18n_bundle,
-                format!("29 - {}", i18n_msg!(i18n_bundle, MenuItemToggleOverlay)),
-                if settings.no_overlay {
-                    Span::styled(
-                        i18n_msg!(i18n_bundle, MenuValueNoOverlay).to_string(),
-                        Style::default().white(),
-                    )
-                } else {
-                    Span::styled(
-                        i18n_msg!(i18n_bundle, MenuValueExternalOverlay).to_string(),
-                        Style::default().green(),
-                    )
-                },
-            ),
-            |_| {
-                let settings = &mut G_STATE.lock().unwrap().settings;
-                settings.no_overlay = !settings.no_overlay;
+    menu.add_item(
+        item_enabled(
+            &i18n_bundle,
+            format!("29 - {}", i18n_msg!(i18n_bundle, MenuItemWeaponModelGlow)),
+            settings.weapon_model_glow,
+        ),
+        |_handle: &mut TerminalMenu| {
+            let settings = &mut G_STATE.lock().unwrap().settings;
+            settings.weapon_model_glow = !settings.weapon_model_glow;
+            if settings.weapon_model_glow {
+                let i18n_bundle = get_fluent_bundle();
+                Some(i18n_msg!(i18n_bundle, InfoWeaponModelGlow).to_string())
+            } else {
                 None
+            }
+        },
+    )
+    .add_dummy_item()
+    .add_item(
+        format_item(
+            &i18n_bundle,
+            format!("32 - {}", i18n_msg!(i18n_bundle, MenuItemToggleOverlay)),
+            if settings.no_overlay {
+                Span::styled(
+                    i18n_msg!(i18n_bundle, MenuValueNoOverlay).to_string(),
+                    Style::default().white(),
+                )
+            } else {
+                Span::styled(
+                    i18n_msg!(i18n_bundle, MenuValueExternalOverlay).to_string(),
+                    Style::default().green(),
+                )
             },
-        )
-        .into()
+        ),
+        |_| {
+            let settings = &mut G_STATE.lock().unwrap().settings;
+            settings.no_overlay = !settings.no_overlay;
+            None
+        },
+    )
+    .into()
 }
 
 fn build_glow_color_menu(

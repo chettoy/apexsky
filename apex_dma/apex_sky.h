@@ -157,6 +157,7 @@ typedef struct {
   bool item_glow;
   bool player_glow;
   bool player_glow_armor_color;
+  bool weapon_model_glow;
   bool deathbox;
   bool aim_no_recoil;
   float ads_fov;

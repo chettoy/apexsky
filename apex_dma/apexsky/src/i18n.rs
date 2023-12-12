@@ -68,6 +68,8 @@ pub enum MessageId {
     InputPromptFpsPredict,
     MenuItemBigMapFeat,
     MenuItemPlayerArmorGlowColor,
+    MenuItemWeaponModelGlow,
+    InfoWeaponModelGlow,
     MenuItemToggleOverlay,
     MenuValueNoOverlay,
     MenuValueExternalOverlay,
