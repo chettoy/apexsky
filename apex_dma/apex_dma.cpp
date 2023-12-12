@@ -838,7 +838,6 @@ void DoActions() {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// player players[toRead];
 std::vector<player> players(toRead);
 Matrix view_matrix_data = {};
 
@@ -884,128 +883,62 @@ static void EspLoop() {
 
         uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
 
-        // memset(players, 0, sizeof(players));
         players.clear();
 
-        if (g_settings.firing_range) {
-          int c = 0;
+        {
+          Vector LocalPlayerPosition = LPlayer.getPosition();
+          QAngle localviewangle = LPlayer.GetViewAngles();
+
           // Ammount of ents to loop, dont edit.
-          for (int i = 0; i < 61; i++) {
-            uint64_t centity = 0;
-            apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
-            if (centity == 0) {
-              continue;
-            }
-
-            if (LocalPlayer == centity) {
-              continue;
-            }
-
-            Entity Target = getEntity(centity);
-
-            if (!Target.isDummy() && !g_settings.onevone) {
-              continue;
-            }
-
-            if (!Target.isAlive()) {
-              continue;
-            }
-            int entity_team = Target.getTeamId();
-            if (!g_settings.onevone) {
-              if (entity_team < 0 || entity_team > 50 ||
-                  entity_team == team_player) {
-                continue;
-              }
-            } else {
-              if (entity_team < 0 || entity_team > 50) {
-                continue;
-              }
-            }
-            Vector EntityPosition = Target.getPosition();
-            float dist = LocalPlayerPosition.DistTo(EntityPosition);
-
-            if (dist > g_settings.max_dist || dist < 50.0f) {
-              continue;
-            }
-
-            Vector bs = Vector();
-            // Change res to your res here, default is 1080p but can copy paste
-            // 1440p here
-            WorldToScreen(EntityPosition, view_matrix_data.matrix, 1920, 1080,
-                          bs); // 2560, 1440
-            if (g_settings.esp) {
-              Vector hs = Vector();
-              Vector HeadPosition = Target.getBonePositionByHitbox(0);
-              // Change res to your res here, default is 1080p but can copy
-              // paste 1440p here
-              WorldToScreen(HeadPosition, view_matrix_data.matrix, 1920, 1080,
-                            hs); // 2560, 1440
-              float height = abs(abs(hs.y) - abs(bs.y));
-              float width = height / 2.0f;
-              float boxMiddle = bs.x - (width / 2.0f);
-              int health = Target.getHealth();
-              int shield = Target.getShield();
-              int maxshield = Target.getMaxshield();
-              int armortype = Target.getArmortype();
-              players[c] = {dist,
-                            entity_team,
-                            boxMiddle,
-                            hs.y,
-                            width,
-                            height,
-                            bs.x,
-                            bs.y,
-                            0,
-                            (Target.lastVisTime() > lastvis_esp[c]),
-                            health,
-                            shield,
-                            maxshield,
-                            armortype
-
-              };
-              Target.get_name(g_Base, i - 1, &players[c].name[0]);
-              lastvis_esp[c] = Target.lastVisTime();
-              valid = true;
-              c++;
-            }
-          }
-        } else {
           for (int i = 0; i < toRead; i++) {
+            // Read entity pointer
             uint64_t centity = 0;
             apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
             if (centity == 0) {
               continue;
             }
 
+            // Exclude self
             if (LocalPlayer == centity) {
               continue;
             }
 
+            // Get entity data
             Entity Target = getEntity(centity);
 
-            if (!Target.isPlayer()) {
-              continue;
+            // Exclude undesired entity
+            if (g_settings.firing_range) {
+              if (!Target.isDummy() && !g_settings.onevone) {
+                continue;
+              }
+            } else {
+              if (!Target.isPlayer()) {
+                continue;
+              }
             }
 
+            // Exclude dead entity
             if (!Target.isAlive()) {
               continue;
             }
 
             int entity_team = Target.getTeamId();
-            if (!g_settings.onevone) {
-              if (entity_team < 0 || entity_team > 50 ||
-                  entity_team == team_player) {
-                continue;
-              }
-            } else {
-              if (entity_team < 0 || entity_team > 50) {
-                continue;
-              }
+
+            // Exclude invalid team
+            if (entity_team < 0 || entity_team > 50) {
+              continue;
+            }
+
+            // Exlude teammates if not 1v1
+            if (entity_team == team_player && !g_settings.onevone) {
+              continue;
             }
 
             Vector EntityPosition = Target.getPosition();
             float dist = LocalPlayerPosition.DistTo(EntityPosition);
-            if (dist > g_settings.max_dist || dist < 50.0f) {
+
+            // Excluding targets that are too far or too close
+            if (dist > g_settings.max_dist || dist < 20.0f) {
               continue;
             }
 
@@ -1029,28 +962,27 @@ static void EspLoop() {
               int maxshield = Target.getMaxshield();
               int armortype = Target.getArmortype();
               Vector EntityPosition = Target.getPosition();
-              Vector LocalPlayerPosition = LPlayer.getPosition();
-              QAngle localviewangle = LPlayer.GetViewAngles();
               float targetyaw = Target.GetYaw();
-              players[i] = {dist,
-                            entity_team,
-                            boxMiddle,
-                            hs.y,
-                            width,
-                            height,
-                            bs.x,
-                            bs.y,
-                            Target.isKnocked(),
-                            (Target.lastVisTime() > lastvis_esp[i]),
-                            health,
-                            shield,
-                            maxshield,
-                            armortype,
-                            EntityPosition,
-                            LocalPlayerPosition,
-                            localviewangle,
-                            targetyaw};
-              Target.get_name(g_Base, i - 1, &players[i].name[0]);
+              player data_buf = {dist,
+                                 entity_team,
+                                 boxMiddle,
+                                 hs.y,
+                                 width,
+                                 height,
+                                 bs.x,
+                                 bs.y,
+                                 Target.isKnocked(),
+                                 (Target.lastVisTime() > lastvis_esp[i]),
+                                 health,
+                                 shield,
+                                 maxshield,
+                                 armortype,
+                                 EntityPosition,
+                                 LocalPlayerPosition,
+                                 localviewangle,
+                                 targetyaw};
+              Target.get_name(g_Base, i - 1, &data_buf.name[0]);
+              players.push_back(data_buf);
               lastvis_esp[i] = Target.lastVisTime();
               valid = true;
             }

@@ -53,7 +53,6 @@ extern bool lock;
 
 extern bool overlay_t;
 
-//extern player players[100];
 extern std::vector<player> players;
 extern Matrix view_matrix_data;
 extern Vector local_pos;
@@ -555,7 +554,7 @@ void Overlay::RenderEsp() {
 
     if (next2 && valid) {
 
-      for (int i = 0; i < 100; i++) {
+      for (int i = 0; i < players.size(); i++) {
 
         if (players[i].health > 0) {
           std::string distance = std::to_string(players[i].dist / 39.62);
