@@ -162,7 +162,6 @@ bool Entity::isZooming() { return *(int *)(buffer + OFFSET_ZOOMING) == 1; }
 
 extern uint64_t g_Base;
 
-
 void Entity::enableGlow(int context_id, int setting_index, uint8_t inside_value,
                         uint8_t outline_size,
                         std::array<float, 3> highlight_parameter) {
@@ -457,7 +456,10 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
                       target_origin.x, target_origin.y, target_origin.z);
 
     // printf("(%.1f, %.1f)\n", ViewAngles.x, ViewAngles.y);
-
+    if (skynade_angles.x == 0 && skynade_angles.y == 0) {
+      return ViewAngles;
+    }
+    
     const float PIS_IN_180 = 57.2957795130823208767981548141051703f;
     QAngle TargetAngles = QAngle(-skynade_angles.x * PIS_IN_180,
                                  skynade_angles.y * PIS_IN_180, 0);

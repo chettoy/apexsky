@@ -69,9 +69,8 @@ std::vector<TreasureClue> treasure_clues;
 // [del]CONFIG AREA, you must set all the true/false to what you want.[/del]
 // No longer needed here. Edit your configuration file!
 
-// uint64_t wish_list[] = {191, 209, 210, 220,          234,
-//                         242, 258, 260, 429496729795, 52776987629977800};
-uint64_t wish_list[] = {};
+std::vector<uint64_t> wish_list{191, 209, 210, 220,          234,
+                                242, 258, 260, 429496729795, 52776987629977800};
 
 void TriggerBotRun() {
   // testing
@@ -250,126 +249,166 @@ bool isPressed(uint32_t button_code) {
           (1 << (static_cast<uint32_t>(button_code) & 0x1f))) != 0;
 }
 
+void memory_io_panic(const char *info) {
+  quit_tui_menu();
+  std::cout << "Error " << info << std::endl;
+  exit(0);
+}
+
 void ClientActions() {
   cactions_t = true;
   while (cactions_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-    // SuperGlide state
-    int frameSleepTimer = 0;
-    int lastFrameNumber = 0;
-    bool superGlideStart = false;
-    int superGlideTimer = 0;
-
-    // Game fps state
-    int last_checkpoint_frame = 0;
-    std::chrono::milliseconds checkpoint_time;
-
     while (g_Base != 0) {
       const auto g_settings = global_settings();
 
-      uint64_t LocalPlayer = 0;
-      apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+      // read player ptr
+      uint64_t local_player_ptr = 0;
+      apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, local_player_ptr);
 
-      int attackState = 0;
-      apex_mem.Read<int>(g_Base + OFFSET_IN_ATTACK, attackState); // 108
-      int tduckState = 0;
-      apex_mem.Read<int>(g_Base + OFFSET_IN_TOGGLE_DUCK, tduckState); // 61
-
+      // read game states
       apex_mem.Read<typeof(button_state)>(g_Base + OFFSET_INPUT_SYSTEM + 0xb0,
                                           button_state);
 
-      int zoomState = 0;
-      apex_mem.Read<int>(g_Base + OFFSET_IN_ZOOM, zoomState); // 109
-
-      int curFrameNumber;
+      int attack_state = 0, zoom_state = 0, tduck_state = 0, jump_state = 0,
+          force_jump = 0, force_toggle_duck = 0, force_duck = 0,
+          curFrameNumber = 0;
+      apex_mem.Read<int>(g_Base + OFFSET_IN_ATTACK, attack_state);     // 108
+      apex_mem.Read<int>(g_Base + OFFSET_IN_ZOOM, zoom_state);         // 109
+      apex_mem.Read<int>(g_Base + OFFSET_IN_TOGGLE_DUCK, tduck_state); // 61
+      apex_mem.Read<int>(g_Base + OFFSET_IN_JUMP, jump_state);
+      apex_mem.Read<int>(g_Base + OFFSET_IN_JUMP + 0x8, force_jump);
+      apex_mem.Read<int>(g_Base + OFFSET_IN_TOGGLE_DUCK + 0x8,
+                         force_toggle_duck);
+      apex_mem.Read<int>(g_Base + OFFSET_IN_DUCK + 0x8, force_duck);
       apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008,
                          curFrameNumber); // GlobalVars + 0x0008
 
-      float m_traversalProgressTmp = 0.0f;
-      float m_traversalProgress;
-      // printf("Playerentcount: %i\n", playerentcount);
-      // printf("Playerentcount: %i\n", itementcount);
-      apex_mem.Read<float>(LocalPlayer + OFFSET_TRAVERSAL_PROGRESS,
-                           m_traversalProgress);
-      // printf("Travel Time: %f\n", m_traversalProgress);
-      // printf("Frame Sleep Timer: %i\n", frameSleepTimer);
-      // printf("Super Glide Timer: %i\n", superGlideTimer);
-      // printf("Last Frame: %i\n", lastFrameNumber);
-      // printf("Cur Frame: %i\n", curFrameNumber);
-      // printf("superGlideStart: %d\n", superGlideStart ? 1 : 0);
-      int jump;
-      int ducktoggle;
-      int forceduck;
-      apex_mem.Read<int>(g_Base + OFFSET_FORCE_JUMP + 0x8, jump);
-      apex_mem.Read<int>(g_Base + OFFSET_IN_TOGGLE_DUCK + 0x8, ducktoggle);
-      apex_mem.Read<int>(g_Base + OFFSET_FORCE_DUCK + 0x8, forceduck);
-      // printf("Jump Value: %i\n", jump);
-      // printf("Duck Value: %i\n", ducktoggle);
-      // printf("Force Duck: %i\n", forceduck);
-      // apex_mem.Write<int>(g_Base + OFFSET_FORCE_JUMP + 0x8, 4);
-
-      if (curFrameNumber > lastFrameNumber) {
-        frameSleepTimer = 10; // <- middle of the frame // needs 5 for 144fps
-                              // and 10 for 75 fps
-        if (abs(g_settings.game_fps - 144.0) <
-            abs(g_settings.game_fps - 75.0)) {
-          frameSleepTimer = 5;
-        }
+      float world_time, traversal_start_time, traversal_progress;
+      if (!apex_mem.Read<float>(local_player_ptr + OFFSET_TIME_BASE,
+                                world_time)) {
+        // memory_io_panic("read time_base");
+        break;
       }
-      lastFrameNumber = curFrameNumber;
+      if (!apex_mem.Read<float>(local_player_ptr + OFFSET_TRAVERSAL_STARTTIME,
+                                traversal_start_time)) {
+        memory_io_panic("read traversal_starttime");
+      }
+      if (!apex_mem.Read<float>(local_player_ptr + OFFSET_TRAVERSAL_PROGRESS,
+                                traversal_progress)) {
+        memory_io_panic("read traversal_progress");
+      }
 
-      if (frameSleepTimer == 0) {
-        if (g_settings.super_key_toggle) {
-          float magic_number = 0.92;
+      //   printf("Travel Time: %f\n", traversal_progress);
+      //   printf("Cur Frame: %i\n", curFrameNumber);
+      //   printf("Jump Value: %i\n", jump_state);
+      //   printf("Jump Value: %i\n", force_jump);
+      //   printf("ToggleDuck Value: %i\n", force_toggle_duck);
+      //   printf("Duck Value: %i\n", force_duck);
+
+      if (g_settings.super_key_toggle) {
+        /** SuperGlide
+         * https://www.unknowncheats.me/forum/apex-legends/578160-external-auto-superglide-3.html
+         */
+        float hang_on_wall = world_time - traversal_start_time;
+
+        static float start_jump_time = 0;
+        static bool start_sg = false;
+        static std::chrono::milliseconds last_sg_finish;
+
+        float hang_start, hang_cancel, trav_start, hang_max, action_interval;
+        int release_wait;
+        {
+          // for 75 fps
+          hang_start = 0.1;
+          hang_cancel = 0.12;
+          trav_start = 0.87;
+          hang_max = 1.5;
+          action_interval = 0.011;
+          release_wait = 50;
           if (abs(g_settings.game_fps - 144.0) <
               abs(g_settings.game_fps - 75.0)) {
-            magic_number = 0.90;
-          }
-          if (m_traversalProgress > 0.85 &&
-              m_traversalProgress < magic_number) // needs to end at 0.90 for
-                                                  // 144 fps and 0.92 for 75 fps
-          {
-            superGlideStart = true;
-          }
-
-          if (superGlideStart) {
-            superGlideTimer++;
-            // printf("Timer Started \n");
-            if (superGlideTimer == 5) {
-              apex_mem.Write<int>(g_Base + OFFSET_FORCE_JUMP + 0x8, 5);
-            } else if (superGlideTimer == 6) {
-              apex_mem.Write<int>(g_Base + OFFSET_IN_TOGGLE_DUCK + 0x8, 6);
-            } else if (superGlideTimer ==
-                       10) // needs to be 10 for 75 and 144fps?
-            {
-              apex_mem.Write<int>(g_Base + OFFSET_FORCE_JUMP + 0x8, 4);
-              apex_mem.Write<int>(g_Base + OFFSET_FORCE_DUCK + 0x8, 5);
-              apex_mem.Write<int>(g_Base + OFFSET_FORCE_DUCK + 0x8, 4);
-              m_traversalProgressTmp = m_traversalProgress;
-            } else if (superGlideTimer > 10 &&
-                       m_traversalProgress != m_traversalProgressTmp) {
-              superGlideStart = false;
-              superGlideTimer = 0;
+            // for 144 fps
+            hang_start = 0.05;
+            hang_cancel = 0.07;
+            trav_start = 0.90;
+            hang_max = 0.75;
+            action_interval = 0.007;
+            release_wait = 35;
+            if (abs(g_settings.game_fps - 240.0) <
+                abs(g_settings.game_fps - 144.0)) {
+              // for 240 fps
+              hang_start = 0.033;
+              hang_cancel = 0.04;
+              trav_start = 0.95;
+              hang_max = 0.2;
+              action_interval = 0.004;
+              release_wait = 20;
             }
           }
         }
-      }
-      frameSleepTimer -= 1;
 
-      // calc game fps
-      if (g_settings.calc_game_fps && curFrameNumber % 100 == 0) {
-        std::chrono::milliseconds ms = duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch());
-        int delta_frame = curFrameNumber - last_checkpoint_frame;
-        if (delta_frame > 90 && delta_frame < 120) {
-          auto duration = ms - checkpoint_time;
-          auto settings_state = g_settings;
-          settings_state.game_fps = delta_frame * 1000.0f / duration.count();
-          update_settings(settings_state);
+        if (hang_on_wall > hang_start) {
+          if (hang_on_wall < hang_cancel) {
+            apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x8, 4);
+          }
+          if (traversal_progress > trav_start && hang_on_wall < hang_max &&
+              !start_sg) {
+            std::chrono::milliseconds now_ms =
+                duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch());
+            if ((now_ms - last_sg_finish).count() > 320 && jump_state > 0) {
+              // start SG
+              start_jump_time = world_time;
+              start_sg = true;
+            }
+          }
         }
-        last_checkpoint_frame = curFrameNumber;
-        checkpoint_time = ms;
+        if (start_sg) {
+          // press button
+          // g_logger += "sg Press jump\n";
+          apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x8, 5);
+
+          float current_time;
+          while (true) {
+            if (apex_mem.Read<float>(local_player_ptr + OFFSET_TIME_BASE,
+                                     current_time)) {
+              if (current_time - start_jump_time < action_interval) {
+                // keep looping
+              } else {
+                break;
+              }
+            }
+          }
+          apex_mem.Write<int>(g_Base + OFFSET_IN_DUCK + 0x8, 6);
+          std::this_thread::sleep_for(std::chrono::milliseconds(release_wait));
+          apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x8, 4);
+          // Write<int>(g_Base + OFFSET_IN_DUCK + 0x8, 4);
+          last_sg_finish = duration_cast<std::chrono::milliseconds>(
+              std::chrono::system_clock::now().time_since_epoch());
+          // g_logger += "sg\n";
+          start_sg = false;
+        }
+      }
+
+      { /* calc game fps */
+        static int last_checkpoint_frame = 0;
+        static std::chrono::milliseconds checkpoint_time;
+        if (g_settings.calc_game_fps && curFrameNumber % 100 == 0) {
+          std::chrono::milliseconds ms =
+              duration_cast<std::chrono::milliseconds>(
+                  std::chrono::system_clock::now().time_since_epoch());
+          int delta_frame = curFrameNumber - last_checkpoint_frame;
+          if (delta_frame > 90 && delta_frame < 120) {
+            auto duration = ms - checkpoint_time;
+            auto settings_state = g_settings;
+            settings_state.game_fps = delta_frame * 1000.0f / duration.count();
+            update_settings(settings_state);
+          }
+          last_checkpoint_frame = curFrameNumber;
+          checkpoint_time = ms;
+        }
       }
 
       // printf("Minimap: %ld\n", minimap);
@@ -519,13 +558,13 @@ void ClientActions() {
 
       if (g_settings.gamepad) {
         // attackState == 120 || zoomState == 119
-        if (attackState > 0 || zoomState > 0) {
+        if (attack_state > 0 || zoom_state > 0) {
           aiming = true;
         } else {
           aiming = false;
         }
 
-        if (zoomState > 0) {
+        if (zoom_state > 0) {
           max_fov = g_settings.ads_fov;
         } else {
           max_fov = g_settings.non_ads_fov;
@@ -533,7 +572,7 @@ void ClientActions() {
       }
 
       // Toggle crouch = check for ring
-      if (g_settings.map_radar_testing && attackState == 0 &&
+      if (g_settings.map_radar_testing && attack_state == 0 &&
           isPressed(99)) { // KEY_F8
         if (mapRadarTestingEnabled) {
           MapRadarTesting();
@@ -1143,7 +1182,7 @@ static void item_glow_t() {
 
       // for wish list
       std::vector<TreasureClue> new_treasure_clues;
-      for (int i = 0; i < sizeof(wish_list) / sizeof(uint64_t); i++) {
+      for (int i = 0; i < wish_list.size(); i++) {
         TreasureClue clue;
         clue.item_id = wish_list[i];
         clue.position = Vector(0, 0, 0);
@@ -3817,8 +3856,8 @@ static void item_glow_t() {
 extern void start_overlay();
 
 void terminal() {
+  terminal_t = true;
   run_tui_menu();
-  terminal_t = false;
 }
 
 int main(int argc, char *argv[]) {
@@ -3895,7 +3934,6 @@ int main(int argc, char *argv[]) {
         // Used to change things on a timer
         // updateInsideValue_thr = std::thread(updateInsideValue);
         TriggerBotRun_thr = std::thread(TriggerBotRun);
-        terminal_thr = std::thread(terminal);
         itemglow_thr = std::thread(item_glow_t);
         aimbot_thr.detach();
         esp_thr.detach();
@@ -3904,12 +3942,25 @@ int main(int argc, char *argv[]) {
         // Used to change things on a timer
         // updateInsideValue_thr.detach();
         TriggerBotRun_thr.detach();
-        terminal_thr.detach();
         itemglow_thr.detach();
       }
     } else {
       apex_mem.check_proc();
-      if (global_settings().no_overlay) {
+
+      const auto g_settings = global_settings();
+      const bool debug_mode = false;
+      if (debug_mode) {
+        if (terminal_t) {
+          quit_tui_menu();
+        }
+      } else {
+        if (!terminal_t) {
+          terminal_thr = std::thread(terminal);
+          terminal_thr.detach();
+        }
+        wish_list.clear();
+      }
+      if (g_settings.no_overlay) {
         if (overlay_t) {
           overlay_t = false;
         }

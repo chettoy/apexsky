@@ -407,7 +407,7 @@ impl Default for Config {
             bone_nearest: false,
             bone_auto: true,
             headshot_dist: 100.0 * 40.0,
-            skynade_dist: 80.0 * 40.0,
+            skynade_dist: 100.0 * 40.0,
             smooth: 120.0, // min 85 no beaming, 100 somewhat beam people, 125 should be safe
             skynade_smooth: 120.0 * 0.6667,
             // Player Glow Color and Brightness.

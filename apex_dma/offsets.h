@@ -21,20 +21,21 @@
 #define OFFSET_ABS_VELOCITY 0x0170 //m_vecAbsVelocity //updated 11/20/2023
 #define OFFSET_VISIBLE_TIME 0x19c0 //CPlayer!lastVisibleTime  //updated 11/20/2023
 #define OFFSET_ZOOMING 0x1c01 //m_bZooming //updated 11/20/2023
-#define OFFSET_FORCE_DUCK 0x0738b190 //in_duck //updated 11/20/2023
 #define OFFSET_TRAVERSAL_PROGRESS 0x2b2c //m_traversalProgress //updated 11/20/2023
-#define OFFSET_FORCE_JUMP 0x0738b0a0 //in_jump //updated 11/20/2023
+#define OFFSET_TRAVERSAL_STARTTIME 0x2b30 //m_traversalStartTime //updated 11/20/2023
 
-#define OFFSET_WEAPON_NAME 0x17a8 //m_weaponNameIndex 2nd one //updated 11/20/2023
-#define OFFSET_OFF_WEAPON 0x1974 //m_latestNonOffhandWeapons //updated 11/20/2023
-#define OFFSET_IN_ATTACK 0x0738af90 // in_attack //updated 11/20/2023
-#define OFFSET_IN_TOGGLE_DUCK 0x0738afd0 //in_toggle_duck //updated 11/20/2023
-#define OFFSET_IN_ZOOM 0x0738b120 //in_zoom //updated 11/20/2023
+#define OFFSET_WEAPON_NAME 0x17a8 //DT_WeaponX.m_weaponNameIndex 2nd one //updated 11/20/2023
+#define OFFSET_OFF_WEAPON 0x1974 //C_BaseCombatCharacter.m_latestNonOffhandWeapons //updated 11/20/2023
 #define OFFSET_WALL_RUN_START_TIME 0x3594 //m_wallRunStartTime
 #define OFFSET_WALL_RUN_CLEAR_TIME 0x3598 //m_wallRunClearTime
 #define OFFSET_FLAGS 0x00c8 //m_fFlags //updated 11/20/2023
+#define OFFSET_IN_ATTACK 0x0738af90 // in_attack //updated 11/20/2023
+#define OFFSET_IN_TOGGLE_DUCK 0x0738afd0 //in_toggle_duck //updated 11/20/2023
+#define OFFSET_IN_ZOOM 0x0738b120 //in_zoom //updated 11/20/2023
 #define OFFSET_IN_FORWARD 0x0738b1d0 //in_forward //updated 11/20/2023
- 
+#define OFFSET_IN_JUMP 0x0738b0a0 //in_jump //updated 11/20/2023
+#define OFFSET_IN_DUCK 0x0738b190 //in_duck //updated 11/20/2023
+
 #define OFFSET_LIFE_STATE 0x06c8 //m_lifeState, >0 = dead //updated 11/20/2023
 #define OFFSET_BLEED_OUT_STATE 0x2710 //m_bleedoutState, >0 = knocked //updated 11/20/2023
 
@@ -66,6 +67,7 @@
 #define OFFSET_MODELNAME 0x0030 // m_ModelName //updated 11/20/2023
 #define OFFSET_M_CUSTOMSCRIPTINT 0x1588 //m_customScriptInt //updated 11/20/2023
 #define OFFSET_YAW 0x226c - 0x8 //m_currentFramePlayer.m_ammoPoolCount - 0x8 //updated 11/20/2023
+#define OFFSET_TIME_BASE 0x20b8 //m_currentFramePlayer.timeBase //updated 11/20/2023
  
 //#define OFFSET_GLOW_T1 0x262+ 0x30 //16256 = enabled, 0 = disabled
 //#define OFFSET_GLOW_T2 0x2dc+ 0x30 //1193322764 = enabled, 0 = disabled
