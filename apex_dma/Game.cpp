@@ -182,16 +182,17 @@ void Entity::enableGlow(int context_id, int setting_index, uint8_t inside_value,
     apex_mem.Write<unsigned char>(
         ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + context_id, setting_index);
   }
+  apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 2);
 
   long highlight_settings_ptr;
   apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 2);
   apex_mem.Write<typeof(highlightFunctionBits)>(
       highlight_settings_ptr + HIGHLIGHT_TYPE_SIZE * setting_index + 4,
       highlightFunctionBits);
   apex_mem.Write<typeof(highlight_parameter)>(
       highlight_settings_ptr + HIGHLIGHT_TYPE_SIZE * setting_index + 8,
       highlight_parameter);
+  // Fix highlight Wraith and Ashe's disappear
   // apex_mem.Write(g_Base + 0x270, 1);
   // apex_mem.Write(ptr + 0x270, 1);
 }
@@ -234,7 +235,7 @@ void Entity::glow_weapon_model(uint64_t g_Base, bool enable_glow,
   apex_mem.Read<uint64_t>(g_Base + OFFSET_ENTITYLIST + (view_model_handle << 5),
                           view_model_ptr);
 
-  // printf("handle=%lu, ptr=%lu, \n", view_model_handle, view_model_ptr);
+  // printf("view model handle=%lu, ptr=%lu, \n", view_model_handle, view_model_ptr);
 
   // uint64_t name_ptr;
   // char name_str[200];
@@ -262,6 +263,12 @@ void Entity::glow_weapon_model(uint64_t g_Base, bool enable_glow,
       highlightSettingsPtr + 40 * setting_index + 4, highlightFunctionBits);
   apex_mem.Write<typeof(highlight_colors)>(
       highlightSettingsPtr + 40 * setting_index + 8, highlight_colors);
+  
+  // Fix highlight Wraith and Ashe's disappear
+  // apex_mem.Write(ptr + 0x270, 1);
+  // int val1;
+  // apex_mem.Read(ptr + 0x270, val1);
+  // printf("0x270=%d\n", val1);
 }
 
 // Items

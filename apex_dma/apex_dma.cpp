@@ -163,7 +163,7 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index) {
           int shield = Target.getShield();
           if (shield <= 50) { // white
             setting_index = 91;
-            highlight_parameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
+            highlight_parameter = {255 / 255.0, 155 / 255.0, 155 / 255.0};
           } else if (shield <= 75) { // blue
             setting_index = 92;
             highlight_parameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
@@ -310,7 +310,9 @@ void ClientActions() {
       }
       if (!apex_mem.Read<float>(local_player_ptr + OFFSET_TRAVERSAL_STARTTIME,
                                 traversal_start_time)) {
-        memory_io_panic("read traversal_starttime");
+        // memory_io_panic("read traversal_starttime");
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        break;
       }
       if (!apex_mem.Read<float>(local_player_ptr + OFFSET_TRAVERSAL_PROGRESS,
                                 traversal_progress)) {
@@ -852,7 +854,8 @@ void DoActions() {
       }
 
       // weapon model glow
-      if (g_settings.weapon_model_glow) {
+      // printf("%d\n", LPlayer.getHealth());
+      if (g_settings.weapon_model_glow && LPlayer.getHealth() > 0) {
         std::array<float, 3> highlight_color;
         if (spectators > 0) {
           highlight_color = {1, 0, 0};
@@ -867,6 +870,7 @@ void DoActions() {
         // printf("R: %f, G: %f, B: %f\n", highlight_color[0],
         // highlight_color[1], highlight_color[2]);
         LPlayer.glow_weapon_model(g_Base, true, highlight_color);
+        // LPlayer.enableGlow(5, 199, 14, 32, highlight_color);
       } else {
         LPlayer.glow_weapon_model(g_Base, false, {0, 0, 0});
       }
@@ -3929,7 +3933,7 @@ int main(int argc, char *argv[]) {
           terminal_thr = std::thread(terminal);
           terminal_thr.detach();
         }
-        wish_list.clear();
+        // wish_list.clear();
       }
       if (g_settings.no_overlay) {
         if (overlay_t) {
