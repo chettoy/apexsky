@@ -177,6 +177,11 @@ void Entity::enableGlow(int context_id, int setting_index, uint8_t inside_value,
   apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, context_id);
   apex_mem.Write<unsigned char>(
       ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + context_id, setting_index);
+  for (int context_id = 1; context_id < 5; context_id++) {
+    apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, context_id);
+    apex_mem.Write<unsigned char>(
+        ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + context_id, setting_index);
+  }
 
   long highlight_settings_ptr;
   apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
@@ -238,24 +243,25 @@ void Entity::glow_weapon_model(uint64_t g_Base, bool enable_glow,
   // printf("name=%s\n", name_str);
 
   std::array<unsigned char, 4> highlightFunctionBits = {0, 125, 64, 64};
-  static const int contextId = 0;
-  int settingIndex = 99;
-
+  int setting_index = 99;
   if (!enable_glow) {
     highlightFunctionBits = {0, 125, 0, 64};
-    settingIndex = 0;
+    setting_index = 0;
   }
 
-  apex_mem.Write<int>(view_model_ptr + OFFSET_GLOW_ENABLE, contextId);
-  apex_mem.Write<unsigned char>(
-      view_model_ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + contextId,
-      settingIndex);
+  for (int context_id = 1; context_id < 5; context_id++) {
+    apex_mem.Write<int>(view_model_ptr + OFFSET_GLOW_ENABLE, context_id);
+    apex_mem.Write<unsigned char>(
+        view_model_ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + context_id,
+        setting_index);
+  }
+
   long highlightSettingsPtr;
   apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
   apex_mem.Write<typeof(highlightFunctionBits)>(
-      highlightSettingsPtr + 40 * settingIndex + 4, highlightFunctionBits);
+      highlightSettingsPtr + 40 * setting_index + 4, highlightFunctionBits);
   apex_mem.Write<typeof(highlight_colors)>(
-      highlightSettingsPtr + 40 * settingIndex + 8, highlight_colors);
+      highlightSettingsPtr + 40 * setting_index + 8, highlight_colors);
 }
 
 // Items

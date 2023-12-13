@@ -56,7 +56,7 @@ bool valid = false;
 bool lock = false;
 extern float bulletspeed;
 extern float bulletgrav;
-Vector local_pos;
+Vector esp_local_pos;
 int local_held_id = 2147483647;
 uint32_t local_weapon_id = 2147483647;
 int playerentcount = 61;
@@ -274,7 +274,7 @@ void rainbowColor(int frame_number, std::array<float, 3> &colors) {
 void ClientActions() {
   cactions_t = true;
   while (cactions_t) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     while (g_Base != 0) {
       const auto g_settings = global_settings();
@@ -426,23 +426,6 @@ void ClientActions() {
           last_checkpoint_frame = curFrameNumber;
           checkpoint_time = ms;
         }
-      }
-
-      Entity local_ent = getEntity(local_player_ptr);
-      if (g_settings.weapon_model_glow) {
-        std::array<float, 3> highlight_color;
-        if (spectators > 0) {
-          highlight_color = {1, 0, 0};
-        } else if (allied_spectators > 0) {
-          highlight_color = {0, 1, 0};
-        } else {
-          rainbowColor(curFrameNumber, highlight_color);
-        }
-        // printf("R: %f, G: %f, B: %f\n", highlight_color[0],
-        // highlight_color[1], highlight_color[2]);
-        local_ent.glow_weapon_model(g_Base, true, highlight_color);
-      } else {
-        local_ent.glow_weapon_model(g_Base, false, {0, 0, 0});
       }
 
       // printf("Minimap: %ld\n", minimap);
@@ -628,7 +611,7 @@ void ClientActions() {
         mapRadarTestingEnabled = true;
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
   }
   cactions_t = false;
@@ -861,10 +844,32 @@ void DoActions() {
         }
       }
 
-      if (lock) // locked target
+      // set current aim entity
+      if (lock) { // locked target
         aimentity = locked_aim_entity;
-      else // or new target
+      } else { // or new target
         aimentity = tmp_aimentity;
+      }
+
+      // weapon model glow
+      if (g_settings.weapon_model_glow) {
+        std::array<float, 3> highlight_color;
+        if (spectators > 0) {
+          highlight_color = {1, 0, 0};
+        } else if (allied_spectators > 0) {
+          highlight_color = {0, 1, 0};
+        } else {
+          int frame_number = 0;
+          apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008,
+                             frame_number);
+          rainbowColor(frame_number, highlight_color);
+        }
+        // printf("R: %f, G: %f, B: %f\n", highlight_color[0],
+        // highlight_color[1], highlight_color[2]);
+        LPlayer.glow_weapon_model(g_Base, true, highlight_color);
+      } else {
+        LPlayer.glow_weapon_model(g_Base, false, {0, 0, 0});
+      }
     }
   }
   actions_t = false;
@@ -906,7 +911,7 @@ static void EspLoop() {
           continue;
         }
         Vector LocalPlayerPosition = LPlayer.getPosition();
-        local_pos = LocalPlayerPosition;
+        esp_local_pos = LocalPlayerPosition;
 
         uint64_t viewRenderer = 0;
         apex_mem.Read<uint64_t>(g_Base + OFFSET_RENDER, viewRenderer);
@@ -1196,7 +1201,7 @@ static void item_glow_t() {
           TreasureClue &clue = new_treasure_clues[i];
           if (ItemID == new_treasure_clues[i].item_id) {
             Vector position = item.getPosition();
-            float distance = local_pos.DistTo(position);
+            float distance = esp_local_pos.DistTo(position);
             if (distance < clue.distance) {
               clue.position = position;
               clue.distance = distance;

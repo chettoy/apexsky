@@ -55,7 +55,7 @@ extern bool overlay_t;
 
 extern std::vector<player> players;
 extern Matrix view_matrix_data;
-extern Vector local_pos;
+extern Vector esp_local_pos;
 
 // Radar Code
 #define M_PI 3.14159265358979323846 // matches value in gcc v2 math.h
@@ -523,7 +523,7 @@ void Overlay::RenderEsp() {
 
     if (treasure_clues.size() > 0) {
       Vector bs_loot, bs_local;
-      WorldToScreen(local_pos, view_matrix_data.matrix, getWidth(), getHeight(),
+      WorldToScreen(esp_local_pos, view_matrix_data.matrix, getWidth(), getHeight(),
                     bs_local);
       if (!(bs_local.x == 0 && bs_local.y == 0)) {
         for (size_t i = 0; i < treasure_clues.size(); i++) {
