@@ -161,16 +161,20 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index) {
       } else {
         if (g_settings.player_glow_armor_color) {
           int shield = Target.getShield();
-          if (shield <= 50) { // white
+          int health = Target.getHealth();
+          if (shield + health <= 100) { // Orange
             setting_index = 91;
-            highlight_parameter = {255 / 255.0, 155 / 255.0, 155 / 255.0};
-          } else if (shield <= 75) { // blue
+            highlight_parameter = {255 / 255.0, 165 / 255.0, 0 / 255.0};
+          }else if (shield + health  <= 150) { // white
             setting_index = 92;
-            highlight_parameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
-          } else if (shield <= 100) { // purple
+            highlight_parameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
+          } else if (shield + health  <= 175) { // blue
             setting_index = 93;
+            highlight_parameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
+          } else if (shield + health  <= 200) { // purple
+            setting_index = 94;
             highlight_parameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
-          } else if (shield <= 125) { // red
+          } else if (shield + health  <= 225) { // red
             setting_index = 95;
             highlight_parameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
           } else {
@@ -1101,8 +1105,13 @@ static void AimbotLoop() {
         lock_target(aimentity);
 
         Entity LPlayer = getEntity(LocalPlayer);
-        if (LocalPlayer == 0)
+        if (LocalPlayer == 0){
           continue;
+        }
+        if (LPlayer.isKnocked()) {
+          cancel_targeting();
+          continue;
+        }
 
         /* Fine-tuning for each weapon */
         // bow
