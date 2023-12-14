@@ -13,7 +13,7 @@ input-prompt-smooth-value = 瞄准平滑值 (50~500):
 info-invalid-smooth-value = 输入无效。
     平滑值可设置范围是 50 到 500
 menu-item-change-bone-aim = 自瞄部位
-menu-value-bone-auto = 自动
+menu-value-bone-auto = 软锁
 menu-value-bone-nearest = 首次击中
 menu-value-bone-head = 头部
 menu-value-bone-neck = 颈部
@@ -22,7 +22,8 @@ menu-value-bone-gut-shut = 腹部
 menu-value-bone-unknown = 未知
 input-prompt-bone-value = 
     选择新的瞄准部位:
-        x => 自动
+        x => 软锁
+        h => 首次击中
         0 => 头部
         1 => 颈部
         2 => 胸部

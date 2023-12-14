@@ -425,9 +425,9 @@ impl Default for Config {
             glow_g_viz: 1.0,
             glow_b_viz: 0.0,
             // Knocked
-            glow_r_knocked: 1.0,
-            glow_g_knocked: 1.0,
-            glow_b_knocked: 1.0,
+            glow_r_knocked: 0.80,
+            glow_g_knocked: 0.78,
+            glow_b_knocked: 0.45,
 
             // Item Configs
             // loot Fill

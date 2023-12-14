@@ -613,7 +613,7 @@ void ClientActions() {
         mapRadarTestingEnabled = true;
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
   }
   cactions_t = false;

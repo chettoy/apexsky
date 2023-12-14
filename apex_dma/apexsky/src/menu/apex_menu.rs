@@ -518,10 +518,10 @@ fn build_main_menu(
                 &i18n_bundle,
                 format!(" 8 - {}", i18n_msg!(i18n_bundle, MenuItemChangeBoneAim)),
                 Span::styled(
-                    if settings.bone_auto {
-                        i18n_msg!(i18n_bundle, MenuValueBoneAuto)
-                    } else if settings.bone_nearest {
+                    if settings.bone_nearest {
                         i18n_msg!(i18n_bundle, MenuValueBoneNearest)
+                    } else if settings.bone_auto {
+                        i18n_msg!(i18n_bundle, MenuValueBoneAuto)
                     } else {
                         match settings.bone {
                             0 => i18n_msg!(i18n_bundle, MenuValueBoneHead),
@@ -538,9 +538,16 @@ fn build_main_menu(
             &i18n_msg!(i18n_bundle, InputPromptBoneValue),
             |val| {
                 let i18n_bundle = get_fluent_bundle();
-                if val.trim() == "x" {
+                let val = val.trim();
+                if val == "x" {
                     let settings = &mut G_STATE.lock().unwrap().settings;
                     settings.bone_auto = true;
+                    settings.bone_nearest = false;
+                    return None;
+                } else if val == "h" {
+                    let settings = &mut G_STATE.lock().unwrap().settings;
+                    settings.bone_nearest = true;
+                    settings.bone_auto = false;
                     return None;
                 } else if let Some(new_val) = val.parse::<u8>().ok() {
                     if vec![0, 1, 2, 3].contains(&new_val) {
