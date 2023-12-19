@@ -235,7 +235,8 @@ void Entity::glow_weapon_model(uint64_t g_Base, bool enable_glow,
   apex_mem.Read<uint64_t>(g_Base + OFFSET_ENTITYLIST + (view_model_handle << 5),
                           view_model_ptr);
 
-  // printf("view model handle=%lu, ptr=%lu, \n", view_model_handle, view_model_ptr);
+  // printf("view model handle=%lu, ptr=%lu, \n", view_model_handle,
+  // view_model_ptr);
 
   // uint64_t name_ptr;
   // char name_str[200];
@@ -263,7 +264,7 @@ void Entity::glow_weapon_model(uint64_t g_Base, bool enable_glow,
       highlightSettingsPtr + 40 * setting_index + 4, highlightFunctionBits);
   apex_mem.Write<typeof(highlight_colors)>(
       highlightSettingsPtr + 40 * setting_index + 8, highlight_colors);
-  
+
   // Fix highlight Wraith and Ashe's disappear
   // apex_mem.Write(ptr + 0x270, 1);
   // int val1;
@@ -408,8 +409,7 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
   case idweapon_sentinel:
   case idweapon_triple_take:
   case idweapon_wingman:
-    weap_headshot =
-        (LocalCamera.DistTo(target.getPosition()) <= g_settings.headshot_dist);
+    weap_headshot = true;
     break;
   default:
     weap_headshot = false;
@@ -422,8 +422,13 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov) {
   float deltaTime = 1.0 / g_settings.game_fps;
 
   if (weap_headshot) {
-    TargetBonePositionMax = TargetBonePositionMin =
-        target.getBonePositionByHitbox(0);
+    if (LocalCamera.DistTo(target.getPosition()) <= g_settings.headshot_dist) {
+      TargetBonePositionMax = TargetBonePositionMin =
+          target.getBonePositionByHitbox(0);
+    } else {
+      TargetBonePositionMax = TargetBonePositionMin =
+          target.getBonePositionByHitbox(g_settings.bone);
+    }
   } else if (g_settings.bone_nearest) {
     // find nearest bone
     float NearestBoneDistance = g_settings.max_dist;
