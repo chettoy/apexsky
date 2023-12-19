@@ -125,6 +125,7 @@ Additional information:
 1. Please put the overlay window on the top of the VM screen after start. For example, on top of the looking-glass window.
 2. The window can't get the focus at the same time with the VM screen,  please passthrough some keyboard, mouse or joystick into the VM,  otherwise you can't operate the game.
 3. Press insert key on the overlay window to open the overlay menu.
+4. If you are using a resolution other than 1080p, save the configuration and then modify the `screen_width` and `screen_height` in *settings.toml* and reload the configuration.
 
 
 
@@ -184,6 +185,11 @@ cd apex_dma_kvm_pub/apex_dma
 ## Acknowledgments
 
 
+* [memflow](https://github.com/memflow/memflow)
+* [tracel-ai/burn](https://github.com/tracel-ai/burn)
+* [TheCruz's Apex Aimbot+ESP](https://www.unknowncheats.me/forum/apex-legends/369786-apex-directx-wallhack-smooth-aimbot-source.html)
+* [h33p/vmread](https://github.com/h33p/vmread)
+* [Y33Tcoder/EzApexDMAAimbot](https://github.com/Y33Tcoder/EzApexDMAAimbot)
 * [MisterY52/apex_dma_kvm_pub](https://github.com/MisterY52/apex_dma_kvm_pub)
 * [KrackerCo/apex_dma_kvm_pub](https://github.com/KrackerCo/apex_dma_kvm_pub)
 * [CasualX/apexdream](https://github.com/CasualX/apexdream)
