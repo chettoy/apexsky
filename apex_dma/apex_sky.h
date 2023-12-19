@@ -142,6 +142,8 @@ typedef struct {
 typedef struct {
   bool load_settings;
   bool no_overlay;
+  uint32_t screen_width;
+  uint32_t screen_height;
   bool super_key;
   bool keyboard;
   bool gamepad;

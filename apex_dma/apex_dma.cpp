@@ -165,16 +165,16 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index) {
           if (shield + health <= 100) { // Orange
             setting_index = 91;
             highlight_parameter = {255 / 255.0, 165 / 255.0, 0 / 255.0};
-          }else if (shield + health  <= 150) { // white
+          } else if (shield + health <= 150) { // white
             setting_index = 92;
             highlight_parameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
-          } else if (shield + health  <= 175) { // blue
+          } else if (shield + health <= 175) { // blue
             setting_index = 93;
             highlight_parameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
-          } else if (shield + health  <= 200) { // purple
+          } else if (shield + health <= 200) { // purple
             setting_index = 94;
             highlight_parameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
-          } else if (shield + health  <= 225) { // red
+          } else if (shield + health <= 225) { // red
             setting_index = 95;
             highlight_parameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
           } else {
@@ -992,14 +992,16 @@ static void EspLoop() {
             Vector bs = Vector();
             // Change res to your res here, default is 1080p but can copy paste
             // 1440p here
-            WorldToScreen(EntityPosition, view_matrix_data.matrix, 1920, 1080,
+            WorldToScreen(EntityPosition, view_matrix_data.matrix,
+                          g_settings.screen_width, g_settings.screen_height,
                           bs); // 2560, 1440
             if (g_settings.esp) {
               Vector hs = Vector();
               Vector HeadPosition = Target.getBonePositionByHitbox(0);
               // Change res to your res here, default is 1080p but can copy
               // paste 1440p here
-              WorldToScreen(HeadPosition, view_matrix_data.matrix, 1920, 1080,
+              WorldToScreen(HeadPosition, view_matrix_data.matrix,
+                            g_settings.screen_width, g_settings.screen_height,
                             hs); // 2560, 1440
               float height = abs(abs(hs.y) - abs(bs.y));
               float width = height / 2.0f;
@@ -1105,7 +1107,7 @@ static void AimbotLoop() {
         lock_target(aimentity);
 
         Entity LPlayer = getEntity(LocalPlayer);
-        if (LocalPlayer == 0){
+        if (LocalPlayer == 0) {
           continue;
         }
         if (LPlayer.isKnocked()) {

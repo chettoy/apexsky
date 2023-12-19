@@ -180,6 +180,7 @@ void Overlay::RenderMenu() {
     ImGui::TextColored(GREEN, "%.f", max_fov);
     ImGui::SliderFloat(XorStr("##max_fov"), &max_fov, 5.0f, 50.0f, "##");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Smooth Aim Value:"));
     ImGui::SameLine();
@@ -190,14 +191,16 @@ void Overlay::RenderMenu() {
     } else {
       ImGui::TextColored(WHITE, "%.f", g_settings.smooth);
     }
-    ImGui::SliderFloat(XorStr("##2"), &g_settings.smooth, 50.0f, 250.0f, "##");
+    ImGui::SliderFloat(XorStr("##smooth"), &g_settings.smooth, 50.0f, 250.0f,
+                       "##");
     ImGui::SameLine();
     ImGui::Text(XorStr("85 To 150 Is Safe"));
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Smooth Skynade Aim:"));
     ImGui::SameLine();
-    g_settings.skynade_smooth = g_settings.smooth * 0.6667f;
     ImGui::TextColored(WHITE, "%.f", g_settings.skynade_smooth);
+    ImGui::SliderFloat(XorStr("##skynade_smooth"), &g_settings.skynade_smooth,
+                       35.0f, 180.0f, "##");
 
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
@@ -620,6 +623,7 @@ static void glfw_error_callback(int error, const char *description) {
 }
 
 int Overlay::CreateOverlay() {
+  const auto g_settings = global_settings();
   glfwSetErrorCallback(glfw_error_callback);
   if (!glfwInit())
     return 1;
@@ -650,8 +654,9 @@ int Overlay::CreateOverlay() {
   glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, 1);
 
   // Create window with graphics context
-  GLFWwindow *window = glfwCreateWindow(1920, 1080, "Client ImGui GLFW+OpenGL3",
-                                        glfwGetPrimaryMonitor(), nullptr);
+  GLFWwindow *window = glfwCreateWindow(
+      g_settings.screen_width, g_settings.screen_height,
+      "Client ImGui GLFW+OpenGL3", glfwGetPrimaryMonitor(), nullptr);
   if (window == nullptr)
     return 1;
   static const char *GamescopeOverlayProperty = "GAMESCOPE_EXTERNAL_OVERLAY";
@@ -737,7 +742,6 @@ int Overlay::CreateOverlay() {
       ImGui::Text("Overlay average %.3f ms/frame (%.1f FPS)",
                   1000.0f / io.Framerate, io.Framerate);
 
-      const auto g_settings = global_settings();
       if (g_settings.calc_game_fps) {
         ImGui::Text("Game average %.3f ms/frame (%.1f FPS)",
                     1000.0f / g_settings.game_fps, g_settings.game_fps);

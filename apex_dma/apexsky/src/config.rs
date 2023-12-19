@@ -148,6 +148,8 @@ pub struct Loot {
 pub struct Config {
     pub load_settings: bool,
     pub no_overlay: bool,
+    pub screen_width: u32,
+    pub screen_height: u32,
     pub super_key: bool,
     pub keyboard: bool,
     pub gamepad: bool,
@@ -361,6 +363,8 @@ impl Default for Config {
             // Enable Loading of setting file automaticly.
             load_settings: true,
             no_overlay: true,
+            screen_width: 1920,
+            screen_height: 1080,
             super_key: true,
             // Gamepad or Keyboard config, Only one true at once or it wont work.
             keyboard: true,
