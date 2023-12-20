@@ -35,6 +35,7 @@ bool aiming = false;
 float max_fov = 10;
 bool trigger_ready = false;
 extern Vector aim_target; // for esp
+int map_testing_local_team = 0;
 
 // Removed but not all the way, dont edit.
 int glowtype;
@@ -229,6 +230,7 @@ void MapRadarTesting() {
   apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, pLocal);
   int dt;
   apex_mem.Read<int>(pLocal + OFFSET_TEAM, dt);
+  map_testing_local_team = dt;
 
   for (uintptr_t i = 0; i <= 80000; i++) {
     apex_mem.Write<int>(pLocal + OFFSET_TEAM, 1);
@@ -237,6 +239,7 @@ void MapRadarTesting() {
   for (uintptr_t i = 0; i <= 80000; i++) {
     apex_mem.Write<int>(pLocal + OFFSET_TEAM, dt);
   }
+  map_testing_local_team = 0;
 }
 
 uint64_t PlayerLocal;
@@ -668,10 +671,15 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   }
 
   // Firing range stuff
-  if (!g_settings.firing_range)
+  if (!g_settings.firing_range) {
     if (entity_team < 0 || entity_team > 50 ||
-        (entity_team == team_player && !g_settings.onevone))
+        (entity_team == team_player && !g_settings.onevone)) {
       return;
+    }
+    if (map_testing_local_team != 0 && entity_team == map_testing_local_team) {
+      return;
+    }
+  }
 
   Vector EntityPosition = target.getPosition();
   Vector LocalPlayerPosition = LPlayer.getPosition();
@@ -829,11 +837,6 @@ void DoActions() {
           }
 
           ProcessPlayer(LPlayer, Target, entitylist, i);
-
-          int entity_team = Target.getTeamId();
-          if (entity_team == team_player && !g_settings.onevone) {
-            continue;
-          }
         }
       }
 
@@ -980,6 +983,10 @@ static void EspLoop() {
             if (entity_team == team_player && !g_settings.onevone) {
               continue;
             }
+            // if (map_testing_local_team != 0 &&
+            //     entity_team == map_testing_local_team) {
+            //   continue;
+            // }
 
             Vector EntityPosition = Target.getPosition();
             float dist = LocalPlayerPosition.DistTo(EntityPosition);
