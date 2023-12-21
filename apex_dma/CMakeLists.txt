@@ -22,7 +22,7 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
     BINARY_DIR ${PROJECT_SOURCE_DIR}/memflow/
-    BUILD_COMMAND bash ../patch/memflow/build.sh
+    BUILD_COMMAND cargo build --release
     INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/memflow/target/release/libmemflow_ffi.a
     LOG_BUILD ON)
@@ -31,7 +31,7 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
     BINARY_DIR ${PROJECT_SOURCE_DIR}/memflow-qemu/
-    BUILD_COMMAND bash ../patch/memflow-qemu/build.sh
+    BUILD_COMMAND cargo build --release --all-features
     INSTALL_COMMAND cp ${PROJECT_SOURCE_DIR}/memflow-qemu/target/release/libmemflow_qemu.so ${CMAKE_BINARY_DIR}/
     LOG_BUILD ON)
 ExternalProject_Add(
@@ -39,7 +39,7 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
     BINARY_DIR ${PROJECT_SOURCE_DIR}/memflow-win32/
-    BUILD_COMMAND bash ../patch/memflow-win32/build.sh
+    BUILD_COMMAND cargo build --release --all-features
     INSTALL_COMMAND cp ${PROJECT_SOURCE_DIR}/memflow-win32/target/release/libmemflow_win32.so ${CMAKE_BINARY_DIR}/
     LOG_BUILD ON)
 find_package(Threads REQUIRED)
