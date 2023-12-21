@@ -64,6 +64,7 @@ int playerentcount = 61;
 int itementcount = 10000;
 int map = 0;
 std::vector<TreasureClue> treasure_clues;
+std::map<uint64_t, uint64_t> centity_to_index; // Map centity to entity index
 
 //^^ Don't EDIT^^
 
@@ -72,6 +73,34 @@ std::vector<TreasureClue> treasure_clues;
 
 std::vector<uint64_t> wish_list{191, 209, 210, 220,          234,
                                 242, 258, 260, 429496729795, 52776987629977800};
+
+uint32_t button_state[4];
+bool isPressed(uint32_t button_code) {
+  return (button_state[static_cast<uint32_t>(button_code) >> 5] &
+          (1 << (static_cast<uint32_t>(button_code) & 0x1f))) != 0;
+}
+
+void memory_io_panic(const char *info) {
+  quit_tui_menu();
+  std::cout << "Error " << info << std::endl;
+  exit(0);
+}
+
+// Define rainbow color function
+void rainbowColor(int frame_number, std::array<float, 3> &colors) {
+  const float frequency = 0.1; // Adjust the speed of color change
+  const float amplitude = 0.5; // Adjust the amplitude of color change
+
+  // Use the sine function to generate rainbow color variation
+  float r = sin(frequency * frame_number + 0) * amplitude + 0.5;
+  float g = sin(frequency * frame_number + 2) * amplitude + 0.5;
+  float b = sin(frequency * frame_number + 4) * amplitude + 0.5;
+
+  // Clamp the colors to the range [0, 1]
+  colors[0] = fmax(0, fmin(1, r));
+  colors[1] = fmax(0, fmin(1, g));
+  colors[2] = fmax(0, fmin(1, b));
+}
 
 void TriggerBotRun() {
   // testing
@@ -135,96 +164,6 @@ float lastvis_aim[toRead];
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
 
-// works
-void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index) {
-  const auto g_settings = global_settings();
-  int context_id = 0;
-  int setting_index = 0;
-  std::array<float, 3> highlight_parameter = {0, 0, 0};
-
-  if (!Target.isGlowing() ||
-      (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
-    float currentEntityTime = 5000.f;
-    if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
-      if (!(g_settings.firing_range) &&
-          (Target.isKnocked() || !Target.isAlive())) {
-        context_id = 5;
-        setting_index = 80;
-        highlight_parameter = {g_settings.glow_r_knocked,
-                               g_settings.glow_g_knocked,
-                               g_settings.glow_b_knocked};
-      } else if (Target.lastVisTime() > lastvis_aim[index] ||
-                 (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f)) {
-        context_id = 6;
-        setting_index = 81;
-        highlight_parameter = {g_settings.glow_r_viz, g_settings.glow_g_viz,
-                               g_settings.glow_b_viz};
-      } else {
-        if (g_settings.player_glow_armor_color) {
-          int shield = Target.getShield();
-          int health = Target.getHealth();
-          if (shield + health <= 100) { // Orange
-            setting_index = 91;
-            highlight_parameter = {255 / 255.0, 165 / 255.0, 0 / 255.0};
-          } else if (shield + health <= 150) { // white
-            setting_index = 92;
-            highlight_parameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
-          } else if (shield + health <= 175) { // blue
-            setting_index = 93;
-            highlight_parameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
-          } else if (shield + health <= 200) { // purple
-            setting_index = 94;
-            highlight_parameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
-          } else if (shield + health <= 225) { // red
-            setting_index = 95;
-            highlight_parameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
-          } else {
-            setting_index = 90;
-            highlight_parameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
-          }
-          //   switch (shield_level) {
-          //   case 1: // white
-          //     setting_index = 91;
-          //     highlightParameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
-          //     break;
-          //   case 2: // blue
-          //     setting_index = 92;
-          //     highlightParameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
-          //     break;
-          //   case 3: // purple
-          //     setting_index = 93;
-          //     highlightParameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
-          //     break;
-          //   case 4: // gold
-          //     setting_index = 94;
-          //     highlightParameter = {255 / 255.0, 255 / 255.0, 79 / 255.0};
-          //     break;
-          //   case 5: // red
-          //     setting_index = 95;
-          //     highlightParameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
-          //     break;
-          //   default:
-          //     setting_index = 90;
-          //     highlightParameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
-          //   }
-        } else {
-          context_id = 7;
-          setting_index = 82;
-          highlight_parameter = {g_settings.glow_r_not, g_settings.glow_g_not,
-                                 g_settings.glow_b_not};
-        }
-      }
-      if (g_settings.player_glow) {
-        Target.enableGlow(
-            context_id, setting_index, g_settings.player_glow_inside_value,
-            g_settings.player_glow_outline_size, highlight_parameter);
-      } else {
-        Target.enableGlow(context_id, setting_index, 0, 0, highlight_parameter);
-      }
-    }
-  }
-}
-
 void MapRadarTesting() {
   uintptr_t pLocal;
   apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, pLocal);
@@ -249,34 +188,6 @@ int LocTeam;
 
 std::chrono::steady_clock::time_point tduckStartTime;
 bool mapRadarTestingEnabled = true;
-
-uint32_t button_state[4];
-bool isPressed(uint32_t button_code) {
-  return (button_state[static_cast<uint32_t>(button_code) >> 5] &
-          (1 << (static_cast<uint32_t>(button_code) & 0x1f))) != 0;
-}
-
-void memory_io_panic(const char *info) {
-  quit_tui_menu();
-  std::cout << "Error " << info << std::endl;
-  exit(0);
-}
-
-// Define rainbow color function
-void rainbowColor(int frame_number, std::array<float, 3> &colors) {
-  const float frequency = 0.1; // Adjust the speed of color change
-  const float amplitude = 0.5; // Adjust the amplitude of color change
-
-  // Use the sine function to generate rainbow color variation
-  float r = sin(frequency * frame_number + 0) * amplitude + 0.5;
-  float g = sin(frequency * frame_number + 2) * amplitude + 0.5;
-  float b = sin(frequency * frame_number + 4) * amplitude + 0.5;
-
-  // Clamp the colors to the range [0, 1]
-  colors[0] = fmax(0, fmin(1, r));
-  colors[1] = fmax(0, fmin(1, g));
-  colors[2] = fmax(0, fmin(1, b));
-}
 
 void ClientActions() {
   cactions_t = true;
@@ -626,8 +537,89 @@ void ClientActions() {
   cactions_t = false;
 }
 
+void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
+                   int frame_number) {
+  const auto g_settings = global_settings();
+  int context_id = 0;
+  int setting_index = 0;
+  std::array<float, 3> highlight_parameter = {0, 0, 0};
+
+  if (!Target.isGlowing() ||
+      (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
+    float currentEntityTime = 5000.f;
+    if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
+      // set glow color
+      if (!(g_settings.firing_range) &&
+          (Target.isKnocked() || !Target.isAlive())) {
+        context_id = 5;
+        setting_index = 80;
+        highlight_parameter = {g_settings.glow_r_knocked,
+                               g_settings.glow_g_knocked,
+                               g_settings.glow_b_knocked};
+      } else if (Target.lastVisTime() > lastvis_aim[index] ||
+                 (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f)) {
+        context_id = 6;
+        setting_index = 81;
+        highlight_parameter = {g_settings.glow_r_viz, g_settings.glow_g_viz,
+                               g_settings.glow_b_viz};
+      } else {
+        if (g_settings.player_glow_armor_color) {
+          int shield = Target.getShield();
+          int health = Target.getHealth();
+          if (shield + health <= 100) { // Orange
+            setting_index = 91;
+            highlight_parameter = {255 / 255.0, 165 / 255.0, 0 / 255.0};
+          } else if (shield + health <= 150) { // white
+            setting_index = 92;
+            highlight_parameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
+          } else if (shield + health <= 175) { // blue
+            setting_index = 93;
+            highlight_parameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
+          } else if (shield + health <= 200) { // purple
+            setting_index = 94;
+            highlight_parameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
+          } else if (shield + health <= 225) { // red
+            setting_index = 95;
+            highlight_parameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
+          } else {
+            setting_index = 90;
+            highlight_parameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
+          }
+        } else {
+          context_id = 7;
+          setting_index = 82;
+          highlight_parameter = {g_settings.glow_r_not, g_settings.glow_g_not,
+                                 g_settings.glow_b_not};
+        }
+      }
+      // love player glow
+      if (g_settings.player_glow_love_user) {
+        auto it = centity_to_index.find(Target.ptr);
+        if (it != centity_to_index.end() &&
+            Target.check_love_player(it->second)) {
+          int frame_frag = frame_number / ((int)g_settings.game_fps);
+          if (setting_index == 81 ||
+              frame_frag % 2 == 0) { // vis: always, else: 1s time slice
+            setting_index = 96;
+            rainbowColor(frame_number, highlight_parameter);
+          }
+        }
+      }
+
+      // enable glow
+      if (g_settings.player_glow) {
+        Target.enableGlow(
+            context_id, setting_index, g_settings.player_glow_inside_value,
+            g_settings.player_glow_outline_size, highlight_parameter);
+      } else {
+        Target.enableGlow(context_id, setting_index, 0, 0, highlight_parameter);
+      }
+    }
+  }
+}
+
 void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
-                   int index) {
+                   int index, int frame_number) {
   const auto g_settings = global_settings();
 
   int entity_team = target.getTeamId();
@@ -732,11 +724,10 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
       }
     }
   }
-  SetPlayerGlow(LPlayer, target, index);
+  SetPlayerGlow(LPlayer, target, index, frame_number);
   lastvis_aim[index] = target.lastVisTime();
 }
-std::map<uint64_t, int> centityToNumber; // Map centity to a unique number
-int uniqueNumber = 1;                    // Initialize a unique number
+
 // Main stuff, dont edit.
 void DoActions() {
   actions_t = true;
@@ -799,10 +790,14 @@ void DoActions() {
         continue;
       }
 
+      int frame_number = 0;
+      apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008, frame_number);
+
       aiming_score_max = (50 * 50) * 100 + (g_settings.aim_dist * 0.025) * 10;
       tmp_aimentity = 0;
       tmp_spec = 0;
       tmp_all_spec = 0;
+      centity_to_index.clear();
       if (g_settings.firing_range) {
         int c = 0;
         for (int i = 0; i < playerentcount; i++) {
@@ -810,15 +805,17 @@ void DoActions() {
           apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
           if (centity == 0)
             continue;
-          if (LocalPlayer == centity)
+          centity_to_index.insert_or_assign(centity, i);
+          if (LocalPlayer == centity) {
             continue;
+          }
 
           Entity Target = getEntity(centity);
           if (!Target.isDummy() && !g_settings.onevone) {
             continue;
           }
 
-          ProcessPlayer(LPlayer, Target, entitylist, c);
+          ProcessPlayer(LPlayer, Target, entitylist, c, frame_number);
           c++;
         }
       } else {
@@ -828,15 +825,16 @@ void DoActions() {
           apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
           if (centity == 0)
             continue;
+          centity_to_index.insert_or_assign(centity, i);
+
           if (LocalPlayer == centity)
             continue;
-
           Entity Target = getEntity(centity);
           if (!Target.isPlayer()) {
             continue;
           }
 
-          ProcessPlayer(LPlayer, Target, entitylist, i);
+          ProcessPlayer(LPlayer, Target, entitylist, i, frame_number);
         }
       }
 
@@ -869,9 +867,6 @@ void DoActions() {
         } else if (allied_spectators > 0) {
           highlight_color = {0, 1, 0};
         } else {
-          int frame_number = 0;
-          apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008,
-                             frame_number);
           rainbowColor(frame_number, highlight_color);
         }
         // printf("R: %f, G: %f, B: %f\n", highlight_color[0],
@@ -1019,6 +1014,7 @@ static void EspLoop() {
               int armortype = Target.getArmortype();
               Vector EntityPosition = Target.getPosition();
               float targetyaw = Target.GetYaw();
+              uint64_t entity_index = i - 1;
               player data_buf = {dist,
                                  entity_team,
                                  boxMiddle,
@@ -1036,8 +1032,9 @@ static void EspLoop() {
                                  EntityPosition,
                                  LocalPlayerPosition,
                                  localviewangle,
-                                 targetyaw};
-              Target.get_name(g_Base, i - 1, &data_buf.name[0]);
+                                 targetyaw,
+                                 Target.check_love_player(entity_index)};
+              Target.get_name(g_Base, entity_index, &data_buf.name[0]);
               players.push_back(data_buf);
               lastvis_esp[i] = Target.lastVisTime();
               valid = true;
@@ -3941,8 +3938,7 @@ int main(int argc, char *argv[]) {
       apex_mem.check_proc();
 
       const auto g_settings = global_settings();
-      const bool debug_mode = false;
-      if (debug_mode) {
+      if (g_settings.debug_mode) {
         if (terminal_t) {
           quit_tui_menu();
         }

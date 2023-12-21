@@ -272,6 +272,24 @@ void Entity::glow_weapon_model(uint64_t g_Base, bool enable_glow,
   // printf("0x270=%d\n", val1);
 }
 
+bool Entity::check_love_player(uint64_t entity_index) {
+  if (global_settings().yuan_p) {
+    if (this->isDummy()) return true;
+  }else{
+    if (!this->isPlayer()) return false;
+  }
+  uint64_t data_fid[4];
+  data_fid[0] = *((uint64_t *)(buffer + OFFSET_PLATFORM_UID + 0));
+  data_fid[1] = *((uint64_t *)(buffer + OFFSET_PLATFORM_UID + 4));
+  data_fid[2] = *((uint64_t *)(buffer + OFFSET_PLATFORM_UID + 16));
+  data_fid[3] = *((uint64_t *)(buffer + OFFSET_PLATFORM_UID + 20));
+  uint64_t platform_lid = data_fid[0] | data_fid[1] << 32;
+  uint64_t eadp_lid = data_fid[1] | data_fid[2] << 32;
+  char name[33] = {0};
+  this->get_name(g_Base, entity_index - 1, &name[0]);
+  return ::check_love_player(platform_lid, eadp_lid, name);
+}
+
 // Items
 bool Item::isItem() {
   char class_name[33] = {};

@@ -226,3 +226,4 @@ loot-level2-name = 二級
 loot-level3-name = 三級
 loot-level4-name = 四級
 loot-level5-name = 五級
+menu-item-favorite-player-glow = 突出顯示喜歡的玩家

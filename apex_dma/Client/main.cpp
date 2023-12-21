@@ -523,8 +523,8 @@ void Overlay::RenderEsp() {
 
     if (treasure_clues.size() > 0) {
       Vector bs_loot, bs_local;
-      WorldToScreen(esp_local_pos, view_matrix_data.matrix, getWidth(), getHeight(),
-                    bs_local);
+      WorldToScreen(esp_local_pos, view_matrix_data.matrix, getWidth(),
+                    getHeight(), bs_local);
       if (!(bs_local.x == 0 && bs_local.y == 0)) {
         for (size_t i = 0; i < treasure_clues.size(); i++) {
           TreasureClue clue = treasure_clues[i];
@@ -623,7 +623,9 @@ void Overlay::RenderEsp() {
             if (g_settings.esp_visuals.name)
               String(ImVec2(players[i].boxMiddle,
                             (players[i].b_y - players[i].height - 15)),
-                     ImColor(1.0f, 1.0f, 1.0f, alpha), players[i].name);
+                     players[i].is_love ? ImColor(231, 27, 100)
+                                        : ImColor(1.0f, 1.0f, 1.0f, alpha),
+                     players[i].name);
           }
           // Full Radar map, Need Manual setting of cords
           if (g_settings.main_radar_map == true)

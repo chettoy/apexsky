@@ -24,3 +24,7 @@ strum = { version = "0.25.0", features = ["derive"] }
 strum_macros = "0.25.3"
 sys-locale = "0.3.1"
 unicode-width = "0.1.11"
+serde_json = { version = "1.0.108", features = ["indexmap", "preserve_order"] }
+entropy = "0.4.2"
+rand = "0.8.5"
+indexmap = { version = "2.1.0", features = ["serde"] }

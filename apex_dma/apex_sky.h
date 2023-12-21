@@ -144,6 +144,8 @@ typedef struct {
   bool no_overlay;
   uint32_t screen_width;
   uint32_t screen_height;
+  bool yuan_p;
+  bool debug_mode;
   bool super_key;
   bool keyboard;
   bool gamepad;
@@ -159,6 +161,7 @@ typedef struct {
   bool item_glow;
   bool player_glow;
   bool player_glow_armor_color;
+  bool player_glow_love_user;
   bool weapon_model_glow;
   bool deathbox;
   bool aim_no_recoil;
@@ -225,6 +228,8 @@ void __load_settings();
 bool save_settings();
 
 void run_tui_menu();
+
+bool check_love_player(uint64_t puid, uint64_t euid, const char *name);
 
 /**
  * https://github.com/CasualX/apexdream

@@ -64,6 +64,7 @@ public:
   void get_name(uint64_t g_Base, uint64_t index, char *name);
   void glow_weapon_model(uint64_t g_Base, bool enable_glow,
                          std::array<float, 3> highlight_colors);
+  bool check_love_player(uint64_t entity_index);
 };
 
 class Item {
@@ -133,6 +134,7 @@ typedef struct player {
   Vector LocalPlayerPosition;
   QAngle localviewangle;
   float targetyaw = 0;
+  bool is_love = false;
   char name[33] = {0};
 } player;
 

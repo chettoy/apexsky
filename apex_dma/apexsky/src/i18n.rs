@@ -213,6 +213,7 @@ pub enum MessageId {
     LootLevel3Name,
     LootLevel4Name,
     LootLevel5Name,
+    MenuItemFavoritePlayerGlow,
 }
 
 pub fn get_fluent_bundle() -> FluentBundle<FluentResource> {

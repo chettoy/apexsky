@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use crate::love_players::LovePlayer;
+
 #[repr(C)]
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct EspVisuals {
@@ -143,13 +145,22 @@ pub struct Loot {
     pub weapon_bow: bool,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub(crate) struct Config {
+    pub(crate) settings: Settings,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub(crate) love_player: Vec<LovePlayer>,
+}
+
 #[repr(C)]
 #[derive(Clone, Deserialize, Serialize, Debug)]
-pub struct Config {
+pub struct Settings {
     pub load_settings: bool,
     pub no_overlay: bool,
     pub screen_width: u32,
     pub screen_height: u32,
+    pub yuan_p: bool,
+    pub debug_mode: bool,
     pub super_key: bool,
     pub keyboard: bool,
     pub gamepad: bool,
@@ -165,6 +176,7 @@ pub struct Config {
     pub item_glow: bool,
     pub player_glow: bool,
     pub player_glow_armor_color: bool,
+    pub player_glow_love_user: bool,
     pub weapon_model_glow: bool,
     pub deathbox: bool,
     pub aim_no_recoil: bool,
@@ -356,7 +368,7 @@ impl Default for Loot {
     }
 }
 
-impl Default for Config {
+impl Default for Settings {
     fn default() -> Self {
         Self {
             // CONFIG AREA, you can change default values below.
@@ -365,6 +377,8 @@ impl Default for Config {
             no_overlay: true,
             screen_width: 1920,
             screen_height: 1080,
+            yuan_p: false,
+            debug_mode: false,
             super_key: true,
             // Gamepad or Keyboard config, Only one true at once or it wont work.
             keyboard: true,
@@ -385,6 +399,7 @@ impl Default for Config {
             item_glow: true,
             player_glow: false,
             player_glow_armor_color: true,
+            player_glow_love_user: true,
             weapon_model_glow: false,
             deathbox: false,
             aim_no_recoil: true,
@@ -443,6 +458,15 @@ impl Default for Config {
     }
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            settings: Default::default(),
+            love_player: Default::default(),
+        }
+    }
+}
+
 pub fn get_config_path() -> PathBuf {
     let base_path = std::env::current_dir().expect("Failed to determine the current directory");
     let configuration_directory = base_path;
@@ -459,7 +483,7 @@ pub fn get_configuration() -> Result<Config, config::ConfigError> {
     settings.try_deserialize::<Config>()
 }
 
-pub fn save_configuration(settings_state: Config) -> Result<(), std::io::Error> {
+pub fn save_configuration(config_state: Config) -> Result<(), std::io::Error> {
     use std::fs;
     use std::io::Write;
 
@@ -468,7 +492,7 @@ pub fn save_configuration(settings_state: Config) -> Result<(), std::io::Error> 
         .write(true)
         .truncate(true)
         .open(get_config_path())?;
-    let toml_con = toml::to_string(&settings_state).unwrap();
+    let toml_con = toml::to_string(&config_state).unwrap();
     write!(config_write, "{}", toml_con)?;
     Ok(())
 }

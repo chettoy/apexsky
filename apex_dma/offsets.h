@@ -23,6 +23,7 @@
 #define OFFSET_ZOOMING 0x1c01 //m_bZooming //updated 11/20/2023
 #define OFFSET_TRAVERSAL_PROGRESS 0x2b2c //m_traversalProgress //updated 11/20/2023
 #define OFFSET_TRAVERSAL_STARTTIME 0x2b30 //m_traversalStartTime //updated 11/20/2023
+#define OFFSET_PLATFORM_UID 0x2578 //m_platformUserId //updated 11/20/2023
 
 #define OFFSET_WEAPON_NAME 0x17a8 //DT_WeaponX.m_weaponNameIndex 2nd one //updated 11/20/2023
 #define OFFSET_OFF_WEAPON 0x1974 //C_BaseCombatCharacter.m_latestNonOffhandWeapons //updated 11/20/2023
