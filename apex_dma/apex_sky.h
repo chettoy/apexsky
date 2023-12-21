@@ -163,6 +163,7 @@ typedef struct {
   bool player_glow_armor_color;
   bool player_glow_love_user;
   bool weapon_model_glow;
+  bool kbd_backlight_control;
   bool deathbox;
   bool aim_no_recoil;
   float ads_fov;
@@ -221,6 +222,7 @@ typedef struct {
 extern "C" {
 void print_run_as_root();
 uint32_t add(uint32_t lhs, uint32_t rhs);
+bool kbd_backlight_blink(int32_t count);
 
 global_state_t __get_global_states();
 void __update_global_states(global_state_t state);

@@ -1,6 +1,7 @@
 use super::{alert, prompt};
 use crate::{
-    config, i18n::get_fluent_bundle, i18n_msg, i18n_msg_format, lock_config,
+    config, global_state::G_CONTEXT, i18n::get_fluent_bundle, i18n_msg, i18n_msg_format,
+    lock_config,
 };
 use fluent::{FluentArgs, FluentBundle, FluentResource};
 use ratatui::{
@@ -859,7 +860,23 @@ fn build_main_menu(
             }
         },
     );
-    menu.next_id();
+    menu = menu.add_item(
+        item_enabled(
+            &i18n_bundle,
+            format!("31 - {}", i18n_msg!(i18n_bundle, MenuItemKbdBacklightCtrl)),
+            settings.kbd_backlight_control,
+        ),
+        |_handle: &mut TerminalMenu| {
+            let settings = &mut lock_config!().settings;
+            settings.kbd_backlight_control = !settings.kbd_backlight_control;
+            if settings.kbd_backlight_control {
+                if let Err(e) = G_CONTEXT.lock().unwrap().kbd_backlight_test() {
+                    return Some(e.to_string());
+                }
+            }
+            None
+        },
+    );
     menu.add_dummy_item()
         .add_item(
             format_item(

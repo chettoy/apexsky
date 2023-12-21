@@ -10,10 +10,12 @@ mod math;
 mod menu;
 mod pitches;
 mod skynade;
+mod system;
 
 #[macro_use]
 extern crate lazy_static;
 
+use global_state::G_CONTEXT;
 use global_state::G_STATE;
 
 // state sync
@@ -79,6 +81,18 @@ pub extern "C" fn add(left: usize, right: usize) -> usize {
 #[no_mangle]
 pub extern "C" fn print_run_as_root() {
     println!("Please run as root!");
+}
+
+#[no_mangle]
+pub extern "C" fn kbd_backlight_blink(count: i32) -> bool {
+    if count < 1 || count > 10 || !lock_config!().settings.kbd_backlight_control {
+        return false;
+    }
+    (|| -> anyhow::Result<()> {
+        G_CONTEXT.lock().unwrap().kbd_blink(count.try_into()?)?;
+        Ok(())
+    })()
+    .is_ok()
 }
 
 // skynade

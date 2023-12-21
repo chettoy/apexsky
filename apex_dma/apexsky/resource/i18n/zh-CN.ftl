@@ -1,19 +1,19 @@
 hello-world = Hello, world!
-menu-value-enabled = 开启
-menu-value-disabled = 关闭
+menu-value-enabled = 启用
+menu-value-disabled = 禁用
 main-menu-title = 主菜单
-menu-item-firing-range = 靶场模式
+menu-item-firing-range = 射击场模式
 menu-item-tdm-toggle = 团队模式
 menu-item-keyboard = 键鼠模式
 menu-item-gamepad = 手柄模式
 menu-item-item-glow = 物品透视
-menu-item-player-glow = 热能
+menu-item-player-glow = 玩家热能
 menu-item-smooth-value = 平滑
 input-prompt-smooth-value = 瞄准平滑值 (50~500):
 info-invalid-smooth-value = 输入无效。
     平滑值可设置范围是 50 到 500
-menu-item-change-bone-aim = 自瞄部位
-menu-value-bone-auto = 软锁
+menu-item-change-bone-aim = 瞄准部位设置
+menu-value-bone-auto = 自动选择
 menu-value-bone-nearest = 首次击中
 menu-value-bone-head = 头部
 menu-value-bone-neck = 颈部
@@ -21,7 +21,7 @@ menu-value-bone-chest = 胸部
 menu-value-bone-gut-shut = 腹部
 menu-value-bone-unknown = 未知
 input-prompt-bone-value = 
-    选择新的瞄准部位:
+    设置新的瞄准部位:
         x => 软锁
         h => 首次击中
         0 => 头部
@@ -31,9 +31,9 @@ input-prompt-bone-value =
 info-invalid-bone-value = 输入无效。
     瞄准部位可设置值: x, 0, 1, 2, 3
 info-invalid-value = 输入无效。
-menu-item-loot-glow-filled = 物品填充
-menu-item-player-glow-filled = 热能填充
-menu-item-player-outline-size = 热能轮廓设置
+menu-item-loot-glow-filled = 物品发光填充
+menu-item-player-glow-filled = 热能发光填充
+menu-item-player-outline-size = 热能轮廓尺寸
 input-prompt-player-outlines = 热能轮廓半径 (0~255):
 info-player-outline-updated = "热能轮廓半径" 已更新至: {$value}
 info-invalid-outline-size = 输入无效。
@@ -228,3 +228,4 @@ loot-level3-name = 等级3
 loot-level4-name = 等级4
 loot-level5-name = 等级5
 menu-item-favorite-player-glow = 突出显示最爱的玩家
+menu-item-kbd-backlight-ctrl = 键盘背光控制

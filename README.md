@@ -86,20 +86,21 @@ Game version (Steam Only right now): v3.0.51.45
 
 3. chettoy Fork's features
 
-    * KrackerCo Fork's no-overlay features.
-    * KrackerCo Fork's Client features. (overlay)
-    * Optional glow box to replace the player glow (If you want to prevent screenshot detection or want to broadcast live) (overlay)
-    * Sky Grenade
-    * Improved target locking
-    * Multiple bone selection effects
-    * Calculate and display the game frame rate
-    * Aiming Target Indicator (overlay)
-    * Edit and Save your config file
-    * Interactive Terminal Menu
-    * Player armor glows with color
-    * Hightlight favorite gamers
-    * Weapon model glow and spectated indicator
-    * Multilingual Support
+    * Inherits all features from KrackerCo's original no-overlay branch.
+    * Includes all features from the original repository's overlay branch. (requires overlay enabled)
+    * Optional glow box to replace player glow (ideal for screenshot prevention or live broadcasting). (requires overlay enabled)
+    * Sky Grenade feature.
+    * Improved target locking.
+    * Advanced targeting options with various bone selection effects.
+    * Calculate and display the game's frame rate.
+    * Aiming Target Indicator (requires overlay enabled)
+    * Config file editing and saving capabilities.
+    * Interactive terminal menu for user-friendly customization.
+    * Dynamic color changes indicate target armor status.
+    * Highlight favorite gamers for quick identification.
+    * Weapon model glow and spectated indicator.
+    * Utilize keyboard backlight to display the number of spectators (requires D-Bus support).
+    * Multilingual support for global accessibility.
 
 
 

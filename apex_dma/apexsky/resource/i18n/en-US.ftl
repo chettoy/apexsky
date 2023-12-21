@@ -226,4 +226,5 @@ loot-level2-name = Rare
 loot-level3-name = Epic
 loot-level4-name = Legendary
 loot-level5-name = Mythic
-menu-item-favorite-player-glow = Hightlight favorite gamers
+menu-item-favorite-player-glow = Highlight favorite gamers
+menu-item-kbd-backlight-ctrl = Keyboard backlight control

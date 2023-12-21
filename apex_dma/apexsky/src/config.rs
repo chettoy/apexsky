@@ -178,6 +178,7 @@ pub struct Settings {
     pub player_glow_armor_color: bool,
     pub player_glow_love_user: bool,
     pub weapon_model_glow: bool,
+    pub kbd_backlight_control: bool,
     pub deathbox: bool,
     pub aim_no_recoil: bool,
     pub ads_fov: f32,
@@ -401,6 +402,7 @@ impl Default for Settings {
             player_glow_armor_color: true,
             player_glow_love_user: true,
             weapon_model_glow: false,
+            kbd_backlight_control: true,
             deathbox: false,
             aim_no_recoil: true,
             ads_fov: 12.0, // Fov you want to use while aiming

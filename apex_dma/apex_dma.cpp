@@ -51,6 +51,7 @@ bool esp_t = false;
 bool aim_t = false;
 bool vars_t = false;
 bool item_t = false;
+bool control_t = false;
 uint64_t g_Base;
 bool next2 = false;
 bool valid = false;
@@ -523,18 +524,30 @@ void ClientActions() {
         auto duration = std::chrono::duration_cast<std::chrono::seconds>(
                             currentTime - tduckStartTime)
                             .count();
-        if (duration >= 500) {
+        if (duration < 5) {
           mapRadarTestingEnabled = false;
+        } else {
+          tduckStartTime = std::chrono::steady_clock::time_point();
+          mapRadarTestingEnabled = true;
         }
-      } else {
-        tduckStartTime = std::chrono::steady_clock::time_point();
-        mapRadarTestingEnabled = true;
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
   }
   cactions_t = false;
+}
+
+void ControlLoop() {
+  control_t = true;
+  while (control_t) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (spectators > 0) {
+      kbd_backlight_blink(spectators);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000 - 100));
+    }
+  }
+  control_t = false;
 }
 
 void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
@@ -551,14 +564,14 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
       // set glow color
       if (!(g_settings.firing_range) &&
           (Target.isKnocked() || !Target.isAlive())) {
-        context_id = 5;
+        // context_id = 5;
         setting_index = 80;
         highlight_parameter = {g_settings.glow_r_knocked,
                                g_settings.glow_g_knocked,
                                g_settings.glow_b_knocked};
       } else if (Target.lastVisTime() > lastvis_aim[index] ||
                  (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f)) {
-        context_id = 6;
+        // context_id = 6;
         setting_index = 81;
         highlight_parameter = {g_settings.glow_r_viz, g_settings.glow_g_viz,
                                g_settings.glow_b_viz};
@@ -586,7 +599,7 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
             highlight_parameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
           }
         } else {
-          context_id = 7;
+          // context_id = 7;
           setting_index = 82;
           highlight_parameter = {g_settings.glow_r_not, g_settings.glow_g_not,
                                  g_settings.glow_b_not};
@@ -3874,6 +3887,7 @@ int main(int argc, char *argv[]) {
   std::thread terminal_thr;
   std::thread overlay_thr;
   std::thread itemglow_thr;
+  std::thread control_thr;
 
   if (apex_mem.open_os() != 0) {
     exit(0);
@@ -3892,6 +3906,7 @@ int main(int argc, char *argv[]) {
         terminal_t = false;
         overlay_t = false;
         item_t = false;
+        control_t = false;
         g_Base = 0;
         quit_tui_menu();
 
@@ -3905,6 +3920,7 @@ int main(int argc, char *argv[]) {
         terminal_thr.~thread();
         overlay_thr.~thread();
         itemglow_thr.~thread();
+        control_thr.~thread();
       }
 
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -3925,6 +3941,7 @@ int main(int argc, char *argv[]) {
         // updateInsideValue_thr = std::thread(updateInsideValue);
         TriggerBotRun_thr = std::thread(TriggerBotRun);
         itemglow_thr = std::thread(item_glow_t);
+        control_thr = std::thread(ControlLoop);
         aimbot_thr.detach();
         esp_thr.detach();
         actions_thr.detach();
@@ -3933,6 +3950,7 @@ int main(int argc, char *argv[]) {
         // updateInsideValue_thr.detach();
         TriggerBotRun_thr.detach();
         itemglow_thr.detach();
+        control_thr.detach();
       }
     } else {
       apex_mem.check_proc();
