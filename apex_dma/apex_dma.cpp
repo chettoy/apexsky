@@ -870,6 +870,10 @@ void DoActions() {
       } else { // or new target
         aimentity = tmp_aimentity;
       }
+      // disable aimbot safety if vis check is turned off
+      if (g_settings.aim == 1) {
+        aimbot_safety = false;
+      }
 
       // weapon model glow
       // printf("%d\n", LPlayer.getHealth());
