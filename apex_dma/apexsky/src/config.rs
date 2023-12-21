@@ -146,7 +146,7 @@ pub struct Loot {
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
-pub(crate) struct Config {
+pub struct Config {
     pub(crate) settings: Settings,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub(crate) love_player: Vec<LovePlayer>,

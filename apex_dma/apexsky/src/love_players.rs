@@ -5,10 +5,19 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct LovePlayer {
-    pub uid: u64,
-    pub nick: String,
+    pub name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub update_nick: Option<String>,
+    pub update_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub uid: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub level: Option<i32>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct DefaultLoveList {
+    pub version: String,
+    pub list: Vec<LovePlayer>,
 }
 
 lazy_static! {
@@ -16,10 +25,15 @@ lazy_static! {
 }
 
 fn default_love() -> Vec<LovePlayer> {
-    let data = include_str!("../resource/default/love.json");
-    serde_json::from_str(data)
+    let data1 = include_str!("../resource/default/list.json");
+    let data2 = include_str!("../resource/default/love.json");
+    let list1: DefaultLoveList = serde_json::from_str(data1)
+        .context("Parse error: list.json")
+        .unwrap();
+    let list2: Vec<LovePlayer> = serde_json::from_str(data2)
         .context("Parse error: love.json")
-        .unwrap()
+        .unwrap();
+    [list1.list, list2].concat()
 }
 
 pub fn check_my_heart(
@@ -30,14 +44,17 @@ pub fn check_my_heart(
 ) -> bool {
     let mut update_name: IndexMap<u64, String> = IndexMap::new();
     let mut fold_item = |acc: bool, x: &LovePlayer| {
-        if x.uid == puid {
-            if x.nick != name {
-                update_name.insert(puid, name.to_string());
+        if let Some(x_uid) = x.uid {
+            if x_uid == puid {
+                if x.name != name {
+                    update_name.insert(puid, name.to_string());
+                }
+                return true;
             }
-            true
-        } else {
-            acc
+        } else if x.name == name {
+            return true;
         }
+        acc
     };
     let pre_check = |p1: u64, p2: u64| -> bool {
         let (p1, p2) = (p1.to_string(), p2.to_string());
@@ -56,24 +73,30 @@ pub fn check_my_heart(
             .love_player
             .iter()
             .map(|x| {
-                update_name
-                    .remove(&x.uid)
-                    .and_then(|u| {
-                        Some(LovePlayer {
-                            uid: x.uid.to_owned(),
-                            nick: x.nick.to_owned(),
-                            update_nick: Some(u),
+                if let Some(x_uid) = x.uid {
+                    update_name
+                        .remove(&x_uid)
+                        .and_then(|u| {
+                            Some(LovePlayer {
+                                name: x.name.to_owned(),
+                                update_name: Some(u),
+                                uid: x.uid,
+                                level: x.level,
+                            })
                         })
-                    })
-                    .unwrap_or(x.to_owned())
+                        .unwrap_or(x.to_owned())
+                } else {
+                    x.to_owned()
+                }
             })
             .collect::<Vec<LovePlayer>>();
         config
             .love_player
             .extend(update_name.into_iter().map(|x| LovePlayer {
-                uid: x.0,
-                nick: String::new(),
-                update_nick: Some(x.1),
+                name: String::new(),
+                update_name: Some(x.1),
+                uid: Some(x.0),
+                level: None,
             }));
     }
 

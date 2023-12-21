@@ -1,10 +1,9 @@
 [
     {
         "uid": 1000000000000,
-        "nick": "example"
+        "name": "example"
     },
     {
-        "uid": 1000000000001,
-        "nick": "cHe7toY"
+        "name": "cHe7toY"
     }
 ]
