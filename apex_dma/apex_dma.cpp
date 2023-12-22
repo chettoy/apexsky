@@ -6,6 +6,7 @@
 #include <cfloat>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib> // For the system() function
 #include <iomanip>
@@ -24,15 +25,9 @@ Memory apex_mem;
 
 // Just setting things up, dont edit.
 bool active = true;
-uintptr_t aimentity = 0;
-uintptr_t tmp_aimentity = 0;
-uintptr_t locked_aim_entity = 0;
-float aiming_score_max;
-bool aimbot_safety = true;
+aimbot_state_t aimbot;
 int team_player = 0;
 const int toRead = 100;
-bool aiming = false;
-float max_fov = 10;
 bool trigger_ready = false;
 extern Vector aim_target; // for esp
 int map_testing_local_team = 0;
@@ -55,7 +50,6 @@ bool control_t = false;
 uint64_t g_Base;
 bool next2 = false;
 bool valid = false;
-bool lock = false;
 extern float bulletspeed;
 extern float bulletgrav;
 Vector esp_local_pos;
@@ -465,22 +459,30 @@ void ClientActions() {
               printf("CTRL Pressed0\n");
       } */
 
-      if (g_settings.keyboard) {
-        if (isPressed(g_settings.aimbot_hot_key_1) ||
-            (isPressed(g_settings.aimbot_hot_key_2) &&
-             !isPressed(
-                 g_settings.trigger_bot_hot_key))) // Left and Right click
-        {
-          aiming = true;
+      if (local_held_id == -251) {
+        if ((g_settings.no_nade_aim && zoom_state == 0) ||
+            (!g_settings.no_nade_aim && zoom_state > 0)) {
+          aimbot.gun_safety = true;
         } else {
-          aiming = false;
+          aimbot.gun_safety = false;
+        }
+      }
+
+      if (g_settings.keyboard) {
+        if ((isPressed(g_settings.aimbot_hot_key_1) ||
+             isPressed(g_settings.aimbot_hot_key_2)) &&
+            !isPressed(g_settings.trigger_bot_hot_key)) // Left and Right click
+        {
+          aimbot.aiming = true;
+        } else {
+          aimbot.aiming = false;
         }
         if (isPressed(g_settings.aimbot_hot_key_1) ||
             !isPressed(g_settings.aimbot_hot_key_2)) {
-          max_fov = g_settings.non_ads_fov;
+          aimbot.max_fov = g_settings.non_ads_fov;
         }
         if (isPressed(g_settings.aimbot_hot_key_2)) {
-          max_fov = g_settings.ads_fov;
+          aimbot.max_fov = g_settings.ads_fov;
         }
         if (g_settings.auto_shoot &&
             isPressed(g_settings.trigger_bot_hot_key)) // Left and Right click
@@ -494,15 +496,15 @@ void ClientActions() {
       if (g_settings.gamepad) {
         // attackState == 120 || zoomState == 119
         if (attack_state > 0 || zoom_state > 0) {
-          aiming = true;
+          aimbot.aiming = true;
         } else {
-          aiming = false;
+          aimbot.aiming = false;
         }
 
         if (zoom_state > 0) {
-          max_fov = g_settings.ads_fov;
+          aimbot.max_fov = g_settings.ads_fov;
         } else {
-          max_fov = g_settings.non_ads_fov;
+          aimbot.max_fov = g_settings.non_ads_fov;
         }
       }
 
@@ -639,7 +641,12 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
     float localyaw = LPlayer.GetYaw();
     float targetyaw = target.GetYaw();
 
-    if (localyaw == targetyaw) {
+    if (localyaw - targetyaw > 0.5) { // check yew
+      return;
+    }
+    QAngle localview = LPlayer.GetViewAngles();
+    QAngle targetview = target.GetViewAngles();
+    if (localview.x - targetview.x < 0.5) { // check pitch
       if (LPlayer.getTeamId() == entity_team)
         tmp_all_spec++;
       else
@@ -706,28 +713,28 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
     3  90m  900
     4  160m 1600
   */
-  if (score < aiming_score_max) {
-    aiming_score_max = score;
-    tmp_aimentity = target.ptr;
+  if (score < aimbot.target_score_max) {
+    aimbot.target_score_max = score;
+    aimbot.tmp_aimentity = target.ptr;
   }
 
   if (g_settings.aim == 2) {
     // vis check
-    if (aimentity == target.ptr) {
-      if (local_held_id != -251 && !vis) {
+    if (local_held_id != -251) {
+      if (aimbot.aimentity == target.ptr && !vis) {
         // turn on safety
-        aimbot_safety = true;
+        aimbot.gun_safety = true;
       } else {
-        aimbot_safety = false;
+        aimbot.gun_safety = false;
       }
     }
 
     // TriggerBot
-    if (aimentity != 0) {
+    if (aimbot.aimentity != 0) {
       uint64_t LocalPlayer = 0;
       apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
 
-      Entity Target = getEntity(aimentity);
+      Entity Target = getEntity(aimbot.aimentity);
       // Entity LPlayer = getEntity(LocalPlayer);
 
       if (trigger_ready && IsInCrossHair(Target)) {
@@ -804,8 +811,9 @@ void DoActions() {
       int frame_number = 0;
       apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008, frame_number);
 
-      aiming_score_max = (50 * 50) * 100 + (g_settings.aim_dist * 0.025) * 10;
-      tmp_aimentity = 0;
+      aimbot.target_score_max =
+          (50 * 50) * 100 + (g_settings.aim_dist * 0.025) * 10;
+      aimbot.tmp_aimentity = 0;
       tmp_spec = 0;
       tmp_all_spec = 0;
       centity_to_index.clear();
@@ -863,14 +871,14 @@ void DoActions() {
       }
 
       // set current aim entity
-      if (lock) { // locked target
-        aimentity = locked_aim_entity;
+      if (aimbot.lock) { // locked target
+        aimbot.aimentity = aimbot.locked_aimentity;
       } else { // or new target
-        aimentity = tmp_aimentity;
+        aimbot.aimentity = aimbot.tmp_aimentity;
       }
       // disable aimbot safety if vis check is turned off
-      if (g_settings.aim == 1) {
-        aimbot_safety = false;
+      if (g_settings.aim == 1 && local_held_id != -251) {
+        aimbot.gun_safety = false;
       }
 
       // weapon model glow
@@ -1069,12 +1077,12 @@ static void EspLoop() {
 
 // Aimbot Loop stuff
 inline static void lock_target(uintptr_t target_ptr) {
-  lock = true;
-  locked_aim_entity = target_ptr;
+  aimbot.lock = true;
+  aimbot.locked_aimentity = target_ptr;
 }
 inline static void cancel_targeting() {
-  lock = false;
-  locked_aim_entity = 0;
+  aimbot.lock = false;
+  aimbot.locked_aimentity = 0;
 }
 static void AimbotLoop() {
   aim_t = true;
@@ -1106,24 +1114,24 @@ static void AimbotLoop() {
       // printf("%d\n", weaponID);
 
       if (g_settings.aim > 0) {
-        if (aimentity == 0) {
+        if (aimbot.aimentity == 0) {
           cancel_targeting();
           continue;
         }
 
-        Entity target = getEntity(aimentity);
+        Entity target = getEntity(aimbot.aimentity);
+        // show target indicator before aiming
+        aim_target = target.getPosition();
 
-        if (!aiming) {
+        if (!aimbot.aiming) {
           cancel_targeting();
-          // show target indicator before aiming
-          aim_target = target.getPosition();
           continue;
         }
 
-        if (aimbot_safety) {
+        lock_target(aimbot.aimentity);
+        if (aimbot.gun_safety) {
           continue;
         }
-        lock_target(aimentity);
 
         Entity LPlayer = getEntity(LocalPlayer);
         if (LocalPlayer == 0) {
@@ -1144,10 +1152,6 @@ static void AimbotLoop() {
         }
 
         if (HeldID == -251) { // auto throw
-          if (g_settings.no_nade_aim) {
-            cancel_targeting();
-            continue;
-          }
           QAngle Angles_g = CalculateBestBoneAim(LPlayer, target, 999.9f);
           if (Angles_g.x == 0 && Angles_g.y == 0) {
             cancel_targeting();
@@ -1156,7 +1160,7 @@ static void AimbotLoop() {
           LPlayer.SetViewAngles(Angles_g);
 
         } else {
-          QAngle Angles = CalculateBestBoneAim(LPlayer, target, max_fov);
+          QAngle Angles = CalculateBestBoneAim(LPlayer, target, aimbot.max_fov);
           if (Angles.x == 0 && Angles.y == 0) {
             cancel_targeting();
             continue;
@@ -1187,7 +1191,7 @@ static void item_glow_t() {
 
       // for wish list
       std::vector<TreasureClue> new_treasure_clues;
-      for (int i = 0; i < wish_list.size(); i++) {
+      for (size_t i = 0; i < wish_list.size(); i++) {
         TreasureClue clue;
         clue.item_id = wish_list[i];
         clue.position = Vector(0, 0, 0);
@@ -1231,7 +1235,7 @@ static void item_glow_t() {
         // Search model name and if true sets glow, must be a better way to do
         // this.. if only i got the item id to work..
 
-        for (int i = 0; i < new_treasure_clues.size(); i++) {
+        for (size_t i = 0; i < new_treasure_clues.size(); i++) {
           TreasureClue &clue = new_treasure_clues[i];
           if (ItemID == new_treasure_clues[i].item_id) {
             Vector position = item.getPosition();

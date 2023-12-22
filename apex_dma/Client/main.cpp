@@ -22,7 +22,6 @@ uint32_t check = 0xABCD;
 // Left and Right Aim key toggle
 extern bool active; // sync
 bool ready = false;
-extern bool aiming;     // read sync
 extern uint64_t g_Base; // write sync
 
 // tdm check
@@ -49,7 +48,7 @@ extern bool valid;            // write sync
 extern bool next2;            // read write sync
 
 Vector aim_target = Vector(0, 0, 0);
-extern bool lock;
+extern aimbot_state_t aimbot; // read
 
 extern bool overlay_t;
 
@@ -506,7 +505,7 @@ void Overlay::RenderEsp() {
       WorldToScreen(aim_target, view_matrix_data.matrix, getWidth(),
                     getHeight(), bs);
       const float indicator_radius = 10.0f;
-      ImColor indicator_color = lock ? ImColor(1.0f, 0.647f, 0.0f, 0.618f)
+      ImColor indicator_color = aimbot.lock ? ImColor(1.0f, 0.647f, 0.0f, 0.618f)
                                      : ImColor(1.0f, 1.0f, 1.0f, 0.618f);
       ImVec2 p1 = ImVec2(bs.x + indicator_radius, bs.y - indicator_radius);
       ImVec2 p2 = ImVec2(bs.x - indicator_radius, bs.y - indicator_radius);
@@ -514,7 +513,7 @@ void Overlay::RenderEsp() {
       ImVec2 p4 = ImVec2(bs.x + indicator_radius, bs.y + indicator_radius);
       ImDrawList &draw_list = *ImGui::GetWindowDrawList();
       draw_list.AddRect(p2, p4, indicator_color, indicator_radius, 0, 1.6726f);
-      if (lock) {
+      if (aimbot.lock) {
         indicator_color = RED;
         draw_list.AddLine(p1, p3, indicator_color, 2.718f);
         draw_list.AddLine(p2, p4, indicator_color, 2.718f);

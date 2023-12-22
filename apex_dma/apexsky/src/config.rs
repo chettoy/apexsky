@@ -417,7 +417,7 @@ impl Default for Settings {
             main_radar_map: false, // if the Main Map Radar is enabled
             main_map_radar_dot_size1: 5,
             main_map_radar_dot_size2: 5,
-            aim_dist: 300.0 * 40.0,
+            aim_dist: 500.0 * 40.0,
             max_dist: 3800.0 * 40.0, // Max Distance of ESP 3800 is full map
             map_radar_testing: false,
             show_aim_target: true,
@@ -429,8 +429,8 @@ impl Default for Settings {
             bone: 2, // bone 0 head, 1 neck, 2 chest, 3 dick shot
             bone_nearest: false,
             bone_auto: true,
-            headshot_dist: 100.0 * 40.0,
-            skynade_dist: 100.0 * 40.0,
+            headshot_dist: 250.0 * 40.0,
+            skynade_dist: 150.0 * 40.0,
             smooth: 120.0, // min 85 no beaming, 100 somewhat beam people, 125 should be safe
             skynade_smooth: 120.0 * 0.6667,
             // Player Glow Color and Brightness.

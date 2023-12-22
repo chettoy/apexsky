@@ -3,6 +3,7 @@ use crate::{
     config, global_state::G_CONTEXT, i18n::get_fluent_bundle, i18n_msg, i18n_msg_format,
     lock_config,
 };
+use chrono::Datelike;
 use fluent::{FluentArgs, FluentBundle, FluentResource};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
@@ -367,9 +368,9 @@ macro_rules! add_pick_item {
         MenuBuilder::add_item(
             $builder,
             ListItem::new(Line::from(vec![
-                Span::styled($label_prefix, Style::default().white()),
+                Span::from($label_prefix),
                 Span::styled(format!("{} ", label), Style::default().fg(pick_color)),
-                Span::styled(pick_mark, Style::default().white()),
+                Span::from(pick_mark),
             ])),
             |_handle: &mut TerminalMenu| {
                 let settings = &mut lock_config!().settings;
@@ -398,10 +399,10 @@ macro_rules! add_colored_loot_item {
         MenuBuilder::add_item(
             $builder,
             ListItem::new(Line::from(vec![
-                Span::styled($label_prefix, Style::default().white()),
+                Span::from($label_prefix),
                 Span::styled(format!("{}: ", label), Style::default().fg(pick_color)),
                 Span::styled(format!("{} ", color_label), Style::default().fg(color)),
-                Span::styled(pick_mark, Style::default().white()),
+                Span::from(pick_mark),
             ])),
             |_handle: &mut TerminalMenu| {
                 let settings = &mut lock_config!().settings;
@@ -491,16 +492,19 @@ fn build_main_menu(
             format_item(
                 &i18n_bundle,
                 format!(" 7 - {}", i18n_msg!(i18n_bundle, MenuItemSmoothValue)),
-                Span::styled(
-                    format!("{}", settings.smooth),
-                    Style::default().fg(if settings.smooth < 90.0 {
-                        Color::Red
-                    } else if settings.smooth > 120.0 {
-                        Color::Green
-                    } else {
-                        Color::White
-                    }),
-                ),
+                if settings.smooth < 90.0 {
+                    Span::styled(
+                        format!("{}", settings.smooth),
+                        Style::default().fg(Color::Red),
+                    )
+                } else if settings.smooth > 120.0 {
+                    Span::styled(
+                        format!("{}", settings.smooth),
+                        Style::default().fg(Color::Green),
+                    )
+                } else {
+                    Span::from(format!("{}", settings.smooth))
+                },
             ),
             &i18n_msg!(i18n_bundle, InputPromptSmoothValue),
             |val| {
@@ -520,7 +524,7 @@ fn build_main_menu(
             format_item(
                 &i18n_bundle,
                 format!(" 8 - {}", i18n_msg!(i18n_bundle, MenuItemChangeBoneAim)),
-                Span::styled(
+                Span::from(
                     if settings.bone_nearest {
                         i18n_msg!(i18n_bundle, MenuValueBoneNearest)
                     } else if settings.bone_auto {
@@ -535,7 +539,6 @@ fn build_main_menu(
                         }
                     }
                     .to_string(),
-                    Style::new().white(),
                 ),
             ),
             &i18n_msg!(i18n_bundle, InputPromptBoneValue),
@@ -625,10 +628,7 @@ fn build_main_menu(
             format_item(
                 &i18n_bundle,
                 format!("13 - {}", i18n_msg!(i18n_bundle, MenuItemChangeAdsFov)),
-                Span::styled(
-                    format!("{}", settings.ads_fov),
-                    Style::default().fg(Color::White),
-                ),
+                Span::from(format!("{}", settings.ads_fov)),
             ),
             &i18n_msg!(i18n_bundle, InputPromptAdsFov),
             |val| {
@@ -647,10 +647,7 @@ fn build_main_menu(
             format_item(
                 &i18n_bundle,
                 format!("14 - {}", i18n_msg!(i18n_bundle, MenuItemChangeNonAdsFov)),
-                Span::styled(
-                    format!("{}", settings.non_ads_fov),
-                    Style::default().fg(Color::White),
-                ),
+                Span::from(format!("{}", settings.non_ads_fov)),
             ),
             &i18n_msg!(i18n_bundle, InputPromptNonAdsFov),
             |val| {
@@ -759,14 +756,13 @@ fn build_main_menu(
             format_item(
                 &i18n_bundle,
                 format!("23 - {}", i18n_msg!(i18n_bundle, MenuItemToggleNadeAim)),
-                Span::styled(
+                Span::from(
                     if settings.no_nade_aim {
                         i18n_msg!(i18n_bundle, MenuValueNoNadeAim)
                     } else {
                         i18n_msg!(i18n_bundle, MenuValueNadeAimOn)
                     }
                     .to_string(),
-                    Style::default().fg(Color::White),
                 ),
             ),
             |_| {
@@ -793,14 +789,11 @@ fn build_main_menu(
         format_item(
             &i18n_bundle,
             format!("26 - {}", i18n_msg!(i18n_bundle, MenuItemSetFpsPredict)),
-            Span::styled(
-                if settings.calc_game_fps {
-                    i18n_msg!(i18n_bundle, MenuValueCalcFps).to_string()
-                } else {
-                    format!("{:.1}", settings.game_fps)
-                },
-                Style::default().fg(Color::White),
-            ),
+            Span::from(if settings.calc_game_fps {
+                i18n_msg!(i18n_bundle, MenuValueCalcFps).to_string()
+            } else {
+                format!("{:.1}", settings.game_fps)
+            }),
         ),
         &i18n_msg!(i18n_bundle, InputPromptFpsPredict),
         |val| {
@@ -883,10 +876,7 @@ fn build_main_menu(
                 &i18n_bundle,
                 format!("32 - {}", i18n_msg!(i18n_bundle, MenuItemToggleOverlay)),
                 if settings.no_overlay {
-                    Span::styled(
-                        i18n_msg!(i18n_bundle, MenuValueNoOverlay).to_string(),
-                        Style::default().white(),
-                    )
+                    Span::from(i18n_msg!(i18n_bundle, MenuValueNoOverlay).to_string())
                 } else {
                     Span::styled(
                         i18n_msg!(i18n_bundle, MenuValueExternalOverlay).to_string(),
@@ -1089,7 +1079,7 @@ fn build_hotkey_menu(
     fn menu_item_keycode(label: String, value: i32) -> ListItem<'static> {
         ListItem::new(Line::from(vec![
             format_label(label),
-            Span::styled(format!("{}", value), Style::default().white().underlined()),
+            Span::styled(format!("{}", value), Style::default().underlined()),
         ]))
     }
     macro_rules! prompt_text_keycode {
@@ -2934,6 +2924,7 @@ fn render_selected_list<'a>(
     selected_index: usize,
     scroll_top: usize,
 ) -> List<'a> {
+    let now = chrono::Local::now();
     List::new(
         list_items
             .iter()
@@ -2941,7 +2932,11 @@ fn render_selected_list<'a>(
             .enumerate()
             .map(|(index, item)| {
                 if index == selected_index - scroll_top {
-                    item.clone().on_light_yellow()
+                    if now.month() == 12 && now.day() == 25 {
+                        item.clone().white().bold().on_red()
+                    } else {
+                        item.clone().black().bold().on_light_yellow()
+                    }
                 } else {
                     item.clone()
                 }
@@ -2954,20 +2949,17 @@ fn format_label<T>(label: T) -> Span<'static>
 where
     T: Into<String>,
 {
-    Span::styled(
-        {
-            //format!("{: <40}", label.into())
-            const LABEL_SIZE: usize = 40;
-            let mut labal_text: String = label.into();
-            let label_width = UnicodeWidthStr::width(labal_text.as_str());
-            if label_width < LABEL_SIZE {
-                let space_count = LABEL_SIZE - label_width;
-                labal_text += &(" ".repeat(space_count));
-            }
-            labal_text
-        },
-        Style::default().fg(Color::White),
-    )
+    Span::from({
+        //format!("{: <40}", label.into())
+        const LABEL_SIZE: usize = 40;
+        let mut labal_text: String = label.into();
+        let label_width = UnicodeWidthStr::width(labal_text.as_str());
+        if label_width < LABEL_SIZE {
+            let space_count = LABEL_SIZE - label_width;
+            labal_text += &(" ".repeat(space_count));
+        }
+        labal_text
+    })
 }
 fn format_item<'a, T>(
     i18n_bundle: &FluentBundle<FluentResource>,
@@ -2991,15 +2983,14 @@ where
     ]))
 }
 fn span_enabled(i18n_bundle: &FluentBundle<FluentResource>, v: bool) -> Span<'static> {
-    Span::styled(
-        if v {
-            i18n_msg!(i18n_bundle, MenuValueEnabled)
-        } else {
-            i18n_msg!(i18n_bundle, MenuValueDisabled)
-        }
-        .to_string(),
-        Style::default().fg(if v { Color::Green } else { Color::White }),
-    )
+    if v {
+        Span::styled(
+            i18n_msg!(i18n_bundle, MenuValueEnabled).to_string(),
+            Style::default().fg(Color::Green),
+        )
+    } else {
+        Span::from(i18n_msg!(i18n_bundle, MenuValueDisabled).to_string())
+    }
 }
 fn item_enabled<T>(
     i18n_bundle: &FluentBundle<FluentResource>,
@@ -3038,8 +3029,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_menu() {
         super::super::main().unwrap();

@@ -2,6 +2,17 @@
 
 #include <cstdint>
 
+typedef struct aimbot_state_t {
+  bool aiming = false;
+  bool gun_safety = true;
+  bool lock = false;
+  float max_fov = 10;
+  float target_score_max;
+  uintptr_t aimentity = 0;
+  uintptr_t tmp_aimentity = 0;
+  uintptr_t locked_aimentity = 0;
+} aimbot_state_t;
+
 typedef struct {
   bool box;
   bool line;
