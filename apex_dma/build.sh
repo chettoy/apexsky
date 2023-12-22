@@ -5,13 +5,21 @@ set -x
 
 # Exit immediately when a command fails
 set -eo pipefail
- 
+
+# Print Rust version
 cargo --version
 
-cd apexsky
-cargo build --release
-cd ..
+# Determine the script's directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-mkdir -p build
-cd build
+# Build release version of apexsky
+cd "$SCRIPT_DIR/apexsky"
+
+cargo build --release
+cd "$SCRIPT_DIR"
+
+# Create build directory and build CMake project
+BUILD_DIR="$SCRIPT_DIR/build"
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
 cmake .. && cmake --build .

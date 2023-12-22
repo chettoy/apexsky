@@ -5,24 +5,36 @@ set -x
 
 # Exit immediately when a command fails
 set -eo pipefail
- 
-rm -rf ./build ../build
 
-cd memflow
-cargo clean
-cd ..
+# Get the directory of the script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-cd memflow-qemu
-cargo clean
-cd ..
+# Go up one level to the project root
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-cd memflow-win32
-cargo clean
-cd ..
+# Remove the build directory in the root if it exists
+if [ -d "${PROJECT_DIR}/build" ]; then
+    echo "Removing build directory in the root..."
+    rm -rf "${PROJECT_DIR}/build"
+fi
 
-cd apexsky
-cargo clean
-cd ..
+# Remove the build directory in the apex_dma subdirectory if it exists
+if [ -d "${PROJECT_DIR}/apex_dma/build" ]; then
+    echo "Removing build directory in apex_dma subdirectory..."
+    rm -rf "${PROJECT_DIR}/apex_dma/build"
+fi
 
-echo Done
+# Run 'cargo clean' in apexsky directory
+echo "Running 'cargo clean' in apexsky..."
+cd "${PROJECT_DIR}/apex_dma/apexsky" && cargo clean
 
+# Run 'cargo clean' in memflow subdirectories
+MEMFLOW_DIR="${PROJECT_DIR}/apex_dma/memflow_lib"
+for subdirectory in "memflow" "memflow-kvm" "memflow-qemu" "memflow-win32"; do
+    if [ -d "${MEMFLOW_DIR}/${subdirectory}" ]; then
+        echo "Running 'cargo clean' in ${subdirectory}..."
+        (cd "${MEMFLOW_DIR}/${subdirectory}" && cargo clean)
+    fi
+done
+
+echo "Cleanup completed."

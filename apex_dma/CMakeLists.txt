@@ -16,31 +16,40 @@ set(CMAKE_CXX_FLAGS "-g -Wall -Wformat -march=native")
 set(CMAKE_BUILD_TYPE "Release")
 
 # memflow
+set(MEMFLOW_LIBS_DIR ${PROJECT_SOURCE_DIR}/memflow_lib)
 include(ExternalProject)
 ExternalProject_Add(
     memflow_ffi
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BINARY_DIR ${PROJECT_SOURCE_DIR}/memflow/
+    BINARY_DIR ${MEMFLOW_LIBS_DIR}/memflow/
     BUILD_COMMAND cargo build --release
     INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/memflow/target/release/libmemflow_ffi.a
+    BUILD_BYPRODUCTS ${MEMFLOW_LIBS_DIR}/memflow/target/release/libmemflow_ffi.a
+    LOG_BUILD ON)
+ExternalProject_Add(
+    memflow_kvm
+    DOWNLOAD_COMMAND ""
+    CONFIGURE_COMMAND ""
+    BINARY_DIR ${MEMFLOW_LIBS_DIR}/memflow-kvm/
+    BUILD_COMMAND cargo build --release --all-features
+    INSTALL_COMMAND cp ${MEMFLOW_LIBS_DIR}/memflow-kvm/target/release/libmemflow_kvm.so ${CMAKE_BINARY_DIR}/
     LOG_BUILD ON)
 ExternalProject_Add(
     memflow_qemu
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BINARY_DIR ${PROJECT_SOURCE_DIR}/memflow-qemu/
+    BINARY_DIR ${MEMFLOW_LIBS_DIR}/memflow-qemu/
     BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${PROJECT_SOURCE_DIR}/memflow-qemu/target/release/libmemflow_qemu.so ${CMAKE_BINARY_DIR}/
+    INSTALL_COMMAND cp ${MEMFLOW_LIBS_DIR}/memflow-qemu/target/release/libmemflow_qemu.so ${CMAKE_BINARY_DIR}/
     LOG_BUILD ON)
 ExternalProject_Add(
     memflow_win32
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BINARY_DIR ${PROJECT_SOURCE_DIR}/memflow-win32/
+    BINARY_DIR ${MEMFLOW_LIBS_DIR}/memflow-win32/
     BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${PROJECT_SOURCE_DIR}/memflow-win32/target/release/libmemflow_win32.so ${CMAKE_BINARY_DIR}/
+    INSTALL_COMMAND cp ${MEMFLOW_LIBS_DIR}/memflow-win32/target/release/libmemflow_win32.so ${CMAKE_BINARY_DIR}/
     LOG_BUILD ON)
 find_package(Threads REQUIRED)
 
@@ -86,13 +95,14 @@ ExternalProject_Add(
 add_dependencies(apex_dma 
     apexsky
     memflow_ffi
+    memflow_kvm
     memflow_qemu
     memflow_win32)
 
 target_link_libraries(
     apex_dma
     ${PROJECT_SOURCE_DIR}/apexsky/target/release/libapexsky.a
-    ${PROJECT_SOURCE_DIR}/memflow/target/release/libmemflow_ffi.a
+    ${MEMFLOW_LIBS_DIR}/memflow/target/release/libmemflow_ffi.a
     glfw
     GL
     ${CMAKE_THREAD_LIBS_INIT}
@@ -100,4 +110,4 @@ target_link_libraries(
     m)
 target_include_directories(
     apex_dma PUBLIC
-    ${PROJECT_SOURCE_DIR}/memflow/memflow-ffi)
+    ${MEMFLOW_LIBS_DIR}/memflow/memflow-ffi)
