@@ -62,6 +62,7 @@ jobs:
         name: apex_dma_kvm_build
         path: |
           build/apex_dma
+          build/libmemflow_kvm.so
           build/libmemflow_qemu.so
           build/libmemflow_win32.so
           README.md

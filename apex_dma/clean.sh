@@ -37,4 +37,8 @@ for subdirectory in "memflow" "memflow-kvm" "memflow-qemu" "memflow-win32"; do
     fi
 done
 
+# Run 'make clean' in memflow-kvm directory
+echo "Running 'make clean' in memflow-kvm dir..."
+cd "${PROJECT_DIR}/apex_dma/memflow_lib/memflow-kvm" && make clean
+
 echo "Cleanup completed."

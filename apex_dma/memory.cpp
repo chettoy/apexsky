@@ -91,6 +91,10 @@ Memory::Memory() { log_init(LevelFilter::LevelFilter_Info); }
 
 int Memory::open_os() {
   // load all available plugins
+  if (inventory) {
+    inventory_free(inventory);
+    inventory = nullptr;
+  }
   inventory = inventory_scan();
   if (!inventory) {
     log_error("unable to create inventory");
@@ -98,8 +102,12 @@ int Memory::open_os() {
   }
   printf("inventory initialized: %p\n", inventory);
 
-  const char *conn_name = "qemu";
+  const char *conn_name = "kvm";
   const char *conn_arg = "";
+
+  const char *conn2_name = "qemu";
+  const char *conn2_arg = "";
+
   const char *os_name = "win32";
   const char *os_arg = "";
 
@@ -108,21 +116,26 @@ int Memory::open_os() {
 
   // initialize the connector plugin
   if (conn) {
+    printf("Using %s connector.\n", conn_name);
     if (inventory_create_connector(inventory, conn_name, conn_arg,
                                    &connector)) {
-      printf("unable to initialize connector\n");
-      inventory_free(inventory);
-      return 1;
+      printf("Unable to initialize %s connector.\n", conn_name);
+      printf("Fallback to %s connector.\n", conn2_name);
+
+      if (inventory_create_connector(inventory, conn2_name, conn2_arg,
+                                     &connector)) {
+        printf("Unable to initialize %s connector.\n", conn2_name);
+        return 1;
+      }
     }
 
-    printf("connector initialized: %p\n",
+    printf("Connector initialized: %p\n",
            connector.container.instance.instance);
   }
 
   // initialize the OS plugin
   if (inventory_create_os(inventory, os_name, os_arg, conn, &os)) {
     printf("unable to initialize OS\n");
-    inventory_free(inventory);
     return 1;
   }
 
