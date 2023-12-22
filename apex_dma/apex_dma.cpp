@@ -187,9 +187,6 @@ int PlayerLocalTeamID;
 int EntTeam;
 int LocTeam;
 
-std::chrono::steady_clock::time_point tduckStartTime;
-bool mapRadarTestingEnabled = true;
-
 void ClientActions() {
   cactions_t = true;
   while (cactions_t) {
@@ -509,9 +506,10 @@ void ClientActions() {
         }
       }
 
-      // Toggle crouch = check for ring
-      if (g_settings.map_radar_testing && attack_state == 0 &&
-          isPressed(99)) { // KEY_F8
+      // Trigger ring check on F8 key press for over 0.5 seconds
+      static std::chrono::steady_clock::time_point tduckStartTime;
+      static bool mapRadarTestingEnabled = false;
+      if (g_settings.map_radar_testing && isPressed(99)) { // KEY_F8
         if (mapRadarTestingEnabled) {
           MapRadarTesting();
         }
@@ -521,15 +519,15 @@ void ClientActions() {
         }
 
         auto currentTime = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::seconds>(
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                             currentTime - tduckStartTime)
                             .count();
-        if (duration < 5) {
-          mapRadarTestingEnabled = false;
-        } else {
-          tduckStartTime = std::chrono::steady_clock::time_point();
+        if (duration >= 500) {
           mapRadarTestingEnabled = true;
         }
+      } else {
+        tduckStartTime = std::chrono::steady_clock::time_point();
+        mapRadarTestingEnabled = false;
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
