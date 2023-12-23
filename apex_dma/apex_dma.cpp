@@ -3,6 +3,7 @@
 #include "apex_sky.h"
 #include "vector.h"
 #include <array>
+#include <cassert>
 #include <cfloat>
 #include <chrono>
 #include <cmath>
@@ -638,16 +639,10 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
 
   int entity_team = target.getTeamId();
 
-  if (!target.isAlive()) {
+  if (!target.isAlive() || !LPlayer.isAlive()) {
     float localyaw = LPlayer.GetYaw();
     float targetyaw = target.GetYaw();
-
-    if (abs(localyaw - targetyaw) > 1.0) { // check yew
-      return;
-    }
-    QAngle localview = LPlayer.GetViewAngles();
-    QAngle targetview = target.GetViewAngles();
-    if (abs(localview.x - targetview.x) < 1.0) { // check pitch
+    if (abs(localyaw - targetyaw) < 2.0) { // check yew
       tmp_specs.insert(target.ptr);
     }
     return;
@@ -856,21 +851,26 @@ void DoActions() {
       { // refresh spectators count
         static uint32_t counter = 0;
         static std::map<uintptr_t, size_t> specs_test;
-        if (counter <
-            10) { // target which keeps passes checks with the same viewpoint as
-                  // local player are judged to be observers
-          for (auto it = tmp_specs.begin(); it != tmp_specs.end(); it++) {
-            if (specs_test.contains(*it)) {
-              specs_test[*it]++;
+        if (counter % 2 ==
+            0) { // target which keeps passes checks with the same viewpoint as
+                 // local player are judged to be observers
+          auto tmp = tmp_specs;
+          for (auto it = specs_test.begin(); it != specs_test.end(); it++) {
+            if (tmp.extract(it->first).empty()) {
+              // it->second -= 1;
             } else {
-              specs_test[*it] = 1;
+              it->second += 1;
             }
           }
-        } else {
+          for (auto it = tmp.begin(); it != tmp.end(); it++) {
+            assert(!specs_test.contains(*it));
+            specs_test[*it] = 1;
+          }
+
+        } else if (counter >= 40) {
           std::vector<Entity> tmp_spec, tmp_all_spec;
           for (auto it = specs_test.begin(); it != specs_test.end(); it++) {
-            assert(it->second <= 10);
-            if (it->second == 10) {
+            if (it->second > 10) {
               Entity target = getEntity(it->first);
               if (target.getTeamId() == team_player) {
                 tmp_all_spec.push_back(target);

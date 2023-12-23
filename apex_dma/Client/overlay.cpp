@@ -32,7 +32,7 @@ extern float bulletspeed;
 extern float bulletgrav;
 
 // Aimbot
-extern aimbot_state_t aimbot;                          // read aimbot state
+extern aimbot_state_t aimbot;                             // read aimbot state
 extern std::vector<Entity> spectators, allied_spectators; // read
 extern std::vector<string> esp_spec_names;
 // Left and Right Aim key toggle
@@ -749,7 +749,9 @@ int Overlay::CreateOverlay() {
         for (int i = 0; i < esp_spec_names.size(); i++) {
           names[i] = esp_spec_names[i].c_str();
         }
-        ImGui::ListBox("Spectators", 0, names, esp_spec_names.size());
+        int current_item = 0;
+        ImGui::ListBox("Spectators", &current_item, names,
+                       esp_spec_names.size());
       } else {
         ImGui::Text("No Spectators");
       }

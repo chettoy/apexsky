@@ -555,7 +555,7 @@ void Overlay::RenderEsp() {
 
       for (int i = 0; i < players.size(); i++) {
         if (players[i].is_spectator) {
-          tmp_spec_names.push_back(players[i].name);
+          tmp_spec_names.push_back(std::string(players[i].name));
         }
 
         if (players[i].health > 0) {
