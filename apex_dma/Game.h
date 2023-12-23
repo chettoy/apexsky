@@ -135,6 +135,7 @@ typedef struct player {
   QAngle localviewangle;
   float targetyaw = 0;
   bool is_love = false;
+  bool is_spectator = false;
   char name[33] = {0};
 } player;
 

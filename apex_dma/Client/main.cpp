@@ -42,10 +42,8 @@ bool stormpoint = true;      // Set for map, ONLY ONE THO
 // Map number
 extern int map;
 
-extern int spectators;        // write sync
-extern int allied_spectators; // write sync
-extern bool valid;            // write sync
-extern bool next2;            // read write sync
+extern bool valid; // write sync
+extern bool next2; // read write sync
 
 Vector aim_target = Vector(0, 0, 0);
 extern aimbot_state_t aimbot; // read
@@ -55,6 +53,7 @@ extern bool overlay_t;
 extern std::vector<player> players;
 extern Matrix view_matrix_data;
 extern Vector esp_local_pos;
+std::vector<std::string> esp_spec_names;
 
 // Radar Code
 #define M_PI 3.14159265358979323846 // matches value in gcc v2 math.h
@@ -489,7 +488,6 @@ void Overlay::RenderEsp() {
   const auto g_settings = global_settings();
   if (g_Base != 0 && g_settings.esp) {
 
-    // memset(players, 0, sizeof(players));
     players.clear();
 
     ImGui::SetNextWindowPos(ImVec2(0, 0));
@@ -505,8 +503,9 @@ void Overlay::RenderEsp() {
       WorldToScreen(aim_target, view_matrix_data.matrix, getWidth(),
                     getHeight(), bs);
       const float indicator_radius = 10.0f;
-      ImColor indicator_color = aimbot.lock ? ImColor(1.0f, 0.647f, 0.0f, 0.618f)
-                                     : ImColor(1.0f, 1.0f, 1.0f, 0.618f);
+      ImColor indicator_color = aimbot.lock
+                                    ? ImColor(1.0f, 0.647f, 0.0f, 0.618f)
+                                    : ImColor(1.0f, 1.0f, 1.0f, 0.618f);
       ImVec2 p1 = ImVec2(bs.x + indicator_radius, bs.y - indicator_radius);
       ImVec2 p2 = ImVec2(bs.x - indicator_radius, bs.y - indicator_radius);
       ImVec2 p3 = ImVec2(bs.x - indicator_radius, bs.y + indicator_radius);
@@ -552,8 +551,12 @@ void Overlay::RenderEsp() {
       }
 
     if (next2 && valid) {
+      std::vector<std::string> tmp_spec_names;
 
       for (int i = 0; i < players.size(); i++) {
+        if (players[i].is_spectator) {
+          tmp_spec_names.push_back(players[i].name);
+        }
 
         if (players[i].health > 0) {
           std::string distance = std::to_string(players[i].dist / 39.62);
@@ -635,6 +638,7 @@ void Overlay::RenderEsp() {
           // players[i].height - 15)), WHITE, players[i].name);
         }
       }
+      esp_spec_names = tmp_spec_names;
     }
     ImGui::End();
   }

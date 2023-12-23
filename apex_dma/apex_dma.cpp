@@ -13,6 +13,7 @@
 #include <iostream>
 #include <map>
 #include <random>
+#include <set>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -156,8 +157,8 @@ void updateInsideValue()
 // Visual check and aim check.?
 float lastvis_esp[toRead];
 float lastvis_aim[toRead];
-int tmp_spec = 0, spectators = 0;
-int tmp_all_spec = 0, allied_spectators = 0;
+std::set<uintptr_t> tmp_specs;
+std::vector<Entity> spectators, allied_spectators;
 
 void MapRadarTesting() {
   uintptr_t pLocal;
@@ -524,7 +525,7 @@ void ClientActions() {
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                             currentTime - tduckStartTime)
                             .count();
-        if (duration >= 500) {
+        if (duration >= 250) {
           mapRadarTestingEnabled = true;
         }
       } else {
@@ -542,8 +543,8 @@ void ControlLoop() {
   control_t = true;
   while (control_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    if (spectators > 0) {
-      kbd_backlight_blink(spectators);
+    if (spectators.size() > 0) {
+      kbd_backlight_blink(spectators.size());
       std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000 - 100));
     }
   }
@@ -641,16 +642,13 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
     float localyaw = LPlayer.GetYaw();
     float targetyaw = target.GetYaw();
 
-    if (localyaw - targetyaw > 0.5) { // check yew
+    if (abs(localyaw - targetyaw) > 1.0) { // check yew
       return;
     }
     QAngle localview = LPlayer.GetViewAngles();
     QAngle targetview = target.GetViewAngles();
-    if (localview.x - targetview.x < 0.5) { // check pitch
-      if (LPlayer.getTeamId() == entity_team)
-        tmp_all_spec++;
-      else
-        tmp_spec++;
+    if (abs(localview.x - targetview.x) < 1.0) { // check pitch
+      tmp_specs.insert(target.ptr);
     }
     return;
   }
@@ -719,9 +717,9 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   }
 
   if (g_settings.aim == 2) {
-    // vis check
-    if (local_held_id != -251) {
-      if (aimbot.aimentity == target.ptr && !vis) {
+    // vis check for shooting current aim entity
+    if (local_held_id != -251 && aimbot.aimentity == target.ptr) {
+      if (!vis) {
         // turn on safety
         aimbot.gun_safety = true;
       } else {
@@ -751,7 +749,6 @@ void DoActions() {
   actions_t = true;
   while (actions_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    uint32_t counter = 0;
 
     while (g_Base != 0) {
       const auto g_settings = global_settings();
@@ -814,8 +811,7 @@ void DoActions() {
       aimbot.target_score_max =
           (50 * 50) * 100 + (g_settings.aim_dist * 0.025) * 10;
       aimbot.tmp_aimentity = 0;
-      tmp_spec = 0;
-      tmp_all_spec = 0;
+      tmp_specs.clear();
       centity_to_index.clear();
       if (g_settings.firing_range) {
         int c = 0;
@@ -857,17 +853,39 @@ void DoActions() {
         }
       }
 
-      if (!spectators && !allied_spectators) {
-        spectators = tmp_spec;
-        allied_spectators = tmp_all_spec;
-      } else {
-        // refresh spectators count every ~2 seconds
-        counter++;
-        if (counter == 70) {
+      { // refresh spectators count
+        static uint32_t counter = 0;
+        static std::map<uintptr_t, size_t> specs_test;
+        if (counter <
+            10) { // target which keeps passes checks with the same viewpoint as
+                  // local player are judged to be observers
+          for (auto it = tmp_specs.begin(); it != tmp_specs.end(); it++) {
+            if (specs_test.contains(*it)) {
+              specs_test[*it]++;
+            } else {
+              specs_test[*it] = 1;
+            }
+          }
+        } else {
+          std::vector<Entity> tmp_spec, tmp_all_spec;
+          for (auto it = specs_test.begin(); it != specs_test.end(); it++) {
+            assert(it->second <= 10);
+            if (it->second == 10) {
+              Entity target = getEntity(it->first);
+              if (target.getTeamId() == team_player) {
+                tmp_all_spec.push_back(target);
+              } else {
+                tmp_spec.push_back(target);
+              }
+            }
+          }
           spectators = tmp_spec;
           allied_spectators = tmp_all_spec;
+
+          specs_test.clear();
           counter = 0;
         }
+        counter++;
       }
 
       // set current aim entity
@@ -885,9 +903,9 @@ void DoActions() {
       // printf("%d\n", LPlayer.getHealth());
       if (g_settings.weapon_model_glow && LPlayer.getHealth() > 0) {
         std::array<float, 3> highlight_color;
-        if (spectators > 0) {
+        if (spectators.size() > 0) {
           highlight_color = {1, 0, 0};
-        } else if (allied_spectators > 0) {
+        } else if (allied_spectators.size() > 0) {
           highlight_color = {0, 1, 0};
         } else {
           rainbowColor(frame_number, highlight_color);
@@ -1056,8 +1074,15 @@ static void EspLoop() {
                                  LocalPlayerPosition,
                                  localviewangle,
                                  targetyaw,
-                                 Target.check_love_player(entity_index)};
+                                 Target.check_love_player(entity_index),
+                                 false};
               Target.get_name(g_Base, entity_index, &data_buf.name[0]);
+              for (auto &ent : spectators) {
+                if (ent.ptr == centity) {
+                  data_buf.is_spectator = true;
+                  break;
+                }
+              }
               players.push_back(data_buf);
               lastvis_esp[i] = Target.lastVisTime();
               valid = true;
