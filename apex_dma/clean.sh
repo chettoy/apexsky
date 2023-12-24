@@ -28,17 +28,18 @@ fi
 echo "Running 'cargo clean' in apexsky..."
 cd "${PROJECT_DIR}/apex_dma/apexsky" && cargo clean
 
-# Run 'cargo clean' in memflow subdirectories
-MEMFLOW_DIR="${PROJECT_DIR}/apex_dma/memflow_lib"
+# Run 'cargo clean' in lib subdirectories
 for subdirectory in "memflow" "memflow-kvm" "memflow-qemu" "memflow-win32"; do
-    if [ -d "${MEMFLOW_DIR}/${subdirectory}" ]; then
+    if [ -d "${PROJECT_DIR}/apex_dma/lib/${subdirectory}" ]; then
         echo "Running 'cargo clean' in ${subdirectory}..."
-        (cd "${MEMFLOW_DIR}/${subdirectory}" && cargo clean)
+        (cd "${PROJECT_DIR}/apex_dma/lib/${subdirectory}" && cargo clean)
     fi
 done
 
 # Run 'make clean' in memflow-kvm directory
-echo "Running 'make clean' in memflow-kvm dir..."
-cd "${PROJECT_DIR}/apex_dma/memflow_lib/memflow-kvm" && make clean
+if [ -d "${PROJECT_DIR}/apex_dma/lib/memflow-kvm/build" ]; then
+    echo "Running 'make clean' in memflow-kvm dir..."
+    cd "${PROJECT_DIR}/apex_dma/lib/memflow-kvm" && make clean
+fi
 
 echo "Cleanup completed."

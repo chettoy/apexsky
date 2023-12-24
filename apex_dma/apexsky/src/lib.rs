@@ -9,6 +9,7 @@ mod love_players;
 mod math;
 mod menu;
 mod pitches;
+mod skyapex;
 mod skynade;
 mod system;
 
@@ -74,13 +75,13 @@ pub extern "C" fn check_love_player(puid: u64, euid: u64, name: *const i8) -> bo
 // misc
 
 #[no_mangle]
-pub extern "C" fn add(left: usize, right: usize) -> usize {
-    left + right
+pub extern "C" fn add(left: i32, right: i32) -> i32 {
+    lock_mod!().add(left, right)
 }
 
 #[no_mangle]
 pub extern "C" fn print_run_as_root() {
-    println!("Please run as root!");
+    lock_mod!().print_run_as_root();
 }
 
 #[no_mangle]

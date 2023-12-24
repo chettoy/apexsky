@@ -15,52 +15,52 @@ set(CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "-g -Wall -Wformat -march=native")
 set(CMAKE_BUILD_TYPE "Release")
 
-# memflow
-set(MEMFLOW_LIBS_DIR ${PROJECT_SOURCE_DIR}/memflow_lib)
+# libs
+set(DEP_LIBS_DIR ${PROJECT_SOURCE_DIR}/lib)
 include(ExternalProject)
 ExternalProject_Add(
     memflow_ffi
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BINARY_DIR ${MEMFLOW_LIBS_DIR}/memflow/
+    BINARY_DIR ${DEP_LIBS_DIR}/memflow/
     BUILD_COMMAND cargo build --release
     INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${MEMFLOW_LIBS_DIR}/memflow/target/release/libmemflow_ffi.a
+    BUILD_BYPRODUCTS ${DEP_LIBS_DIR}/memflow/target/release/libmemflow_ffi.a
     LOG_BUILD ON)
 ExternalProject_Add(
     memflow_kvm
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BINARY_DIR ${MEMFLOW_LIBS_DIR}/memflow-kvm/
+    BINARY_DIR ${DEP_LIBS_DIR}/memflow-kvm/
     BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${MEMFLOW_LIBS_DIR}/memflow-kvm/target/release/libmemflow_kvm.so ${CMAKE_BINARY_DIR}/
+    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-kvm/target/release/libmemflow_kvm.so ${CMAKE_BINARY_DIR}/
     LOG_BUILD ON)
 ExternalProject_Add(
     memflow_qemu
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BINARY_DIR ${MEMFLOW_LIBS_DIR}/memflow-qemu/
+    BINARY_DIR ${DEP_LIBS_DIR}/memflow-qemu/
     BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${MEMFLOW_LIBS_DIR}/memflow-qemu/target/release/libmemflow_qemu.so ${CMAKE_BINARY_DIR}/
+    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-qemu/target/release/libmemflow_qemu.so ${CMAKE_BINARY_DIR}/
     LOG_BUILD ON)
 ExternalProject_Add(
     memflow_win32
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BINARY_DIR ${MEMFLOW_LIBS_DIR}/memflow-win32/
+    BINARY_DIR ${DEP_LIBS_DIR}/memflow-win32/
     BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${MEMFLOW_LIBS_DIR}/memflow-win32/target/release/libmemflow_win32.so ${CMAKE_BINARY_DIR}/
+    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-win32/target/release/libmemflow_win32.so ${CMAKE_BINARY_DIR}/
     LOG_BUILD ON)
 find_package(Threads REQUIRED)
 
 # GLFW
-set(GLFW_DIR ${PROJECT_SOURCE_DIR}/Client/glfw) # Set this to point to an up-to-date GLFW repo
+set(GLFW_DIR ${PROJECT_SOURCE_DIR}/Client/glfw)
 option(GLFW_BUILD_EXAMPLES "Build the GLFW example programs" OFF)
 option(GLFW_BUILD_TESTS "Build the GLFW test programs" OFF)
 option(GLFW_BUILD_DOCS "Build the GLFW documentation" OFF)
 option(GLFW_INSTALL "Generate installation target" OFF)
 option(GLFW_DOCUMENT_INTERNALS "Include internals in documentation" OFF)
-add_subdirectory(${GLFW_DIR} binary_dir EXCLUDE_FROM_ALL)
+add_subdirectory(${GLFW_DIR} glfw-prefix EXCLUDE_FROM_ALL)
 include_directories(${GLFW_DIR}/include)
 
 # Dear ImGui
@@ -102,12 +102,13 @@ add_dependencies(apex_dma
 target_link_libraries(
     apex_dma
     ${PROJECT_SOURCE_DIR}/apexsky/target/release/libapexsky.a
-    ${MEMFLOW_LIBS_DIR}/memflow/target/release/libmemflow_ffi.a
+    ${DEP_LIBS_DIR}/memflow/target/release/libmemflow_ffi.a
     glfw
     GL
+    zstd
     ${CMAKE_THREAD_LIBS_INIT}
     ${CMAKE_DL_LIBS}
     m)
 target_include_directories(
     apex_dma PUBLIC
-    ${MEMFLOW_LIBS_DIR}/memflow/memflow-ffi)
+    ${DEP_LIBS_DIR}/memflow/memflow-ffi)

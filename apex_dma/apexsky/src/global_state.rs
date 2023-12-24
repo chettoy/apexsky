@@ -1,10 +1,11 @@
 use std::sync::Mutex;
 
-use crate::system::SysContext;
+use crate::{skyapex::Skyapex, system::SysContext};
 
 lazy_static! {
     pub static ref G_STATE: Mutex<GlobalState> = Mutex::new(GlobalState::default());
     pub static ref G_CONTEXT: Mutex<SysContext> = Mutex::new(SysContext::new().unwrap());
+    pub static ref G_MOD: Mutex<Skyapex> = Mutex::new(Skyapex::load().expect("Failed to load skyapex mod!"));
 }
 
 #[derive(Debug, Clone, Default)]
@@ -24,6 +25,13 @@ pub struct CGlobalState {
 macro_rules! lock_config {
     () => {
         crate::global_state::G_STATE.lock().unwrap().config
+    };
+}
+
+#[macro_export]
+macro_rules! lock_mod {
+    () => {
+        crate::global_state::G_MOD.lock().unwrap()
     };
 }
 
