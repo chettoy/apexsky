@@ -50,6 +50,7 @@ jobs:
     
     - name: Archive output artifacts
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: output
         path: |
