@@ -498,14 +498,3 @@ pub fn save_configuration(config_state: Config) -> Result<(), std::io::Error> {
     write!(config_write, "{}", toml_con)?;
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_get_configuration() {
-        let configuration = get_configuration().unwrap();
-        println!("{:?}", configuration);
-    }
-}

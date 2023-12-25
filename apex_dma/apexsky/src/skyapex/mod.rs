@@ -1,3 +1,6 @@
+pub(crate) mod spectators;
+pub(crate) mod utils;
+
 use anyhow::Ok;
 #[cfg(feature = "wasmedge")]
 use wasmedge_sdk::{
@@ -5,7 +8,7 @@ use wasmedge_sdk::{
     params, Vm, VmBuilder, WasmVal, WasmValue,
 };
 #[cfg(feature = "wasmer")]
-use wasmer::{imports, Instance, Module, Store, Value};
+use wasmer::{Instance, Module, Store, Value};
 #[cfg(feature = "wasmer")]
 use wasmer_wasix::WasiEnv;
 
@@ -18,12 +21,12 @@ pub struct Skyapex {
     #[cfg(feature = "wasmer")]
     instance: Instance,
     #[cfg(feature = "wasmer")]
-    tokio_runtime: tokio::runtime::Runtime,
+    _tokio_runtime: tokio::runtime::Runtime,
 }
 
 impl Skyapex {
     pub fn load() -> anyhow::Result<Self> {
-        let mod_bytes = wat::parse_str(include_str!("../resource/mod/skyapex.wat"))?;
+        let mod_bytes = wat::parse_str(include_str!("../../resource/mod/skyapex.wat"))?;
         #[cfg(feature = "wasmedge")]
         {
             let config = ConfigBuilder::new(CommonConfigOptions::default())
@@ -41,11 +44,11 @@ impl Skyapex {
         {
             let mut store = Store::default();
             let module = Module::new(&store, &mod_bytes)?;
-            let tokio_runtime = tokio::runtime::Builder::new_multi_thread()
+            let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .unwrap();
-            let _guard = tokio_runtime.enter();
+            let _guard = runtime.enter();
             let mut wasi_env = WasiEnv::builder("skyapex")
                 // .args(&["test"])
                 // .env("KEY", "Value")
@@ -60,7 +63,7 @@ impl Skyapex {
             Ok(Skyapex {
                 store,
                 instance,
-                tokio_runtime,
+                _tokio_runtime: runtime,
             })
         }
     }
@@ -83,25 +86,5 @@ impl Skyapex {
         let func = self.instance.exports.get_function(func_name.as_ref())?;
         let res = func.call(&mut self.store, args)?;
         Ok(res)
-    }
-
-    pub fn add(&mut self, left: i32, right: i32) -> i32 {
-        #[cfg(feature = "wasmedge")]
-        {
-            self.run_func("add", params!(left, right)).unwrap()[0].to_i32()
-        }
-        #[cfg(feature = "wasmer")]
-        {
-            self.run_func("add", &[Value::I32(left), Value::I32(right)])
-                .unwrap()[0]
-                .unwrap_i32()
-        }
-    }
-
-    pub fn print_run_as_root(&mut self) {
-        #[cfg(feature = "wasmedge")]
-        self.run_func("print_run_as_root", params!()).unwrap();
-        #[cfg(feature = "wasmer")]
-        self.run_func("print_run_as_root", &[]).unwrap();
     }
 }

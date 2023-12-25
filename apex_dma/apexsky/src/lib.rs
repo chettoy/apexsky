@@ -16,6 +16,10 @@ mod system;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate apexsky_derive;
+
+use crate::skyapex::utils::Utils;
 use global_state::G_CONTEXT;
 use global_state::G_STATE;
 
@@ -70,6 +74,26 @@ pub extern "C" fn check_love_player(puid: u64, euid: u64, name: *const i8) -> bo
     let c_str = unsafe { CStr::from_ptr(name) };
     let name_str = c_str.to_string_lossy();
     love_players::check_my_heart(&mut lock_config!(), puid, euid, &name_str)
+}
+
+// check spec
+
+#[no_mangle]
+pub extern "C" fn init_spec_checker(local_player_ptr: u64) {
+    use skyapex::spectators::SpecCheck;
+    lock_mod!().init_spec_checker(local_player_ptr);
+}
+
+#[no_mangle]
+pub extern "C" fn tick_yew(target_ptr: u64, yew: f32) {
+    use skyapex::spectators::SpecCheck;
+    lock_mod!().tick_yew(target_ptr, yew);
+}
+
+#[no_mangle]
+pub extern "C" fn is_spec(target_ptr: u64) -> bool {
+    use skyapex::spectators::SpecCheck;
+    lock_mod!().is_spec(target_ptr)
 }
 
 // misc
@@ -150,7 +174,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
+    fn load_settings() {
+        __load_settings();
+    }
+
+    #[test]
+    fn module_works() {
         let result = add(2, 2);
         assert_eq!(result, 4);
     }

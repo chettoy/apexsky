@@ -3026,11 +3026,3 @@ where
     .block(title_block);
     title
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_menu() {
-        super::super::main().unwrap();
-    }
-}

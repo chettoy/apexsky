@@ -244,6 +244,10 @@ void run_tui_menu();
 
 bool check_love_player(uint64_t puid, uint64_t euid, const char *name);
 
+void init_spec_checker(uintptr_t local_player_ptr);
+void tick_yew(uintptr_t target_ptr, float yew);
+bool is_spec(uintptr_t target_ptr);
+
 /**
  * https://github.com/CasualX/apexdream
  * LISENCE: GPLv3
