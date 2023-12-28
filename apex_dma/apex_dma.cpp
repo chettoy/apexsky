@@ -1028,11 +1028,6 @@ static void EspLoop() {
               }
             }
 
-            // Exclude dead entity
-            if (!Target.isAlive()) {
-              continue;
-            }
-
             int entity_team = Target.getTeamId();
 
             // Exclude invalid team
@@ -1099,6 +1094,7 @@ static void EspLoop() {
                                  LocalPlayerPosition,
                                  localviewangle,
                                  targetyaw,
+                                 Target.isAlive(),
                                  Target.check_love_player(entity_index),
                                  false};
               Target.get_name(g_Base, entity_index, &data_buf.name[0]);
