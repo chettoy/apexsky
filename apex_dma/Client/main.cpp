@@ -558,6 +558,10 @@ void Overlay::RenderEsp() {
           esp_spec_names.push_back(std::string(players[i].name));
         }
 
+        if (!players[i].is_alive) {
+          continue;
+        }
+
         if (players[i].health > 0) {
           std::string distance = std::to_string(players[i].dist / 39.62);
           distance = distance.substr(0, distance.find('.')) + "m(" +
