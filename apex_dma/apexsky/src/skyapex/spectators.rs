@@ -5,6 +5,7 @@ trait SpecCheckImpl {
     fn _init_spec_checker(&mut self, local_ptr: i64);
     fn _tick_yew(&mut self, target_ptr: i64, yew: f32);
     fn _check_spec(&mut self, target_ptr: i64) -> f32;
+    fn _is_spec(&mut self, target_ptr: i64) -> f32;
 }
 
 pub trait SpecCheck {
@@ -23,6 +24,6 @@ impl SpecCheck for Skyapex {
     }
 
     fn is_spec(&mut self, target_ptr: u64) -> bool {
-        self._check_spec(target_ptr as i64) > 0.5
+        self._is_spec(target_ptr as i64) > 0.6
     }
 }
