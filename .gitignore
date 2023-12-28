@@ -6,11 +6,9 @@ x64/
 target/
 *.rs.bk
 *.swp
-*.dll
 *.dylib
 .vscode
 Cargo.lock
-*.so
 .vscode/
 build/
 .cache

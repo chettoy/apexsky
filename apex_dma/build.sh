@@ -17,9 +17,9 @@ BUILD_DIR="$SCRIPT_DIR/build"
 mkdir -p "$BUILD_DIR"
 
 # Build kmod for memflow-kvm
-cd "$SCRIPT_DIR/memflow_lib/memflow-kvm"
+cd "$SCRIPT_DIR/lib/memflow-kvm"
 set +e
-make && cp "$SCRIPT_DIR/memflow_lib/memflow-kvm/build/memflow.ko" "$BUILD_DIR/"
+make && cp "$SCRIPT_DIR/lib/memflow-kvm/build/memflow.ko" "$BUILD_DIR/"
 set -e
 
 # Build release version of apexsky

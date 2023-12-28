@@ -384,13 +384,3 @@ mod tui {
         }));
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_menu() {
-        super::main().unwrap();
-    }
-}

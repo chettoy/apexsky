@@ -266,7 +266,7 @@ void ClientActions() {
             trav_start = 0.90;
             hang_max = 0.75;
             action_interval = 0.007;
-            release_wait = 35;
+            release_wait = 25;
             if (abs(g_settings.game_fps - 240.0) <
                 abs(g_settings.game_fps - 144.0)) {
               // for 240 fps
@@ -640,11 +640,16 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   int entity_team = target.getTeamId();
 
   if (!target.isAlive() || !LPlayer.isAlive()) {
-    float localyaw = LPlayer.GetYaw();
-    float targetyaw = target.GetYaw();
-    if (abs(localyaw - targetyaw) < 2.0) { // check yew
+    // Update yew to spec checker
+    tick_yew(target.ptr, target.GetYaw());
+    // Exclude self from list when watching others
+    if (target.ptr != LPlayer.ptr && is_spec(target.ptr)) {
       tmp_specs.insert(target.ptr);
     }
+    // if (target.ptr != LPlayer.ptr && LPlayer.GetYaw() == target.GetYaw()) {
+    // // check yew
+    //   tmp_specs.insert(target.ptr);
+    // }
     return;
   }
 
@@ -800,14 +805,23 @@ void DoActions() {
         continue;
       }
 
+      {
+        static uintptr_t lplayer_ptr = 0;
+        if (lplayer_ptr != LPlayer.ptr) {
+          lplayer_ptr = LPlayer.ptr;
+          init_spec_checker(lplayer_ptr);
+        }
+        tick_yew(lplayer_ptr, LPlayer.GetYaw());
+      }
+
       int frame_number = 0;
       apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008, frame_number);
 
       aimbot.target_score_max =
           (50 * 50) * 100 + (g_settings.aim_dist * 0.025) * 10;
       aimbot.tmp_aimentity = 0;
-      tmp_specs.clear();
       centity_to_index.clear();
+      tmp_specs.clear();
       if (g_settings.firing_range) {
         int c = 0;
         for (int i = 0; i < playerentcount; i++) {
@@ -849,43 +863,54 @@ void DoActions() {
       }
 
       { // refresh spectators count
-        static uint32_t counter = 0;
-        static std::map<uintptr_t, size_t> specs_test;
-        if (counter % 2 ==
-            0) { // target which keeps passes checks with the same viewpoint as
-                 // local player are judged to be observers
-          auto tmp = tmp_specs;
-          for (auto it = specs_test.begin(); it != specs_test.end(); it++) {
-            if (tmp.extract(it->first).empty()) {
-              // it->second -= 1;
-            } else {
-              it->second += 1;
-            }
-          }
-          for (auto it = tmp.begin(); it != tmp.end(); it++) {
-            assert(!specs_test.contains(*it));
-            specs_test[*it] = 1;
-          }
+        // static uint32_t counter = 0;
+        // static std::map<uintptr_t, size_t> specs_test;
+        // if (counter < 10) {
+        //   auto tmp = tmp_specs;
+        //   for (auto it = specs_test.begin(); it != specs_test.end(); it++) {
+        //     if (tmp.extract(it->first).empty()) {
+        //       // it->second -= 1;
+        //     } else {
+        //       it->second += 1;
+        //     }
+        //   }
+        //   for (auto it = tmp.begin(); it != tmp.end(); it++) {
+        //     assert(!specs_test.contains(*it));
+        //     specs_test[*it] = 1;
+        //   }
+        // } else {
+        // std::vector<Entity> tmp_spec, tmp_all_spec;
+        // for (auto it = specs_test.begin(); it != specs_test.end(); it++) {
+        //   // if (it->second > counter / 2) {
+        //     Entity target = getEntity(it->first);
+        //     if (target.getTeamId() == team_player) {
+        //       tmp_all_spec.push_back(target);
+        //     } else {
+        //       tmp_spec.push_back(target);
+        //     }
+        //   // }
+        // }
+        // spectators = tmp_spec;
+        // allied_spectators = tmp_all_spec;
 
-        } else if (counter >= 40) {
-          std::vector<Entity> tmp_spec, tmp_all_spec;
-          for (auto it = specs_test.begin(); it != specs_test.end(); it++) {
-            if (it->second > 10) {
-              Entity target = getEntity(it->first);
-              if (target.getTeamId() == team_player) {
-                tmp_all_spec.push_back(target);
-              } else {
-                tmp_spec.push_back(target);
-              }
-            }
-          }
-          spectators = tmp_spec;
-          allied_spectators = tmp_all_spec;
+        // specs_test.clear();
+        //  counter = 0;
+        // }
+        // counter++;
 
-          specs_test.clear();
-          counter = 0;
+        std::vector<Entity> tmp_spec, tmp_all_spec;
+        for (auto it = tmp_specs.begin(); it != tmp_specs.end(); it++) {
+          Entity target = getEntity(*it);
+          if (target.getTeamId() == team_player) {
+            tmp_all_spec.push_back(target);
+          } else {
+            tmp_spec.push_back(target);
+          }
         }
-        counter++;
+        spectators.clear();
+        allied_spectators.clear();
+        spectators = tmp_spec;
+        allied_spectators = tmp_all_spec;
       }
 
       // set current aim entity

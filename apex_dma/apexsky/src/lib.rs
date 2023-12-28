@@ -9,12 +9,17 @@ mod love_players;
 mod math;
 mod menu;
 mod pitches;
+mod skyapex;
 mod skynade;
 mod system;
 
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate apexsky_derive;
+
+use crate::skyapex::utils::Utils;
 use global_state::G_CONTEXT;
 use global_state::G_STATE;
 
@@ -71,16 +76,36 @@ pub extern "C" fn check_love_player(puid: u64, euid: u64, name: *const i8) -> bo
     love_players::check_my_heart(&mut lock_config!(), puid, euid, &name_str)
 }
 
+// check spec
+
+#[no_mangle]
+pub extern "C" fn init_spec_checker(local_player_ptr: u64) {
+    use skyapex::spectators::SpecCheck;
+    lock_mod!().init_spec_checker(local_player_ptr);
+}
+
+#[no_mangle]
+pub extern "C" fn tick_yew(target_ptr: u64, yew: f32) {
+    use skyapex::spectators::SpecCheck;
+    lock_mod!().tick_yew(target_ptr, yew);
+}
+
+#[no_mangle]
+pub extern "C" fn is_spec(target_ptr: u64) -> bool {
+    use skyapex::spectators::SpecCheck;
+    lock_mod!().is_spec(target_ptr)
+}
+
 // misc
 
 #[no_mangle]
-pub extern "C" fn add(left: usize, right: usize) -> usize {
-    left + right
+pub extern "C" fn add(left: i32, right: i32) -> i32 {
+    lock_mod!().add(left, right)
 }
 
 #[no_mangle]
 pub extern "C" fn print_run_as_root() {
-    println!("Please run as root!");
+    lock_mod!().print_run_as_root();
 }
 
 #[no_mangle]
@@ -149,7 +174,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
+    fn load_settings() {
+        __load_settings();
+    }
+
+    #[test]
+    fn module_works() {
         let result = add(2, 2);
         assert_eq!(result, 4);
     }

@@ -232,7 +232,7 @@ typedef struct {
 
 extern "C" {
 void print_run_as_root();
-uint32_t add(uint32_t lhs, uint32_t rhs);
+int32_t add(int32_t lhs, int32_t rhs);
 bool kbd_backlight_blink(int32_t count);
 
 global_state_t __get_global_states();
@@ -243,6 +243,10 @@ bool save_settings();
 void run_tui_menu();
 
 bool check_love_player(uint64_t puid, uint64_t euid, const char *name);
+
+void init_spec_checker(uintptr_t local_player_ptr);
+void tick_yew(uintptr_t target_ptr, float yew);
+bool is_spec(uintptr_t target_ptr);
 
 /**
  * https://github.com/CasualX/apexdream

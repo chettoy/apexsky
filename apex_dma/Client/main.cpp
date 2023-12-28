@@ -489,6 +489,7 @@ void Overlay::RenderEsp() {
   if (g_Base != 0 && g_settings.esp) {
 
     players.clear();
+    esp_spec_names.clear();
 
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2((float)getWidth(), (float)getHeight()));
@@ -551,11 +552,10 @@ void Overlay::RenderEsp() {
       }
 
     if (next2 && valid) {
-      std::vector<std::string> tmp_spec_names;
 
       for (int i = 0; i < players.size(); i++) {
         if (players[i].is_spectator) {
-          tmp_spec_names.push_back(std::string(players[i].name));
+          esp_spec_names.push_back(std::string(players[i].name));
         }
 
         if (players[i].health > 0) {
@@ -638,7 +638,6 @@ void Overlay::RenderEsp() {
           // players[i].height - 15)), WHITE, players[i].name);
         }
       }
-      esp_spec_names = tmp_spec_names;
     }
     ImGui::End();
   }
