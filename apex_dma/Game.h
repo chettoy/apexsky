@@ -54,7 +54,6 @@ public:
   void enableGlow(int context_id, int setting_index, uint8_t inside_value,
                   uint8_t outline_size,
                   std::array<float, 3> highlight_parameter);
-  void disableGlow();
   float lastCrossHairTime();
   void SetViewAngles(SVector angles);
   void SetViewAngles(QAngle &angles);

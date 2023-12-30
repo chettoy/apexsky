@@ -192,21 +192,9 @@ void Entity::enableGlow(int context_id, int setting_index, uint8_t inside_value,
   apex_mem.Write<typeof(highlight_parameter)>(
       highlight_settings_ptr + HIGHLIGHT_TYPE_SIZE * setting_index + 8,
       highlight_parameter);
-  // Fix highlight Wraith and Ashe's disappear
+  // Fix highlight Wraith and Ashe's disappear (Not work anymore)
   // apex_mem.Write(g_Base + 0x270, 1);
   // apex_mem.Write(ptr + 0x270, 1);
-}
-void Entity::disableGlow() {
-
-  // apex_mem.Write<int>(ptr + OFFSET_GLOW_T1, 0);
-  // apex_mem.Write<int>(ptr + OFFSET_GLOW_T2, 0);
-  // apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
-  // apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 5);
-  // apex_mem.Write<float>(ptr + GLOW_COLOR_R, 0.0f);
-  // apex_mem.Write<float>(ptr + GLOW_COLOR_G, 0.0f);
-  // apex_mem.Write<float>(ptr + GLOW_COLOR_B, 0.0f);
-  // apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
-  // apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 5);
 }
 
 void Entity::SetViewAngles(SVector angles) {

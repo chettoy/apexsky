@@ -554,14 +554,12 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
       // set glow color
       if (!(g_settings.firing_range) &&
           (Target.isKnocked() || !Target.isAlive())) {
-        // context_id = 5;
         setting_index = 80;
         highlight_parameter = {g_settings.glow_r_knocked,
                                g_settings.glow_g_knocked,
                                g_settings.glow_b_knocked};
       } else if (Target.lastVisTime() > lastvis_aim[index] ||
                  (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f)) {
-        // context_id = 6;
         setting_index = 81;
         highlight_parameter = {g_settings.glow_r_viz, g_settings.glow_g_viz,
                                g_settings.glow_b_viz};
@@ -589,7 +587,6 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
             highlight_parameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
           }
         } else {
-          // context_id = 7;
           setting_index = 82;
           highlight_parameter = {g_settings.glow_r_not, g_settings.glow_g_not,
                                  g_settings.glow_b_not};
@@ -610,12 +607,16 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
       }
 
       // enable glow
+      static bool player_glowing = false;
       if (g_settings.player_glow) {
         Target.enableGlow(
             context_id, setting_index, g_settings.player_glow_inside_value,
             g_settings.player_glow_outline_size, highlight_parameter);
-      } else {
+        player_glowing = true;
+      }
+      if (!g_settings.player_glow && player_glowing) {
         Target.enableGlow(context_id, setting_index, 0, 0, highlight_parameter);
+        player_glowing = false;
       }
     }
   }
