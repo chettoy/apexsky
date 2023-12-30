@@ -471,30 +471,14 @@ void ClientActions() {
       }
 
       if (g_settings.keyboard) {
-        if ((isPressed(g_settings.aimbot_hot_key_1) ||
-             isPressed(g_settings.aimbot_hot_key_2)) &&
-            !isPressed(g_settings.trigger_bot_hot_key)) // Left and Right click
+        if (isPressed(g_settings.aimbot_hot_key_1) ||
+            isPressed(g_settings.aimbot_hot_key_2)) // Left and Right click
         {
           aimbot.aiming = true;
         } else {
           aimbot.aiming = false;
         }
-        if (isPressed(g_settings.aimbot_hot_key_1) ||
-            !isPressed(g_settings.aimbot_hot_key_2)) {
-          aimbot.max_fov = g_settings.non_ads_fov;
-        }
-        if (isPressed(g_settings.aimbot_hot_key_2)) {
-          aimbot.max_fov = g_settings.ads_fov;
-        }
-        if (g_settings.auto_shoot &&
-            isPressed(g_settings.trigger_bot_hot_key)) // Left and Right click
-        {
-          trigger_ready = true;
-        } else {
-          trigger_ready = false;
-        }
       }
-
       if (g_settings.gamepad) {
         // attackState == 120 || zoomState == 119
         if (attack_state > 0 || zoom_state > 0) {
@@ -502,12 +486,16 @@ void ClientActions() {
         } else {
           aimbot.aiming = false;
         }
-
-        if (zoom_state > 0) {
-          aimbot.max_fov = g_settings.ads_fov;
-        } else {
-          aimbot.max_fov = g_settings.non_ads_fov;
-        }
+      }
+      if (g_settings.auto_shoot && isPressed(g_settings.trigger_bot_hot_key)) {
+        trigger_ready = true;
+      } else {
+        trigger_ready = false;
+      }
+      if (zoom_state > 0) {
+        aimbot.max_fov = g_settings.ads_fov;
+      } else {
+        aimbot.max_fov = g_settings.non_ads_fov;
       }
 
       // Trigger ring check on F8 key press for over 0.5 seconds
