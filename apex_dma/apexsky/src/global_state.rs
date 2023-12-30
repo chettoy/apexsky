@@ -1,11 +1,17 @@
 use std::sync::Mutex;
 
+use anyhow::Context;
+
 use crate::{skyapex::Skyapex, system::SysContext};
 
 lazy_static! {
     pub static ref G_STATE: Mutex<GlobalState> = Mutex::new(GlobalState::default());
     pub static ref G_CONTEXT: Mutex<SysContext> = Mutex::new(SysContext::new().unwrap());
-    pub static ref G_MOD: Mutex<Skyapex> = Mutex::new(Skyapex::load().expect("Failed to load skyapex mod!"));
+    pub static ref G_MOD: Mutex<Skyapex> = Mutex::new(
+        Skyapex::load()
+            .context("Failed to load skyapex mod!")
+            .unwrap()
+    );
 }
 
 #[derive(Debug, Clone, Default)]
