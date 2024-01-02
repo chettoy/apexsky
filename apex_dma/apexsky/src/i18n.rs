@@ -215,6 +215,17 @@ pub enum MessageId {
     LootLevel5Name,
     MenuItemFavoritePlayerGlow,
     MenuItemKbdBacklightCtrl,
+    AimbotMenuTitle,
+    MenuItemAimbotMode,
+    MenuValueAimbotOff,
+    MenuValueAimbotNoVisCheck,
+    MenuValueAimbotOn,
+    InputPromptAimbotMode,
+    MenuItemAimDist,
+    InputPromptAimDist,
+    MenuItemHeadshotDist,
+    InputPromptHeadshotDist,
+    MenuItemSkynadeSmooth,
 }
 
 pub fn get_fluent_bundle() -> FluentBundle<FluentResource> {

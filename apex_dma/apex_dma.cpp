@@ -55,8 +55,6 @@ bool valid = false;
 extern float bulletspeed;
 extern float bulletgrav;
 Vector esp_local_pos;
-int local_held_id = 2147483647;
-uint32_t local_weapon_id = 2147483647;
 int playerentcount = 61;
 int itementcount = 10000;
 int map = 0;
@@ -461,41 +459,21 @@ void ClientActions() {
               printf("CTRL Pressed0\n");
       } */
 
-      if (local_held_id == -251) {
-        if ((g_settings.no_nade_aim && zoom_state == 0) ||
-            (!g_settings.no_nade_aim && zoom_state > 0)) {
-          aimbot.gun_safety = true;
-        } else {
-          aimbot.gun_safety = false;
-        }
+      if (isPressed(g_settings.aimbot_hot_key_1)) {
+        aimbot_update_aim_key_state(&aimbot, g_settings.aimbot_hot_key_1);
+      } else if (isPressed(g_settings.aimbot_hot_key_2)) {
+        aimbot_update_aim_key_state(&aimbot, g_settings.aimbot_hot_key_2);
+      } else {
+        aimbot_update_aim_key_state(&aimbot, 0);
       }
 
-      if (g_settings.keyboard) {
-        if (isPressed(g_settings.aimbot_hot_key_1) ||
-            isPressed(g_settings.aimbot_hot_key_2)) // Left and Right click
-        {
-          aimbot.aiming = true;
-        } else {
-          aimbot.aiming = false;
-        }
-      }
-      if (g_settings.gamepad) {
-        // attackState == 120 || zoomState == 119
-        if (attack_state > 0 || zoom_state > 0) {
-          aimbot.aiming = true;
-        } else {
-          aimbot.aiming = false;
-        }
-      }
+      aimbot_update_attack_state(&aimbot, attack_state);
+      aimbot_update_zoom_state(&aimbot, zoom_state);
+
       if (g_settings.auto_shoot && isPressed(g_settings.trigger_bot_hot_key)) {
         trigger_ready = true;
       } else {
         trigger_ready = false;
-      }
-      if (zoom_state > 0) {
-        aimbot.max_fov = g_settings.ads_fov;
-      } else {
-        aimbot.max_fov = g_settings.non_ads_fov;
       }
 
       // Trigger ring check on F8 key press for over 0.5 seconds
@@ -683,52 +661,30 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   float dist = LocalPlayerPosition.DistTo(EntityPosition);
 
   // aim distance check
-  if ((local_held_id == -251 && dist > g_settings.skynade_dist) ||
-      dist > g_settings.aim_dist)
+  if (!aimbot_target_distance_check(&aimbot, dist))
     return;
 
   // Targeting
-  const float vis_weights = 12.5f;
+
   float fov = CalculateFov(LPlayer, target);
   bool vis = target.lastVisTime() > lastvis_aim[index];
-  float score =
-      (fov * fov) * 100 + (dist * 0.025) * 10 + (vis ? 0 : vis_weights);
-  /*
-   fov:dist:score
-    1  10m  100
-    2  40m  400
-    3  90m  900
-    4  160m 1600
-  */
-  if (score < aimbot.target_score_max) {
-    aimbot.target_score_max = score;
-    aimbot.tmp_aimentity = target.ptr;
-  }
 
-  if (g_settings.aim == 2) {
-    // vis check for shooting current aim entity
-    if (local_held_id != -251 && aimbot.aimentity == target.ptr) {
-      if (!vis) {
-        // turn on safety
-        aimbot.gun_safety = true;
-      } else {
-        aimbot.gun_safety = false;
-      }
-    }
+  aimbot_add_select_target(&aimbot, fov, dist, vis, target.ptr);
 
-    // TriggerBot
-    if (aimbot.aimentity != 0) {
-      uint64_t LocalPlayer = 0;
-      apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+  // TriggerBot
+  if (g_settings.aimbot_settings.aim_mode == 2 &&
+      aimbot_get_aim_entity(&aimbot) != 0) {
+    uint64_t LocalPlayer = 0;
+    apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
 
-      Entity Target = getEntity(aimbot.aimentity);
-      // Entity LPlayer = getEntity(LocalPlayer);
+    Entity Target = getEntity(aimbot_get_aim_entity(&aimbot));
+    // Entity LPlayer = getEntity(LocalPlayer);
 
-      if (trigger_ready && IsInCrossHair(Target)) {
-        TriggerBotRun();
-      }
+    if (trigger_ready && IsInCrossHair(Target)) {
+      TriggerBotRun();
     }
   }
+
   SetPlayerGlow(LPlayer, target, index, frame_number);
   lastvis_aim[index] = target.lastVisTime();
 }
@@ -806,11 +762,10 @@ void DoActions() {
       int frame_number = 0;
       apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008, frame_number);
 
-      aimbot.target_score_max =
-          (50 * 50) * 100 + (g_settings.aim_dist * 0.025) * 10;
-      aimbot.tmp_aimentity = 0;
       centity_to_index.clear();
       tmp_specs.clear();
+      aimbot_start_select_target(&aimbot);
+
       if (g_settings.firing_range) {
         int c = 0;
         for (int i = 0; i < playerentcount; i++) {
@@ -902,16 +857,7 @@ void DoActions() {
         allied_spectators = tmp_all_spec;
       }
 
-      // set current aim entity
-      if (aimbot.lock) { // locked target
-        aimbot.aimentity = aimbot.locked_aimentity;
-      } else { // or new target
-        aimbot.aimentity = aimbot.tmp_aimentity;
-      }
-      // disable aimbot safety if vis check is turned off
-      if (g_settings.aim == 1 && local_held_id != -251) {
-        aimbot.gun_safety = false;
-      }
+      aimbot_finish_select_target(&aimbot);
 
       // weapon model glow
       // printf("%d\n", LPlayer.getHealth());
@@ -1111,14 +1057,6 @@ static void EspLoop() {
 }
 
 // Aimbot Loop stuff
-inline static void lock_target(uintptr_t target_ptr) {
-  aimbot.lock = true;
-  aimbot.locked_aimentity = target_ptr;
-}
-inline static void cancel_targeting() {
-  aimbot.lock = false;
-  aimbot.locked_aimentity = 0;
-}
 static void AimbotLoop() {
   aim_t = true;
   while (aim_t) {
@@ -1130,79 +1068,94 @@ static void AimbotLoop() {
       // Read LocalPlayer
       uint64_t LocalPlayer = 0;
       apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
-      // Read HeldID
-      int HeldID;
-      apex_mem.Read<int>(LocalPlayer + OFFSET_OFF_WEAPON, HeldID); // 0x1a1c
-      local_held_id = HeldID;
-      // Read WeaponID
-      ulong ehWeaponHandle;
-      apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_ACTIVE_WEAPON,
-                              ehWeaponHandle); // 0x1a1c
-      ehWeaponHandle &= 0xFFFF;                // eHandle
-      ulong pWeapon;
-      uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
-      apex_mem.Read<uint64_t>(entitylist + (ehWeaponHandle * 0x20), pWeapon);
-      uint32_t weaponID;
-      apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME,
-                              weaponID); // 0x1844
-      local_weapon_id = weaponID;
-      // printf("%d\n", weaponID);
 
-      if (g_settings.aim > 0) {
-        if (aimbot.aimentity == 0) {
-          cancel_targeting();
-          continue;
+      { // Read held id
+        int held_id;
+        apex_mem.Read<int>(LocalPlayer + OFFSET_OFF_WEAPON, held_id); // 0x1a1c
+        aimbot_update_held_id(&aimbot, held_id);
+      }
+
+      { // Read weapon id
+        ulong ehWeaponHandle;
+        apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_ACTIVE_WEAPON,
+                                ehWeaponHandle); // 0x1a1c
+        ehWeaponHandle &= 0xFFFF;                // eHandle
+        ulong pWeapon;
+        uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
+        apex_mem.Read<uint64_t>(entitylist + (ehWeaponHandle << 5), pWeapon);
+        uint32_t weaponID;
+        apex_mem.Read<uint32_t>(pWeapon + OFFSET_WEAPON_NAME,
+                                weaponID); // 0x1844
+        aimbot_update_weapon_id(&aimbot, weaponID);
+        // printf("%d\n", weaponID);
+      }
+
+      { // Update aimbot settings
+        static int i = 0;
+        if (i == 0) {
+          aimbot_settings(&aimbot, &g_settings.aimbot_settings);
         }
-
-        Entity target = getEntity(aimbot.aimentity);
-        // show target indicator before aiming
-        aim_target = target.getPosition();
-
-        if (!aimbot.aiming) {
-          cancel_targeting();
-          continue;
-        }
-
-        lock_target(aimbot.aimentity);
-        if (aimbot.gun_safety) {
-          continue;
-        }
-
-        Entity LPlayer = getEntity(LocalPlayer);
-        if (LocalPlayer == 0) {
-          continue;
-        }
-        if (LPlayer.isKnocked()) {
-          cancel_targeting();
-          continue;
-        }
-
-        /* Fine-tuning for each weapon */
-        // bow
-        if (weaponID == 2) {
-          // Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*0.08);
-          // Ctx.BulletGravity = BulletGrav + (BulletGrav*0.05);
-          bulletspeed = 10.08;
-          bulletgrav = 10.05;
-        }
-
-        if (HeldID == -251) { // auto throw
-          QAngle Angles_g = CalculateBestBoneAim(LPlayer, target, 999.9f);
-          if (Angles_g.x == 0 && Angles_g.y == 0) {
-            cancel_targeting();
-            continue;
-          }
-          LPlayer.SetViewAngles(Angles_g);
-
+        if (i > 500) { // Lower update frequency to reduce cpu usage
+          i = 0;
         } else {
-          QAngle Angles = CalculateBestBoneAim(LPlayer, target, aimbot.max_fov);
-          if (Angles.x == 0 && Angles.y == 0) {
-            cancel_targeting();
-            continue;
-          }
-          LPlayer.SetViewAngles(Angles);
+          i++;
         }
       }
+
+      if (aimbot_get_settings(&aimbot).aim_mode == 0) {
+        continue;
+      }
+      const auto aim_entity = aimbot_get_aim_entity(&aimbot);
+      if (aim_entity == 0) {
+        aimbot_cancel_locking(&aimbot);
+        continue;
+      }
+      Entity target = getEntity(aim_entity);
+
+      // show target indicator before aiming
+      aim_target = target.getPosition();
+
+      aimbot_update(&aimbot, g_settings.game_fps);
+
+      if (!aimbot_is_aiming(&aimbot)) {
+        aimbot_cancel_locking(&aimbot);
+        continue;
+      }
+
+      if (!aimbot_is_headshot(&aimbot)) {
+        aimbot_lock_target(&aimbot, aim_entity);
+      }
+
+      if (aimbot_get_gun_safety(&aimbot)) {
+        continue;
+      }
+
+      Entity LPlayer = getEntity(LocalPlayer);
+      if (LocalPlayer == 0) {
+        continue;
+      }
+      if (LPlayer.isKnocked() || !target.isAlive() ||
+          (!g_settings.firing_range && target.isKnocked())) {
+        aimbot_cancel_locking(&aimbot);
+        continue;
+      }
+
+      /* Fine-tuning for each weapon */
+      // bow
+      if (aimbot_get_weapon_id(&aimbot) == 2) {
+        // Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*0.08);
+        // Ctx.BulletGravity = BulletGrav + (BulletGrav*0.05);
+        bulletspeed = 10.08;
+        bulletgrav = 10.05;
+      }
+
+      // Aiming
+      QAngle Angles = CalculateBestBoneAim(LPlayer, target, aimbot);
+      if (Angles.x == 0 && Angles.y == 0) {
+        aimbot_cancel_locking(&aimbot);
+        continue;
+      }
+      LPlayer.SetViewAngles(Angles);
     }
   }
   aim_t = false;
@@ -1230,7 +1183,7 @@ static void item_glow_t() {
         TreasureClue clue;
         clue.item_id = wish_list[i];
         clue.position = Vector(0, 0, 0);
-        clue.distance = g_settings.aim_dist * 2;
+        clue.distance = g_settings.aimbot_settings.aim_dist * 2;
         new_treasure_clues.push_back(clue);
       }
 
@@ -3906,6 +3859,7 @@ void terminal() {
 
 int main(int argc, char *argv[]) {
   load_settings();
+  aimbot = aimbot_new();
 
   if (geteuid() != 0) {
     // run as root..

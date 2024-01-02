@@ -2,6 +2,7 @@ use std::ffi::CStr;
 
 use global_state::CGlobalState;
 
+mod aimbot;
 mod config;
 mod global_state;
 mod i18n;
@@ -11,6 +12,7 @@ mod menu;
 mod pitches;
 mod skyapex;
 mod skynade;
+mod solver;
 mod system;
 
 #[macro_use]
@@ -168,6 +170,79 @@ pub extern "C" fn skynade_angle(
     )
     .into()
 }
+
+#[no_mangle]
+pub extern "C" fn linear_predict(
+    weapon_projectile_grav: f32,
+    weapon_projectile_speed: f32,
+    local_x: f32,
+    local_y: f32,
+    local_z: f32,
+    target_x: f32,
+    target_y: f32,
+    target_z: f32,
+    vel_x: f32,
+    vel_y: f32,
+    vel_z: f32,
+) -> Vector2D {
+    use solver::{solve, LinearPredictor};
+    struct Weapon(f32, f32);
+    impl solver::ProjectileWeapon for Weapon {
+        fn projectile_speed(&self) -> f32 {
+            self.0
+        }
+        fn projectile_gravity(&self) -> f32 {
+            self.1
+        }
+    }
+
+    let pos_origin = [local_x, local_y, local_z];
+    let pos_target = [target_x, target_y, target_z];
+    let vel = [vel_x, vel_y, vel_z];
+    let weapon = Weapon(weapon_projectile_speed, weapon_projectile_grav);
+
+    let predictor = LinearPredictor {
+        origin: pos_target,
+        velocity: vel,
+    };
+
+    if let Some(sol) = solve(&pos_origin, &weapon, &predictor) {
+        // let hit = predictor.predict_position(sol.time);
+        let pitch = -sol.pitch.to_degrees();
+        let yaw = sol.yaw.to_degrees();
+        Vector2D { x: pitch, y: yaw }
+    } else {
+        Vector2D { x: 0.0, y: 0.0 }
+    }
+}
+
+// Aimbot
+pub use aimbot::aimbot_add_select_target;
+pub use aimbot::aimbot_cancel_locking;
+pub use aimbot::aimbot_finish_select_target;
+pub use aimbot::aimbot_get_aim_entity;
+pub use aimbot::aimbot_get_aim_key_state;
+pub use aimbot::aimbot_get_gun_safety;
+pub use aimbot::aimbot_get_held_id;
+pub use aimbot::aimbot_get_max_fov;
+pub use aimbot::aimbot_get_settings;
+pub use aimbot::aimbot_get_weapon_id;
+pub use aimbot::aimbot_is_aiming;
+pub use aimbot::aimbot_is_grenade;
+pub use aimbot::aimbot_is_headshot;
+pub use aimbot::aimbot_is_locked;
+pub use aimbot::aimbot_lock_target;
+pub use aimbot::aimbot_new;
+pub use aimbot::aimbot_set_gun_safety;
+pub use aimbot::aimbot_settings;
+pub use aimbot::aimbot_start_select_target;
+pub use aimbot::aimbot_target_distance_check;
+pub use aimbot::aimbot_update;
+pub use aimbot::aimbot_update_aim_key_state;
+pub use aimbot::aimbot_update_attack_state;
+pub use aimbot::aimbot_update_held_id;
+pub use aimbot::aimbot_update_weapon_id;
+pub use aimbot::aimbot_update_zoom_state;
 
 #[cfg(test)]
 mod tests {

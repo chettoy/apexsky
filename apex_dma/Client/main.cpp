@@ -46,7 +46,7 @@ extern bool valid; // write sync
 extern bool next2; // read write sync
 
 Vector aim_target = Vector(0, 0, 0);
-extern aimbot_state_t aimbot; // read
+extern const aimbot_state_t aimbot; // read
 
 extern bool overlay_t;
 
@@ -504,7 +504,8 @@ void Overlay::RenderEsp() {
       WorldToScreen(aim_target, view_matrix_data.matrix, getWidth(),
                     getHeight(), bs);
       const float indicator_radius = 10.0f;
-      ImColor indicator_color = aimbot.lock
+      bool aimbot_locked = aimbot_is_locked(&aimbot);
+      ImColor indicator_color = aimbot_locked
                                     ? ImColor(1.0f, 0.647f, 0.0f, 0.618f)
                                     : ImColor(1.0f, 1.0f, 1.0f, 0.618f);
       ImVec2 p1 = ImVec2(bs.x + indicator_radius, bs.y - indicator_radius);
@@ -513,7 +514,7 @@ void Overlay::RenderEsp() {
       ImVec2 p4 = ImVec2(bs.x + indicator_radius, bs.y + indicator_radius);
       ImDrawList &draw_list = *ImGui::GetWindowDrawList();
       draw_list.AddRect(p2, p4, indicator_color, indicator_radius, 0, 1.6726f);
-      if (aimbot.lock) {
+      if (aimbot_locked) {
         indicator_color = RED;
         draw_list.AddLine(p1, p3, indicator_color, 2.718f);
         draw_list.AddLine(p2, p4, indicator_color, 2.718f);
@@ -568,13 +569,14 @@ void Overlay::RenderEsp() {
                      std::to_string(players[i].entity_team) + ")";
 
           float alpha; // The farther away, the more transparent
-          if (players[i].dist < g_settings.aim_dist) {
+          if (players[i].dist < g_settings.aimbot_settings.aim_dist) {
             alpha = 1.0f;
           } else if (players[i].dist > 16000.0f) {
             alpha = 0.4f;
           } else {
-            alpha = 1.0f - ((players[i].dist - g_settings.aim_dist) /
-                            (16000.0f - g_settings.aim_dist) * 0.6f);
+            alpha = 1.0f -
+                    ((players[i].dist - g_settings.aimbot_settings.aim_dist) /
+                     (16000.0f - g_settings.aimbot_settings.aim_dist) * 0.6f);
           }
 
           float radardistance = (int)(players[i].dist / 39.62);

@@ -228,3 +228,20 @@ loot-level4-name = Legendary
 loot-level5-name = Mythic
 menu-item-favorite-player-glow = Highlight favorite gamers
 menu-item-kbd-backlight-ctrl = Keyboard backlight control
+aimbot-menu-title = Aimbot Settings
+menu-item-aimbot-mode = Aimbot Mode
+menu-value-aimbot-off = Off
+menu-value-aimbot-no-vis-check = On without Vis Check
+menu-value-aimbot-on = On
+input-prompt-aimbot-mode = 
+    New value for 'Aimbot Mode': 
+        0 => Off
+        1 => On without Vis Check
+        2 => On
+menu-item-aim-dist = Aimbot Max Distance
+input-prompt-aim-dist = New value for 'Aimbot Max Distance':
+    (10 to 1600) (meters)
+menu-item-headshot-dist = Headshot Max Distance
+input-prompt-headshot-dist = New value for 'Headshot Max Distance':
+    (0 to 1600) (meters)
+menu-item-skynade-smooth = Sky Grenade Smooth

@@ -51,6 +51,7 @@ impl<'a> Debug for MenuState<'a> {
 enum MenuLevel {
     #[default]
     MainMenu,
+    AimbotMenu,
     GlowColorMenu,
     ItemFilterMenu,
     LightWeaponsMenu,
@@ -179,6 +180,7 @@ impl<'a> TerminalMenu<'a> {
         let i18n_bundle = get_fluent_bundle();
         let mut new_menu_state = match self.get_menu_level() {
             MenuLevel::MainMenu => build_main_menu(i18n_bundle, data),
+            MenuLevel::AimbotMenu => build_aimbot_menu(i18n_bundle, data),
             MenuLevel::GlowColorMenu => build_glow_color_menu(i18n_bundle, data),
             MenuLevel::ItemFilterMenu => build_item_filter_menu(i18n_bundle, data),
             MenuLevel::LightWeaponsMenu => build_light_weapons_menu(i18n_bundle, data),
@@ -284,6 +286,11 @@ impl<'a> MenuBuilder<'a> {
             }
         }
         self.head_id
+    }
+
+    fn skip_id(mut self) -> MenuBuilder<'a> {
+        self.next_id();
+        self
     }
 
     fn no_id(mut self) -> MenuBuilder<'a> {
@@ -451,12 +458,11 @@ fn build_main_menu(
             item_enabled(
                 &i18n_bundle,
                 format!(" 3 - {}", i18n_msg!(i18n_bundle, MenuItemKeyboard)),
-                settings.keyboard,
+                !settings.aimbot_settings.gamepad,
             ),
             |_| {
                 let settings = &mut lock_config!().settings;
-                settings.keyboard = !settings.keyboard;
-                settings.gamepad = !settings.keyboard;
+                settings.aimbot_settings.gamepad = !settings.aimbot_settings.gamepad;
                 None
             },
         )
@@ -464,12 +470,11 @@ fn build_main_menu(
             item_enabled(
                 &i18n_bundle,
                 format!(" 4 - {}", i18n_msg!(i18n_bundle, MenuItemGamepad)),
-                settings.gamepad,
+                settings.aimbot_settings.gamepad,
             ),
             |_| {
                 let settings = &mut lock_config!().settings;
-                settings.gamepad = !settings.gamepad;
-                settings.keyboard = !settings.gamepad;
+                settings.aimbot_settings.gamepad = !settings.aimbot_settings.gamepad;
                 None
             },
         );
@@ -488,85 +493,14 @@ fn build_main_menu(
         player_glow
     );
     menu = menu
-        .add_input_item(
-            format_item(
-                &i18n_bundle,
-                format!(" 7 - {}", i18n_msg!(i18n_bundle, MenuItemSmoothValue)),
-                if settings.smooth < 90.0 {
-                    Span::styled(
-                        format!("{}", settings.smooth),
-                        Style::default().fg(Color::Red),
-                    )
-                } else if settings.smooth > 120.0 {
-                    Span::styled(
-                        format!("{}", settings.smooth),
-                        Style::default().fg(Color::Green),
-                    )
-                } else {
-                    Span::from(format!("{}", settings.smooth))
-                },
-            ),
-            &i18n_msg!(i18n_bundle, InputPromptSmoothValue),
-            |val| {
-                if let Some(new_val) = val.parse::<u16>().ok() {
-                    if new_val >= 50 && new_val <= 500 {
-                        let settings = &mut lock_config!().settings;
-                        settings.smooth = new_val.into();
-                        settings.skynade_smooth = settings.smooth * 0.6667;
-                        return None;
-                    }
-                }
-                let i18n_bundle = get_fluent_bundle();
-                Some(i18n_msg!(i18n_bundle, InfoInvalidSmoothValue).to_string())
+        .add_item(
+            item_text(format!(" 7 - {}", i18n_msg!(i18n_bundle, AimbotMenuTitle))),
+            |handle: &mut TerminalMenu| {
+                handle.nav_menu(MenuLevel::AimbotMenu);
+                None
             },
         )
-        .add_input_item(
-            format_item(
-                &i18n_bundle,
-                format!(" 8 - {}", i18n_msg!(i18n_bundle, MenuItemChangeBoneAim)),
-                Span::from(
-                    if settings.bone_nearest {
-                        i18n_msg!(i18n_bundle, MenuValueBoneNearest)
-                    } else if settings.bone_auto {
-                        i18n_msg!(i18n_bundle, MenuValueBoneAuto)
-                    } else {
-                        match settings.bone {
-                            0 => i18n_msg!(i18n_bundle, MenuValueBoneHead),
-                            1 => i18n_msg!(i18n_bundle, MenuValueBoneNeck),
-                            2 => i18n_msg!(i18n_bundle, MenuValueBoneChest),
-                            3 => i18n_msg!(i18n_bundle, MenuValueBoneGutShut),
-                            _ => i18n_msg!(i18n_bundle, MenuValueBoneUnknown),
-                        }
-                    }
-                    .to_string(),
-                ),
-            ),
-            &i18n_msg!(i18n_bundle, InputPromptBoneValue),
-            |val| {
-                let i18n_bundle = get_fluent_bundle();
-                let val = val.trim();
-                if val == "x" {
-                    let settings = &mut lock_config!().settings;
-                    settings.bone_auto = true;
-                    settings.bone_nearest = false;
-                    return None;
-                } else if val == "h" {
-                    let settings = &mut lock_config!().settings;
-                    settings.bone_nearest = true;
-                    settings.bone_auto = false;
-                    return None;
-                } else if let Some(new_val) = val.parse::<u8>().ok() {
-                    if vec![0, 1, 2, 3].contains(&new_val) {
-                        let settings = &mut lock_config!().settings;
-                        settings.bone = new_val.into();
-                        settings.bone_auto = false;
-                        return None;
-                    }
-                    return Some(i18n_msg!(i18n_bundle, InfoInvalidBoneValue).to_string());
-                }
-                Some(i18n_msg!(i18n_bundle, InfoInvalidValue).to_string())
-            },
-        )
+        .skip_id()
         .add_item(
             item_enabled(
                 &i18n_bundle,
@@ -624,44 +558,8 @@ fn build_main_menu(
                 None
             },
         )
-        .add_input_item(
-            format_item(
-                &i18n_bundle,
-                format!("13 - {}", i18n_msg!(i18n_bundle, MenuItemChangeAdsFov)),
-                Span::from(format!("{}", settings.ads_fov)),
-            ),
-            &i18n_msg!(i18n_bundle, InputPromptAdsFov),
-            |val| {
-                if let Some(new_val) = val.parse::<f32>().ok() {
-                    if new_val >= 1.0 && new_val <= 50.0 {
-                        let settings = &mut lock_config!().settings;
-                        settings.ads_fov = new_val;
-                        return None;
-                    }
-                }
-                let i18n_bundle = get_fluent_bundle();
-                Some(i18n_msg!(i18n_bundle, InfoInvalidAdsFov).to_string())
-            },
-        )
-        .add_input_item(
-            format_item(
-                &i18n_bundle,
-                format!("14 - {}", i18n_msg!(i18n_bundle, MenuItemChangeNonAdsFov)),
-                Span::from(format!("{}", settings.non_ads_fov)),
-            ),
-            &i18n_msg!(i18n_bundle, InputPromptNonAdsFov),
-            |val| {
-                if let Some(new_val) = val.parse::<f32>().ok() {
-                    if new_val >= 1.0 && new_val <= 50.0 {
-                        let settings = &mut lock_config!().settings;
-                        settings.non_ads_fov = new_val;
-                        return None;
-                    }
-                }
-                let i18n_bundle = get_fluent_bundle();
-                Some(i18n_msg!(i18n_bundle, InfoInvalidNonAdsFov).to_string())
-            },
-        );
+        .skip_id()
+        .skip_id();
     menu = add_toggle_item!(
         menu,
         &i18n_bundle,
@@ -706,8 +604,8 @@ fn build_main_menu(
                     Some(i18n_msg!(i18n_bundle, HelloWorld).to_string())
                 }
             },
-        );
-    menu.next_id();
+        )
+        .skip_id();
     menu = add_toggle_item!(
         menu,
         &i18n_bundle,
@@ -752,39 +650,15 @@ fn build_main_menu(
             },
         )
         .add_dummy_item()
-        .add_item(
-            format_item(
-                &i18n_bundle,
-                format!("23 - {}", i18n_msg!(i18n_bundle, MenuItemToggleNadeAim)),
-                Span::from(
-                    if settings.no_nade_aim {
-                        i18n_msg!(i18n_bundle, MenuValueNoNadeAim)
-                    } else {
-                        i18n_msg!(i18n_bundle, MenuValueNadeAimOn)
-                    }
-                    .to_string(),
-                ),
-            ),
-            |_| {
-                let settings = &mut lock_config!().settings;
-                settings.no_nade_aim = !settings.no_nade_aim;
-                None
-            },
-        );
+        .skip_id();
     menu = add_toggle_item!(
         menu,
         &i18n_bundle,
         format!("24 - {}", i18n_msg!(i18n_bundle, MenuItemToggleOnevone)),
         settings.onevone,
         onevone
-    );
-    menu = add_toggle_item!(
-        menu,
-        &i18n_bundle,
-        format!("25 - {}", i18n_msg!(i18n_bundle, MenuItemToggleNoRecoil)),
-        settings.aim_no_recoil,
-        aim_no_recoil
-    );
+    )
+    .skip_id();
     menu = menu.add_input_item(
         format_item(
             &i18n_bundle,
@@ -891,6 +765,292 @@ fn build_main_menu(
             },
         )
         .into()
+}
+
+fn build_aimbot_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Settings,
+) -> MenuState<'static> {
+    let menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, AimbotMenuTitle));
+    menu.add_item(
+        item_enabled(
+            &i18n_bundle,
+            format!(" 1 - {}", i18n_msg!(i18n_bundle, MenuItemKeyboard)),
+            !settings.aimbot_settings.gamepad,
+        ),
+        |_| {
+            let settings = &mut lock_config!().settings;
+            settings.aimbot_settings.gamepad = !settings.aimbot_settings.gamepad;
+            None
+        },
+    )
+    .add_item(
+        item_enabled(
+            &i18n_bundle,
+            format!(" 2 - {}", i18n_msg!(i18n_bundle, MenuItemGamepad)),
+            settings.aimbot_settings.gamepad,
+        ),
+        |_| {
+            let settings = &mut lock_config!().settings;
+            settings.aimbot_settings.gamepad = !settings.aimbot_settings.gamepad;
+            None
+        },
+    )
+    .add_input_item(
+        format_item(
+            &i18n_bundle,
+            format!(" 3 - {}", i18n_msg!(i18n_bundle, MenuItemAimbotMode)),
+            match settings.aimbot_settings.aim_mode {
+                0 => Span::from(i18n_msg!(i18n_bundle, MenuValueAimbotOff).to_string()),
+                1 => Span::styled(
+                    i18n_msg!(i18n_bundle, MenuValueAimbotNoVisCheck).to_string(),
+                    Style::default().fg(Color::Red),
+                ),
+                2 => Span::styled(
+                    i18n_msg!(i18n_bundle, MenuValueAimbotOn).to_string(),
+                    Style::default().fg(Color::Green),
+                ),
+                _ => Span::styled(
+                    std::borrow::Cow::Borrowed("!").to_string(),
+                    Style::default().fg(Color::Red),
+                ),
+            },
+        ),
+        &i18n_msg!(i18n_bundle, InputPromptAimbotMode),
+        |val| {
+            let i18n_bundle = get_fluent_bundle();
+            let val = val.trim();
+            if let Some(new_val) = val.parse::<u8>().ok() {
+                if vec![0, 1, 2].contains(&new_val) {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.aim_mode = new_val.into();
+                    return None;
+                }
+                return Some(i18n_msg!(i18n_bundle, InfoInvalidValue).to_string());
+            }
+            Some(i18n_msg!(i18n_bundle, InfoInvalidValue).to_string())
+        },
+    )
+    .add_input_item(
+        format_item(
+            &i18n_bundle,
+            format!(" 4 - {}", i18n_msg!(i18n_bundle, MenuItemChangeAdsFov)),
+            Span::from(format!("{}", settings.aimbot_settings.ads_fov)),
+        ),
+        &i18n_msg!(i18n_bundle, InputPromptAdsFov),
+        |val| {
+            if let Some(new_val) = val.parse::<f32>().ok() {
+                if new_val >= 1.0 && new_val <= 50.0 {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.ads_fov = new_val;
+                    return None;
+                }
+            }
+            let i18n_bundle = get_fluent_bundle();
+            Some(i18n_msg!(i18n_bundle, InfoInvalidAdsFov).to_string())
+        },
+    )
+    .add_input_item(
+        format_item(
+            &i18n_bundle,
+            format!(" 5 - {}", i18n_msg!(i18n_bundle, MenuItemChangeNonAdsFov)),
+            Span::from(format!("{}", settings.aimbot_settings.non_ads_fov)),
+        ),
+        &i18n_msg!(i18n_bundle, InputPromptNonAdsFov),
+        |val| {
+            if let Some(new_val) = val.parse::<f32>().ok() {
+                if new_val >= 1.0 && new_val <= 50.0 {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.non_ads_fov = new_val;
+                    return None;
+                }
+            }
+            let i18n_bundle = get_fluent_bundle();
+            Some(i18n_msg!(i18n_bundle, InfoInvalidNonAdsFov).to_string())
+        },
+    )
+    .add_item(
+        format_item(
+            &i18n_bundle,
+            format!(" 6 - {}", i18n_msg!(i18n_bundle, MenuItemToggleNadeAim)),
+            Span::from(
+                if !settings.aimbot_settings.auto_nade_aim {
+                    i18n_msg!(i18n_bundle, MenuValueNoNadeAim)
+                } else {
+                    i18n_msg!(i18n_bundle, MenuValueNadeAimOn)
+                }
+                .to_string(),
+            ),
+        ),
+        |_| {
+            let settings = &mut lock_config!().settings;
+            settings.aimbot_settings.auto_nade_aim = !settings.aimbot_settings.auto_nade_aim;
+            None
+        },
+    )
+    .add_item(
+        item_enabled(
+            &i18n_bundle,
+            format!(" 7 - {}", i18n_msg!(i18n_bundle, MenuItemToggleNoRecoil)),
+            settings.aimbot_settings.no_recoil,
+        ),
+        |_handle: &mut TerminalMenu| {
+            let settings = &mut lock_config!().settings;
+            settings.aimbot_settings.no_recoil = !settings.aimbot_settings.no_recoil;
+            None
+        },
+    )
+    .add_input_item(
+        format_item(
+            &i18n_bundle,
+            format!(" 8 - {}", i18n_msg!(i18n_bundle, MenuItemChangeBoneAim)),
+            Span::from(
+                if settings.aimbot_settings.bone_nearest {
+                    i18n_msg!(i18n_bundle, MenuValueBoneNearest)
+                } else if settings.aimbot_settings.bone_auto {
+                    i18n_msg!(i18n_bundle, MenuValueBoneAuto)
+                } else {
+                    match settings.aimbot_settings.bone {
+                        0 => i18n_msg!(i18n_bundle, MenuValueBoneHead),
+                        1 => i18n_msg!(i18n_bundle, MenuValueBoneNeck),
+                        2 => i18n_msg!(i18n_bundle, MenuValueBoneChest),
+                        3 => i18n_msg!(i18n_bundle, MenuValueBoneGutShut),
+                        _ => i18n_msg!(i18n_bundle, MenuValueBoneUnknown),
+                    }
+                }
+                .to_string(),
+            ),
+        ),
+        &i18n_msg!(i18n_bundle, InputPromptBoneValue),
+        |val| {
+            let i18n_bundle = get_fluent_bundle();
+            let val = val.trim();
+            if val == "x" {
+                let settings = &mut lock_config!().settings;
+                settings.aimbot_settings.bone_auto = true;
+                settings.aimbot_settings.bone_nearest = false;
+                return None;
+            } else if val == "h" {
+                let settings = &mut lock_config!().settings;
+                settings.aimbot_settings.bone_nearest = true;
+                settings.aimbot_settings.bone_auto = false;
+                return None;
+            } else if let Some(new_val) = val.parse::<u8>().ok() {
+                if vec![0, 1, 2, 3].contains(&new_val) {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.bone = new_val.into();
+                    settings.aimbot_settings.bone_auto = false;
+                    return None;
+                }
+                return Some(i18n_msg!(i18n_bundle, InfoInvalidBoneValue).to_string());
+            }
+            Some(i18n_msg!(i18n_bundle, InfoInvalidValue).to_string())
+        },
+    )
+    .add_input_item(
+        format_item(
+            &i18n_bundle,
+            format!(" 9 - {}", i18n_msg!(i18n_bundle, MenuItemAimDist)),
+            Span::from(format!("{}m", settings.aimbot_settings.aim_dist / 39.62)),
+        ),
+        &i18n_msg!(i18n_bundle, InputPromptAimDist),
+        |val| {
+            if let Some(new_val) = val.parse::<f32>().ok() {
+                if new_val >= 10.0 && new_val <= 1600.0 {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.aim_dist = new_val * 39.62;
+                    return None;
+                }
+            }
+            None
+        },
+    )
+    .add_input_item(
+        format_item(
+            &i18n_bundle,
+            format!("10 - {}", i18n_msg!(i18n_bundle, MenuItemHeadshotDist)),
+            Span::from(format!(
+                "{}m",
+                settings.aimbot_settings.headshot_dist / 39.62
+            )),
+        ),
+        &i18n_msg!(i18n_bundle, InputPromptHeadshotDist),
+        |val| {
+            if let Some(new_val) = val.parse::<f32>().ok() {
+                if new_val >= 0.0 && new_val <= 1600.0 {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.headshot_dist = new_val * 39.62;
+                    return None;
+                }
+            }
+            None
+        },
+    )
+    .add_input_item(
+        format_item(
+            &i18n_bundle,
+            format!("11 - {}", i18n_msg!(i18n_bundle, MenuItemSmoothValue)),
+            if settings.aimbot_settings.smooth < 90.0 {
+                Span::styled(
+                    format!("{}", settings.aimbot_settings.smooth),
+                    Style::default().fg(Color::Red),
+                )
+            } else if settings.aimbot_settings.smooth > 120.0 {
+                Span::styled(
+                    format!("{}", settings.aimbot_settings.smooth),
+                    Style::default().fg(Color::Green),
+                )
+            } else {
+                Span::from(format!("{}", settings.aimbot_settings.smooth))
+            },
+        ),
+        &i18n_msg!(i18n_bundle, InputPromptSmoothValue),
+        |val| {
+            if let Some(new_val) = val.parse::<u16>().ok() {
+                if new_val >= 50 && new_val <= 500 {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.smooth = new_val.into();
+                    // settings.aimbot_settings.skynade_smooth =
+                    //     settings.aimbot_settings.smooth * 0.6667;
+                    return None;
+                }
+            }
+            let i18n_bundle = get_fluent_bundle();
+            Some(i18n_msg!(i18n_bundle, InfoInvalidSmoothValue).to_string())
+        },
+    )
+    .add_input_item(
+        format_item(
+            &i18n_bundle,
+            format!("12 - {}", i18n_msg!(i18n_bundle, MenuItemSkynadeSmooth)),
+            if settings.aimbot_settings.skynade_smooth < 90.0 * 0.6667 {
+                Span::styled(
+                    format!("{}", settings.aimbot_settings.skynade_smooth),
+                    Style::default().fg(Color::Red),
+                )
+            } else if settings.aimbot_settings.skynade_smooth > 120.0 * 0.6667 {
+                Span::styled(
+                    format!("{}", settings.aimbot_settings.skynade_smooth),
+                    Style::default().fg(Color::Green),
+                )
+            } else {
+                Span::from(format!("{}", settings.aimbot_settings.skynade_smooth))
+            },
+        ),
+        &i18n_msg!(i18n_bundle, InputPromptSmoothValue),
+        |val| {
+            if let Some(new_val) = val.parse::<u16>().ok() {
+                if new_val >= 50 && new_val <= 500 {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.skynade_smooth = new_val.into();
+                    return None;
+                }
+            }
+            let i18n_bundle = get_fluent_bundle();
+            Some(i18n_msg!(i18n_bundle, InfoInvalidSmoothValue).to_string())
+        },
+    )
+    .into()
 }
 
 fn build_glow_color_menu(
