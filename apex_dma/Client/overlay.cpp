@@ -26,15 +26,13 @@ using namespace std;
 
 extern bool overlay_t;
 extern float veltest;
-extern int local_held_id;
-extern uint32_t local_weapon_id;
 extern float bulletspeed;
 extern float bulletgrav;
 
 // Aimbot
-extern aimbot_state_t aimbot;                             // read aimbot state
-extern std::vector<Entity> spectators, allied_spectators; // read
-extern std::vector<string> esp_spec_names;
+extern const aimbot_state_t aimbot; // read aimbot state
+extern const std::vector<Entity> spectators, allied_spectators; // read
+extern const std::vector<string> esp_spec_names;
 // Left and Right Aim key toggle
 bool toggleaim = false;
 bool toggleaim2 = false;
@@ -72,9 +70,9 @@ void Overlay::RenderMenu() {
 
   auto g_settings = global_settings();
 
-  if (g_settings.aim > 0) {
+  if (g_settings.aimbot_settings.aim_mode > 0) {
     aim_enable = true;
-    if (g_settings.aim > 1) {
+    if (g_settings.aimbot_settings.aim_mode > 1) {
       vis_check = true;
     } else {
       vis_check = false;
@@ -113,16 +111,18 @@ void Overlay::RenderMenu() {
     if (aim_enable) {
       ImGui::Checkbox(XorStr("Visibility Check"), &vis_check);
       ImGui::SameLine();
-      ImGui::Checkbox(XorStr("No Recoil"), &g_settings.aim_no_recoil);
+      ImGui::Checkbox(XorStr("No Recoil"),
+                      &g_settings.aimbot_settings.no_recoil);
       ImGui::SameLine();
-      ImGui::Checkbox(XorStr("No Nade Aim"), &g_settings.no_nade_aim);
+      ImGui::Checkbox(XorStr("Auto Nade Aim"),
+                      &g_settings.aimbot_settings.auto_nade_aim);
       if (vis_check) {
-        g_settings.aim = 2;
+        g_settings.aimbot_settings.aim_mode = 2;
       } else {
-        g_settings.aim = 1;
+        g_settings.aimbot_settings.aim_mode = 1;
       }
     } else {
-      g_settings.aim = 0;
+      g_settings.aimbot_settings.aim_mode = 0;
     }
 
     ImGui::Checkbox(XorStr("Firing Range"), &g_settings.firing_range);
@@ -133,9 +133,11 @@ void Overlay::RenderMenu() {
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Aiming Distance:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.f meters", g_settings.aim_dist / 39.62);
-    ImGui::SliderFloat(XorStr("##Aim Distance"), &g_settings.aim_dist,
-                       10.0f * 39.62, 1600.0f * 39.62, "##");
+    ImGui::TextColored(GREEN, "%.f meters",
+                       g_settings.aimbot_settings.aim_dist / 39.62);
+    ImGui::SliderFloat(XorStr("##Aim Distance"),
+                       &g_settings.aimbot_settings.aim_dist, 10.0f * 39.62,
+                       1600.0f * 39.62, "##");
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("Aiming Keys:"));
     ImGui::RadioButton("Left Mouse", &e, 1);
@@ -166,42 +168,43 @@ void Overlay::RenderMenu() {
     ImGui::Dummy(ImVec2(0.0f, 4.0f));
     ImGui::Text(XorStr("non-ADS:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.f", g_settings.non_ads_fov);
-    ImGui::SliderFloat(XorStr("##nonADSfov"), &g_settings.non_ads_fov, 5.0f,
-                       50.0f, "##");
+    ImGui::TextColored(GREEN, "%.f", g_settings.aimbot_settings.non_ads_fov);
+    ImGui::SliderFloat(XorStr("##nonADSfov"),
+                       &g_settings.aimbot_settings.non_ads_fov, 5.0f, 50.0f,
+                       "##");
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("ADS:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.f", g_settings.ads_fov);
-    ImGui::SliderFloat(XorStr("##ADSfov"), &g_settings.ads_fov, 5.0f, 50.0f,
-                       "##");
+    ImGui::TextColored(GREEN, "%.f", g_settings.aimbot_settings.ads_fov);
+    ImGui::SliderFloat(XorStr("##ADSfov"), &g_settings.aimbot_settings.ads_fov,
+                       5.0f, 50.0f, "##");
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Current:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.f", aimbot.max_fov);
-    ImGui::SliderFloat(XorStr("##max_fov"), &aimbot.max_fov, 5.0f, 50.0f, "##");
+    ImGui::TextColored(GREEN, "%.f", aimbot_get_max_fov(&aimbot));
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Smooth Aim Value:"));
     ImGui::SameLine();
-    if (g_settings.smooth < 100.0f) {
-      ImGui::TextColored(RED, "%.f", g_settings.smooth);
-    } else if (g_settings.smooth > 120.0f) {
-      ImGui::TextColored(GREEN, "%.f", g_settings.smooth);
+    if (g_settings.aimbot_settings.smooth < 100.0f) {
+      ImGui::TextColored(RED, "%.f", g_settings.aimbot_settings.smooth);
+    } else if (g_settings.aimbot_settings.smooth > 120.0f) {
+      ImGui::TextColored(GREEN, "%.f", g_settings.aimbot_settings.smooth);
     } else {
-      ImGui::TextColored(WHITE, "%.f", g_settings.smooth);
+      ImGui::TextColored(WHITE, "%.f", g_settings.aimbot_settings.smooth);
     }
-    ImGui::SliderFloat(XorStr("##smooth"), &g_settings.smooth, 50.0f, 250.0f,
-                       "##");
+    ImGui::SliderFloat(XorStr("##smooth"), &g_settings.aimbot_settings.smooth,
+                       50.0f, 500.0f, "##");
     ImGui::SameLine();
-    ImGui::Text(XorStr("85 To 150 Is Safe"));
+    ImGui::Text(XorStr("100 To 500 Is Safe"));
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Smooth Skynade Aim:"));
     ImGui::SameLine();
-    ImGui::TextColored(WHITE, "%.f", g_settings.skynade_smooth);
-    ImGui::SliderFloat(XorStr("##skynade_smooth"), &g_settings.skynade_smooth,
-                       35.0f, 180.0f, "##");
+    ImGui::TextColored(WHITE, "%.f", g_settings.aimbot_settings.skynade_smooth);
+    ImGui::SliderFloat(XorStr("##skynade_smooth"),
+                       &g_settings.aimbot_settings.skynade_smooth, 35.0f,
+                       180.0f, "##");
 
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
@@ -224,18 +227,20 @@ void Overlay::RenderMenu() {
     ImGui::Text(XorStr("Max Headshot Distance:"));
     ImGui::SameLine();
     ImGui::TextColored(GREEN, "%d meters",
-                       (int)(g_settings.headshot_dist / 40.0f));
-    ImGui::SliderFloat(XorStr("##headshot_dist"), &g_settings.headshot_dist,
-                       0.0f, g_settings.aim_dist, "##");
+                       (int)(g_settings.aimbot_settings.headshot_dist / 40.0f));
+    ImGui::SliderFloat(XorStr("##headshot_dist"),
+                       &g_settings.aimbot_settings.headshot_dist, 0.0f,
+                       g_settings.aimbot_settings.aim_dist, "##");
     ImGui::Text(XorStr("Disable sniper headshots when out of range"));
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
     ImGui::Text(XorStr("Aiming Bone:"));
-    ImGui::Checkbox(XorStr("Auto"), &g_settings.bone_auto);
+    ImGui::Checkbox(XorStr("Auto"), &g_settings.aimbot_settings.bone_auto);
     ImGui::SameLine();
-    ImGui::Checkbox(XorStr("Nearest"), &g_settings.bone_nearest);
+    ImGui::Checkbox(XorStr("Nearest"),
+                    &g_settings.aimbot_settings.bone_nearest);
     ImGui::Text(XorStr("0=Head, 1=Neck, 2=Chest, 3=Stomach"));
-    ImGui::SliderInt(XorStr("##bone"), &g_settings.bone, 0, 3);
+    ImGui::SliderInt(XorStr("##bone"), &g_settings.aimbot_settings.bone, 0, 3);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     ImGui::Text(XorStr("ESP Options:"));
     ImGui::Checkbox(XorStr("Box"), &g_settings.esp_visuals.box);
@@ -553,7 +558,8 @@ void Overlay::RenderMenu() {
   // ImGui::EndTabBar();
   //}
   ImGui::Dummy(ImVec2(0.0f, 10.0f));
-  ImGui::Text(XorStr("held=%d, weapon=%d"), local_held_id, local_weapon_id);
+  ImGui::Text(XorStr("held=%d, weapon=%d"), aimbot_get_held_id(&aimbot),
+              aimbot_get_weapon_id(&aimbot));
   ImGui::Dummy(ImVec2(0.0f, 5.0f));
   ImGui::Text(XorStr("Overlay FPS: %.3f ms/frame (%.1f FPS)"),
               1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -591,23 +597,24 @@ void Overlay::RenderInfo() {
   ImGui::SameLine();
   ImGui::Text("--");
   ImGui::SameLine();
-  ImGui::TextColored(WHITE, "%.f", aimbot.max_fov);
+  ImGui::TextColored(WHITE, "%.f", aimbot_get_max_fov(&aimbot));
   ImGui::SameLine();
   ImGui::Text("--");
   ImGui::SameLine();
   // Aim is on = 2, On but No Vis Check = 1, Off = 0
   const auto g_settings = global_settings();
-  if (aimbot.lock) {
-    ImGui::TextColored(aimbot.gun_safety ? GREEN : ORANGE, "[TARGET LOCK!]");
-  } else if (local_held_id == -251) {
+  if (aimbot_is_locked(&aimbot)) {
+    ImGui::TextColored(aimbot_get_gun_safety(&aimbot) ? GREEN : ORANGE,
+                       "[TARGET LOCK!]");
+  } else if (aimbot_is_grenade(&aimbot)) {
     ImGui::TextColored(BLUE, "Skynade On");
-  } else if (g_settings.aim == 2) {
+  } else if (g_settings.aimbot_settings.aim_mode == 2) {
     ImGui::TextColored(GREEN, "Aim On");
 
-  } else if (g_settings.aim == 0) {
+  } else if (g_settings.aimbot_settings.aim_mode == 0) {
     ImGui::TextColored(RED, "Aim Off");
   } else {
-    ImGui::TextColored(RED, "Aim On %d", g_settings.aim);
+    ImGui::TextColored(RED, "Aim On %d", g_settings.aimbot_settings.aim_mode);
   }
   ImGui::SameLine();
   DrawLine(ImVec2(1, 28), ImVec2(280, 28), RED, 2);

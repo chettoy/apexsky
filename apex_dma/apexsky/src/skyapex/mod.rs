@@ -13,7 +13,7 @@ use wasmer::{Instance, Module, Store, Value};
 use wasmer_wasix::{
     capabilities::Capabilities,
     default_fs_backing,
-    os::{tty_sys::SysTty, TtyBridge},
+    os::tty_sys::SysTty,
     runtime::task_manager::tokio::TokioTaskManager,
     virtual_fs::{DeviceFile, FileSystem, PassthruFileSystem, RootFileSystemBuilder},
     virtual_net, PluggableRuntime, WasiEnv,
@@ -124,7 +124,7 @@ impl Skyapex {
                 .capabilities({
                     let mut caps = Capabilities::default();
                     caps.http_client = wasmer_wasix::http::HttpClientCapabilityV1::new_allow_all();
-                    caps.threading.enable_asynchronous_threading = true;
+                    caps.threading.enable_asynchronous_threading = false;
                     caps
                 })
                 .finalize(&mut store)?;

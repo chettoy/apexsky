@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::love_players::LovePlayer;
+use crate::{aimbot::AimbotSettings, love_players::LovePlayer};
 
 #[repr(C)]
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -162,8 +162,7 @@ pub struct Settings {
     pub yuan_p: bool,
     pub debug_mode: bool,
     pub super_key: bool,
-    pub keyboard: bool,
-    pub gamepad: bool,
+    pub aimbot_settings: AimbotSettings,
     pub aimbot_hot_key_1: i32,
     pub aimbot_hot_key_2: i32,
     pub trigger_bot_hot_key: i32,
@@ -180,10 +179,6 @@ pub struct Settings {
     pub weapon_model_glow: bool,
     pub kbd_backlight_control: bool,
     pub deathbox: bool,
-    pub aim_no_recoil: bool,
-    pub ads_fov: f32,
-    pub non_ads_fov: f32,
-    pub aim: i32,
     pub esp: bool,
     pub esp_visuals: EspVisuals,
     pub mini_map_radar: bool,
@@ -193,21 +188,12 @@ pub struct Settings {
     pub main_radar_map: bool,
     pub main_map_radar_dot_size1: i32,
     pub main_map_radar_dot_size2: i32,
-    pub aim_dist: f32,
     pub max_dist: f32,
     pub map_radar_testing: bool,
     pub show_aim_target: bool,
     pub game_fps: f32,
     pub calc_game_fps: bool,
-    pub no_nade_aim: bool,
     pub firing_range: bool,
-    pub bone: i32,
-    pub bone_nearest: bool,
-    pub bone_auto: bool,
-    pub headshot_dist: f32,
-    pub skynade_dist: f32,
-    pub smooth: f32,
-    pub skynade_smooth: f32,
     pub player_glow_inside_value: u8,
     pub player_glow_outline_size: u8,
     pub glow_r_not: f32,
@@ -382,8 +368,7 @@ impl Default for Settings {
             debug_mode: false,
             super_key: true,
             // Gamepad or Keyboard config, Only one true at once or it wont work.
-            keyboard: true,
-            gamepad: false,
+            aimbot_settings: AimbotSettings::default(),
             aimbot_hot_key_1: 108,
             aimbot_hot_key_2: 109,
             // Done with Gamepad or Keyboard config
@@ -404,10 +389,6 @@ impl Default for Settings {
             weapon_model_glow: false,
             kbd_backlight_control: false,
             deathbox: false,
-            aim_no_recoil: true,
-            ads_fov: 12.0, // Fov you want to use while aiming
-            non_ads_fov: 50.0,
-            aim: 2, // 0 no aim, 1 aim with no vis check, 2 aim with vis check
             esp: true,
             esp_visuals: EspVisuals::default(),
             mini_map_radar: true,
@@ -417,22 +398,12 @@ impl Default for Settings {
             main_radar_map: false, // if the Main Map Radar is enabled
             main_map_radar_dot_size1: 5,
             main_map_radar_dot_size2: 5,
-            aim_dist: 500.0 * 40.0,
             max_dist: 3800.0 * 40.0, // Max Distance of ESP 3800 is full map
             map_radar_testing: false,
             show_aim_target: true,
             game_fps: 75.0,       // Game FPS for aim prediction
             calc_game_fps: false, // Automatic calculation of game fps
-            // aimbot for nades on or off
-            no_nade_aim: false,
             firing_range: false,
-            bone: 2, // bone 0 head, 1 neck, 2 chest, 3 dick shot
-            bone_nearest: false,
-            bone_auto: true,
-            headshot_dist: 250.0 * 40.0,
-            skynade_dist: 150.0 * 40.0,
-            smooth: 120.0, // min 85 no beaming, 100 somewhat beam people, 125 should be safe
-            skynade_smooth: 120.0 * 0.6667,
             // Player Glow Color and Brightness.
             // inside fill
             player_glow_inside_value: 14, // 0 = no fill, 14 = full fill

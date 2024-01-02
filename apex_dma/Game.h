@@ -1,4 +1,5 @@
 #include "Math.h"
+#include "apex_sky.h"
 #include "glowmode.h"
 #include "memory.hpp"
 #include "offsets.h"
@@ -149,50 +150,9 @@ Item getItem(uintptr_t ptr);
 bool WorldToScreen(Vector from, float *m_vMatrix, int targetWidth,
                    int targetHeight, Vector &to);
 float CalculateFov(Entity &from, Entity &target);
-QAngle CalculateBestBoneAim(Entity &from, Entity &target, float max_fov);
+QAngle CalculateBestBoneAim(Entity &from, Entity &target, const aimbot_state_t &aimbot);
 void get_class_name(uint64_t entity_ptr, char *out_str);
 void charge_rifle_hack(uint64_t entity_ptr);
-
-enum weapon_id : int32_t {
-  idweapon_r301 = 0,
-  idweapon_sentinel = 1,
-  idweapon_bow = 2,
-  idsheila_stationary = 10,
-  idsheila = 56,
-  idweapon_rampage = 20,
-  idmelee = 113,
-  idsnipers_mark = 76,
-  idweapon_alternator = 79,
-  idweapon_re45,
-  idweapon_charge_rifle = 82,
-  idweapon_devotion,
-  idweapon_longbow = 84,
-  idweapon_havoc,
-  idweapon_eva8,
-  idweapon_flatline,
-  idweapon_g7_scout = 88,
-  idweapon_hemlock,
-  idweapon_kraber = 91,
-  idweapon_lstar,
-  idweapon_mastiff = 94,
-  idweapon_mozambique,
-  idweapon_prowler = 101,
-  idweapon_peacekeeper,
-  idweapon_r99 = 103,
-  idweapon_p2020,
-  idweapon_spitfire = 105,
-  idweapon_triple_take = 106,
-  idweapon_wingman = 108,
-  idweapon_volt,
-  idweapon_3030_repeater = 110,
-  idweapon_car_smg = 111,
-  idweapon_nemesis,
-  idthrowing_knife = 158,
-  idgrenade_thermite = 159,
-  idgrenade_frag = 160,
-  idgrenade_arc_star = 161,
-  idmax
-};
 
 typedef struct {
   uint64_t item_id;

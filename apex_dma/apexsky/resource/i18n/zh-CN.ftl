@@ -229,3 +229,20 @@ loot-level4-name = 等级4
 loot-level5-name = 等级5
 menu-item-favorite-player-glow = 突出显示最爱的玩家
 menu-item-kbd-backlight-ctrl = 键盘背光控制
+aimbot-menu-title = 自瞄设置
+menu-item-aimbot-mode = 自瞄模式
+menu-value-aimbot-off = 关闭
+menu-value-aimbot-no-vis-check = 无可见检查
+menu-value-aimbot-on = 开启
+input-prompt-aimbot-mode = 
+    '自瞄模式' 的新值： 
+        0 => 关闭
+        1 => 无可见检查开启
+        2 => 开启
+menu-item-aim-dist = 自瞄最大距离
+input-prompt-aim-dist = '自瞄最大距离' 的新值：
+    (10 到 1600)（米）
+menu-item-headshot-dist = 爆头最大距离
+input-prompt-headshot-dist = '爆头最大距离' 的新值：
+    (0 到 1600)（米）
+menu-item-skynade-smooth = 天空手雷平滑度
