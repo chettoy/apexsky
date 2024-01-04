@@ -307,15 +307,15 @@ impl Aimbot {
             self.weapon_grenade = false;
             self.weapon_headshot = {
                 match self.weapon_id {
-                    IDWEAPON_3030_REPEATER => true,
-                    IDWEAPON_BOW => true,
-                    IDWEAPON_CHARGE_RIFLE => true,
-                    IDWEAPON_G7_SCOUT => true,
-                    IDWEAPON_KRABER => true,
-                    IDWEAPON_LONGBOW => true,
-                    IDWEAPON_SENTINEL => true,
-                    IDWEAPON_TRIPLE_TAKE => true,
-                    IDWEAPON_WINGMAN => true,
+                    IDWEAPON_3030_REPEATER => false,
+                    IDWEAPON_BOW => false,
+                    IDWEAPON_CHARGE_RIFLE => false,
+                    IDWEAPON_G7_SCOUT => false,
+                    IDWEAPON_KRABER => false,
+                    IDWEAPON_LONGBOW => false,
+                    IDWEAPON_SENTINEL => false,
+                    IDWEAPON_TRIPLE_TAKE => false,
+                    IDWEAPON_WINGMAN => false,
                     _ => false,
                 }
             };

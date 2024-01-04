@@ -430,8 +430,8 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target,
       }
     }
   } else if (aimbot.settings.bone_auto) {
-    TargetBonePositionMax = target.getBonePositionByHitbox(5);
-    TargetBonePositionMin = target.getBonePositionByHitbox(0);
+    TargetBonePositionMax = target.getBonePositionByHitbox(3);
+    TargetBonePositionMin = target.getBonePositionByHitbox(1);
   } else {
     TargetBonePositionMax = TargetBonePositionMin =
         target.getBonePositionByHitbox(aimbot.settings.bone);
