@@ -66,6 +66,5 @@ jobs:
           build/libmemflow_kvm.so
           build/libmemflow_qemu.so
           build/libmemflow_win32.so
-          README.md
         retention-days: 5
 

@@ -468,7 +468,12 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target,
     if (DeltaMin.y * DeltaMax.y > 0)
       Delta.y = (DeltaMin.y + DeltaMax.y) * 0.5f;
 
-    QAngle SmoothedAngles = ViewAngles + Delta / aimbot.settings.smooth;
+    QAngle RandomAngles = QAngle(
+        (rand() % 4 - 2) * 0.001f,
+        (rand() % 4 - 2) * 0.001f,
+        (rand() % 4 - 2) * 0.001f);
+
+    QAngle SmoothedAngles = ViewAngles + Delta / aimbot.settings.smooth + RandomAngles;
     return SmoothedAngles;
   } else {
     int weapon_mod_bitfield = curweap.get_mod_bitfield();
