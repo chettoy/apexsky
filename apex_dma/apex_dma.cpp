@@ -525,6 +525,8 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
   int setting_index = 0;
   std::array<float, 3> highlight_parameter = {0, 0, 0};
 
+  uint64_t player_glow_inside_value = g_settings.player_glow_inside_value;
+
   if (!Target.isGlowing() ||
       (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
     float currentEntityTime = 5000.f;
@@ -538,6 +540,7 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
                                g_settings.glow_b_knocked};
       } else if (Target.lastVisTime() > lastvis_aim[index] ||
                  (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f)) {
+        player_glow_inside_value = 0;
         setting_index = 81;
         highlight_parameter = {g_settings.glow_r_viz, g_settings.glow_g_viz,
                                g_settings.glow_b_viz};
@@ -588,7 +591,7 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
       static bool player_glowing = false;
       if (g_settings.player_glow) {
         Target.enableGlow(
-            context_id, setting_index, g_settings.player_glow_inside_value,
+            context_id, setting_index, player_glow_inside_value,
             g_settings.player_glow_outline_size, highlight_parameter);
         player_glowing = true;
       }
