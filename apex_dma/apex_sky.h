@@ -5,6 +5,7 @@
 typedef struct {
   bool gamepad;
   int32_t aim_mode;
+  bool auto_shoot;
   float ads_fov;
   float non_ads_fov;
   bool auto_nade_aim;
@@ -18,6 +19,8 @@ typedef struct {
   float skynade_dist;
   float smooth;
   float skynade_smooth;
+  float recoil_smooth_x;
+  float recoil_smooth_y;
 } aimbot_settings_t;
 
 typedef struct {
@@ -28,8 +31,13 @@ typedef struct {
   int32_t attack_state;
   int32_t zoom_state;
   int32_t aim_key_state;
+  int32_t triggerbot_key_state;
   int32_t held_id;
   int32_t weapon_id;
+  float bullet_speed;
+  float bullet_gravity;
+  float weapon_zoom_fov;
+  int weapon_mod_bitfield;
   bool weapon_grenade;
   bool weapon_headshot;
   float max_fov;
@@ -189,7 +197,6 @@ typedef struct {
   int aimbot_hot_key_1;
   int aimbot_hot_key_2;
   int trigger_bot_hot_key;
-  bool auto_shoot;
   bool loot_filled_toggle;
   bool player_filled_toggle;
   bool super_key_toggle;
@@ -268,15 +275,20 @@ bool aimbot_is_aiming(const aimbot_state_t *aimbot);
 bool aimbot_is_grenade(const aimbot_state_t *aimbot);
 bool aimbot_is_headshot(const aimbot_state_t *aimbot);
 bool aimbot_is_locked(const aimbot_state_t *aimbot);
+bool aimbot_is_triggerbot_ready(const aimbot_state_t *aimbot);
 float aimbot_get_max_fov(const aimbot_state_t *aimbot);
 int aimbot_get_held_id(const aimbot_state_t *aimbot);
 void aimbot_update_held_id(aimbot_state_t *aimbot, int held_id);
 int aimbot_get_weapon_id(const aimbot_state_t *aimbot);
-void aimbot_update_weapon_id(aimbot_state_t *aimbot, int weapon_id);
+void aimbot_update_weapon_info(aimbot_state_t *aimbot, int weapon_id,
+                               float bullet_speed, float bullet_gravity,
+                               float weapon_zoom_fov, int weapon_mod_bitfield);
 bool aimbot_get_gun_safety(const aimbot_state_t *aimbot);
 void aimbot_set_gun_safety(aimbot_state_t *aimbot, bool gun_safety);
 int aimbot_get_aim_key_state(const aimbot_state_t *aimbot);
 void aimbot_update_aim_key_state(aimbot_state_t *aimbot, int aim_key_state);
+void aimbot_update_triggerbot_key_state(aimbot_state_t *aimbot,
+                                        int triggerbot_key_state);
 void aimbot_update_attack_state(aimbot_state_t *aimbot, int attack_state);
 void aimbot_update_zoom_state(aimbot_state_t *aimbot, int zoom_state);
 uint64_t aimbot_get_aim_entity(const aimbot_state_t *aimbot);

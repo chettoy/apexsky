@@ -1,6 +1,7 @@
 #include "Game.h"
 #include "apex_sky.h"
 #include "prediction.h"
+#include "vector.h"
 #include <array>
 #include <cassert>
 #include <chrono>
@@ -343,15 +344,8 @@ float CalculateFov(Entity &from, Entity &target) {
 auto fun_calc_angles = [](Vector LocalCameraPosition, Vector TargetBonePosition,
                           Vector targetVel, float BulletSpeed, float BulletGrav,
                           float deltaTime) {
-  QAngle CalculatedAngles = QAngle(0, 0, 0);
+  QAngle CalculatedAngles;
   if (BulletSpeed > 1.f) {
-
-    // PredictCtx Ctx;
-    // Ctx.StartPos = LocalCameraPosition;
-    // Ctx.TargetPos = TargetBonePosition;
-    // Ctx.BulletSpeed = BulletSpeed - (BulletSpeed * bulletspeed);
-    // Ctx.BulletGravity = BulletGrav + (BulletGrav * bulletgrav);
-
     float distanceToTarget =
         (TargetBonePosition - LocalCameraPosition).Length();
     float timeToTarget = distanceToTarget / BulletSpeed;
@@ -361,43 +355,26 @@ auto fun_calc_angles = [](Vector LocalCameraPosition, Vector TargetBonePosition,
     // Ctx.TargetVel =
     //     Vector(targetVel.x, targetVel.y + (targetVel.Length() * deltaTime),
     //            targetVel.z);
-    // Ctx.TargetPos = targetPosAhead;
 
     aim_target = targetPosAhead;
 
-    // if (BulletPredict(Ctx))
-    //   CalculatedAngles = QAngle{Ctx.AimAngles.x, Ctx.AimAngles.y, 0.f};
-
-    // aim_target = TargetBonePosition;
     vector2d_t result = linear_predict(
         BulletGrav, BulletSpeed, LocalCameraPosition.x, LocalCameraPosition.y,
         LocalCameraPosition.z, targetPosAhead.x, targetPosAhead.y,
         targetPosAhead.z, targetVel.x, targetVel.y, targetVel.z);
     CalculatedAngles = QAngle{result.x, result.y, 0.f};
     // printf("%f, %f \n", CalculatedAngles.x, CalculatedAngles.y);
-  }
-
-  if (CalculatedAngles == QAngle(0, 0, 0))
+  } else {
     CalculatedAngles = Math::CalcAngle(LocalCameraPosition, TargetBonePosition);
+  }
   return CalculatedAngles;
 };
 
-QAngle CalculateBestBoneAim(Entity &from, Entity &target,
-                            const aimbot_state_t &aimbot) {
-  WeaponXEntity curweap = WeaponXEntity();
-  curweap.update(from.ptr);
-  uint32_t weap_id = curweap.get_weap_id();
-  float BulletSpeed = curweap.get_projectile_speed();
-  float BulletGrav = curweap.get_projectile_gravity();
-
-  float zoom_fov = curweap.get_zoom_fov();
-  float max_fov = aimbot.max_fov;
-  if (zoom_fov != 0.0f && zoom_fov != 1.0f) {
-    max_fov *= zoom_fov / 90.0f;
-  }
+aim_result_t CalculateBestBoneAim(Entity &from, Entity &target,
+                                  const aimbot_state_t &aimbot,
+                                  QAngle view_angles) {
 
   Vector LocalCamera = from.GetCamPos();
-  QAngle ViewAngles = from.GetViewAngles();
   QAngle SwayAngles = from.GetSwayAngles();
   Vector localVel = from.getAbsVelocity();
   Vector targetVel = target.getAbsVelocity();
@@ -439,25 +416,30 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target,
 
   if (!aimbot.weapon_grenade) {
     QAngle CalculatedAnglesMin = fun_calc_angles(
-        LocalCamera, TargetBonePositionMin, targetVel - localVel, BulletSpeed,
-        BulletGrav, deltaTime);
+        LocalCamera, TargetBonePositionMin, targetVel - localVel,
+        aimbot.bullet_speed, aimbot.bullet_gravity, deltaTime);
     QAngle CalculatedAnglesMax = fun_calc_angles(
-        LocalCamera, TargetBonePositionMax, targetVel - localVel, BulletSpeed,
-        BulletGrav, deltaTime);
+        LocalCamera, TargetBonePositionMax, targetVel - localVel,
+        aimbot.bullet_speed, aimbot.bullet_gravity, deltaTime);
 
     double fov0 = Math::GetFov(SwayAngles, CalculatedAnglesMin);
     double fov1 = Math::GetFov(SwayAngles, CalculatedAnglesMax);
+    float max_fov = aimbot.max_fov;
+    float zoom_fov = aimbot.weapon_zoom_fov;
+    if (zoom_fov != 0.0f && zoom_fov != 1.0f) {
+      max_fov *= zoom_fov / 90.0f;
+    }
     if ((fov0 + fov1) * 0.5f > max_fov) {
-      return QAngle(0, 0, 0);
+      return aim_result_t{QAngle(0, 0, 0), false};
     }
     if (aimbot.settings.no_recoil) {
-      CalculatedAnglesMin -= SwayAngles - ViewAngles;
-      CalculatedAnglesMax -= SwayAngles - ViewAngles;
+      CalculatedAnglesMin -= SwayAngles - view_angles;
+      CalculatedAnglesMax -= SwayAngles - view_angles;
     }
     Math::NormalizeAngles(CalculatedAnglesMin);
     Math::NormalizeAngles(CalculatedAnglesMax);
-    QAngle DeltaMin = CalculatedAnglesMin - ViewAngles;
-    QAngle DeltaMax = CalculatedAnglesMax - ViewAngles;
+    QAngle DeltaMin = CalculatedAnglesMin - view_angles;
+    QAngle DeltaMax = CalculatedAnglesMax - view_angles;
     Math::NormalizeAngles(DeltaMin);
     Math::NormalizeAngles(DeltaMax);
 
@@ -467,10 +449,8 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target,
     if (DeltaMin.y * DeltaMax.y > 0)
       Delta.y = (DeltaMin.y + DeltaMax.y) * 0.5f;
 
-    QAngle SmoothedAngles = ViewAngles + Delta / aimbot.settings.smooth;
-    return SmoothedAngles;
+    return aim_result_t{Delta, true, DeltaMin, DeltaMax};
   } else {
-    int weapon_mod_bitfield = curweap.get_mod_bitfield();
     Vector local_origin = from.getPosition();
     Vector view_offset = from.getViewOffset();
     // printf("view_offset(%f,%f,%f)\n", view_offset.x, view_offset.y,
@@ -479,13 +459,14 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target,
     Vector target_origin = target.getPosition() + targetVel * deltaTime;
     aim_target = target_origin;
     vector2d_t skynade_angles =
-        skynade_angle(weap_id, weapon_mod_bitfield, BulletGrav / 750.0f,
-                      BulletSpeed, view_origin.x, view_origin.y, view_origin.z,
+        skynade_angle(aimbot.weapon_id, aimbot.weapon_mod_bitfield,
+                      aimbot.bullet_gravity / 750.0f, aimbot.bullet_speed,
+                      view_origin.x, view_origin.y, view_origin.z,
                       target_origin.x, target_origin.y, target_origin.z);
 
     // printf("(%.1f, %.1f)\n", ViewAngles.x, ViewAngles.y);
     if (skynade_angles.x == 0 && skynade_angles.y == 0) {
-      return ViewAngles;
+      return aim_result_t{QAngle(0, 0, 0), false};
     }
 
     const float PIS_IN_180 = 57.2957795130823208767981548141051703f;
@@ -494,8 +475,8 @@ QAngle CalculateBestBoneAim(Entity &from, Entity &target,
     // printf("weap=%d, bitfield=%d, (%.1f, %.1f)\n", weapon_id,
     //        weapon_mod_bitfield, TargetAngles.x, TargetAngles.y);
 
-    QAngle Delta = TargetAngles - ViewAngles;
-    return ViewAngles + Delta / aimbot.settings.skynade_smooth;
+    QAngle Delta = TargetAngles - view_angles;
+    return aim_result_t{Delta, true, Delta, Delta};
   }
 }
 

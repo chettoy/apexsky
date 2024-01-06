@@ -241,7 +241,8 @@ pub use aimbot::aimbot_update;
 pub use aimbot::aimbot_update_aim_key_state;
 pub use aimbot::aimbot_update_attack_state;
 pub use aimbot::aimbot_update_held_id;
-pub use aimbot::aimbot_update_weapon_id;
+pub use aimbot::aimbot_update_triggerbot_key_state;
+pub use aimbot::aimbot_update_weapon_info;
 pub use aimbot::aimbot_update_zoom_state;
 
 #[cfg(test)]

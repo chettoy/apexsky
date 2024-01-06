@@ -57,6 +57,7 @@ const IDWEAPON_3030_REPEATER: i32 = WeaponId::_3030Repeater as i32;
 pub struct AimbotSettings {
     pub gamepad: bool,
     pub aim_mode: i32,
+    pub auto_shoot: bool,
     pub ads_fov: f32,
     pub non_ads_fov: f32,
     pub auto_nade_aim: bool,
@@ -70,6 +71,8 @@ pub struct AimbotSettings {
     pub skynade_dist: f32,
     pub smooth: f32,
     pub skynade_smooth: f32,
+    pub recoil_smooth_x: f32,
+    pub recoil_smooth_y: f32,
 }
 
 impl Default for AimbotSettings {
@@ -77,6 +80,7 @@ impl Default for AimbotSettings {
         Self {
             gamepad: false,
             aim_mode: 2, // 0 no aim, 1 aim with no vis check, 2 aim with vis check
+            auto_shoot: true,
             ads_fov: 12.0,
             non_ads_fov: 50.0,
             auto_nade_aim: true,
@@ -90,6 +94,8 @@ impl Default for AimbotSettings {
             skynade_dist: 150.0 * 40.0,
             smooth: 200.0,
             skynade_smooth: 200.0 * 0.6667,
+            recoil_smooth_x: 60.0,
+            recoil_smooth_y: 60.0,
         }
     }
 }
@@ -101,11 +107,17 @@ pub struct Aimbot {
     aiming: bool,
     gun_safety: bool,
     lock: bool,
+    triggerbot_ready: bool,
     attack_state: i32,
     zoom_state: i32,
     aim_key_state: i32,
+    triggerbot_key_state: i32,
     held_id: i32,
     weapon_id: i32,
+    bullet_speed: f32,
+    bullet_gravity: f32,
+    weapon_zoom_fov: f32,
+    weapon_mod_bitfield: i32,
     weapon_grenade: bool,
     weapon_headshot: bool,
     max_fov: f32,
@@ -123,11 +135,17 @@ impl Default for Aimbot {
             aiming: false,
             gun_safety: true,
             lock: false,
+            triggerbot_ready: false,
             attack_state: 0,
             zoom_state: 0,
             aim_key_state: 0,
+            triggerbot_key_state: 0,
             held_id: -999,
             weapon_id: -999,
+            bullet_speed: 0.0,
+            bullet_gravity: 0.0,
+            weapon_zoom_fov: 0.0,
+            weapon_mod_bitfield: 0,
             weapon_grenade: false,
             weapon_headshot: false,
             max_fov: 10.0,
@@ -169,6 +187,10 @@ impl Aimbot {
         self.lock
     }
 
+    pub fn is_triggerbot_ready(&self) -> bool {
+        self.triggerbot_ready
+    }
+
     pub fn get_max_fov(&self) -> f32 {
         self.max_fov
     }
@@ -185,8 +207,19 @@ impl Aimbot {
         self.weapon_id
     }
 
-    pub fn update_weapon_id(&mut self, weapon_id: i32) {
+    pub fn update_weapon_info(
+        &mut self,
+        weapon_id: i32,
+        bullet_speed: f32,
+        bullet_gravity: f32,
+        weapon_zoom_fov: f32,
+        weapon_mod_bitfield: i32,
+    ) {
         self.weapon_id = weapon_id;
+        self.bullet_speed = bullet_speed;
+        self.bullet_gravity = bullet_gravity;
+        self.weapon_zoom_fov = weapon_zoom_fov;
+        self.weapon_mod_bitfield = weapon_mod_bitfield;
     }
 
     pub fn get_gun_safety(&self) -> bool {
@@ -203,6 +236,10 @@ impl Aimbot {
 
     pub fn update_aim_key_state(&mut self, aim_key_state: i32) {
         self.aim_key_state = aim_key_state;
+    }
+
+    pub fn update_triggerbot_key_state(&mut self, triggerbot_key_state: i32) {
+        self.triggerbot_key_state = triggerbot_key_state;
     }
 
     pub fn update_attack_state(&mut self, attack_state: i32) {
@@ -336,6 +373,13 @@ impl Aimbot {
         } else {
             self.aiming = false;
         }
+
+        // Update triggerbot state
+        if self.settings.auto_shoot && self.triggerbot_key_state > 0 {
+            self.triggerbot_ready = true;
+        } else {
+            self.triggerbot_ready = false;
+        }
     }
 }
 
@@ -375,6 +419,11 @@ pub fn aimbot_is_locked(aimbot: &Aimbot) -> bool {
 }
 
 #[no_mangle]
+pub fn aimbot_is_triggerbot_ready(aimbot: &Aimbot) -> bool {
+    aimbot.is_triggerbot_ready()
+}
+
+#[no_mangle]
 pub fn aimbot_get_max_fov(aimbot: &Aimbot) -> f32 {
     aimbot.get_max_fov()
 }
@@ -395,8 +444,21 @@ pub fn aimbot_get_weapon_id(aimbot: &Aimbot) -> i32 {
 }
 
 #[no_mangle]
-pub fn aimbot_update_weapon_id(aimbot: &mut Aimbot, weapon_id: i32) {
-    aimbot.update_weapon_id(weapon_id)
+pub fn aimbot_update_weapon_info(
+    aimbot: &mut Aimbot,
+    weapon_id: i32,
+    bullet_speed: f32,
+    bullet_gravity: f32,
+    weapon_zoom_fov: f32,
+    weapon_mod_bitfield: i32,
+) {
+    aimbot.update_weapon_info(
+        weapon_id,
+        bullet_speed,
+        bullet_gravity,
+        weapon_zoom_fov,
+        weapon_mod_bitfield,
+    )
 }
 
 #[no_mangle]
@@ -417,6 +479,11 @@ pub fn aimbot_get_aim_key_state(aimbot: &Aimbot) -> i32 {
 #[no_mangle]
 pub fn aimbot_update_aim_key_state(aimbot: &mut Aimbot, aim_key_state: i32) {
     aimbot.update_aim_key_state(aim_key_state)
+}
+
+#[no_mangle]
+pub fn aimbot_update_triggerbot_key_state(aimbot: &mut Aimbot, triggerbot_key_state: i32) {
+    aimbot.update_triggerbot_key_state(triggerbot_key_state)
 }
 
 #[no_mangle]
