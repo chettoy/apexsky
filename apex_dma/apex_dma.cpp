@@ -33,6 +33,8 @@ const int toRead = 100;
 bool trigger_ready = false;
 extern Vector aim_target; // for esp
 int map_testing_local_team = 0;
+bool noRecoil_t = false;
+float rcs = 100.0;
 
 // Removed but not all the way, dont edit.
 int glowtype;
@@ -1055,6 +1057,50 @@ static void EspLoop() {
   }
   esp_t = false;
 }
+
+static void RecoilAdjustmentThread()
+{
+    noRecoil_t = true;
+    while (noRecoil_t)
+    {
+        while (g_Base != 0)
+        {
+          std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          uint64_t LocalPlayer = 0;
+          apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+          if (LocalPlayer == 0)
+            continue;
+          Entity LPlayer = getEntity(LocalPlayer);
+          if (no_recoil)
+          {
+            QAngle newAngle;
+            QAngle oldRecoilAngle;
+            // get recoil angle
+            QAngle recoilAngles = LPlayer.GetRecoil();
+
+            // get original angles
+            QAngle oldVAngles = LPlayer.GetViewAngles();
+
+            newAngle = oldVAngles;
+
+            // removing recoil angles from player view angles
+            newAngle.x = newAngle.x + (oldRecoilAngle.x - recoilAngles.x) * (rcs / 100.f);
+            newAngle.y = newAngle.y + (oldRecoilAngle.y - recoilAngles.y) * (rcs / 100.f);
+
+            // setting viewangles to new angles
+
+            LPlayer.SetViewAngles(newAngle);
+            // setting old recoil angles to current recoil angles
+            oldRecoilAngle = recoilAngles;
+            // normalize view angles
+            Math::NormalizeAngles(oldRecoilAngle);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+    noRecoil_t = false;
+  }
+}
+
 
 // Aimbot Loop stuff
 static void AimbotLoop() {
@@ -3883,6 +3929,7 @@ int main(int argc, char *argv[]) {
   std::thread overlay_thr;
   std::thread itemglow_thr;
   std::thread control_thr;
+  std::thread noRecoil_thr;
 
   if (apex_mem.open_os() != 0) {
     exit(0);
@@ -3902,6 +3949,7 @@ int main(int argc, char *argv[]) {
         overlay_t = false;
         item_t = false;
         control_t = false;
+        noRecoil_t = false;
         g_Base = 0;
         quit_tui_menu();
 
@@ -3916,6 +3964,7 @@ int main(int argc, char *argv[]) {
         overlay_thr.~thread();
         itemglow_thr.~thread();
         control_thr.~thread();
+        noRecoil_thr.~thread();
       }
 
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -3937,6 +3986,7 @@ int main(int argc, char *argv[]) {
         TriggerBotRun_thr = std::thread(TriggerBotRun);
         itemglow_thr = std::thread(item_glow_t);
         control_thr = std::thread(ControlLoop);
+        noRecoil_thr = std::thread(RecoilAdjustmentThread);
         aimbot_thr.detach();
         esp_thr.detach();
         actions_thr.detach();
@@ -3946,6 +3996,7 @@ int main(int argc, char *argv[]) {
         TriggerBotRun_thr.detach();
         itemglow_thr.detach();
         control_thr.detach();
+        noRecoil_thr.detach();
       }
     } else {
       apex_mem.check_proc();
