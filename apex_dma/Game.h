@@ -152,17 +152,8 @@ bool WorldToScreen(Vector from, float *m_vMatrix, int targetWidth,
 float CalculateFov(Entity &from, Entity &target);
 void get_class_name(uint64_t entity_ptr, char *out_str);
 void charge_rifle_hack(uint64_t entity_ptr);
-
-struct aim_result_t {
-  QAngle delta_view_angles;
-  bool valid = false;
-  QAngle delta_min = QAngle(0, 0, 0);
-  QAngle delta_max = QAngle(0, 0, 0);
-};
-
-aim_result_t CalculateBestBoneAim(Entity &from, Entity &target,
-                                  const aimbot_state_t &aimbot,
-                                  QAngle view_angles);
+aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
+                                  const aimbot_state_t &aimbot);
 
 typedef struct {
   uint64_t item_id;

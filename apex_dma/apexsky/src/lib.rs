@@ -218,6 +218,7 @@ pub extern "C" fn linear_predict(
 
 // Aimbot
 pub use aimbot::aimbot_add_select_target;
+pub use aimbot::aimbot_calculate_trigger_delay;
 pub use aimbot::aimbot_cancel_locking;
 pub use aimbot::aimbot_finish_select_target;
 pub use aimbot::aimbot_get_aim_entity;
@@ -235,6 +236,7 @@ pub use aimbot::aimbot_lock_target;
 pub use aimbot::aimbot_new;
 pub use aimbot::aimbot_set_gun_safety;
 pub use aimbot::aimbot_settings;
+pub use aimbot::aimbot_smooth_aim_angles;
 pub use aimbot::aimbot_start_select_target;
 pub use aimbot::aimbot_target_distance_check;
 pub use aimbot::aimbot_update;

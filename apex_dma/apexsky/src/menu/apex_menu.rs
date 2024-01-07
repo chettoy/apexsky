@@ -500,7 +500,16 @@ fn build_main_menu(
                 None
             },
         )
-        .skip_id()
+        .add_item(
+            item_text(format!(
+                " 8 - {}",
+                i18n_msg!(i18n_bundle, MenuItemHotkeySettings)
+            )),
+            |handle: &mut TerminalMenu| {
+                handle.nav_menu(MenuLevel::HotkeyMenu);
+                None
+            },
+        )
         .add_item(
             item_enabled(
                 &i18n_bundle,
@@ -558,14 +567,26 @@ fn build_main_menu(
                 None
             },
         )
-        .skip_id()
         .skip_id();
     menu = add_toggle_item!(
         menu,
         &i18n_bundle,
-        format!("15 - {}", i18n_msg!(i18n_bundle, MenuItemSuperGlide)),
-        settings.super_key_toggle,
-        super_key_toggle
+        format!(
+            "14 - {}",
+            i18n_msg!(i18n_bundle, MenuItemPlayerArmorGlowColor)
+        ),
+        settings.player_glow_armor_color,
+        player_glow_armor_color
+    );
+    menu = add_toggle_item!(
+        menu,
+        &i18n_bundle,
+        format!(
+            "15 - {}",
+            i18n_msg!(i18n_bundle, MenuItemFavoritePlayerGlow)
+        ),
+        settings.player_glow_love_user,
+        player_glow_love_user
     );
     menu = menu
         .add_item(
@@ -578,13 +599,27 @@ fn build_main_menu(
                 None
             },
         )
-        .add_item(
-            item_text(format!(
-                "17 - {}",
-                i18n_msg!(i18n_bundle, MenuItemHotkeySettings)
-            )),
-            |handle: &mut TerminalMenu| {
-                handle.nav_menu(MenuLevel::HotkeyMenu);
+        .add_input_item(
+            format_item(
+                &i18n_bundle,
+                format!("17 - {}", i18n_msg!(i18n_bundle, MenuItemSetFpsPredict)),
+                Span::from(if settings.calc_game_fps {
+                    i18n_msg!(i18n_bundle, MenuValueCalcFps).to_string()
+                } else {
+                    format!("{:.1}", settings.game_fps)
+                }),
+            ),
+            &i18n_msg!(i18n_bundle, InputPromptFpsPredict),
+            |val| {
+                if let Some(new_val) = val.parse::<u16>().ok() {
+                    let settings = &mut lock_config!().settings;
+                    if new_val == 0 {
+                        settings.calc_game_fps = true;
+                    } else if new_val > 0 && new_val <= 500 {
+                        settings.calc_game_fps = false;
+                        settings.game_fps = new_val.into();
+                    }
+                }
                 None
             },
         )
@@ -649,71 +684,25 @@ fn build_main_menu(
                 Some(result)
             },
         )
-        .add_dummy_item()
-        .skip_id();
+        .add_dummy_item();
+    menu = add_toggle_item!(
+        menu,
+        &i18n_bundle,
+        format!("23 - {}", i18n_msg!(i18n_bundle, MenuItemSuperGlide)),
+        settings.super_key_toggle,
+        super_key_toggle
+    );
     menu = add_toggle_item!(
         menu,
         &i18n_bundle,
         format!("24 - {}", i18n_msg!(i18n_bundle, MenuItemToggleOnevone)),
         settings.onevone,
         onevone
-    )
-    .skip_id();
-    menu = menu.add_input_item(
-        format_item(
-            &i18n_bundle,
-            format!("26 - {}", i18n_msg!(i18n_bundle, MenuItemSetFpsPredict)),
-            Span::from(if settings.calc_game_fps {
-                i18n_msg!(i18n_bundle, MenuValueCalcFps).to_string()
-            } else {
-                format!("{:.1}", settings.game_fps)
-            }),
-        ),
-        &i18n_msg!(i18n_bundle, InputPromptFpsPredict),
-        |val| {
-            if let Some(new_val) = val.parse::<u16>().ok() {
-                let settings = &mut lock_config!().settings;
-                if new_val == 0 {
-                    settings.calc_game_fps = true;
-                } else if new_val > 0 && new_val <= 500 {
-                    settings.calc_game_fps = false;
-                    settings.game_fps = new_val.into();
-                }
-            }
-            None
-        },
-    );
-    menu = add_toggle_item!(
-        menu,
-        &i18n_bundle,
-        format!("27 - {}", i18n_msg!(i18n_bundle, MenuItemBigMapFeat)),
-        settings.map_radar_testing,
-        map_radar_testing
-    );
-    menu = add_toggle_item!(
-        menu,
-        &i18n_bundle,
-        format!(
-            "28 - {}",
-            i18n_msg!(i18n_bundle, MenuItemPlayerArmorGlowColor)
-        ),
-        settings.player_glow_armor_color,
-        player_glow_armor_color
-    );
-    menu = add_toggle_item!(
-        menu,
-        &i18n_bundle,
-        format!(
-            "29 - {}",
-            i18n_msg!(i18n_bundle, MenuItemFavoritePlayerGlow)
-        ),
-        settings.player_glow_love_user,
-        player_glow_love_user
     );
     menu = menu.add_item(
         item_enabled(
             &i18n_bundle,
-            format!("30 - {}", i18n_msg!(i18n_bundle, MenuItemWeaponModelGlow)),
+            format!("25 - {}", i18n_msg!(i18n_bundle, MenuItemWeaponModelGlow)),
             settings.weapon_model_glow,
         ),
         |_handle: &mut TerminalMenu| {
@@ -730,7 +719,7 @@ fn build_main_menu(
     menu = menu.add_item(
         item_enabled(
             &i18n_bundle,
-            format!("31 - {}", i18n_msg!(i18n_bundle, MenuItemKbdBacklightCtrl)),
+            format!("26 - {}", i18n_msg!(i18n_bundle, MenuItemKbdBacklightCtrl)),
             settings.kbd_backlight_control,
         ),
         |_handle: &mut TerminalMenu| {
@@ -744,7 +733,18 @@ fn build_main_menu(
             None
         },
     );
+    menu = add_toggle_item!(
+        menu,
+        &i18n_bundle,
+        format!("27 - {}", i18n_msg!(i18n_bundle, MenuItemBigMapFeat)),
+        settings.map_radar_testing,
+        map_radar_testing
+    );
     menu.add_dummy_item()
+        .skip_id()
+        .skip_id()
+        .skip_id()
+        .skip_id()
         .add_item(
             format_item(
                 &i18n_bundle,
@@ -3092,7 +3092,12 @@ fn render_selected_list<'a>(
             .enumerate()
             .map(|(index, item)| {
                 if index == selected_index - scroll_top {
-                    if now.month() == 12 && now.day() == 25 {
+                    if (now.month() == 12 && now.day() == 25)
+                        || chinese_lunisolar_calendar::LunisolarDate::from_date(now)
+                            .unwrap()
+                            .the_n_day_in_this_year()
+                            < 16
+                    {
                         item.clone().white().bold().on_red()
                     } else {
                         item.clone().black().bold().on_light_yellow()

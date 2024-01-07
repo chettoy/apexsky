@@ -28,7 +28,6 @@ Memory apex_mem;
 // Just setting things up, dont edit.
 bool active = true;
 aimbot_state_t aimbot;
-int team_player = 0;
 const int toRead = 100;
 extern Vector aim_target; // for esp
 int map_testing_local_team = 0;
@@ -152,11 +151,6 @@ void MapRadarTesting() {
   }
   map_testing_local_team = 0;
 }
-
-uint64_t PlayerLocal;
-int PlayerLocalTeamID;
-int EntTeam;
-int LocTeam;
 
 void ClientActions() {
   cactions_t = true;
@@ -317,125 +311,6 @@ void ClientActions() {
         }
       }
 
-      // printf("Minimap: %ld\n", minimap);
-      // apex_mem.Write(LocalPlayer + 0x270 , 1);
-
-      /*
-      108 Left mouse button (mouse1)
-      109 Right mouse button (mouse2)
-      110 Middle mouse button (mouse3)
-      111 Side mouse button (mouse4)
-      112 Side mouse button (mouse5)
-
-      79 SHIFT key
-      81 ALT key
-      83 CTRL key
-
-      1 KEY_0
-      2 KEY_1
-      3 KEY_2
-      4 KEY_3
-      5 KEY_4
-      6 KEY_5
-      7 KEY_6
-      8 KEY_7
-      9 KEY_8
-      10 KEY_9
-
-      11 KEY_A
-      12 KEY_B
-      13 KEY_C
-      14 KEY_D
-      15 KEY_E
-      16 KEY_F
-      17 KEY_G
-      18 KEY_H
-      19 KEY_I
-      20 KEY_J
-      21 KEY_K
-      22 KEY_L
-      23 KEY_M
-      24 KEY_N
-      25 KEY_O
-      26 KEY_P
-      27 KEY_Q
-      28 KEY_R
-      29 KEY_S
-      30 KEY_T
-      31 KEY_U
-      32 KEY_V
-      33 KEY_W
-      34 KEY_X
-      35 KEY_Y
-      36 KEY_Z
-
-
-      37 KEY_PAD_0
-      38 KEY_PAD_1
-      39 KEY_PAD_2
-      40 KEY_PAD_3
-      41 KEY_PAD_4
-      42 KEY_PAD_5
-      43 KEY_PAD_6
-      44 KEY_PAD_7
-      45 KEY_PAD_8
-      46 KEY_PAD_9
-      47 KEY_PAD_DIVIDE
-      48 KEY_PAD_MULTIPLY
-      49 KEY_PAD_MINUS
-      50 KEY_PAD_PLUS
-      51 KEY_PAD_ENTER
-      52 KEY_PAD_DECIMAL
-
-
-      65 KEY_SPACE
-      67 KEY_TAB
-      68 KEY_CAPSLOCK
-      69 KEY_NUMLOCK
-      70 KEY_ESCAPE
-      71 KEY_SCROLLLOCK
-      72 KEY_INSERT
-      73 KEY_DELETE
-      74 KEY_HOME
-      75 KEY_END
-      76 KEY_PAGEUP
-      77 KEY_PAGEDOWN
-      78 KEY_BREAK
-
-
-      88 KEY_UP
-      89 KEY_LEFT
-      90 KEY_DOWN
-      91 KEY_RIGHT
-
-
-      92 KEY_F1
-      93 KEY_F2
-      94 KEY_F3
-      95 KEY_F4
-      96 KEY_F5
-      97 KEY_F6
-      98 KEY_F7
-      99 KEY_F8
-      100 KEY_F9
-      101 KEY_F10
-      102 KEY_F11
-      103 KEY_F12
-      */
-
-      /* if (isPressed(79)) //TESTING KEYS
-      {
-              printf("Shift Pressed\n");
-      }
-      if (isPressed(81)) //TESTING KEYS
-      {
-              printf("ALT Pressed\n");
-      }
-      if (isPressed(83)) //TESTING KEYS
-      {
-              printf("CTRL Pressed0\n");
-      } */
-
       if (isPressed(g_settings.aimbot_hot_key_1)) {
         aimbot_update_aim_key_state(&aimbot, g_settings.aimbot_hot_key_1);
       } else if (isPressed(g_settings.aimbot_hot_key_2)) {
@@ -583,6 +458,8 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   const auto g_settings = global_settings();
 
   int entity_team = target.getTeamId();
+  int local_team = LPlayer.getTeamId();
+  // printf("Target Team: %i\n", entity_team);
 
   if (!target.isAlive() || !LPlayer.isAlive()) {
     // Update yew to spec checker
@@ -591,29 +468,18 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
     if (target.ptr != LPlayer.ptr && is_spec(target.ptr)) {
       tmp_specs.insert(target.ptr);
     }
-    // if (target.ptr != LPlayer.ptr && LPlayer.GetYaw() == target.GetYaw()) {
-    // // check yew
-    //   tmp_specs.insert(target.ptr);
-    // }
     return;
   }
 
   if (g_settings.tdm_toggle) { // Check if the target entity is on the same
                                // team as the
                                // local player
-    // int entity_team = Target.getTeamId();
-    // printf("Target Team: %i\n", entity_team);
-
-    uint64_t PlayerLocal;
-    apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, PlayerLocal);
-    int PlayerLocalTeamID;
-    apex_mem.Read<int>(PlayerLocal + OFFSET_TEAM, PlayerLocalTeamID);
-
+    int EntTeam, LocTeam;
     if (entity_team % 2)
       EntTeam = 1;
     else
       EntTeam = 2;
-    if (PlayerLocalTeamID % 2)
+    if (local_team % 2)
       LocTeam = 1;
     else
       LocTeam = 2;
@@ -626,7 +492,7 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   // Firing range stuff
   if (!g_settings.firing_range) {
     if (entity_team < 0 || entity_team > 50 ||
-        (entity_team == team_player && !g_settings.onevone)) {
+        (entity_team == local_team && !g_settings.onevone)) {
       return;
     }
     if (map_testing_local_team != 0 && entity_team == map_testing_local_team) {
@@ -634,21 +500,23 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
     }
   }
 
-  Vector EntityPosition = target.getPosition();
-  Vector LocalPlayerPosition = LPlayer.getPosition();
-  float dist = LocalPlayerPosition.DistTo(EntityPosition);
+  if (target.ptr != LPlayer.ptr) {
+    // Targeting
+    Vector EntityPosition = target.getPosition();
+    Vector LocalPlayerPosition = LPlayer.getPosition();
+    float dist = LocalPlayerPosition.DistTo(EntityPosition);
+    float fov = CalculateFov(LPlayer, target);
+    bool vis = target.lastVisTime() > lastvis_aim[index];
+    bool love = false;
+    auto it = centity_to_index.find(target.ptr);
+    if (it != centity_to_index.end()) {
+      love = target.check_love_player(it->second);
+    }
+    aimbot_add_select_target(&aimbot, fov, dist, vis, love, target.ptr);
 
-  // aim distance check
-  if (!aimbot_target_distance_check(&aimbot, dist))
-    return;
-
-  // For Targeting
-  float fov = CalculateFov(LPlayer, target);
-  bool vis = target.lastVisTime() > lastvis_aim[index];
-  aimbot_add_select_target(&aimbot, fov, dist, vis, target.ptr);
-
-  // Player Glow
-  SetPlayerGlow(LPlayer, target, index, frame_number);
+    // Player Glow
+    SetPlayerGlow(LPlayer, target, index, frame_number);
+  }
 
   // For vis check
   lastvis_aim[index] = target.lastVisTime();
@@ -703,7 +571,7 @@ void DoActions() {
 
       Entity LPlayer = getEntity(LocalPlayer);
 
-      team_player = LPlayer.getTeamId();
+      const int team_player = LPlayer.getTeamId();
       if (team_player < 0 || team_player > 50) {
         continue;
       }
@@ -715,13 +583,14 @@ void DoActions() {
         continue;
       }
 
-      {
-        static uintptr_t lplayer_ptr = 0;
-        if (lplayer_ptr != LPlayer.ptr) {
-          lplayer_ptr = LPlayer.ptr;
-          init_spec_checker(lplayer_ptr);
+      { // Init spectator checker
+        static uintptr_t prev_lplayer_ptr = 0;
+        if (prev_lplayer_ptr != LocalPlayer) {
+          prev_lplayer_ptr = LocalPlayer;
+          init_spec_checker(LocalPlayer);
         }
-        tick_yew(lplayer_ptr, LPlayer.GetYaw());
+        // Update local entity yew
+        tick_yew(LocalPlayer, LPlayer.GetYaw());
       }
 
       int frame_number = 0;
@@ -762,6 +631,7 @@ void DoActions() {
 
           if (LocalPlayer == centity)
             continue;
+
           Entity Target = getEntity(centity);
           if (!Target.isPlayer()) {
             continue;
@@ -1048,31 +918,54 @@ static void AimbotLoop() {
       const auto aim_entity = aimbot_get_aim_entity(&aimbot);
       const bool aiming = aimbot_is_aiming(&aimbot);
       const bool trigger_bot_ready = aimbot_is_triggerbot_ready(&aimbot);
+      static int trigger_bot_running = 0;
+      static std::chrono::milliseconds trigger_bot_trigger_time,
+          trigger_bot_release_time;
+      static QAngle prev_recoil_angle = QAngle(0, 0, 0);
 
+      // int force_attack_state;
+      // apex_mem.Read(g_Base + OFFSET_IN_ATTACK + 0x8, force_attack_state);
+      // printf("force_attack=%d\n", force_attack_state);
+      if (trigger_bot_running == 1 && now_ms > trigger_bot_trigger_time) {
+        // printf("trigger\n");
+        trigger_bot_release_time =
+            now_ms +
+            std::chrono::milliseconds(
+                std::uniform_int_distribution<int>(60, 150)(RandomGenerator));
+        apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 5);
+        trigger_bot_running = 2;
+      } else if (trigger_bot_running == 2 &&
+                 now_ms > trigger_bot_release_time) {
+        // printf("release\n");
+        apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 4);
+        trigger_bot_running = 0;
+      }
+
+      // Reduce recoil
       if (aimbot_settings.no_recoil && aimbot.attack_state > 0) {
-        static QAngle oldRecoilAngle = QAngle(0, 0, 0);
-
         // get recoil angle
-        QAngle recoilAngles = LPlayer.GetRecoil();
+        QAngle recoil_angles = LPlayer.GetRecoil();
 
         // get original angles
-        QAngle oldVAngles = LPlayer.GetViewAngles();
+        QAngle old_view_angles = LPlayer.GetViewAngles();
 
-        QAngle newAngle = oldVAngles;
+        QAngle new_angle = old_view_angles;
         // printf("prev=%f, recoil=%f\n", oldRecoilAngle.x, recoilAngles.x);
 
         // removing recoil angles from player view angles
-        newAngle.x += ((oldRecoilAngle.x - recoilAngles.x) *
-                       (aimbot_settings.recoil_smooth_x / 100.f));
-        newAngle.y += ((oldRecoilAngle.y - recoilAngles.y) *
-                       (aimbot_settings.recoil_smooth_y / 100.f));
+        new_angle.x += ((prev_recoil_angle.x - recoil_angles.x) *
+                        (aimbot_settings.recoil_smooth_x / 100.f));
+        new_angle.y += ((prev_recoil_angle.y - recoil_angles.y) *
+                        (aimbot_settings.recoil_smooth_y / 100.f));
 
         // setting viewangles to new angles
-        LPlayer.SetViewAngles(newAngle);
+        LPlayer.SetViewAngles(new_angle);
         // setting old recoil angles to current recoil angles
-        oldRecoilAngle = recoilAngles;
+        prev_recoil_angle = recoil_angles;
         // normalize view angles
-        Math::NormalizeAngles(oldRecoilAngle);
+        Math::NormalizeAngles(prev_recoil_angle);
+      } else {
+        prev_recoil_angle = QAngle(0, 0, 0);
       }
 
       if (aim_entity == 0) {
@@ -1084,7 +977,7 @@ static void AimbotLoop() {
       // show target indicator before aiming
       aim_target = target.getPosition();
 
-      aimbot_update(&aimbot, g_settings.game_fps);
+      aimbot_update(&aimbot, LocalPlayer, g_settings.game_fps);
 
       if (aimbot_settings.aim_mode == 0) {
         continue;
@@ -1098,7 +991,7 @@ static void AimbotLoop() {
         aimbot_lock_target(&aimbot, aim_entity);
       }
 
-      if (!aiming && !trigger_bot_ready) {
+      if (!(aiming || trigger_bot_ready)) {
         continue;
       }
 
@@ -1123,50 +1016,31 @@ static void AimbotLoop() {
 
       /* Aim Assist */
 
-      QAngle view_angles = LPlayer.GetViewAngles();
-      aim_result_t delta =
-          CalculateBestBoneAim(LPlayer, target, aimbot, view_angles);
-      if (!delta.valid) {
+      aim_angles_t aim_result = CalculateBestBoneAim(LPlayer, target, aimbot);
+      if (!aim_result.valid) {
         aimbot_cancel_locking(&aimbot);
         continue;
       }
 
       // Trigger Bot
-      if (!aimbot_is_grenade(&aimbot)) {
-        static bool in_attack = false;
-        static std::chrono::milliseconds release_time;
-        if (trigger_bot_ready && (delta.delta_view_angles.Length() < 0.4f ||
-                                  (delta.delta_min.x * delta.delta_max.x < 0 &&
-                                   abs(delta.delta_view_angles.y) < 1.0f))) {
-          release_time = now_ms + std::chrono::milliseconds(
-                                      std::uniform_int_distribution<int>(
-                                          200, 500)(RandomGenerator));
-          apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 5);
-          in_attack = true;
-        }
-        int force_attack_state;
-        apex_mem.Read(g_Base + OFFSET_IN_ATTACK + 0x8, force_attack_state);
-        if ((in_attack || force_attack_state == 5) && now_ms > release_time) {
-          apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 4);
-          in_attack = false;
+      uint64_t trigger_delay =
+          aimbot_calculate_trigger_delay(&aimbot, &aim_result);
+      if (trigger_delay > 0) {
+        if (trigger_bot_running == 1) {
+          trigger_bot_trigger_time = now_ms;
+        } else {
+          trigger_bot_trigger_time =
+              now_ms + std::chrono::milliseconds(trigger_delay);
+          trigger_bot_running = 1;
         }
       }
 
       // Aim Bot
       if (aiming) {
-        QAngle smoothed_angles;
-        if (aimbot_is_grenade(&aimbot)) {
-          smoothed_angles = view_angles + delta.delta_view_angles /
-                                              aimbot_settings.skynade_smooth *
-                                              smooth_factor;
-        } else {
-          smoothed_angles = view_angles + delta.delta_view_angles /
-                                              aimbot_settings.smooth *
-                                              smooth_factor;
-        }
-        LPlayer.SetViewAngles(smoothed_angles);
-      } else {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        auto smoothed_angles =
+            aimbot_smooth_aim_angles(&aimbot, &aim_result, smooth_factor);
+        LPlayer.SetViewAngles(
+            QAngle(smoothed_angles.x, smoothed_angles.y, .0f));
       }
 
     } // end loop

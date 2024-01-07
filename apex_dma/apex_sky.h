@@ -24,6 +24,18 @@ typedef struct {
 } aimbot_settings_t;
 
 typedef struct {
+  bool valid;
+  float view_pitch;
+  float view_yew;
+  float delta_pitch;
+  float delta_yew;
+  float delta_pitch_min;
+  float delta_pitch_max;
+  float delta_yew_min;
+  float delta_yew_max;
+} aim_angles_t;
+
+typedef struct {
   aimbot_settings_t settings;
   bool aiming;
   bool gun_safety;
@@ -42,9 +54,11 @@ typedef struct {
   bool weapon_headshot;
   float max_fov;
   float target_score_max;
-  uintptr_t aimentity;
+  uintptr_t local_entity;
+  uintptr_t aim_entity;
   uintptr_t tmp_aimentity;
   uintptr_t locked_aimentity;
+  bool love_aimentity;
   float game_fps;
 } aimbot_state_t;
 
@@ -295,11 +309,17 @@ uint64_t aimbot_get_aim_entity(const aimbot_state_t *aimbot);
 bool aimbot_target_distance_check(const aimbot_state_t *aimbot, float distance);
 void aimbot_start_select_target(aimbot_state_t *aimbot);
 void aimbot_add_select_target(aimbot_state_t *aimbot, float fov, float distance,
-                              bool visible, uint64_t target_ptr);
+                              bool visible, bool love, uint64_t target_ptr);
 void aimbot_finish_select_target(aimbot_state_t *aimbot);
 void aimbot_lock_target(aimbot_state_t *aimbot, uint64_t target_ptr);
 void aimbot_cancel_locking(aimbot_state_t *aimbot);
-void aimbot_update(aimbot_state_t *aimbot, float game_fps);
+void aimbot_update(aimbot_state_t *aimbot, uintptr_t local_entity,
+                   float game_fps);
+uint64_t aimbot_calculate_trigger_delay(const aimbot_state_t *aimbot,
+                                        const aim_angles_t *aim_angles);
+vector2d_t aimbot_smooth_aim_angles(const aimbot_state_t *aimbot,
+                                    const aim_angles_t *aim_angles,
+                                    float smooth_factor);
 
 /**
  * https://github.com/CasualX/apexdream

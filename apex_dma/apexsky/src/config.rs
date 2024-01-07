@@ -214,9 +214,9 @@ impl Default for EspVisuals {
         Self {
             r#box: true,
             line: false,
-            distance: true,
-            health_bar: true,
-            shield_bar: true,
+            distance: false,
+            health_bar: false,
+            shield_bar: false,
             name: false,
         }
     }

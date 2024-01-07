@@ -370,13 +370,11 @@ auto fun_calc_angles = [](Vector LocalCameraPosition, Vector TargetBonePosition,
   return CalculatedAngles;
 };
 
-aim_result_t CalculateBestBoneAim(Entity &from, Entity &target,
-                                  const aimbot_state_t &aimbot,
-                                  QAngle view_angles) {
-
+aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
+                                  const aimbot_state_t &aimbot) {
+  QAngle ViewAngles = from.GetViewAngles();
   Vector LocalCamera = from.GetCamPos();
   QAngle SwayAngles = from.GetSwayAngles();
-  Vector localVel = from.getAbsVelocity();
   Vector targetVel = target.getAbsVelocity();
 
   Vector TargetBonePositionMin;
@@ -385,15 +383,10 @@ aim_result_t CalculateBestBoneAim(Entity &from, Entity &target,
   // Calculate the time since the last frame (in seconds)
   float deltaTime = 1.0 / aimbot.game_fps;
 
-  if (aimbot.weapon_headshot) {
-    if (LocalCamera.DistTo(target.getPosition()) <=
-        aimbot.settings.headshot_dist) {
-      TargetBonePositionMax = TargetBonePositionMin =
-          target.getBonePositionByHitbox(0);
-    } else {
-      TargetBonePositionMax = TargetBonePositionMin =
-          target.getBonePositionByHitbox(aimbot.settings.bone);
-    }
+  if (aimbot.weapon_headshot && LocalCamera.DistTo(target.getPosition()) <=
+                                    aimbot.settings.headshot_dist) {
+    TargetBonePositionMax = TargetBonePositionMin =
+        target.getBonePositionByHitbox(0);
   } else if (aimbot.settings.bone_nearest) {
     // find nearest bone
     float NearestBoneDistance = aimbot.settings.max_dist;
@@ -415,12 +408,12 @@ aim_result_t CalculateBestBoneAim(Entity &from, Entity &target,
   }
 
   if (!aimbot.weapon_grenade) {
-    QAngle CalculatedAnglesMin = fun_calc_angles(
-        LocalCamera, TargetBonePositionMin, targetVel - localVel,
-        aimbot.bullet_speed, aimbot.bullet_gravity, deltaTime);
-    QAngle CalculatedAnglesMax = fun_calc_angles(
-        LocalCamera, TargetBonePositionMax, targetVel - localVel,
-        aimbot.bullet_speed, aimbot.bullet_gravity, deltaTime);
+    QAngle CalculatedAnglesMin =
+        fun_calc_angles(LocalCamera, TargetBonePositionMin, targetVel,
+                        aimbot.bullet_speed, aimbot.bullet_gravity, deltaTime);
+    QAngle CalculatedAnglesMax =
+        fun_calc_angles(LocalCamera, TargetBonePositionMax, targetVel,
+                        aimbot.bullet_speed, aimbot.bullet_gravity, deltaTime);
 
     double fov0 = Math::GetFov(SwayAngles, CalculatedAnglesMin);
     double fov1 = Math::GetFov(SwayAngles, CalculatedAnglesMax);
@@ -430,16 +423,16 @@ aim_result_t CalculateBestBoneAim(Entity &from, Entity &target,
       max_fov *= zoom_fov / 90.0f;
     }
     if ((fov0 + fov1) * 0.5f > max_fov) {
-      return aim_result_t{QAngle(0, 0, 0), false};
+      return aim_angles_t{false};
     }
     if (aimbot.settings.no_recoil) {
-      CalculatedAnglesMin -= SwayAngles - view_angles;
-      CalculatedAnglesMax -= SwayAngles - view_angles;
+      CalculatedAnglesMin -= SwayAngles - ViewAngles;
+      CalculatedAnglesMax -= SwayAngles - ViewAngles;
     }
     Math::NormalizeAngles(CalculatedAnglesMin);
     Math::NormalizeAngles(CalculatedAnglesMax);
-    QAngle DeltaMin = CalculatedAnglesMin - view_angles;
-    QAngle DeltaMax = CalculatedAnglesMax - view_angles;
+    QAngle DeltaMin = CalculatedAnglesMin - ViewAngles;
+    QAngle DeltaMax = CalculatedAnglesMax - ViewAngles;
     Math::NormalizeAngles(DeltaMin);
     Math::NormalizeAngles(DeltaMax);
 
@@ -449,7 +442,9 @@ aim_result_t CalculateBestBoneAim(Entity &from, Entity &target,
     if (DeltaMin.y * DeltaMax.y > 0)
       Delta.y = (DeltaMin.y + DeltaMax.y) * 0.5f;
 
-    return aim_result_t{Delta, true, DeltaMin, DeltaMax};
+    return aim_angles_t{true,       ViewAngles.x, ViewAngles.y,
+                        Delta.x,    Delta.y,       DeltaMin.x,
+                        DeltaMax.x, DeltaMin.y,    DeltaMax.y};
   } else {
     Vector local_origin = from.getPosition();
     Vector view_offset = from.getViewOffset();
@@ -466,7 +461,7 @@ aim_result_t CalculateBestBoneAim(Entity &from, Entity &target,
 
     // printf("(%.1f, %.1f)\n", ViewAngles.x, ViewAngles.y);
     if (skynade_angles.x == 0 && skynade_angles.y == 0) {
-      return aim_result_t{QAngle(0, 0, 0), false};
+      return aim_angles_t{false};
     }
 
     const float PIS_IN_180 = 57.2957795130823208767981548141051703f;
@@ -475,8 +470,9 @@ aim_result_t CalculateBestBoneAim(Entity &from, Entity &target,
     // printf("weap=%d, bitfield=%d, (%.1f, %.1f)\n", weapon_id,
     //        weapon_mod_bitfield, TargetAngles.x, TargetAngles.y);
 
-    QAngle Delta = TargetAngles - view_angles;
-    return aim_result_t{Delta, true, Delta, Delta};
+    QAngle Delta = TargetAngles - ViewAngles;
+    return aim_angles_t{true,    ViewAngles.x, ViewAngles.y, Delta.x, Delta.y,
+                        Delta.x, Delta.x,       Delta.y,       Delta.y};
   }
 }
 

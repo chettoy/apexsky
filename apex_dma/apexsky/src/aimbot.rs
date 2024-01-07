@@ -1,3 +1,4 @@
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 #[allow(dead_code)]
@@ -90,14 +91,28 @@ impl Default for AimbotSettings {
             bone_auto: true,
             max_dist: 3800.0 * 40.0,
             aim_dist: 500.0 * 40.0,
-            headshot_dist: 150.0 * 40.0,
+            headshot_dist: 30.0 * 40.0,
             skynade_dist: 150.0 * 40.0,
             smooth: 200.0,
             skynade_smooth: 200.0 * 0.6667,
-            recoil_smooth_x: 60.0,
-            recoil_smooth_y: 60.0,
+            recoil_smooth_x: 51.4,
+            recoil_smooth_y: 51.4,
         }
     }
+}
+
+#[repr(C)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct AimAngles {
+    valid: bool,
+    view_pitch: f32,
+    view_yew: f32,
+    delta_pitch: f32,
+    delta_yew: f32,
+    delta_pitch_min: f32,
+    delta_pitch_max: f32,
+    delta_yew_min: f32,
+    delta_yew_max: f32,
 }
 
 #[repr(C)]
@@ -122,9 +137,11 @@ pub struct Aimbot {
     weapon_headshot: bool,
     max_fov: f32,
     target_score_max: f32,
-    aimentity: u64,
+    local_entity: u64,
+    aim_entity: u64,
     tmp_aimentity: u64,
     locked_aimentity: u64,
+    love_aimentity: bool,
     game_fps: f32,
 }
 
@@ -150,9 +167,11 @@ impl Default for Aimbot {
             weapon_headshot: false,
             max_fov: 10.0,
             target_score_max: 0.0,
-            aimentity: 0,
+            local_entity: 0,
+            aim_entity: 0,
             tmp_aimentity: 0,
             locked_aimentity: 0,
+            love_aimentity: false,
             game_fps: 75.0,
         }
     }
@@ -188,7 +207,7 @@ impl Aimbot {
     }
 
     pub fn is_triggerbot_ready(&self) -> bool {
-        self.triggerbot_ready
+        self.triggerbot_ready && !self.love_aimentity && self.held_id != -251
     }
 
     pub fn get_max_fov(&self) -> f32 {
@@ -251,7 +270,7 @@ impl Aimbot {
     }
 
     pub fn get_aim_entity(&self) -> u64 {
-        self.aimentity
+        self.aim_entity
     }
 
     pub fn target_distance_check(&self, distance: f32) -> bool {
@@ -262,16 +281,20 @@ impl Aimbot {
         }
     }
 
-    pub fn start_select_target(&mut self) {
-        self.target_score_max = (50.0 * 50.0) * 100.0 + (self.settings.aim_dist * 0.025) * 10.0;
-        self.tmp_aimentity = 0;
-    }
-
-    pub fn add_select_target(&mut self, fov: f32, distance: f32, visible: bool, target_ptr: u64) {
+    fn calc_target_score(&self, fov: f32, distance: f32, visible: bool) -> f32 {
+        // Reduce weight for invisible targets
         const VIS_WEIGHTS: f32 = 12.5;
+        // Increase weight for targets that are too close
+        const CLOSE_WEIGHTS: f32 = 30.0 * 30.0 * 100.0; // equals to 30 fov
+
         let score = (fov * fov) * 100.0
             + (distance * 0.025) * 10.0
-            + (if visible { 0.0 } else { VIS_WEIGHTS });
+            + (if visible { 0.0 } else { VIS_WEIGHTS })
+            + (if distance < 3.0 * 40.0 {
+                0.0
+            } else {
+                CLOSE_WEIGHTS
+            });
         /*
          fov:dist:score
           1  10m  100
@@ -279,18 +302,39 @@ impl Aimbot {
           3  90m  900
           4  160m 1600
         */
+        score
+    }
+
+    pub fn start_select_target(&mut self) {
+        self.target_score_max = self.calc_target_score(50.0, self.settings.aim_dist, false);
+        self.tmp_aimentity = 0;
+    }
+
+    pub fn add_select_target(
+        &mut self,
+        fov: f32,
+        distance: f32,
+        visible: bool,
+        love: bool,
+        target_ptr: u64,
+    ) {
+        if !self.target_distance_check(distance) {
+            return;
+        }
+
+        let score = self.calc_target_score(fov, distance, visible);
+
         if score < self.target_score_max {
             self.target_score_max = score;
             self.tmp_aimentity = target_ptr;
         }
 
-        // vis check for shooting current aim entity
-        if self.settings.aim_mode == 2 && self.held_id != -251 && self.aimentity == target_ptr {
-            if !visible {
-                // turn on safety
-                self.gun_safety = true;
-            } else {
-                self.gun_safety = false;
+        if self.aim_entity == target_ptr {
+            self.love_aimentity = love;
+
+            // vis check for shooting current aim entity
+            if self.settings.aim_mode == 2 && self.held_id != -251 {
+                self.gun_safety = !visible;
             }
         }
     }
@@ -299,10 +343,10 @@ impl Aimbot {
         // set current aim entity
         if self.lock {
             // locked target
-            self.aimentity = self.locked_aimentity;
+            self.aim_entity = self.locked_aimentity;
         } else {
             // or new target
-            self.aimentity = self.tmp_aimentity;
+            self.aim_entity = self.tmp_aimentity;
         }
 
         // disable aimbot safety if vis check is turned off
@@ -381,70 +425,139 @@ impl Aimbot {
             self.triggerbot_ready = false;
         }
     }
+
+    fn triggerbot_threshold_fov(&self) -> f32 {
+        let threshold_fov = 1.0;
+        let zoom_fov = self.weapon_zoom_fov;
+        // println!("zoom_fov={}", zoom_fov);
+        if zoom_fov != 0.0 && zoom_fov != 1.0 {
+            threshold_fov * zoom_fov / 90.0
+        } else {
+            threshold_fov
+        }
+    }
+
+    /// Calculates the delay in milliseconds before triggering the mechanism based on
+    /// the Aimbot's current state and the provided `AimAngles`.
+    ///
+    /// This function is associated with the Aimbot trait and takes a reference to
+    /// the Aimbot instance (`&self`) and a reference to `AimAngles` (`aim_angles: &AimAngles`)
+    /// as parameters.
+    ///
+    /// # Parameters
+    /// - `&self`: A reference to the Aimbot instance.
+    /// - `aim_angles`: A reference to the `AimAngles` structure containing information
+    ///                about the desired aiming angles.
+    ///
+    /// # Returns
+    /// - If the Aimbot should be triggered, the function returns the delay in
+    ///   milliseconds until the trigger should occur.
+    /// - If no trigger is needed, the function returns 0.
+    ///
+    /// # Example
+    /// ```rust
+    /// let delay = aimbot.calculate_trigger_delay(&aim_angles);
+    /// if delay > 0 {
+    ///     // Perform the trigger action after the specified delay
+    ///     // ...
+    /// } else {
+    ///     // No trigger action needed
+    ///     // ...
+    /// }
+    /// ```
+    ///
+    pub fn calculate_trigger_delay(&self, aim_angles: &AimAngles) -> u64 {
+        if !self.is_triggerbot_ready() {
+            return 0;
+        }
+        let trigger_threshold = self.triggerbot_threshold_fov();
+        if (aim_angles.delta_pitch_min * aim_angles.delta_pitch_max < 0.0
+            || (aim_angles.delta_pitch_min == aim_angles.delta_pitch_max
+                && aim_angles.delta_pitch.abs() < trigger_threshold))
+            && aim_angles.delta_yew.abs() < trigger_threshold
+        {
+            rand::thread_rng().gen_range(60..150)
+        } else {
+            0
+        }
+    }
+
+    pub fn smooth_aim_angles(&self, aim_angles: &AimAngles, smooth_factor: f32) -> (f32, f32) {
+        assert!(aim_angles.valid);
+        let smooth = if self.weapon_grenade {
+            self.settings.skynade_smooth
+        } else {
+            self.settings.smooth
+        };
+        (
+            aim_angles.view_pitch + aim_angles.delta_pitch / smooth * smooth_factor,
+            aim_angles.view_yew + aim_angles.delta_yew / smooth * smooth_factor,
+        )
+    }
 }
 
 #[no_mangle]
-pub fn aimbot_new() -> Aimbot {
+pub extern "C" fn aimbot_new() -> Aimbot {
     Aimbot::new()
 }
 
 #[no_mangle]
-pub fn aimbot_get_settings(aimbot: &Aimbot) -> AimbotSettings {
+pub extern "C" fn aimbot_get_settings(aimbot: &Aimbot) -> AimbotSettings {
     aimbot.get_settings()
 }
 
 #[no_mangle]
-pub fn aimbot_settings(aimbot: &mut Aimbot, settings: &AimbotSettings) {
+pub extern "C" fn aimbot_settings(aimbot: &mut Aimbot, settings: &AimbotSettings) {
     aimbot.settings(settings.clone())
 }
 
 #[no_mangle]
-pub fn aimbot_is_aiming(aimbot: &Aimbot) -> bool {
+pub extern "C" fn aimbot_is_aiming(aimbot: &Aimbot) -> bool {
     aimbot.is_aiming()
 }
 
 #[no_mangle]
-pub fn aimbot_is_grenade(aimbot: &Aimbot) -> bool {
+pub extern "C" fn aimbot_is_grenade(aimbot: &Aimbot) -> bool {
     aimbot.is_grenade()
 }
 
 #[no_mangle]
-pub fn aimbot_is_headshot(aimbot: &Aimbot) -> bool {
+pub extern "C" fn aimbot_is_headshot(aimbot: &Aimbot) -> bool {
     aimbot.is_headshot()
 }
 
 #[no_mangle]
-pub fn aimbot_is_locked(aimbot: &Aimbot) -> bool {
+pub extern "C" fn aimbot_is_locked(aimbot: &Aimbot) -> bool {
     aimbot.is_locked()
 }
 
 #[no_mangle]
-pub fn aimbot_is_triggerbot_ready(aimbot: &Aimbot) -> bool {
+pub extern "C" fn aimbot_is_triggerbot_ready(aimbot: &Aimbot) -> bool {
     aimbot.is_triggerbot_ready()
 }
 
 #[no_mangle]
-pub fn aimbot_get_max_fov(aimbot: &Aimbot) -> f32 {
+pub extern "C" fn aimbot_get_max_fov(aimbot: &Aimbot) -> f32 {
     aimbot.get_max_fov()
 }
 
 #[no_mangle]
-pub fn aimbot_get_held_id(aimbot: &Aimbot) -> i32 {
+pub extern "C" fn aimbot_get_held_id(aimbot: &Aimbot) -> i32 {
     aimbot.get_held_id()
 }
 
 #[no_mangle]
-pub fn aimbot_update_held_id(aimbot: &mut Aimbot, held_id: i32) {
+pub extern "C" fn aimbot_update_held_id(aimbot: &mut Aimbot, held_id: i32) {
     aimbot.update_held_id(held_id)
 }
 
 #[no_mangle]
-pub fn aimbot_get_weapon_id(aimbot: &Aimbot) -> i32 {
+pub extern "C" fn aimbot_get_weapon_id(aimbot: &Aimbot) -> i32 {
     aimbot.get_weapon_id()
 }
 
 #[no_mangle]
-pub fn aimbot_update_weapon_info(
+pub extern "C" fn aimbot_update_weapon_info(
     aimbot: &mut Aimbot,
     weapon_id: i32,
     bullet_speed: f32,
@@ -462,83 +575,102 @@ pub fn aimbot_update_weapon_info(
 }
 
 #[no_mangle]
-pub fn aimbot_get_gun_safety(aimbot: &Aimbot) -> bool {
+pub extern "C" fn aimbot_get_gun_safety(aimbot: &Aimbot) -> bool {
     aimbot.get_gun_safety()
 }
 
 #[no_mangle]
-pub fn aimbot_set_gun_safety(aimbot: &mut Aimbot, gun_safety: bool) {
+pub extern "C" fn aimbot_set_gun_safety(aimbot: &mut Aimbot, gun_safety: bool) {
     aimbot.set_gun_safety(gun_safety)
 }
 
 #[no_mangle]
-pub fn aimbot_get_aim_key_state(aimbot: &Aimbot) -> i32 {
+pub extern "C" fn aimbot_get_aim_key_state(aimbot: &Aimbot) -> i32 {
     aimbot.get_aim_key_state()
 }
 
 #[no_mangle]
-pub fn aimbot_update_aim_key_state(aimbot: &mut Aimbot, aim_key_state: i32) {
+pub extern "C" fn aimbot_update_aim_key_state(aimbot: &mut Aimbot, aim_key_state: i32) {
     aimbot.update_aim_key_state(aim_key_state)
 }
 
 #[no_mangle]
-pub fn aimbot_update_triggerbot_key_state(aimbot: &mut Aimbot, triggerbot_key_state: i32) {
+pub extern "C" fn aimbot_update_triggerbot_key_state(
+    aimbot: &mut Aimbot,
+    triggerbot_key_state: i32,
+) {
     aimbot.update_triggerbot_key_state(triggerbot_key_state)
 }
 
 #[no_mangle]
-pub fn aimbot_update_attack_state(aimbot: &mut Aimbot, attack_state: i32) {
+pub extern "C" fn aimbot_update_attack_state(aimbot: &mut Aimbot, attack_state: i32) {
     aimbot.update_attack_state(attack_state)
 }
 
 #[no_mangle]
-pub fn aimbot_update_zoom_state(aimbot: &mut Aimbot, zoom_state: i32) {
+pub extern "C" fn aimbot_update_zoom_state(aimbot: &mut Aimbot, zoom_state: i32) {
     aimbot.update_zoom_state(zoom_state)
 }
 
 #[no_mangle]
-pub fn aimbot_get_aim_entity(aimbot: &Aimbot) -> u64 {
+pub extern "C" fn aimbot_get_aim_entity(aimbot: &Aimbot) -> u64 {
     aimbot.get_aim_entity()
 }
 
 #[no_mangle]
-pub fn aimbot_target_distance_check(aimbot: &Aimbot, distance: f32) -> bool {
+pub extern "C" fn aimbot_target_distance_check(aimbot: &Aimbot, distance: f32) -> bool {
     aimbot.target_distance_check(distance)
 }
 
 #[no_mangle]
-pub fn aimbot_start_select_target(aimbot: &mut Aimbot) {
+pub extern "C" fn aimbot_start_select_target(aimbot: &mut Aimbot) {
     aimbot.start_select_target()
 }
 
 #[no_mangle]
-pub fn aimbot_add_select_target(
+pub extern "C" fn aimbot_add_select_target(
     aimbot: &mut Aimbot,
     fov: f32,
     distance: f32,
     visible: bool,
+    love: bool,
     target_ptr: u64,
 ) {
-    aimbot.add_select_target(fov, distance, visible, target_ptr)
+    aimbot.add_select_target(fov, distance, visible, love, target_ptr)
 }
 
 #[no_mangle]
-pub fn aimbot_finish_select_target(aimbot: &mut Aimbot) {
+pub extern "C" fn aimbot_finish_select_target(aimbot: &mut Aimbot) {
     aimbot.finish_select_target()
 }
 
 #[no_mangle]
-pub fn aimbot_lock_target(aimbot: &mut Aimbot, target_ptr: u64) {
+pub extern "C" fn aimbot_lock_target(aimbot: &mut Aimbot, target_ptr: u64) {
     aimbot.lock_target(target_ptr)
 }
 
 #[no_mangle]
-pub fn aimbot_cancel_locking(aimbot: &mut Aimbot) {
+pub extern "C" fn aimbot_cancel_locking(aimbot: &mut Aimbot) {
     aimbot.cancel_locking()
 }
 
 #[no_mangle]
-pub fn aimbot_update(aimbot: &mut Aimbot, game_fps: f32) {
+pub extern "C" fn aimbot_update(aimbot: &mut Aimbot, local_entity: u64, game_fps: f32) {
+    aimbot.local_entity = local_entity;
     aimbot.game_fps = game_fps;
     aimbot.update();
+}
+
+#[no_mangle]
+pub extern "C" fn aimbot_calculate_trigger_delay(aimbot: &Aimbot, aim_angles: &AimAngles) -> u64 {
+    aimbot.calculate_trigger_delay(aim_angles)
+}
+
+#[no_mangle]
+pub extern "C" fn aimbot_smooth_aim_angles(
+    aimbot: &Aimbot,
+    aim_angles: &AimAngles,
+    smooth_factor: f32,
+) -> crate::Vector2D {
+    aimbot.smooth_aim_angles(aim_angles, smooth_factor).into()
 }

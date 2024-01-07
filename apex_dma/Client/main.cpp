@@ -24,10 +24,6 @@ extern bool active; // sync
 bool ready = false;
 extern uint64_t g_Base; // write sync
 
-// tdm check
-extern int EntTeam; // sync
-extern int LocTeam; // sync
-
 extern std::vector<TreasureClue> treasure_clues;
 
 extern float bulletspeed; // sync
