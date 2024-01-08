@@ -870,7 +870,7 @@ static void AimbotLoop() {
       std::chrono::milliseconds now_ms =
           duration_cast<std::chrono::milliseconds>(
               std::chrono::system_clock::now().time_since_epoch());
-      float smooth_factor = (now_ms - last_time).count() / 10.0 * 5;
+      float smooth_factor = (now_ms - last_time).count() / 1.054571726;
       // printf("smooth_factor=%f\n", smooth_factor);
       last_time = now_ms;
 

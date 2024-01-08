@@ -476,7 +476,7 @@ impl Aimbot {
                 && aim_angles.delta_pitch.abs() < trigger_threshold))
             && aim_angles.delta_yew.abs() < trigger_threshold
         {
-            rand::thread_rng().gen_range(60..150)
+            rand::thread_rng().gen_range(40..100)
         } else {
             0
         }
