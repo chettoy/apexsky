@@ -232,6 +232,7 @@ pub use aimbot::aimbot_is_aiming;
 pub use aimbot::aimbot_is_grenade;
 pub use aimbot::aimbot_is_headshot;
 pub use aimbot::aimbot_is_locked;
+pub use aimbot::aimbot_is_semi_auto;
 pub use aimbot::aimbot_lock_target;
 pub use aimbot::aimbot_new;
 pub use aimbot::aimbot_set_gun_safety;

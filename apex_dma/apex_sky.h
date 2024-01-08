@@ -52,6 +52,7 @@ typedef struct {
   int weapon_mod_bitfield;
   bool weapon_grenade;
   bool weapon_headshot;
+  bool weapon_semi_auto;
   float max_fov;
   float target_score_max;
   uintptr_t local_entity;
@@ -288,6 +289,7 @@ void aimbot_settings(aimbot_state_t *aimbot, const aimbot_settings_t *settings);
 bool aimbot_is_aiming(const aimbot_state_t *aimbot);
 bool aimbot_is_grenade(const aimbot_state_t *aimbot);
 bool aimbot_is_headshot(const aimbot_state_t *aimbot);
+bool aimbot_is_semi_auto(const aimbot_state_t *aimbot);
 bool aimbot_is_locked(const aimbot_state_t *aimbot);
 bool aimbot_is_triggerbot_ready(const aimbot_state_t *aimbot);
 float aimbot_get_max_fov(const aimbot_state_t *aimbot);

@@ -135,6 +135,7 @@ pub struct Aimbot {
     weapon_mod_bitfield: i32,
     weapon_grenade: bool,
     weapon_headshot: bool,
+    weapon_semi_auto: bool,
     max_fov: f32,
     target_score_max: f32,
     local_entity: u64,
@@ -165,6 +166,7 @@ impl Default for Aimbot {
             weapon_mod_bitfield: 0,
             weapon_grenade: false,
             weapon_headshot: false,
+            weapon_semi_auto: false,
             max_fov: 10.0,
             target_score_max: 0.0,
             local_entity: 0,
@@ -202,6 +204,10 @@ impl Aimbot {
         self.weapon_headshot
     }
 
+    pub fn is_semi_auto(&self) -> bool {
+        self.weapon_semi_auto
+    }
+
     pub fn is_locked(&self) -> bool {
         self.lock
     }
@@ -220,6 +226,7 @@ impl Aimbot {
 
     pub fn update_held_id(&mut self, held_id: i32) {
         self.held_id = held_id;
+        self.weapon_grenade = self.held_id == -251;
     }
 
     pub fn get_weapon_id(&self) -> i32 {
@@ -239,6 +246,40 @@ impl Aimbot {
         self.bullet_gravity = bullet_gravity;
         self.weapon_zoom_fov = weapon_zoom_fov;
         self.weapon_mod_bitfield = weapon_mod_bitfield;
+
+        if self.weapon_grenade {
+            self.weapon_headshot = false;
+            self.weapon_semi_auto = false;
+        } else {
+            self.weapon_headshot = {
+                match self.weapon_id {
+                    IDWEAPON_3030_REPEATER => true,
+                    IDWEAPON_BOW => true,
+                    IDWEAPON_CHARGE_RIFLE => true,
+                    IDWEAPON_G7_SCOUT => true,
+                    IDWEAPON_KRABER => true,
+                    IDWEAPON_LONGBOW => true,
+                    IDWEAPON_SENTINEL => true,
+                    IDWEAPON_TRIPLE_TAKE => true,
+                    IDWEAPON_WINGMAN => true,
+                    _ => false,
+                }
+            };
+            self.weapon_semi_auto = {
+                match self.weapon_id {
+                    IDWEAPON_3030_REPEATER => true,
+                    IDWEAPON_BOW => true,
+                    IDWEAPON_CHARGE_RIFLE => false,
+                    IDWEAPON_G7_SCOUT => true,
+                    IDWEAPON_KRABER => false,
+                    IDWEAPON_LONGBOW => true,
+                    IDWEAPON_SENTINEL => false,
+                    IDWEAPON_TRIPLE_TAKE => true,
+                    IDWEAPON_WINGMAN => true,
+                    _ => false,
+                }
+            };
+        }
     }
 
     pub fn get_gun_safety(&self) -> bool {
@@ -333,7 +374,7 @@ impl Aimbot {
             self.love_aimentity = love;
 
             // vis check for shooting current aim entity
-            if self.settings.aim_mode == 2 && self.held_id != -251 {
+            if self.settings.aim_mode == 2 && !self.is_grenade() {
                 self.gun_safety = !visible;
             }
         }
@@ -350,7 +391,7 @@ impl Aimbot {
         }
 
         // disable aimbot safety if vis check is turned off
-        if self.settings.aim_mode == 1 && self.held_id != -251 {
+        if self.settings.aim_mode == 1 && !self.is_grenade() {
             self.gun_safety = false;
         }
     }
@@ -367,11 +408,7 @@ impl Aimbot {
 
     /// Update aimbot state
     pub fn update(&mut self) {
-        if self.held_id == -251 {
-            // Set weapon type
-            self.weapon_grenade = true;
-            self.weapon_headshot = false;
-
+        if self.is_grenade() {
             // Update grenade safety state
             if (!self.settings.auto_nade_aim && self.zoom_state == 0)
                 || (self.settings.auto_nade_aim && self.zoom_state > 0)
@@ -384,23 +421,6 @@ impl Aimbot {
             // Update aimbot fov for grenade
             self.max_fov = 999.9;
         } else {
-            // Set weapon type
-            self.weapon_grenade = false;
-            self.weapon_headshot = {
-                match self.weapon_id {
-                    IDWEAPON_3030_REPEATER => true,
-                    IDWEAPON_BOW => true,
-                    IDWEAPON_CHARGE_RIFLE => true,
-                    IDWEAPON_G7_SCOUT => true,
-                    IDWEAPON_KRABER => true,
-                    IDWEAPON_LONGBOW => true,
-                    IDWEAPON_SENTINEL => true,
-                    IDWEAPON_TRIPLE_TAKE => true,
-                    IDWEAPON_WINGMAN => true,
-                    _ => false,
-                }
-            };
-
             // Update aimbot fov
             if self.zoom_state > 0 {
                 self.max_fov = self.settings.ads_fov;
@@ -478,9 +498,10 @@ impl Aimbot {
             } else {
                 (aim_angles.delta_pitch_min * aim_angles.delta_pitch_max < 0.0
                     && aim_angles.delta_yew.abs() < trigger_threshold)
-                    || (aim_angles.delta_pitch_max.powi(2) + aim_angles.delta_yew_max.powi(2))
+                    || (aim_angles.delta_pitch_max.powi(2) / 3.0
+                        + aim_angles.delta_yew_max.powi(2) / 1.5)
                         .sqrt()
-                        < trigger_threshold * 2.0
+                        < trigger_threshold
             }
         };
         if cross_hair_ready {
@@ -532,6 +553,11 @@ pub extern "C" fn aimbot_is_grenade(aimbot: &Aimbot) -> bool {
 #[no_mangle]
 pub extern "C" fn aimbot_is_headshot(aimbot: &Aimbot) -> bool {
     aimbot.is_headshot()
+}
+
+#[no_mangle]
+pub extern "C" fn aimbot_is_semi_auto(aimbot: &Aimbot) -> bool {
+    aimbot.is_semi_auto()
 }
 
 #[no_mangle]
