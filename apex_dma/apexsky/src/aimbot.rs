@@ -427,7 +427,7 @@ impl Aimbot {
     }
 
     fn triggerbot_threshold_fov(&self) -> f32 {
-        let threshold_fov = 1.602176634;
+        let threshold_fov = 1.380649;
         let zoom_fov = self.weapon_zoom_fov;
         // println!("zoom_fov={}", zoom_fov);
         if zoom_fov != 0.0 && zoom_fov != 1.0 {
