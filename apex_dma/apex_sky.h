@@ -61,6 +61,9 @@ typedef struct {
   uintptr_t locked_aimentity;
   bool love_aimentity;
   float game_fps;
+  int triggerbot_state;
+  uint64_t triggerbot_trigger_time;
+  uint64_t triggerbot_release_time;
 } aimbot_state_t;
 
 typedef struct {
@@ -317,11 +320,13 @@ void aimbot_lock_target(aimbot_state_t *aimbot, uint64_t target_ptr);
 void aimbot_cancel_locking(aimbot_state_t *aimbot);
 void aimbot_update(aimbot_state_t *aimbot, uintptr_t local_entity,
                    float game_fps);
-uint64_t aimbot_calculate_trigger_delay(const aimbot_state_t *aimbot,
-                                        const aim_angles_t *aim_angles);
 vector2d_t aimbot_smooth_aim_angles(const aimbot_state_t *aimbot,
                                     const aim_angles_t *aim_angles,
                                     float smooth_factor);
+int aimbot_poll_trigger_action(aimbot_state_t *aimbot);
+void aimbot_triggerbot_update(aimbot_state_t *aimbot,
+                              const aim_angles_t *aim_angles,
+                              int force_attack_state);
 
 /**
  * https://github.com/CasualX/apexdream

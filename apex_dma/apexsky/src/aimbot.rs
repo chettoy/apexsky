@@ -1,5 +1,6 @@
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[allow(dead_code)]
 enum WeaponId {
@@ -117,6 +118,15 @@ pub struct AimAngles {
 
 #[repr(C)]
 #[derive(Clone, Deserialize, Serialize, Debug)]
+enum TriggerState {
+    Idle = 0,
+    WaitTrigger = 1,
+    Trigger = 2,
+    WaitRelease = 3,
+}
+
+#[repr(C)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct Aimbot {
     settings: AimbotSettings,
     aiming: bool,
@@ -144,6 +154,9 @@ pub struct Aimbot {
     locked_aimentity: u64,
     love_aimentity: bool,
     game_fps: f32,
+    triggerbot_state: TriggerState,
+    triggerbot_trigger_time: u64,
+    triggerbot_release_time: u64,
 }
 
 impl Default for Aimbot {
@@ -175,8 +188,17 @@ impl Default for Aimbot {
             locked_aimentity: 0,
             love_aimentity: false,
             game_fps: 75.0,
+            triggerbot_state: TriggerState::Idle,
+            triggerbot_trigger_time: 0,
+            triggerbot_release_time: 0,
         }
     }
+}
+
+pub trait TriggerBot {
+    fn is_triggerbot_ready(&self) -> bool;
+    fn poll_trigger_action(&mut self) -> i32;
+    fn triggerbot_update(&mut self, aim_angles: &AimAngles, force_attack_state: i32);
 }
 
 impl Aimbot {
@@ -210,10 +232,6 @@ impl Aimbot {
 
     pub fn is_locked(&self) -> bool {
         self.lock
-    }
-
-    pub fn is_triggerbot_ready(&self) -> bool {
-        self.triggerbot_ready && !self.love_aimentity && self.held_id != -251
     }
 
     pub fn get_max_fov(&self) -> f32 {
@@ -525,6 +543,111 @@ impl Aimbot {
     }
 }
 
+impl TriggerBot for Aimbot {
+    fn is_triggerbot_ready(&self) -> bool {
+        self.triggerbot_ready && !self.love_aimentity && !self.is_grenade()
+    }
+
+    fn poll_trigger_action(&mut self) -> i32 {
+        let now_ms = get_unix_timestamp_in_millis();
+        match self.triggerbot_state {
+            TriggerState::WaitTrigger => {
+                if now_ms > self.triggerbot_trigger_time {
+                    self.triggerbot_state = TriggerState::Trigger;
+                    // println!("trigger");
+                    5
+                } else {
+                    0
+                }
+            }
+            TriggerState::WaitRelease => {
+                if now_ms > self.triggerbot_release_time {
+                    self.triggerbot_state = TriggerState::Idle;
+                    // println!("release");
+                    4
+                } else {
+                    0
+                }
+            }
+            _ => 0,
+        }
+    }
+
+    fn triggerbot_update(&mut self, aim_angles: &AimAngles, force_attack_state: i32) {
+        // println!("force_attach={}", force_attack_state);
+
+        let trigger_delay = self.calculate_trigger_delay(aim_angles);
+        let now_ms = get_unix_timestamp_in_millis();
+
+        if trigger_delay > 0 {
+            let semi_auto = self.is_semi_auto();
+
+            match self.triggerbot_state {
+                TriggerState::Idle => {
+                    // Prepare for the next trigger.
+                    if self.weapon_id == 2 && force_attack_state == 5 {
+                        // Release the drawn bow.
+                        self.triggerbot_release_time =
+                            now_ms + rand::thread_rng().gen_range(60..150);
+                        self.triggerbot_state = TriggerState::WaitRelease;
+                    } else {
+                        self.triggerbot_trigger_time = now_ms + trigger_delay;
+                        self.triggerbot_state = TriggerState::WaitTrigger;
+                    }
+                }
+                TriggerState::WaitTrigger => {
+                    // Keep wait
+                }
+                TriggerState::Trigger => {
+                    if semi_auto {
+                        // No continuous triggering for headshot weapons
+                        self.triggerbot_release_time =
+                            now_ms + rand::thread_rng().gen_range(60..150);
+                        self.triggerbot_state = TriggerState::WaitRelease;
+                    } else {
+                        // Keep triggering the trigger.
+                    }
+                }
+                TriggerState::WaitRelease => {
+                    if !semi_auto && self.weapon_id != 2 {
+                        // Cancel release
+                        self.triggerbot_state = TriggerState::Trigger;
+                    }
+                }
+            }
+        } else {
+            match self.triggerbot_state {
+                TriggerState::Idle => (),
+                TriggerState::WaitTrigger => {
+                    self.triggerbot_state = TriggerState::Idle;
+                }
+                TriggerState::Trigger => {
+                    // It's time to release
+                    self.triggerbot_release_time = now_ms + rand::thread_rng().gen_range(0..150);
+                    self.triggerbot_state = TriggerState::WaitRelease;
+                }
+                TriggerState::WaitRelease => (),
+            }
+        }
+    }
+}
+
+/// Function to get the Unix timestamp in milliseconds
+fn get_unix_timestamp_in_millis() -> u64 {
+    match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => {
+            // Calculate the total milliseconds from the duration
+            let millis = duration.as_secs() * 1000 + duration.subsec_millis() as u64;
+            millis
+        }
+        Err(_) => {
+            // Handle errors, such as clock rollback
+            eprintln!("Error getting Unix Timestamp");
+            0 // or return a default value, depending on your needs
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn aimbot_new() -> Aimbot {
     Aimbot::new()
@@ -696,15 +819,24 @@ pub extern "C" fn aimbot_update(aimbot: &mut Aimbot, local_entity: u64, game_fps
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_calculate_trigger_delay(aimbot: &Aimbot, aim_angles: &AimAngles) -> u64 {
-    aimbot.calculate_trigger_delay(aim_angles)
-}
-
-#[no_mangle]
 pub extern "C" fn aimbot_smooth_aim_angles(
     aimbot: &Aimbot,
     aim_angles: &AimAngles,
     smooth_factor: f32,
 ) -> crate::Vector2D {
     aimbot.smooth_aim_angles(aim_angles, smooth_factor).into()
+}
+
+#[no_mangle]
+pub extern "C" fn aimbot_poll_trigger_action(aimbot: &mut Aimbot) -> i32 {
+    aimbot.poll_trigger_action()
+}
+
+#[no_mangle]
+pub extern "C" fn aimbot_triggerbot_update(
+    aimbot: &mut Aimbot,
+    aim_angles: &AimAngles,
+    force_attack_state: i32,
+) {
+    aimbot.triggerbot_update(aim_angles, force_attack_state)
 }

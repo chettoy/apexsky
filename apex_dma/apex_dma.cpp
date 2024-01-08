@@ -916,27 +916,16 @@ static void AimbotLoop() {
 
       const auto aimbot_settings = aimbot_get_settings(&aimbot);
       const auto aim_entity = aimbot_get_aim_entity(&aimbot);
+      const auto weapon_id = aimbot_get_weapon_id(&aimbot);
       const bool aiming = aimbot_is_aiming(&aimbot);
       const bool trigger_bot_ready = aimbot_is_triggerbot_ready(&aimbot);
-      enum TriggerState { IDLE, WAIT_TRIGGER, TRIGGER, WAIT_RELEASE };
-      static TriggerState trigger_bot_running = IDLE;
-      static std::chrono::milliseconds trigger_bot_trigger_time,
-          trigger_bot_release_time;
       static QAngle prev_recoil_angle = QAngle(0, 0, 0);
 
-      // int force_attack_state;
-      // apex_mem.Read(g_Base + OFFSET_IN_ATTACK + 0x8, force_attack_state);
-      // printf("force_attack=%d\n", force_attack_state);
-      if (trigger_bot_running == WAIT_TRIGGER &&
-          now_ms > trigger_bot_trigger_time) {
-        // printf("trigger\n");
-        apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 5);
-        trigger_bot_running = TRIGGER;
-      } else if (trigger_bot_running == WAIT_RELEASE &&
-                 now_ms > trigger_bot_release_time) {
-        // printf("release\n");
-        apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 4);
-        trigger_bot_running = IDLE;
+      {
+        int trigger_value = aimbot_poll_trigger_action(&aimbot);
+        if (trigger_value) {
+          apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, trigger_value);
+        }
       }
 
       // Reduce recoil
@@ -1005,7 +994,7 @@ static void AimbotLoop() {
 
       /* Fine-tuning for each weapon */
       // bow
-      if (aimbot_get_weapon_id(&aimbot) == 2) {
+      if (weapon_id == 2) {
         // Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*0.08);
         // Ctx.BulletGravity = BulletGrav + (BulletGrav*0.05);
         bulletspeed = 10.08;
@@ -1020,48 +1009,10 @@ static void AimbotLoop() {
         continue;
       }
 
-      // Trigger Bot
-      uint64_t trigger_delay =
-          aimbot_calculate_trigger_delay(&aimbot, &aim_result);
-      if (trigger_delay > 0) {
-        bool semi_auto = aimbot_is_semi_auto(&aimbot);
-
-        if (trigger_bot_running == IDLE) {
-          // Prepare for the next trigger.
-          trigger_bot_trigger_time =
-              now_ms + std::chrono::milliseconds(trigger_delay);
-          trigger_bot_running = WAIT_TRIGGER;
-        } else if (trigger_bot_running == WAIT_TRIGGER) {
-          // Keep wait
-        } else if (trigger_bot_running == TRIGGER) {
-          if (semi_auto) {
-            // No continuous triggering for headshot weapons
-            trigger_bot_release_time =
-                now_ms +
-                std::chrono::milliseconds(std::uniform_int_distribution<int>(
-                    60, 150)(RandomGenerator));
-            trigger_bot_running = WAIT_RELEASE;
-          } else {
-            // Keep triggering the trigger.
-          }
-        } else if (trigger_bot_running == WAIT_RELEASE) {
-          if (!semi_auto) {
-            // Cancel release
-            trigger_bot_running = TRIGGER;
-          }
-        }
-      } else {
-        if (trigger_bot_running == WAIT_TRIGGER) {
-          trigger_bot_running = IDLE;
-        } else if (trigger_bot_running == TRIGGER) {
-          // It's time to release
-          trigger_bot_release_time =
-              now_ms +
-              std::chrono::milliseconds(
-                  std::uniform_int_distribution<int>(0, 150)(RandomGenerator));
-          trigger_bot_running = WAIT_RELEASE;
-        }
-      }
+      // Update Trigger Bot state
+      int force_attack_state;
+      apex_mem.Read(g_Base + OFFSET_IN_ATTACK + 0x8, force_attack_state);
+      aimbot_triggerbot_update(&aimbot, &aim_result, force_attack_state);
 
       // Aim Bot
       if (aiming) {
