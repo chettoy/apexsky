@@ -918,7 +918,8 @@ static void AimbotLoop() {
       const auto aim_entity = aimbot_get_aim_entity(&aimbot);
       const bool aiming = aimbot_is_aiming(&aimbot);
       const bool trigger_bot_ready = aimbot_is_triggerbot_ready(&aimbot);
-      static int trigger_bot_running = 0;
+      static int trigger_bot_running =
+          0; // 0: idle, 1: wait for trigger, 2: wait for release
       static std::chrono::milliseconds trigger_bot_trigger_time,
           trigger_bot_release_time;
       static QAngle prev_recoil_angle = QAngle(0, 0, 0);
@@ -1026,9 +1027,12 @@ static void AimbotLoop() {
       uint64_t trigger_delay =
           aimbot_calculate_trigger_delay(&aimbot, &aim_result);
       if (trigger_delay > 0) {
-        if (trigger_bot_running == 1) {
+        // No continuous triggering for headshot weapons
+        if (trigger_bot_running == 1 && !aimbot_is_headshot(&aimbot)) {
+          // Keep triggering the trigger.
           trigger_bot_trigger_time = now_ms;
         } else {
+          // Prepare for the next trigger.
           trigger_bot_trigger_time =
               now_ms + std::chrono::milliseconds(trigger_delay);
           trigger_bot_running = 1;
