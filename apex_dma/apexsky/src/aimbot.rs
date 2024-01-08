@@ -427,7 +427,7 @@ impl Aimbot {
     }
 
     fn triggerbot_threshold_fov(&self) -> f32 {
-        let threshold_fov = 1.0;
+        let threshold_fov = 1.602176634;
         let zoom_fov = self.weapon_zoom_fov;
         // println!("zoom_fov={}", zoom_fov);
         if zoom_fov != 0.0 && zoom_fov != 1.0 {
@@ -471,11 +471,19 @@ impl Aimbot {
             return 0;
         }
         let trigger_threshold = self.triggerbot_threshold_fov();
-        if (aim_angles.delta_pitch_min * aim_angles.delta_pitch_max < 0.0
-            || (aim_angles.delta_pitch_min == aim_angles.delta_pitch_max
-                && aim_angles.delta_pitch.abs() < trigger_threshold))
-            && aim_angles.delta_yew.abs() < trigger_threshold
-        {
+        let cross_hair_ready = {
+            if aim_angles.delta_pitch_min == aim_angles.delta_pitch_max {
+                aim_angles.delta_pitch.abs() < trigger_threshold
+                    && aim_angles.delta_yew.abs() < trigger_threshold
+            } else {
+                (aim_angles.delta_pitch_min * aim_angles.delta_pitch_max < 0.0
+                    && aim_angles.delta_yew.abs() < trigger_threshold)
+                    || (aim_angles.delta_pitch_max.powi(2) + aim_angles.delta_yew_max.powi(2))
+                        .sqrt()
+                        < trigger_threshold * 2.0
+            }
+        };
+        if cross_hair_ready {
             rand::thread_rng().gen_range(40..100)
         } else {
             0
