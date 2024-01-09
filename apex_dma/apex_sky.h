@@ -5,6 +5,7 @@
 typedef struct {
   bool gamepad;
   int32_t aim_mode;
+  bool auto_shoot;
   float ads_fov;
   float non_ads_fov;
   bool auto_nade_aim;
@@ -18,7 +19,21 @@ typedef struct {
   float skynade_dist;
   float smooth;
   float skynade_smooth;
+  float recoil_smooth_x;
+  float recoil_smooth_y;
 } aimbot_settings_t;
+
+typedef struct {
+  bool valid;
+  float view_pitch;
+  float view_yew;
+  float delta_pitch;
+  float delta_yew;
+  float delta_pitch_min;
+  float delta_pitch_max;
+  float delta_yew_min;
+  float delta_yew_max;
+} aim_angles_t;
 
 typedef struct {
   aimbot_settings_t settings;
@@ -28,16 +43,27 @@ typedef struct {
   int32_t attack_state;
   int32_t zoom_state;
   int32_t aim_key_state;
+  int32_t triggerbot_key_state;
   int32_t held_id;
   int32_t weapon_id;
+  float bullet_speed;
+  float bullet_gravity;
+  float weapon_zoom_fov;
+  int weapon_mod_bitfield;
   bool weapon_grenade;
   bool weapon_headshot;
+  bool weapon_semi_auto;
   float max_fov;
   float target_score_max;
-  uintptr_t aimentity;
+  uintptr_t local_entity;
+  uintptr_t aim_entity;
   uintptr_t tmp_aimentity;
   uintptr_t locked_aimentity;
+  bool love_aimentity;
   float game_fps;
+  int triggerbot_state;
+  uint64_t triggerbot_trigger_time;
+  uint64_t triggerbot_release_time;
 } aimbot_state_t;
 
 typedef struct {
@@ -189,7 +215,6 @@ typedef struct {
   int aimbot_hot_key_1;
   int aimbot_hot_key_2;
   int trigger_bot_hot_key;
-  bool auto_shoot;
   bool loot_filled_toggle;
   bool player_filled_toggle;
   bool super_key_toggle;
@@ -267,27 +292,41 @@ void aimbot_settings(aimbot_state_t *aimbot, const aimbot_settings_t *settings);
 bool aimbot_is_aiming(const aimbot_state_t *aimbot);
 bool aimbot_is_grenade(const aimbot_state_t *aimbot);
 bool aimbot_is_headshot(const aimbot_state_t *aimbot);
+bool aimbot_is_semi_auto(const aimbot_state_t *aimbot);
 bool aimbot_is_locked(const aimbot_state_t *aimbot);
+bool aimbot_is_triggerbot_ready(const aimbot_state_t *aimbot);
 float aimbot_get_max_fov(const aimbot_state_t *aimbot);
 int aimbot_get_held_id(const aimbot_state_t *aimbot);
 void aimbot_update_held_id(aimbot_state_t *aimbot, int held_id);
 int aimbot_get_weapon_id(const aimbot_state_t *aimbot);
-void aimbot_update_weapon_id(aimbot_state_t *aimbot, int weapon_id);
+void aimbot_update_weapon_info(aimbot_state_t *aimbot, int weapon_id,
+                               float bullet_speed, float bullet_gravity,
+                               float weapon_zoom_fov, int weapon_mod_bitfield);
 bool aimbot_get_gun_safety(const aimbot_state_t *aimbot);
 void aimbot_set_gun_safety(aimbot_state_t *aimbot, bool gun_safety);
 int aimbot_get_aim_key_state(const aimbot_state_t *aimbot);
 void aimbot_update_aim_key_state(aimbot_state_t *aimbot, int aim_key_state);
+void aimbot_update_triggerbot_key_state(aimbot_state_t *aimbot,
+                                        int triggerbot_key_state);
 void aimbot_update_attack_state(aimbot_state_t *aimbot, int attack_state);
 void aimbot_update_zoom_state(aimbot_state_t *aimbot, int zoom_state);
 uint64_t aimbot_get_aim_entity(const aimbot_state_t *aimbot);
 bool aimbot_target_distance_check(const aimbot_state_t *aimbot, float distance);
 void aimbot_start_select_target(aimbot_state_t *aimbot);
 void aimbot_add_select_target(aimbot_state_t *aimbot, float fov, float distance,
-                              bool visible, uint64_t target_ptr);
+                              bool visible, bool love, uint64_t target_ptr);
 void aimbot_finish_select_target(aimbot_state_t *aimbot);
 void aimbot_lock_target(aimbot_state_t *aimbot, uint64_t target_ptr);
 void aimbot_cancel_locking(aimbot_state_t *aimbot);
-void aimbot_update(aimbot_state_t *aimbot, float game_fps);
+void aimbot_update(aimbot_state_t *aimbot, uintptr_t local_entity,
+                   float game_fps);
+vector2d_t aimbot_smooth_aim_angles(const aimbot_state_t *aimbot,
+                                    const aim_angles_t *aim_angles,
+                                    float smooth_factor);
+int aimbot_poll_trigger_action(aimbot_state_t *aimbot);
+void aimbot_triggerbot_update(aimbot_state_t *aimbot,
+                              const aim_angles_t *aim_angles,
+                              int force_attack_state);
 
 /**
  * https://github.com/CasualX/apexdream

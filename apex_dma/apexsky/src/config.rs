@@ -166,7 +166,6 @@ pub struct Settings {
     pub aimbot_hot_key_1: i32,
     pub aimbot_hot_key_2: i32,
     pub trigger_bot_hot_key: i32,
-    pub auto_shoot: bool,
     pub loot_filled_toggle: bool,
     pub player_filled_toggle: bool,
     pub super_key_toggle: bool,
@@ -215,9 +214,9 @@ impl Default for EspVisuals {
         Self {
             r#box: true,
             line: false,
-            distance: true,
-            health_bar: true,
-            shield_bar: true,
+            distance: false,
+            health_bar: false,
+            shield_bar: false,
             name: false,
         }
     }
@@ -374,7 +373,6 @@ impl Default for Settings {
             // Done with Gamepad or Keyboard config
             // triggerbot?
             trigger_bot_hot_key: 81,
-            auto_shoot: true,
             // Terminal Stuff
             loot_filled_toggle: true,
             player_filled_toggle: true,
@@ -382,7 +380,7 @@ impl Default for Settings {
             // end Terminal Stuff
             onevone: false,
             tdm_toggle: false,
-            item_glow: true,
+            item_glow: false,
             player_glow: false,
             player_glow_armor_color: true,
             player_glow_love_user: true,

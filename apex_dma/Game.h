@@ -30,6 +30,7 @@ struct Fade {
 class Entity {
 public:
   uint64_t ptr;
+  uint64_t entity_index;
   uint8_t buffer[0x3FF0];
   Vector getPosition();
   bool isDummy();
@@ -61,10 +62,10 @@ public:
   Vector getBonePosition(int id);
   Vector getBonePositionByHitbox(int id);
   bool Observing(uint64_t entitylist);
-  void get_name(uint64_t g_Base, uint64_t index, char *name);
-  void glow_weapon_model(uint64_t g_Base, bool enable_glow,
+  void get_name(char *name);
+  void glow_weapon_model(bool enable_glow,
                          std::array<float, 3> highlight_colors);
-  bool check_love_player(uint64_t entity_index);
+  bool check_love_player();
 };
 
 class Item {
@@ -150,9 +151,10 @@ Item getItem(uintptr_t ptr);
 bool WorldToScreen(Vector from, float *m_vMatrix, int targetWidth,
                    int targetHeight, Vector &to);
 float CalculateFov(Entity &from, Entity &target);
-QAngle CalculateBestBoneAim(Entity &from, Entity &target, const aimbot_state_t &aimbot);
 void get_class_name(uint64_t entity_ptr, char *out_str);
 void charge_rifle_hack(uint64_t entity_ptr);
+aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
+                                  const aimbot_state_t &aimbot);
 
 typedef struct {
   uint64_t item_id;

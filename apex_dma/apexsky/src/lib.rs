@@ -231,17 +231,22 @@ pub use aimbot::aimbot_is_aiming;
 pub use aimbot::aimbot_is_grenade;
 pub use aimbot::aimbot_is_headshot;
 pub use aimbot::aimbot_is_locked;
+pub use aimbot::aimbot_is_semi_auto;
 pub use aimbot::aimbot_lock_target;
 pub use aimbot::aimbot_new;
+pub use aimbot::aimbot_poll_trigger_action;
 pub use aimbot::aimbot_set_gun_safety;
 pub use aimbot::aimbot_settings;
+pub use aimbot::aimbot_smooth_aim_angles;
 pub use aimbot::aimbot_start_select_target;
 pub use aimbot::aimbot_target_distance_check;
+pub use aimbot::aimbot_triggerbot_update;
 pub use aimbot::aimbot_update;
 pub use aimbot::aimbot_update_aim_key_state;
 pub use aimbot::aimbot_update_attack_state;
 pub use aimbot::aimbot_update_held_id;
-pub use aimbot::aimbot_update_weapon_id;
+pub use aimbot::aimbot_update_triggerbot_key_state;
+pub use aimbot::aimbot_update_weapon_info;
 pub use aimbot::aimbot_update_zoom_state;
 
 #[cfg(test)]
