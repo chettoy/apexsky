@@ -380,7 +380,7 @@ impl Default for Settings {
             // end Terminal Stuff
             onevone: false,
             tdm_toggle: false,
-            item_glow: true,
+            item_glow: false,
             player_glow: false,
             player_glow_armor_color: true,
             player_glow_love_user: true,
