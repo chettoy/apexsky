@@ -13,7 +13,6 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
-#include <random>
 #include <set>
 #include <stdio.h>
 #include <string.h>
@@ -54,8 +53,6 @@ int playerentcount = 61;
 int itementcount = 10000;
 int map = 0;
 std::vector<TreasureClue> treasure_clues;
-std::map<uint64_t, uint64_t> centity_to_index; // Map centity to entity index
-static std::minstd_rand RandomGenerator{std::random_device()()};
 
 //^^ Don't EDIT^^
 
@@ -424,16 +421,12 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
         }
       }
       // love player glow
-      if (g_settings.player_glow_love_user) {
-        auto it = centity_to_index.find(Target.ptr);
-        if (it != centity_to_index.end() &&
-            Target.check_love_player(it->second)) {
-          int frame_frag = frame_number / ((int)g_settings.game_fps);
-          if (setting_index == 81 ||
-              frame_frag % 2 == 0) { // vis: always, else: 1s time slice
-            setting_index = 96;
-            rainbowColor(frame_number, highlight_parameter);
-          }
+      if (g_settings.player_glow_love_user && Target.check_love_player()) {
+        int frame_frag = frame_number / ((int)g_settings.game_fps);
+        if (setting_index == 81 ||
+            frame_frag % 2 == 0) { // vis: always, else: 1s time slice
+          setting_index = 96;
+          rainbowColor(frame_number, highlight_parameter);
         }
       }
 
@@ -507,11 +500,7 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
     float dist = LocalPlayerPosition.DistTo(EntityPosition);
     float fov = CalculateFov(LPlayer, target);
     bool vis = target.lastVisTime() > lastvis_aim[index];
-    bool love = false;
-    auto it = centity_to_index.find(target.ptr);
-    if (it != centity_to_index.end()) {
-      love = target.check_love_player(it->second);
-    }
+    bool love = target.check_love_player();
     aimbot_add_select_target(&aimbot, fov, dist, vis, love, target.ptr);
 
     // Player Glow
@@ -596,7 +585,6 @@ void DoActions() {
       int frame_number = 0;
       apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008, frame_number);
 
-      centity_to_index.clear();
       tmp_specs.clear();
       aimbot_start_select_target(&aimbot);
 
@@ -605,9 +593,9 @@ void DoActions() {
         for (int i = 0; i < playerentcount; i++) {
           uint64_t centity = 0;
           apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
-          if (centity == 0)
+          if (centity == 0) {
             continue;
-          centity_to_index.insert_or_assign(centity, i);
+          }
           if (LocalPlayer == centity) {
             continue;
           }
@@ -625,12 +613,12 @@ void DoActions() {
         for (int i = 0; i < toRead; i++) {
           uint64_t centity = 0;
           apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
-          if (centity == 0)
+          if (centity == 0) {
             continue;
-          centity_to_index.insert_or_assign(centity, i);
-
-          if (LocalPlayer == centity)
+          }
+          if (LocalPlayer == centity) {
             continue;
+          }
 
           Entity Target = getEntity(centity);
           if (!Target.isPlayer()) {
@@ -672,10 +660,10 @@ void DoActions() {
         }
         // printf("R: %f, G: %f, B: %f\n", highlight_color[0],
         // highlight_color[1], highlight_color[2]);
-        LPlayer.glow_weapon_model(g_Base, true, highlight_color);
+        LPlayer.glow_weapon_model(true, highlight_color);
         // LPlayer.enableGlow(5, 199, 14, 32, highlight_color);
       } else {
-        LPlayer.glow_weapon_model(g_Base, false, {0, 0, 0});
+        LPlayer.glow_weapon_model(false, {0, 0, 0});
       }
     }
   }
@@ -796,8 +784,6 @@ static void EspLoop() {
             if (g_settings.esp) {
               Vector hs = Vector();
               Vector HeadPosition = Target.getBonePositionByHitbox(0);
-              // Change res to your res here, default is 1080p but can copy
-              // paste 1440p here
               WorldToScreen(HeadPosition, view_matrix_data.matrix,
                             g_settings.screen_width, g_settings.screen_height,
                             hs); // 2560, 1440
@@ -810,7 +796,6 @@ static void EspLoop() {
               int armortype = Target.getArmortype();
               Vector EntityPosition = Target.getPosition();
               float targetyaw = Target.GetYaw();
-              uint64_t entity_index = i - 1;
               player data_buf = {dist,
                                  entity_team,
                                  boxMiddle,
@@ -830,9 +815,9 @@ static void EspLoop() {
                                  localviewangle,
                                  targetyaw,
                                  Target.isAlive(),
-                                 Target.check_love_player(entity_index),
+                                 Target.check_love_player(),
                                  false};
-              Target.get_name(g_Base, entity_index, &data_buf.name[0]);
+              Target.get_name(&data_buf.name[0]);
               for (auto &ent : spectators) {
                 if (ent.ptr == centity) {
                   data_buf.is_spectator = true;
@@ -919,7 +904,6 @@ static void AimbotLoop() {
       const auto weapon_id = aimbot_get_weapon_id(&aimbot);
       const bool aiming = aimbot_is_aiming(&aimbot);
       const bool trigger_bot_ready = aimbot_is_triggerbot_ready(&aimbot);
-      static QAngle prev_recoil_angle = QAngle(0, 0, 0);
 
       {
         int trigger_value = aimbot_poll_trigger_action(&aimbot);
@@ -929,6 +913,7 @@ static void AimbotLoop() {
       }
 
       // Reduce recoil
+      static QAngle prev_recoil_angle = QAngle(0, 0, 0);
       if (aimbot_settings.no_recoil && aimbot.attack_state > 0) {
         // get recoil angle
         QAngle recoil_angles = LPlayer.GetRecoil();
@@ -955,67 +940,55 @@ static void AimbotLoop() {
         prev_recoil_angle = QAngle(0, 0, 0);
       }
 
-      if (aim_entity == 0) {
-        aimbot_cancel_locking(&aimbot);
-        continue;
-      }
-      Entity target = getEntity(aim_entity);
-
-      // show target indicator before aiming
-      aim_target = target.getPosition();
-
+      // Update Aimbot state
       aimbot_update(&aimbot, LocalPlayer, g_settings.game_fps);
 
-      if (aimbot_settings.aim_mode == 0) {
-        continue;
-      }
+      aim_angles_t aim_result;
 
-      if (!aiming) {
+      if (aim_entity == 0) {
+        aim_result = aim_angles_t{false};
         aimbot_cancel_locking(&aimbot);
-      }
+      } else {
+        Entity target = getEntity(aim_entity);
 
-      if (aiming && !aimbot_is_headshot(&aimbot)) {
-        aimbot_lock_target(&aimbot, aim_entity);
-      }
+        // show target indicator before aiming
+        aim_target = target.getPosition();
 
-      if (!(aiming || trigger_bot_ready)) {
-        continue;
-      }
+        if (!(aiming || trigger_bot_ready)) {
+          aim_result = aim_angles_t{false};
+        } else if (aimbot_get_gun_safety(&aimbot)) {
+          aim_result = aim_angles_t{false};
+        } else if (LPlayer.isKnocked() || !target.isAlive() ||
+                   (!g_settings.firing_range && target.isKnocked())) {
+          aim_result = aim_angles_t{false};
+          aimbot_cancel_locking(&aimbot);
+        } else {
+          // Caculate Aim Angles
 
-      if (aimbot_get_gun_safety(&aimbot)) {
-        continue;
-      }
+          /* Fine-tuning for each weapon */
+          if (weapon_id == 2) { // bow
+            // Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*0.08);
+            // Ctx.BulletGravity = BulletGrav + (BulletGrav*0.05);
+            bulletspeed = 10.08;
+            bulletgrav = 10.05;
+          }
 
-      if (LPlayer.isKnocked() || !target.isAlive() ||
-          (!g_settings.firing_range && target.isKnocked())) {
-        aimbot_cancel_locking(&aimbot);
-        continue;
-      }
-
-      /* Fine-tuning for each weapon */
-      // bow
-      if (weapon_id == 2) {
-        // Ctx.BulletSpeed = BulletSpeed - (BulletSpeed*0.08);
-        // Ctx.BulletGravity = BulletGrav + (BulletGrav*0.05);
-        bulletspeed = 10.08;
-        bulletgrav = 10.05;
-      }
-
-      /* Aim Assist */
-
-      aim_angles_t aim_result = CalculateBestBoneAim(LPlayer, target, aimbot);
-      if (!aim_result.valid) {
-        aimbot_cancel_locking(&aimbot);
-        continue;
+          aim_result = CalculateBestBoneAim(LPlayer, target, aimbot);
+          if (!aim_result.valid) {
+            aimbot_cancel_locking(&aimbot);
+          }
+        }
       }
 
       // Update Trigger Bot state
       int force_attack_state;
       apex_mem.Read(g_Base + OFFSET_IN_ATTACK + 0x8, force_attack_state);
+      // Ensure that the triggerbot is updated,
+      // otherwise there may be issues with not canceling after firing.
       aimbot_triggerbot_update(&aimbot, &aim_result, force_attack_state);
 
-      // Aim Bot
-      if (aiming) {
+      // Aim Assist
+      if (aiming && aim_result.valid) {
         auto smoothed_angles =
             aimbot_smooth_aim_angles(&aimbot, &aim_result, smooth_factor);
         LPlayer.SetViewAngles(
@@ -1026,8 +999,8 @@ static void AimbotLoop() {
   }   // end AimbotLoop
   aim_t = false;
 }
-// Item Glow Stuff
 
+// Item Glow Stuff
 static void item_glow_t() {
   item_t = true;
   while (item_t) {

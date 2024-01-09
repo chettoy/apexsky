@@ -206,14 +206,14 @@ Vector Entity::GetCamPos() { return *(Vector *)(buffer + OFFSET_CAMERAPOS); }
 
 QAngle Entity::GetRecoil() { return *(QAngle *)(buffer + OFFSET_AIMPUNCH); }
 
-void Entity::get_name(uint64_t g_Base, uint64_t index, char *name) {
-  index *= 0x10;
+void Entity::get_name(char *name) {
+  uint64_t index = (this->entity_index - 1) << 4;
   uint64_t name_ptr = 0;
   apex_mem.Read<uint64_t>(g_Base + OFFSET_NAME_LIST + index, name_ptr);
   apex_mem.ReadArray<char>(name_ptr, name, 32);
 }
 
-void Entity::glow_weapon_model(uint64_t g_Base, bool enable_glow,
+void Entity::glow_weapon_model(bool enable_glow,
                                std::array<float, 3> highlight_colors) {
   uint64_t view_model_handle;
   apex_mem.Read<uint64_t>(ptr + OFFSET_VIEW_MODELS, view_model_handle);
@@ -259,7 +259,7 @@ void Entity::glow_weapon_model(uint64_t g_Base, bool enable_glow,
   // printf("0x270=%d\n", val1);
 }
 
-bool Entity::check_love_player(uint64_t entity_index) {
+bool Entity::check_love_player() {
   if (global_settings().yuan_p) {
     if (this->isDummy())
       return true;
@@ -275,7 +275,7 @@ bool Entity::check_love_player(uint64_t entity_index) {
   uint64_t platform_lid = data_fid[0] | data_fid[1] << 32;
   uint64_t eadp_lid = data_fid[1] | data_fid[2] << 32;
   char name[33] = {0};
-  this->get_name(g_Base, entity_index - 1, &name[0]);
+  this->get_name(&name[0]);
   return ::check_love_player(platform_lid, eadp_lid, name);
 }
 
@@ -443,8 +443,8 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
       Delta.y = (DeltaMin.y + DeltaMax.y) * 0.5f;
 
     return aim_angles_t{true,       ViewAngles.x, ViewAngles.y,
-                        Delta.x,    Delta.y,       DeltaMin.x,
-                        DeltaMax.x, DeltaMin.y,    DeltaMax.y};
+                        Delta.x,    Delta.y,      DeltaMin.x,
+                        DeltaMax.x, DeltaMin.y,   DeltaMax.y};
   } else {
     Vector local_origin = from.getPosition();
     Vector view_offset = from.getViewOffset();
@@ -472,7 +472,7 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
 
     QAngle Delta = TargetAngles - ViewAngles;
     return aim_angles_t{true,    ViewAngles.x, ViewAngles.y, Delta.x, Delta.y,
-                        Delta.x, Delta.x,       Delta.y,       Delta.y};
+                        Delta.x, Delta.x,      Delta.y,      Delta.y};
   }
 }
 
@@ -480,6 +480,7 @@ Entity getEntity(uintptr_t ptr) {
   Entity entity = Entity();
   entity.ptr = ptr;
   apex_mem.ReadArray<uint8_t>(ptr, entity.buffer, sizeof(entity.buffer));
+  entity.entity_index = *(uint64_t *)(entity.buffer + 0x38);
   return entity;
 }
 

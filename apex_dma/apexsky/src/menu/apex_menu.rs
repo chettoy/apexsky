@@ -990,12 +990,12 @@ fn build_aimbot_menu(
         format_item(
             &i18n_bundle,
             format!("11 - {}", i18n_msg!(i18n_bundle, MenuItemSmoothValue)),
-            if settings.aimbot_settings.smooth < 90.0 {
+            if settings.aimbot_settings.smooth < 120.0 {
                 Span::styled(
                     format!("{}", settings.aimbot_settings.smooth),
                     Style::default().fg(Color::Red),
                 )
-            } else if settings.aimbot_settings.smooth > 120.0 {
+            } else if settings.aimbot_settings.smooth >= 160.0 {
                 Span::styled(
                     format!("{}", settings.aimbot_settings.smooth),
                     Style::default().fg(Color::Green),

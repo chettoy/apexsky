@@ -428,39 +428,39 @@ impl Aimbot {
     pub fn update(&mut self) {
         if self.is_grenade() {
             // Update grenade safety state
-            if (!self.settings.auto_nade_aim && self.zoom_state == 0)
-                || (self.settings.auto_nade_aim && self.zoom_state > 0)
-            {
-                self.gun_safety = true;
-            } else {
-                self.gun_safety = false;
-            }
+            self.gun_safety = (!self.settings.auto_nade_aim && self.zoom_state == 0)
+                || (self.settings.auto_nade_aim && self.zoom_state > 0);
 
             // Update aimbot fov for grenade
             self.max_fov = 999.9;
         } else {
             // Update aimbot fov
-            if self.zoom_state > 0 {
-                self.max_fov = self.settings.ads_fov;
+            self.max_fov = if self.zoom_state > 0 {
+                self.settings.ads_fov
             } else {
-                self.max_fov = self.settings.non_ads_fov;
+                self.settings.non_ads_fov
             }
         }
 
         // Update aiming state
-        if self.aim_key_state > 0 {
-            self.aiming = true;
-        } else if self.settings.gamepad && (self.attack_state > 0 || self.zoom_state > 0) {
-            self.aiming = true;
-        } else {
-            self.aiming = false;
-        }
+        self.aiming = self.settings.aim_mode > 0
+            && if self.aim_key_state > 0 {
+                true
+            } else if self.settings.gamepad && (self.attack_state > 0 || self.zoom_state > 0) {
+                true
+            } else {
+                false
+            };
 
         // Update triggerbot state
-        if self.settings.auto_shoot && self.triggerbot_key_state > 0 {
-            self.triggerbot_ready = true;
-        } else {
-            self.triggerbot_ready = false;
+        self.triggerbot_ready = self.settings.auto_shoot && self.triggerbot_key_state > 0;
+
+        // Update target lock
+        if !self.aiming {
+            self.cancel_locking();
+        }
+        if self.aiming && !self.is_headshot() {
+            self.lock_target(self.aim_entity);
         }
     }
 
@@ -505,7 +505,7 @@ impl Aimbot {
     /// ```
     ///
     pub fn calculate_trigger_delay(&self, aim_angles: &AimAngles) -> u64 {
-        if !self.is_triggerbot_ready() {
+        if !self.is_triggerbot_ready() || !aim_angles.valid {
             return 0;
         }
         let trigger_threshold = self.triggerbot_threshold_fov();
@@ -516,8 +516,8 @@ impl Aimbot {
             } else {
                 (aim_angles.delta_pitch_min * aim_angles.delta_pitch_max < 0.0
                     && aim_angles.delta_yew.abs() < trigger_threshold)
-                    || (aim_angles.delta_pitch_max.powi(2) / 3.0
-                        + aim_angles.delta_yew_max.powi(2) / 1.5)
+                    || (aim_angles.delta_pitch_max.powi(2) / 2.5
+                        + aim_angles.delta_yew_max.powi(2) / 1.2)
                         .sqrt()
                         < trigger_threshold
             }

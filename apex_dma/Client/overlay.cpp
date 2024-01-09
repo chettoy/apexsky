@@ -187,9 +187,9 @@ void Overlay::RenderMenu() {
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Smooth Aim Value:"));
     ImGui::SameLine();
-    if (g_settings.aimbot_settings.smooth < 100.0f) {
+    if (g_settings.aimbot_settings.smooth < 120.0f) {
       ImGui::TextColored(RED, "%.f", g_settings.aimbot_settings.smooth);
-    } else if (g_settings.aimbot_settings.smooth > 120.0f) {
+    } else if (g_settings.aimbot_settings.smooth >= 160.0f) {
       ImGui::TextColored(GREEN, "%.f", g_settings.aimbot_settings.smooth);
     } else {
       ImGui::TextColored(WHITE, "%.f", g_settings.aimbot_settings.smooth);
@@ -197,14 +197,14 @@ void Overlay::RenderMenu() {
     ImGui::SliderFloat(XorStr("##smooth"), &g_settings.aimbot_settings.smooth,
                        50.0f, 500.0f, "##");
     ImGui::SameLine();
-    ImGui::Text(XorStr("100 To 500 Is Safe"));
+    ImGui::Text(XorStr("150 To 500 Is Safe"));
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Smooth Skynade Aim:"));
     ImGui::SameLine();
     ImGui::TextColored(WHITE, "%.f", g_settings.aimbot_settings.skynade_smooth);
     ImGui::SliderFloat(XorStr("##skynade_smooth"),
-                       &g_settings.aimbot_settings.skynade_smooth, 35.0f,
-                       180.0f, "##");
+                       &g_settings.aimbot_settings.skynade_smooth, 50.0f,
+                       500.0f, "##");
 
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
@@ -860,7 +860,7 @@ std::thread Overlay::Start() {
 
 void Overlay::Clear() {
   running = false;
-  printf("running=%b\n", running);
+  // printf("running=%b\n", running);
 }
 
 int Overlay::getWidth() { return width; }
