@@ -376,6 +376,7 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
   Vector LocalCamera = from.GetCamPos();
   QAngle SwayAngles = from.GetSwayAngles();
   Vector targetVel = target.getAbsVelocity();
+  float distance = LocalCamera.DistTo(target.getPosition());
 
   Vector TargetBonePositionMin;
   Vector TargetBonePositionMax;
@@ -383,8 +384,7 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
   // Calculate the time since the last frame (in seconds)
   float deltaTime = 1.0 / aimbot.game_fps;
 
-  if (aimbot.weapon_headshot && LocalCamera.DistTo(target.getPosition()) <=
-                                    aimbot.settings.headshot_dist) {
+  if (aimbot.weapon_headshot && distance <= aimbot.settings.headshot_dist) {
     TargetBonePositionMax = TargetBonePositionMin =
         target.getBonePositionByHitbox(0);
   } else if (aimbot.settings.bone_nearest) {
@@ -442,9 +442,9 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     if (DeltaMin.y * DeltaMax.y > 0)
       Delta.y = (DeltaMin.y + DeltaMax.y) * 0.5f;
 
-    return aim_angles_t{true,       ViewAngles.x, ViewAngles.y,
-                        Delta.x,    Delta.y,      DeltaMin.x,
-                        DeltaMax.x, DeltaMin.y,   DeltaMax.y};
+    return aim_angles_t{true,       ViewAngles.x, ViewAngles.y, Delta.x,
+                        Delta.y,    DeltaMin.x,   DeltaMax.x,   DeltaMin.y,
+                        DeltaMax.y, distance};
   } else {
     Vector local_origin = from.getPosition();
     Vector view_offset = from.getViewOffset();
@@ -472,7 +472,7 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
 
     QAngle Delta = TargetAngles - ViewAngles;
     return aim_angles_t{true,    ViewAngles.x, ViewAngles.y, Delta.x, Delta.y,
-                        Delta.x, Delta.x,      Delta.y,      Delta.y};
+                        Delta.x, Delta.x,      Delta.y,      Delta.y, distance};
   }
 }
 

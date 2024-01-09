@@ -1,5 +1,6 @@
-pub(crate) mod spectators;
-pub(crate) mod utils;
+pub mod aimbot_utils;
+pub mod spectators;
+pub mod utils;
 
 use anyhow::Ok;
 #[cfg(feature = "wasmedge")]

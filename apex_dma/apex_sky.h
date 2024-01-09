@@ -33,6 +33,7 @@ typedef struct {
   float delta_pitch_max;
   float delta_yew_min;
   float delta_yew_max;
+  float distance;
 } aim_angles_t;
 
 typedef struct {

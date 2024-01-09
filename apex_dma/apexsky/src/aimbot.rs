@@ -2,6 +2,8 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::{lock_mod, skyapex::aimbot_utils::AimbotUtils};
+
 #[allow(dead_code)]
 enum WeaponId {
     R301 = 0,
@@ -114,6 +116,7 @@ pub struct AimAngles {
     delta_pitch_max: f32,
     delta_yew_min: f32,
     delta_yew_max: f32,
+    distance: f32,
 }
 
 #[repr(C)]
@@ -464,17 +467,6 @@ impl Aimbot {
         }
     }
 
-    fn triggerbot_threshold_fov(&self) -> f32 {
-        let threshold_fov = 1.380649;
-        let zoom_fov = self.weapon_zoom_fov;
-        // println!("zoom_fov={}", zoom_fov);
-        if zoom_fov != 0.0 && zoom_fov != 1.0 {
-            threshold_fov * zoom_fov / 90.0
-        } else {
-            threshold_fov
-        }
-    }
-
     /// Calculates the delay in milliseconds before triggering the mechanism based on
     /// the Aimbot's current state and the provided `AimAngles`.
     ///
@@ -508,7 +500,8 @@ impl Aimbot {
         if !self.is_triggerbot_ready() || !aim_angles.valid {
             return 0;
         }
-        let trigger_threshold = self.triggerbot_threshold_fov();
+        let trigger_threshold =
+            lock_mod!().triggerbot_threshold_fov(self.weapon_zoom_fov, aim_angles.distance);
         let cross_hair_ready = {
             if aim_angles.delta_pitch_min == aim_angles.delta_pitch_max {
                 aim_angles.delta_pitch.abs() < trigger_threshold
