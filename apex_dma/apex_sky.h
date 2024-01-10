@@ -267,7 +267,9 @@ typedef struct {
 typedef struct {
   float x;
   float y;
-} vector2d_t;
+  float z;
+  float w;
+} vec4_t;
 
 extern "C" {
 void print_run_as_root();
@@ -321,7 +323,7 @@ void aimbot_lock_target(aimbot_state_t *aimbot, uint64_t target_ptr);
 void aimbot_cancel_locking(aimbot_state_t *aimbot);
 void aimbot_update(aimbot_state_t *aimbot, uintptr_t local_entity,
                    float game_fps);
-vector2d_t aimbot_smooth_aim_angles(const aimbot_state_t *aimbot,
+vec4_t aimbot_smooth_aim_angles(const aimbot_state_t *aimbot,
                                     const aim_angles_t *aim_angles,
                                     float smooth_factor);
 int aimbot_poll_trigger_action(aimbot_state_t *aimbot);
@@ -333,13 +335,13 @@ void aimbot_triggerbot_update(aimbot_state_t *aimbot,
  * https://github.com/CasualX/apexdream
  * LISENCE: GPLv3
  */
-vector2d_t skynade_angle(uint32_t weapon_id, uint32_t weapon_mod_bitfield,
+vec4_t skynade_angle(uint32_t weapon_id, uint32_t weapon_mod_bitfield,
                          float weapon_projectile_scale,
                          float weapon_projectile_speed,
                          float local_view_origin_x, float local_view_origin_y,
                          float local_view_origin_z, float target_x,
                          float target_y, float target_z);
-vector2d_t linear_predict(float weapon_projectile_grav,
+vec4_t linear_predict(float weapon_projectile_grav,
                           float weapon_projectile_speed, float local_x,
                           float local_y, float local_z, float target_x,
                           float target_y, float target_z, float vel_x,

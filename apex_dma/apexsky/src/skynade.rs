@@ -8,7 +8,7 @@ pub fn skynade_angle(
     weapon_projectile_speed: f32,
     local_view_origin: &[f32; 3],
     target: &[f32; 3],
-) -> (f32, f32) {
+) -> Option<(f32, f32)> {
     const WEAP_ID_THERMITE_GRENADE: u32 = 159;
     const WEAP_ID_FRAG_GRENADE: u32 = 160;
     const WEAP_ID_ARC_STAR: u32 = 161;
@@ -39,9 +39,9 @@ pub fn skynade_angle(
         let view_pitch = pitches::launch2view(pitches, launch_pitch);
         let view_yew = math::qangle(math::sub(*target, *local_view_origin))[1].to_radians();
         //println!("skynade({},{})", view_pitch, view_yew);
-        return (view_pitch, view_yew);
+        return Some((view_pitch, view_yew));
     } else {
-        return Default::default();
+        return None;
     }
 
     fn optimal_angle(x: f32, y: f32, v0: f32, g: f32) -> Option<f32> {

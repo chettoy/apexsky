@@ -358,12 +358,14 @@ auto fun_calc_angles = [](Vector LocalCameraPosition, Vector TargetBonePosition,
 
     aim_target = targetPosAhead;
 
-    vector2d_t result = linear_predict(
+    vec4_t result = linear_predict(
         BulletGrav, BulletSpeed, LocalCameraPosition.x, LocalCameraPosition.y,
         LocalCameraPosition.z, targetPosAhead.x, targetPosAhead.y,
         targetPosAhead.z, targetVel.x, targetVel.y, targetVel.z);
-    CalculatedAngles = QAngle{result.x, result.y, 0.f};
-    // printf("%f, %f \n", CalculatedAngles.x, CalculatedAngles.y);
+    if (result.w != 0) {
+      CalculatedAngles = QAngle{result.x, result.y, 0.f};
+      // printf("%f, %f \n", CalculatedAngles.x, CalculatedAngles.y);
+    }
   } else {
     CalculatedAngles = Math::CalcAngle(LocalCameraPosition, TargetBonePosition);
   }
@@ -453,14 +455,14 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     Vector view_origin = local_origin + view_offset;
     Vector target_origin = target.getPosition() + targetVel * deltaTime;
     aim_target = target_origin;
-    vector2d_t skynade_angles =
+    vec4_t skynade_angles =
         skynade_angle(aimbot.weapon_id, aimbot.weapon_mod_bitfield,
                       aimbot.bullet_gravity / 750.0f, aimbot.bullet_speed,
                       view_origin.x, view_origin.y, view_origin.z,
                       target_origin.x, target_origin.y, target_origin.z);
 
     // printf("(%.1f, %.1f)\n", ViewAngles.x, ViewAngles.y);
-    if (skynade_angles.x == 0 && skynade_angles.y == 0) {
+    if (skynade_angles.w == 0) {
       return aim_angles_t{false};
     }
 

@@ -992,7 +992,7 @@ static void AimbotLoop() {
         auto smoothed_angles =
             aimbot_smooth_aim_angles(&aimbot, &aim_result, smooth_factor);
         LPlayer.SetViewAngles(
-            QAngle(smoothed_angles.x, smoothed_angles.y, .0f));
+            QAngle(smoothed_angles.x, smoothed_angles.y, smoothed_angles.z));
       }
 
     } // end loop
