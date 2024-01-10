@@ -71,7 +71,13 @@ Vector Entity::getViewOffset() {
 }
 
 bool Entity::isPlayer() {
-  return *(uint64_t *)(buffer + OFFSET_NAME) == 125780153691248;
+  // char class_name[33] = {};
+  // get_class_name(ptr, class_name);
+  bool r = *(uint64_t *)(buffer + OFFSET_NAME) == 125780153691248;
+  // if (r) {
+  //   printf("isPlayer %s %d\n", class_name, r);
+  // }
+  return r;
 }
 // firing range dummys
 bool Entity::isDummy() {
@@ -161,7 +167,7 @@ bool Entity::isZooming() { return *(int *)(buffer + OFFSET_ZOOMING) == 1; }
 
 extern uint64_t g_Base;
 
-void Entity::enableGlow(int context_id, int setting_index, uint8_t inside_value,
+void Entity::enableGlow(int setting_index, uint8_t inside_value,
                         uint8_t outline_size,
                         std::array<float, 3> highlight_color) {
 
@@ -177,10 +183,8 @@ void Entity::enableGlow(int context_id, int setting_index, uint8_t inside_value,
   highlight_settings.color1[1] = highlight_color[1];
   highlight_settings.color1[2] = highlight_color[2];
 
+  int context_id = setting_index;
   apex_mem.Write<int>(ptr + OFFSET_GLOW_CONTEXT, context_id);
-  for (int context_id = 1; context_id < 5; context_id++) {
-    apex_mem.Write<int>(ptr + OFFSET_GLOW_CONTEXT, context_id);
-  }
   apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 2);
 
   long highlight_settings_ptr;
@@ -189,6 +193,13 @@ void Entity::enableGlow(int context_id, int setting_index, uint8_t inside_value,
                                      highlight_settings);
 
   apex_mem.Write(ptr + OFFSET_GLOW_FIX, 1);
+}
+
+void Entity::disableGlow() {
+  int context_id = *(int *)(this->buffer + OFFSET_GLOW_CONTEXT);
+  if (context_id >= 80 && context_id < 100) {
+    apex_mem.Write<int>(this->ptr + OFFSET_GLOW_CONTEXT, 0);
+  }
 }
 
 void Entity::SetViewAngles(SVector angles) {
@@ -228,7 +239,9 @@ void Entity::glow_weapon_model(bool enable_glow,
 
   std::array<unsigned char, 4> highlightFunctionBits = {0, 125, 64, 64};
   if (!enable_glow) {
-    highlightFunctionBits = {0, 125, 0, 64};
+    // highlightFunctionBits = {0, 125, 0, 64};
+    apex_mem.Write<int>(view_model_ptr + OFFSET_GLOW_CONTEXT, 0);
+    return;
   }
 
   HighlightSetting_t highlight_settings;
@@ -245,11 +258,10 @@ void Entity::glow_weapon_model(bool enable_glow,
   long highlight_settings_ptr;
   apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
 
-  for (int context_id = 1; context_id < 5; context_id++) {
-    apex_mem.Write<int>(ptr + OFFSET_GLOW_CONTEXT, context_id);
-    apex_mem.Write<HighlightSetting_t>(
-        highlight_settings_ptr + 0x34 * context_id, highlight_settings);
-  }
+  int context_id = 99;
+  apex_mem.Write<int>(view_model_ptr + OFFSET_GLOW_CONTEXT, context_id);
+  apex_mem.Write<HighlightSetting_t>(highlight_settings_ptr + 0x34 * context_id,
+                                     highlight_settings);
 
   // apex_mem.Write(ptr + OFFSET_GLOW_FIX, 1);
 }
@@ -271,6 +283,7 @@ bool Entity::check_love_player() {
   uint64_t eadp_lid = data_fid[1] | data_fid[2] << 32;
   char name[33] = {0};
   this->get_name(&name[0]);
+  // printf("check love: %s\n", name);
   return ::check_love_player(platform_lid, eadp_lid, name);
 }
 
@@ -300,8 +313,27 @@ bool Item::isTrap() {
 //   return *(int *)(buffer + OFFSET_ITEM_GLOW) == 1363184265;
 // }
 
-void Item::enableGlow() {
-  
+void Item::enableGlow(std::array<unsigned char, 4> highlightFunctionBits,
+                      std::array<float, 3> highlightParameter,
+                      int settingIndex) {
+  HighlightSetting_t highlight_settings;
+  highlight_settings.inner_function =
+      highlightFunctionBits[0]; // InsideFunction
+  highlight_settings.outside_function =
+      highlightFunctionBits[1]; // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
+  highlight_settings.outside_radius =
+      highlightFunctionBits[2]; // OutlineRadius: size * 255 / 8
+  highlight_settings.color1[0] = highlightParameter[0];
+  highlight_settings.color1[1] = highlightParameter[1];
+  highlight_settings.color1[2] = highlightParameter[2];
+
+  long highlight_settings_ptr;
+  apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
+
+  int context_id = settingIndex;
+  apex_mem.Write<int>(this->ptr + OFFSET_GLOW_CONTEXT, context_id);
+  apex_mem.Write<HighlightSetting_t>(highlight_settings_ptr + 0x34 * context_id,
+                                     highlight_settings);
 }
 
 // void Item::disableGlow() {

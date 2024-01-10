@@ -53,8 +53,9 @@ public:
   QAngle GetRecoil();
   Vector GetViewAnglesV();
   float GetYaw();
-  void enableGlow(int context_id, int setting_index, uint8_t inside_value,
-                  uint8_t outline_size, std::array<float, 3> highlight_color);
+  void enableGlow(int setting_index, uint8_t inside_value, uint8_t outline_size,
+                  std::array<float, 3> highlight_color);
+  void disableGlow();
   float lastCrossHairTime();
   void SetViewAngles(SVector angles);
   void SetViewAngles(QAngle &angles);
@@ -76,7 +77,8 @@ public:
   bool isBox();
   bool isTrap();
   // bool isGlowing();
-  void enableGlow();
+  void enableGlow(std::array<unsigned char, 4> highlightFunctionBits,
+                  std::array<float, 3> highlightParameter, int settingIndex);
   // void disableGlow();
   void BlueGlow();
 };
