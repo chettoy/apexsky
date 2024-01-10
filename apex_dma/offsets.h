@@ -81,7 +81,7 @@
 // Color: HighlightSettings + 0x34 * Context + 0x4
 
 // #define GLOW_LIFE_TIME 0x3A4+ 0x30 // Script_Highlight_SetLifeTime + 4
-// #define GLOW_DISTANCE 0x26c // Script_Highlight_SetFarFadeDist
+#define GLOW_DISTANCE 0x26c // Script_Highlight_SetFarFadeDist
 // #define GLOW_TYPE 0x29c // Script_Highlight_GetState + 4
 // #define GLOW_COLOR 0x1D0+ 0x30 // Script_CopyHighlightState 15th mov
 // #define GLOW_FADE 0x388+ 0x30 // Script_Highlight_GetCurrentInsideOpacity 3rd result of 3 offsets consecutive or first + 8
