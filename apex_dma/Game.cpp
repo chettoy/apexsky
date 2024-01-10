@@ -161,7 +161,9 @@ float Entity::GetYaw() {
   return yaw;
 }
 
-bool Entity::isGlowing() { return *(uint8_t *)(buffer + OFFSET_GLOW_CONTEXT) == 7; }
+bool Entity::isGlowing() {
+  return *(uint8_t *)(buffer + OFFSET_GLOW_CONTEXT) == 7;
+}
 
 bool Entity::isZooming() { return *(int *)(buffer + OFFSET_ZOOMING) == 1; }
 
@@ -474,6 +476,9 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
                       target_origin.x, target_origin.y, target_origin.z);
 
     // printf("(%.1f, %.1f)\n", ViewAngles.x, ViewAngles.y);
+
+    // printf("skynade: (%f,%f,%f,%f)\n", skynade_angles.x, skynade_angles.y,
+    //        skynade_angles.z, skynade_angles.w);
     if (skynade_angles.w == 0) {
       return aim_angles_t{false};
     }
