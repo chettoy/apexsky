@@ -53,9 +53,9 @@ public:
   QAngle GetRecoil();
   Vector GetViewAnglesV();
   float GetYaw();
-  void enableGlow(int context_id, int setting_index, uint8_t inside_value,
-                  uint8_t outline_size,
-                  std::array<float, 3> highlight_parameter);
+  void enableGlow(int setting_index, uint8_t inside_value, uint8_t outline_size,
+                  std::array<float, 3> highlight_color);
+  void disableGlow();
   float lastCrossHairTime();
   void SetViewAngles(SVector angles);
   void SetViewAngles(QAngle &angles);
@@ -64,7 +64,7 @@ public:
   bool Observing(uint64_t entitylist);
   void get_name(char *name);
   void glow_weapon_model(bool enable_glow,
-                         std::array<float, 3> highlight_colors);
+                         std::array<float, 3> highlight_color);
   bool check_love_player();
 };
 
@@ -76,9 +76,10 @@ public:
   bool isItem();
   bool isBox();
   bool isTrap();
-  bool isGlowing();
-  void enableGlow();
-  void disableGlow();
+  // bool isGlowing();
+  void enableGlow(std::array<unsigned char, 4> highlightFunctionBits,
+                  std::array<float, 3> highlightParameter, int settingIndex);
+  // void disableGlow();
   void BlueGlow();
 };
 
@@ -161,3 +162,20 @@ typedef struct {
   Vector position;
   float distance;
 } TreasureClue;
+
+#pragma pack(push, 1)
+struct HighlightSetting_t {
+  unsigned char inner_function;   // 0x0
+  unsigned char outside_function; // 0x1
+  unsigned char outside_radius;   // 0x2
+  unsigned char state : 6;        // 0x3
+  unsigned char shouldDraw : 1;   // 0x3
+  unsigned char postProcess : 1;  // 0x3
+  float color1[3];                // 0x4
+  float color2[3];                // 0x10
+private:
+  char pad_1c[0x18];
+
+public:
+}; // Size: 0x34
+#pragma pack(pop)

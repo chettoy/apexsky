@@ -71,7 +71,13 @@ Vector Entity::getViewOffset() {
 }
 
 bool Entity::isPlayer() {
-  return *(uint64_t *)(buffer + OFFSET_NAME) == 125780153691248;
+  // char class_name[33] = {};
+  // get_class_name(ptr, class_name);
+  bool r = *(uint64_t *)(buffer + OFFSET_NAME) == 125780153691248;
+  // if (r) {
+  //   printf("isPlayer %s %d\n", class_name, r);
+  // }
+  return r;
 }
 // firing range dummys
 bool Entity::isDummy() {
@@ -155,45 +161,48 @@ float Entity::GetYaw() {
   return yaw;
 }
 
-bool Entity::isGlowing() { return *(int *)(buffer + OFFSET_GLOW_ENABLE) == 7; }
+bool Entity::isGlowing() {
+  return *(uint8_t *)(buffer + OFFSET_GLOW_CONTEXT) == 7;
+}
 
 bool Entity::isZooming() { return *(int *)(buffer + OFFSET_ZOOMING) == 1; }
 
 extern uint64_t g_Base;
 
-void Entity::enableGlow(int context_id, int setting_index, uint8_t inside_value,
+void Entity::enableGlow(int setting_index, uint8_t inside_value,
                         uint8_t outline_size,
-                        std::array<float, 3> highlight_parameter) {
-  // static const int contextId = 5;
-  // int settingIndex = 44;
+                        std::array<float, 3> highlight_color) {
+
   const unsigned char outsidevalue = 125;
-  std::array<unsigned char, 4> highlightFunctionBits = {
-      inside_value, // InsideFunction
-      outsidevalue, // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
-      outline_size, // OutlineRadius: size * 255 / 8
-      64 // (EntityVisible << 6) | State & 0x3F | (AfterPostProcess << 7)
-  };
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, context_id);
-  apex_mem.Write<unsigned char>(
-      ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + context_id, setting_index);
-  for (int context_id = 1; context_id < 5; context_id++) {
-    apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, context_id);
-    apex_mem.Write<unsigned char>(
-        ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + context_id, setting_index);
-  }
+
+  HighlightSetting_t highlight_settings;
+  highlight_settings.inner_function = inside_value; // InsideFunction
+  highlight_settings.outside_function =
+      outsidevalue; // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
+  highlight_settings.outside_radius =
+      outline_size; // OutlineRadius: size * 255 / 8
+  highlight_settings.color1[0] = highlight_color[0];
+  highlight_settings.color1[1] = highlight_color[1];
+  highlight_settings.color1[2] = highlight_color[2];
+
+  uint8_t context_id = setting_index;
+  apex_mem.Write<uint8_t>(ptr + OFFSET_GLOW_CONTEXT, context_id);
   apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 2);
 
   long highlight_settings_ptr;
   apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
-  apex_mem.Write<typeof(highlightFunctionBits)>(
-      highlight_settings_ptr + HIGHLIGHT_TYPE_SIZE * setting_index + 4,
-      highlightFunctionBits);
-  apex_mem.Write<typeof(highlight_parameter)>(
-      highlight_settings_ptr + HIGHLIGHT_TYPE_SIZE * setting_index + 8,
-      highlight_parameter);
-  // Fix highlight Wraith and Ashe's disappear (Not work anymore)
-  // apex_mem.Write(g_Base + 0x270, 1);
-  // apex_mem.Write(ptr + 0x270, 1);
+  apex_mem.Write<HighlightSetting_t>(highlight_settings_ptr + 0x34 * context_id,
+                                     highlight_settings);
+
+  apex_mem.Write(g_Base + OFFSET_GLOW_FIX, 1);
+  // apex_mem.Write<float>(ptr + GLOW_DISTANCE, 1.0E+10);
+}
+
+void Entity::disableGlow() {
+  uint8_t context_id = *(uint8_t *)(this->buffer + OFFSET_GLOW_CONTEXT);
+  if (context_id >= 80 && context_id < 100) {
+    apex_mem.Write<uint8_t>(this->ptr + OFFSET_GLOW_CONTEXT, 0);
+  }
 }
 
 void Entity::SetViewAngles(SVector angles) {
@@ -214,7 +223,7 @@ void Entity::get_name(char *name) {
 }
 
 void Entity::glow_weapon_model(bool enable_glow,
-                               std::array<float, 3> highlight_colors) {
+                               std::array<float, 3> highlight_color) {
   uint64_t view_model_handle;
   apex_mem.Read<uint64_t>(ptr + OFFSET_VIEW_MODELS, view_model_handle);
   view_model_handle &= 0xFFFF;
@@ -232,31 +241,29 @@ void Entity::glow_weapon_model(bool enable_glow,
   // printf("name=%s\n", name_str);
 
   std::array<unsigned char, 4> highlightFunctionBits = {0, 125, 64, 64};
-  int setting_index = 99;
   if (!enable_glow) {
-    highlightFunctionBits = {0, 125, 0, 64};
-    setting_index = 0;
+    apex_mem.Write<uint8_t>(view_model_ptr + OFFSET_GLOW_CONTEXT, 0);
+    return;
   }
 
-  for (int context_id = 1; context_id < 5; context_id++) {
-    apex_mem.Write<int>(view_model_ptr + OFFSET_GLOW_ENABLE, context_id);
-    apex_mem.Write<unsigned char>(
-        view_model_ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + context_id,
-        setting_index);
-  }
+  HighlightSetting_t highlight_settings;
+  highlight_settings.inner_function =
+      highlightFunctionBits[0]; // InsideFunction
+  highlight_settings.outside_function =
+      highlightFunctionBits[1]; // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
+  highlight_settings.outside_radius =
+      highlightFunctionBits[2]; // OutlineRadius: size * 255 / 8
+  highlight_settings.color1[0] = highlight_color[0];
+  highlight_settings.color1[1] = highlight_color[1];
+  highlight_settings.color1[2] = highlight_color[2];
 
-  long highlightSettingsPtr;
-  apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlightSettingsPtr);
-  apex_mem.Write<typeof(highlightFunctionBits)>(
-      highlightSettingsPtr + 40 * setting_index + 4, highlightFunctionBits);
-  apex_mem.Write<typeof(highlight_colors)>(
-      highlightSettingsPtr + 40 * setting_index + 8, highlight_colors);
+  long highlight_settings_ptr;
+  apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
 
-  // Fix highlight Wraith and Ashe's disappear
-  // apex_mem.Write(ptr + 0x270, 1);
-  // int val1;
-  // apex_mem.Read(ptr + 0x270, val1);
-  // printf("0x270=%d\n", val1);
+  uint8_t context_id = 99;
+  apex_mem.Write<uint8_t>(view_model_ptr + OFFSET_GLOW_CONTEXT, context_id);
+  apex_mem.Write<HighlightSetting_t>(highlight_settings_ptr + 0x34 * context_id,
+                                     highlight_settings);
 }
 
 bool Entity::check_love_player() {
@@ -276,6 +283,7 @@ bool Entity::check_love_player() {
   uint64_t eadp_lid = data_fid[1] | data_fid[2] << 32;
   char name[33] = {0};
   this->get_name(&name[0]);
+  // printf("check love: %s\n", name);
   return ::check_love_player(platform_lid, eadp_lid, name);
 }
 
@@ -301,35 +309,41 @@ bool Item::isTrap() {
   return strncmp(class_name, "caustic_trap", 13) == 0;
 }
 
-bool Item::isGlowing() {
-  return *(int *)(buffer + OFFSET_ITEM_GLOW) == 1363184265;
+// bool Item::isGlowing() {
+//   return *(int *)(buffer + OFFSET_ITEM_GLOW) == 1363184265;
+// }
+
+void Item::enableGlow(std::array<unsigned char, 4> highlightFunctionBits,
+                      std::array<float, 3> highlightParameter,
+                      int settingIndex) {
+  HighlightSetting_t highlight_settings;
+  highlight_settings.inner_function =
+      highlightFunctionBits[0]; // InsideFunction
+  highlight_settings.outside_function =
+      highlightFunctionBits[1]; // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
+  highlight_settings.outside_radius =
+      highlightFunctionBits[2]; // OutlineRadius: size * 255 / 8
+  highlight_settings.color1[0] = highlightParameter[0];
+  highlight_settings.color1[1] = highlightParameter[1];
+  highlight_settings.color1[2] = highlightParameter[2];
+  highlight_settings.color2[0] = highlightParameter[0];
+  highlight_settings.color2[1] = highlightParameter[1];
+  highlight_settings.color2[2] = highlightParameter[2];
+
+  long highlight_settings_ptr;
+  apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
+
+  uint8_t context_id = settingIndex;
+  apex_mem.Write<uint8_t>(this->ptr + OFFSET_GLOW_CONTEXT, context_id);
+  apex_mem.Write<HighlightSetting_t>(highlight_settings_ptr + 0x34 * context_id,
+                                     highlight_settings);
 }
 
-void Item::enableGlow() {
-  /* for (int i = 1; i <= 70; i++) {
-  // Write the current value to the memory locations
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 6);
-  apex_mem.Write<int>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 2, 6);
-
-  // Print the current value
-  std::cout << "Value: " << i << std::endl;
-
-  // Sleep for 2 seconds
-  std::this_thread::sleep_for(std::chrono::seconds(5));
-} */
-  /* //apex_mem.Write<GlowMode>(ptr + GLOW_TYPE, { 101,102,96,90 });
-      apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 6);
-      apex_mem.Write<int>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 6, 6);
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE , 2); */
-
-  // apex_memRead<uint32_t>(entity + OFFSET_HIGHLIGHTCURRENTCONTEXTID);
-}
-
-void Item::disableGlow() {
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 0);
-  apex_mem.Write<int>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 0, 0);
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE, 5);
-}
+// void Item::disableGlow() {
+//   apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 0);
+//   apex_mem.Write<int>(ptr + OFFSET_HIGHLIGHTSERVERACTIVESTATES + 0, 0);
+//   apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE, 5);
+// }
 
 Vector Item::getPosition() { return *(Vector *)(buffer + OFFSET_ORIGIN); }
 
@@ -358,12 +372,14 @@ auto fun_calc_angles = [](Vector LocalCameraPosition, Vector TargetBonePosition,
 
     aim_target = targetPosAhead;
 
-    vector2d_t result = linear_predict(
+    vec4_t result = linear_predict(
         BulletGrav, BulletSpeed, LocalCameraPosition.x, LocalCameraPosition.y,
         LocalCameraPosition.z, targetPosAhead.x, targetPosAhead.y,
         targetPosAhead.z, targetVel.x, targetVel.y, targetVel.z);
-    CalculatedAngles = QAngle{result.x, result.y, 0.f};
-    // printf("%f, %f \n", CalculatedAngles.x, CalculatedAngles.y);
+    if (result.w != 0) {
+      CalculatedAngles = QAngle{result.x, result.y, 0.f};
+      // printf("%f, %f \n", CalculatedAngles.x, CalculatedAngles.y);
+    }
   } else {
     CalculatedAngles = Math::CalcAngle(LocalCameraPosition, TargetBonePosition);
   }
@@ -376,6 +392,7 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
   Vector LocalCamera = from.GetCamPos();
   QAngle SwayAngles = from.GetSwayAngles();
   Vector targetVel = target.getAbsVelocity();
+  float distance = LocalCamera.DistTo(target.getPosition());
 
   Vector TargetBonePositionMin;
   Vector TargetBonePositionMax;
@@ -383,8 +400,7 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
   // Calculate the time since the last frame (in seconds)
   float deltaTime = 1.0 / aimbot.game_fps;
 
-  if (aimbot.weapon_headshot && LocalCamera.DistTo(target.getPosition()) <=
-                                    aimbot.settings.headshot_dist) {
+  if (aimbot.weapon_headshot && distance <= aimbot.settings.headshot_dist) {
     TargetBonePositionMax = TargetBonePositionMin =
         target.getBonePositionByHitbox(0);
   } else if (aimbot.settings.bone_nearest) {
@@ -442,9 +458,9 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     if (DeltaMin.y * DeltaMax.y > 0)
       Delta.y = (DeltaMin.y + DeltaMax.y) * 0.5f;
 
-    return aim_angles_t{true,       ViewAngles.x, ViewAngles.y,
-                        Delta.x,    Delta.y,      DeltaMin.x,
-                        DeltaMax.x, DeltaMin.y,   DeltaMax.y};
+    return aim_angles_t{true,       ViewAngles.x, ViewAngles.y, Delta.x,
+                        Delta.y,    DeltaMin.x,   DeltaMax.x,   DeltaMin.y,
+                        DeltaMax.y, distance};
   } else {
     Vector local_origin = from.getPosition();
     Vector view_offset = from.getViewOffset();
@@ -453,14 +469,17 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     Vector view_origin = local_origin + view_offset;
     Vector target_origin = target.getPosition() + targetVel * deltaTime;
     aim_target = target_origin;
-    vector2d_t skynade_angles =
+    vec4_t skynade_angles =
         skynade_angle(aimbot.weapon_id, aimbot.weapon_mod_bitfield,
                       aimbot.bullet_gravity / 750.0f, aimbot.bullet_speed,
                       view_origin.x, view_origin.y, view_origin.z,
                       target_origin.x, target_origin.y, target_origin.z);
 
     // printf("(%.1f, %.1f)\n", ViewAngles.x, ViewAngles.y);
-    if (skynade_angles.x == 0 && skynade_angles.y == 0) {
+
+    // printf("skynade: (%f,%f,%f,%f)\n", skynade_angles.x, skynade_angles.y,
+    //        skynade_angles.z, skynade_angles.w);
+    if (skynade_angles.w == 0) {
       return aim_angles_t{false};
     }
 
@@ -472,7 +491,7 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
 
     QAngle Delta = TargetAngles - ViewAngles;
     return aim_angles_t{true,    ViewAngles.x, ViewAngles.y, Delta.x, Delta.y,
-                        Delta.x, Delta.x,      Delta.y,      Delta.y};
+                        Delta.x, Delta.x,      Delta.y,      Delta.y, distance};
   }
 }
 

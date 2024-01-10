@@ -1,42 +1,48 @@
+pub mod ffi;
+
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::{lock_mod, skyapex::aimbot_utils::AimbotUtils};
 
 #[allow(dead_code)]
 enum WeaponId {
     R301 = 0,
     Sentinel = 1,
     Bow = 2,
+    R2R5 = 3,
     SheilaStationary = 10,
+    Rampage = 21,
     Sheila = 56,
-    Rampage = 20,
-    Melee = 113,
+    Melee,
     SnipersMark = 76,
-    Alternator = 79,
-    Re45,
-    ChargeRifle = 82,
-    Devotion,
-    Longbow = 84,
-    Havoc,
-    Eva8,
-    Flatline,
-    G7Scout = 88,
-    Hemlock,
+    Alternator = 80,
+    Re45 = 81,
+    ChargeRifle = 83,
+    Devotion = 84,
+    Longbow = 85,
+    Havoc = 86,
+    Eva8 = 87,
+    Flatline = 88,
+    G7Scout = 89,
+    Hemlock = 90,
     Kraber = 91,
-    Lstar,
-    Mastiff = 94,
-    Mozambique,
+    Lstar = 93,
+    Mastiff = 95,
+    Mozambique = 96,
     Prowler = 101,
-    Peacekeeper,
-    R99 = 103,
-    P2020,
-    Spitfire = 105,
-    TripleTake = 106,
+    Peacekeeper = 103,
+    R99 = 104,
+    P2020 = 105,
+    Spitfire = 106,
+    TripleTake = 107,
     Wingman = 108,
-    Volt,
-    _3030Repeater = 110,
-    CarSmg = 111,
-    Nemesis,
+    Volt = 110,
+    _3030Repeater = 111,
+    CarSmg = 112,
+    Nemesis = 113,
+    Hands = 114,
     ThrowingKnife = 158,
     GrenadeThermite = 159,
     GrenadeFrag = 160,
@@ -50,6 +56,7 @@ const IDWEAPON_CHARGE_RIFLE: i32 = WeaponId::ChargeRifle as i32;
 const IDWEAPON_LONGBOW: i32 = WeaponId::Longbow as i32;
 const IDWEAPON_G7_SCOUT: i32 = WeaponId::G7Scout as i32;
 const IDWEAPON_KRABER: i32 = WeaponId::Kraber as i32;
+const IDWEAPON_P2020: i32 = WeaponId::P2020 as i32;
 const IDWEAPON_TRIPLE_TAKE: i32 = WeaponId::TripleTake as i32;
 const IDWEAPON_WINGMAN: i32 = WeaponId::Wingman as i32;
 const IDWEAPON_3030_REPEATER: i32 = WeaponId::_3030Repeater as i32;
@@ -114,6 +121,7 @@ pub struct AimAngles {
     delta_pitch_max: f32,
     delta_yew_min: f32,
     delta_yew_max: f32,
+    distance: f32,
 }
 
 #[repr(C)]
@@ -278,6 +286,7 @@ impl Aimbot {
                     IDWEAPON_KRABER => true,
                     IDWEAPON_LONGBOW => true,
                     IDWEAPON_SENTINEL => true,
+                    IDWEAPON_P2020 => false,
                     IDWEAPON_TRIPLE_TAKE => true,
                     IDWEAPON_WINGMAN => true,
                     _ => false,
@@ -292,6 +301,7 @@ impl Aimbot {
                     IDWEAPON_KRABER => false,
                     IDWEAPON_LONGBOW => true,
                     IDWEAPON_SENTINEL => false,
+                    IDWEAPON_P2020 => true,
                     IDWEAPON_TRIPLE_TAKE => true,
                     IDWEAPON_WINGMAN => true,
                     _ => false,
@@ -464,17 +474,6 @@ impl Aimbot {
         }
     }
 
-    fn triggerbot_threshold_fov(&self) -> f32 {
-        let threshold_fov = 1.380649;
-        let zoom_fov = self.weapon_zoom_fov;
-        // println!("zoom_fov={}", zoom_fov);
-        if zoom_fov != 0.0 && zoom_fov != 1.0 {
-            threshold_fov * zoom_fov / 90.0
-        } else {
-            threshold_fov
-        }
-    }
-
     /// Calculates the delay in milliseconds before triggering the mechanism based on
     /// the Aimbot's current state and the provided `AimAngles`.
     ///
@@ -508,7 +507,8 @@ impl Aimbot {
         if !self.is_triggerbot_ready() || !aim_angles.valid {
             return 0;
         }
-        let trigger_threshold = self.triggerbot_threshold_fov();
+        let trigger_threshold =
+            lock_mod!().triggerbot_threshold_fov(self.weapon_zoom_fov, aim_angles.distance);
         let cross_hair_ready = {
             if aim_angles.delta_pitch_min == aim_angles.delta_pitch_max {
                 aim_angles.delta_pitch.abs() < trigger_threshold
@@ -646,197 +646,4 @@ fn get_unix_timestamp_in_millis() -> u64 {
             0 // or return a default value, depending on your needs
         }
     }
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_new() -> Aimbot {
-    Aimbot::new()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_get_settings(aimbot: &Aimbot) -> AimbotSettings {
-    aimbot.get_settings()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_settings(aimbot: &mut Aimbot, settings: &AimbotSettings) {
-    aimbot.settings(settings.clone())
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_is_aiming(aimbot: &Aimbot) -> bool {
-    aimbot.is_aiming()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_is_grenade(aimbot: &Aimbot) -> bool {
-    aimbot.is_grenade()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_is_headshot(aimbot: &Aimbot) -> bool {
-    aimbot.is_headshot()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_is_semi_auto(aimbot: &Aimbot) -> bool {
-    aimbot.is_semi_auto()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_is_locked(aimbot: &Aimbot) -> bool {
-    aimbot.is_locked()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_is_triggerbot_ready(aimbot: &Aimbot) -> bool {
-    aimbot.is_triggerbot_ready()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_get_max_fov(aimbot: &Aimbot) -> f32 {
-    aimbot.get_max_fov()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_get_held_id(aimbot: &Aimbot) -> i32 {
-    aimbot.get_held_id()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_update_held_id(aimbot: &mut Aimbot, held_id: i32) {
-    aimbot.update_held_id(held_id)
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_get_weapon_id(aimbot: &Aimbot) -> i32 {
-    aimbot.get_weapon_id()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_update_weapon_info(
-    aimbot: &mut Aimbot,
-    weapon_id: i32,
-    bullet_speed: f32,
-    bullet_gravity: f32,
-    weapon_zoom_fov: f32,
-    weapon_mod_bitfield: i32,
-) {
-    aimbot.update_weapon_info(
-        weapon_id,
-        bullet_speed,
-        bullet_gravity,
-        weapon_zoom_fov,
-        weapon_mod_bitfield,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_get_gun_safety(aimbot: &Aimbot) -> bool {
-    aimbot.get_gun_safety()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_set_gun_safety(aimbot: &mut Aimbot, gun_safety: bool) {
-    aimbot.set_gun_safety(gun_safety)
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_get_aim_key_state(aimbot: &Aimbot) -> i32 {
-    aimbot.get_aim_key_state()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_update_aim_key_state(aimbot: &mut Aimbot, aim_key_state: i32) {
-    aimbot.update_aim_key_state(aim_key_state)
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_update_triggerbot_key_state(
-    aimbot: &mut Aimbot,
-    triggerbot_key_state: i32,
-) {
-    aimbot.update_triggerbot_key_state(triggerbot_key_state)
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_update_attack_state(aimbot: &mut Aimbot, attack_state: i32) {
-    aimbot.update_attack_state(attack_state)
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_update_zoom_state(aimbot: &mut Aimbot, zoom_state: i32) {
-    aimbot.update_zoom_state(zoom_state)
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_get_aim_entity(aimbot: &Aimbot) -> u64 {
-    aimbot.get_aim_entity()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_target_distance_check(aimbot: &Aimbot, distance: f32) -> bool {
-    aimbot.target_distance_check(distance)
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_start_select_target(aimbot: &mut Aimbot) {
-    aimbot.start_select_target()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_add_select_target(
-    aimbot: &mut Aimbot,
-    fov: f32,
-    distance: f32,
-    visible: bool,
-    love: bool,
-    target_ptr: u64,
-) {
-    aimbot.add_select_target(fov, distance, visible, love, target_ptr)
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_finish_select_target(aimbot: &mut Aimbot) {
-    aimbot.finish_select_target()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_lock_target(aimbot: &mut Aimbot, target_ptr: u64) {
-    aimbot.lock_target(target_ptr)
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_cancel_locking(aimbot: &mut Aimbot) {
-    aimbot.cancel_locking()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_update(aimbot: &mut Aimbot, local_entity: u64, game_fps: f32) {
-    aimbot.local_entity = local_entity;
-    aimbot.game_fps = game_fps;
-    aimbot.update();
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_smooth_aim_angles(
-    aimbot: &Aimbot,
-    aim_angles: &AimAngles,
-    smooth_factor: f32,
-) -> crate::Vector2D {
-    aimbot.smooth_aim_angles(aim_angles, smooth_factor).into()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_poll_trigger_action(aimbot: &mut Aimbot) -> i32 {
-    aimbot.poll_trigger_action()
-}
-
-#[no_mangle]
-pub extern "C" fn aimbot_triggerbot_update(
-    aimbot: &mut Aimbot,
-    aim_angles: &AimAngles,
-    force_attack_state: i32,
-) {
-    aimbot.triggerbot_update(aim_angles, force_attack_state)
 }

@@ -1,6 +1,7 @@
 use std::ffi::CStr;
 
 use global_state::CGlobalState;
+use serde::{Deserialize, Serialize};
 
 mod aimbot;
 mod config;
@@ -122,132 +123,29 @@ pub extern "C" fn kbd_backlight_blink(count: i32) -> bool {
     .is_ok()
 }
 
-// skynade
-
 #[repr(C)]
-pub struct Vector2D {
+#[derive(Clone, Deserialize, Serialize, Debug, Default)]
+pub struct Vec4 {
     x: f32,
     y: f32,
+    z: f32,
+    w: f32,
 }
 
 // Conversion functions
-impl From<(f32, f32)> for Vector2D {
-    fn from(tup: (f32, f32)) -> Vector2D {
-        Vector2D { x: tup.0, y: tup.1 }
-    }
-}
-
-impl From<Vector2D> for (f32, f32) {
-    fn from(tup: Vector2D) -> (f32, f32) {
-        (tup.x, tup.y)
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn skynade_angle(
-    weapon_id: u32,
-    weapon_mod_bitfield: u32,
-    weapon_projectile_scale: f32,
-    weapon_projectile_speed: f32,
-    local_view_origin_x: f32,
-    local_view_origin_y: f32,
-    local_view_origin_z: f32,
-    target_x: f32,
-    target_y: f32,
-    target_z: f32,
-) -> Vector2D {
-    skynade::skynade_angle(
-        weapon_id,
-        weapon_mod_bitfield,
-        weapon_projectile_scale,
-        weapon_projectile_speed,
-        &[
-            local_view_origin_x,
-            local_view_origin_y,
-            local_view_origin_z,
-        ],
-        &[target_x, target_y, target_z],
-    )
-    .into()
-}
-
-#[no_mangle]
-pub extern "C" fn linear_predict(
-    weapon_projectile_grav: f32,
-    weapon_projectile_speed: f32,
-    local_x: f32,
-    local_y: f32,
-    local_z: f32,
-    target_x: f32,
-    target_y: f32,
-    target_z: f32,
-    vel_x: f32,
-    vel_y: f32,
-    vel_z: f32,
-) -> Vector2D {
-    use solver::{solve, LinearPredictor};
-    struct Weapon(f32, f32);
-    impl solver::ProjectileWeapon for Weapon {
-        fn projectile_speed(&self) -> f32 {
-            self.0
+impl From<(f32, f32)> for Vec4 {
+    fn from(tup: (f32, f32)) -> Vec4 {
+        Vec4 {
+            x: tup.0,
+            y: tup.1,
+            z: 0.0,
+            w: 1.0,
         }
-        fn projectile_gravity(&self) -> f32 {
-            self.1
-        }
-    }
-
-    let pos_origin = [local_x, local_y, local_z];
-    let pos_target = [target_x, target_y, target_z];
-    let vel = [vel_x, vel_y, vel_z];
-    let weapon = Weapon(weapon_projectile_speed, weapon_projectile_grav);
-
-    let predictor = LinearPredictor {
-        origin: pos_target,
-        velocity: vel,
-    };
-
-    if let Some(sol) = solve(&pos_origin, &weapon, &predictor) {
-        // let hit = predictor.predict_position(sol.time);
-        let pitch = -sol.pitch.to_degrees();
-        let yaw = sol.yaw.to_degrees();
-        Vector2D { x: pitch, y: yaw }
-    } else {
-        Vector2D { x: 0.0, y: 0.0 }
     }
 }
 
 // Aimbot
-pub use aimbot::aimbot_add_select_target;
-pub use aimbot::aimbot_cancel_locking;
-pub use aimbot::aimbot_finish_select_target;
-pub use aimbot::aimbot_get_aim_entity;
-pub use aimbot::aimbot_get_aim_key_state;
-pub use aimbot::aimbot_get_gun_safety;
-pub use aimbot::aimbot_get_held_id;
-pub use aimbot::aimbot_get_max_fov;
-pub use aimbot::aimbot_get_settings;
-pub use aimbot::aimbot_get_weapon_id;
-pub use aimbot::aimbot_is_aiming;
-pub use aimbot::aimbot_is_grenade;
-pub use aimbot::aimbot_is_headshot;
-pub use aimbot::aimbot_is_locked;
-pub use aimbot::aimbot_is_semi_auto;
-pub use aimbot::aimbot_lock_target;
-pub use aimbot::aimbot_new;
-pub use aimbot::aimbot_poll_trigger_action;
-pub use aimbot::aimbot_set_gun_safety;
-pub use aimbot::aimbot_settings;
-pub use aimbot::aimbot_smooth_aim_angles;
-pub use aimbot::aimbot_start_select_target;
-pub use aimbot::aimbot_target_distance_check;
-pub use aimbot::aimbot_triggerbot_update;
-pub use aimbot::aimbot_update;
-pub use aimbot::aimbot_update_aim_key_state;
-pub use aimbot::aimbot_update_attack_state;
-pub use aimbot::aimbot_update_held_id;
-pub use aimbot::aimbot_update_triggerbot_key_state;
-pub use aimbot::aimbot_update_weapon_info;
-pub use aimbot::aimbot_update_zoom_state;
+pub use aimbot::ffi::*;
 
 #[cfg(test)]
 mod tests {

@@ -8,10 +8,10 @@ pub fn skynade_angle(
     weapon_projectile_speed: f32,
     local_view_origin: &[f32; 3],
     target: &[f32; 3],
-) -> (f32, f32) {
-    const WEAP_ID_THERMITE_GRENADE: u32 = 159;
-    const WEAP_ID_FRAG_GRENADE: u32 = 160;
-    const WEAP_ID_ARC_STAR: u32 = 161;
+) -> Option<(f32, f32)> {
+    const WEAP_ID_THERMITE_GRENADE: u32 = 164;
+    const WEAP_ID_FRAG_GRENADE: u32 = 165;
+    const WEAP_ID_ARC_STAR: u32 = 166;
 
     let (lob, pitches, z_offset): (bool, &[pitches::Pitch], f32) =
         match (weapon_mod_bitfield & 0x4 != 0, weapon_id) {
@@ -23,7 +23,7 @@ pub fn skynade_angle(
             (true, WEAP_ID_ARC_STAR) => (false, &pitches::GRENADIER_ARC_PITCHES, 25.0),
             _ => return Default::default(),
         };
-    //println!("weap={},z={}", weapon_id, z_offset);
+    // println!("weap={},z={}", weapon_id, z_offset);
 
     let g = 750.0 * weapon_projectile_scale;
     let v0 = weapon_projectile_speed;
@@ -34,14 +34,14 @@ pub fn skynade_angle(
     let dy = delta[2] + z_offset;
 
     let calc_angle = if lob { lob_angle } else { optimal_angle };
-    //println!("dx={},dy={},v0={},g={}", dx, dy, v0, g);
+    // println!("dx={},dy={},v0={},g={}", dx, dy, v0, g);
     if let Some(launch_pitch) = calc_angle(dx, dy, v0, g) {
         let view_pitch = pitches::launch2view(pitches, launch_pitch);
         let view_yew = math::qangle(math::sub(*target, *local_view_origin))[1].to_radians();
-        //println!("skynade({},{})", view_pitch, view_yew);
-        return (view_pitch, view_yew);
+        // println!("skynade({},{})", view_pitch, view_yew);
+        return Some((view_pitch, view_yew));
     } else {
-        return Default::default();
+        return None;
     }
 
     fn optimal_angle(x: f32, y: f32, v0: f32, g: f32) -> Option<f32> {
