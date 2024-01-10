@@ -193,7 +193,7 @@ void Entity::enableGlow(int setting_index, uint8_t inside_value,
                                      highlight_settings);
 
   apex_mem.Write(g_Base + OFFSET_GLOW_FIX, 1);
-  apex_mem.Write<float>(ptr + GLOW_DISTANCE, 1.0E+10);
+  // apex_mem.Write<float>(ptr + GLOW_DISTANCE, 1.0E+10);
 }
 
 void Entity::disableGlow() {
