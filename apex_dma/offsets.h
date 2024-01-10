@@ -88,7 +88,7 @@
 
 // #define HIGHLIGHT_TYPE_SIZE 0x28 //?
 // #define OFFSET_ITEM_GLOW 0x02f0 //m_highlightFunctionBits
-#define OFFSET_ITEM_ID 0x1588 // item id?      //updated 11/1/2023
+#define OFFSET_ITEM_ID 0x1518 // item id?      //updated 11/1/2023
 // #define GLOW_START_TIME 0x02c8 + 0x30 //m_playerFloatLookStartTime=0x02c8 //updated 1/10/2024 + 0x30
 // #define OFFSET_HIGHLIGHTSERVERACTIVESTATES 0x0298 //m_highlightServerActiveStates //updated 11/20/2023
 // #define OFFSET_GLOW_ENABLE_GLOW_CONTEXT OFFSET_GLOW_ENABLE // Script_Highlight_SetCurrentContext
