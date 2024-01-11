@@ -245,3 +245,6 @@ menu-item-headshot-dist = 爆頭最大距離
 input-prompt-headshot-dist = '爆頭最大距離' 的新值：
     (0 到 1600)（米）
 menu-item-skynade-smooth = 天空手雷平滑度
+menu-item-spectators-menu = 記仇
+spectators-menu-title = 觀戰者選單
+spectators-section = 觀戰列表

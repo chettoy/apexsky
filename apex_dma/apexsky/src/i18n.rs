@@ -226,6 +226,9 @@ pub enum MessageId {
     MenuItemHeadshotDist,
     InputPromptHeadshotDist,
     MenuItemSkynadeSmooth,
+    MenuItemSpectatorsMenu,
+    SpectatorsMenuTitle,
+    SpectatorsSection,
 }
 
 pub fn get_fluent_bundle() -> FluentBundle<FluentResource> {
@@ -287,6 +290,7 @@ macro_rules! i18n_msg_format {
     }};
 }
 
+#[allow(dead_code)]
 pub fn get<'a, 'b>(
     accept_language: &'a str,
     message_ids: Vec<&'static str>,
