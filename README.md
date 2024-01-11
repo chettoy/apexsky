@@ -162,7 +162,9 @@ sudo apt install cmake clang libzstd-dev libglfw3-dev libfreetype6-dev libvulkan
 
 ```shell
 git clone --recurse https://github.com/chettoy/apex_dma_kvm_pub
-cd apex_dma_kvm_pub/apex_dma
+cd apex_dma_kvm_pub
+git submodule update --init --recursive
+cd apex_dma
 ./build.sh
 ```
 

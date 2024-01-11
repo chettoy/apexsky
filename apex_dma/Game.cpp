@@ -290,7 +290,7 @@ bool Entity::check_love_player() {
   char name[33] = {0};
   this->get_name(&name[0]);
   // printf("check love: %s\n", name);
-  return ::check_love_player(platform_lid, eadp_lid, name);
+  return ::check_love_player(platform_lid, eadp_lid, name, this->ptr);
 }
 
 // Items

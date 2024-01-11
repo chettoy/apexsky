@@ -1,5 +1,3 @@
-use std::ffi::CStr;
-
 use global_state::CGlobalState;
 use serde::{Deserialize, Serialize};
 
@@ -71,13 +69,7 @@ pub extern "C" fn run_tui_menu() {
 }
 
 // love player
-
-#[no_mangle]
-pub extern "C" fn check_love_player(puid: u64, euid: u64, name: *const i8) -> bool {
-    let c_str = unsafe { CStr::from_ptr(name) };
-    let name_str = c_str.to_string_lossy();
-    love_players::check_my_heart(&mut lock_config!(), puid, euid, &name_str)
-}
+pub use love_players::check_love_player;
 
 // check spec
 

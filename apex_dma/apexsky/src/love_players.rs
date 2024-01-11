@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::Mutex};
+
 use anyhow::Context;
 use entropy::shannon_entropy;
 use indexmap::IndexMap;
@@ -20,8 +22,17 @@ pub struct DefaultLoveList {
     pub list: Vec<LovePlayer>,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub(crate) struct CPlayerInfo {
+    pub entity_ptr: u64,
+    pub name: String,
+    pub uid: u64,
+    pub is_love: bool,
+}
+
 lazy_static! {
     static ref DEFAULT_LOVE_PLAYER: Vec<LovePlayer> = default_love();
+    static ref PLAYERS: Mutex<HashMap<u64, CPlayerInfo>> = Mutex::new(HashMap::new());
 }
 
 fn default_love() -> Vec<LovePlayer> {
@@ -41,6 +52,7 @@ pub fn check_my_heart(
     puid: u64,
     euid: u64,
     name: &str,
+    entity_ptr: u64,
 ) -> bool {
     let mut update_name: IndexMap<u64, String> = IndexMap::new();
     let mut fold_item = |acc: bool, x: &LovePlayer| {
@@ -51,8 +63,6 @@ pub fn check_my_heart(
                 }
                 return true;
             }
-        } else if x.name == name {
-            return true;
         }
         acc
     };
@@ -104,5 +114,40 @@ pub fn check_my_heart(
     //     println!("name={}, puid={}, euid={}, \n", name, puid, euid);
     // }
 
+    let mut players_map = PLAYERS.lock().unwrap();
+    players_map.insert(
+        entity_ptr,
+        CPlayerInfo {
+            entity_ptr,
+            name: name.to_string(),
+            uid: puid,
+            is_love: result,
+        },
+    );
+
     result
+}
+
+pub(crate) fn get_players() -> HashMap<u64, CPlayerInfo> {
+    PLAYERS.lock().unwrap().clone()
+}
+
+// FFI
+
+#[no_mangle]
+pub extern "C" fn check_love_player(
+    puid: u64,
+    euid: u64,
+    name: *const i8,
+    entity_ptr: u64,
+) -> bool {
+    let c_str = unsafe { std::ffi::CStr::from_ptr(name) };
+    let name_str = c_str.to_string_lossy();
+    check_my_heart(
+        &mut crate::lock_config!(),
+        puid,
+        euid,
+        &name_str,
+        entity_ptr,
+    )
 }

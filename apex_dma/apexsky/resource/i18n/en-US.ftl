@@ -245,3 +245,6 @@ menu-item-headshot-dist = Headshot Max Distance
 input-prompt-headshot-dist = New value for 'Headshot Max Distance':
     (0 to 1600) (meters)
 menu-item-skynade-smooth = Sky Grenade Smooth
+menu-item-spectators-menu = Spectators
+spectators-menu-title = Spectators Menu
+spectators-section = Spectators Section

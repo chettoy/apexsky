@@ -150,6 +150,8 @@ pub struct Config {
     pub(crate) settings: Settings,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub(crate) love_player: Vec<LovePlayer>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub(crate) hate_player: Vec<LovePlayer>,
 }
 
 #[repr(C)]
@@ -434,6 +436,7 @@ impl Default for Config {
         Self {
             settings: Default::default(),
             love_player: Default::default(),
+            hate_player: Default::default(),
         }
     }
 }
