@@ -533,14 +533,27 @@ impl Aimbot {
 
     pub fn smooth_aim_angles(&self, aim_angles: &AimAngles, smooth_factor: f32) -> (f32, f32) {
         assert!(aim_angles.valid);
+
         let smooth = if self.weapon_grenade {
             self.settings.skynade_smooth
         } else {
             self.settings.smooth
-        };
+        } / smooth_factor;
+
+        let mut sm = lock_mod!();
         (
-            aim_angles.view_pitch + aim_angles.delta_pitch / smooth * smooth_factor,
-            aim_angles.view_yew + aim_angles.delta_yew / smooth * smooth_factor,
+            sm.aimbot_smooth_x(
+                self.aim_entity as i64,
+                aim_angles.view_pitch,
+                aim_angles.delta_pitch,
+                smooth,
+            ),
+            sm.aimbot_smooth_y(
+                self.aim_entity as i64,
+                aim_angles.view_yew,
+                aim_angles.delta_yew,
+                smooth,
+            ),
         )
     }
 }
@@ -642,10 +655,9 @@ fn get_unix_timestamp_in_millis() -> u64 {
             let millis = duration.as_secs() * 1000 + duration.subsec_millis() as u64;
             millis
         }
-        Err(_) => {
+        Err(e) => {
             // Handle errors, such as clock rollback
-            eprintln!("Error getting Unix Timestamp");
-            0 // or return a default value, depending on your needs
+            panic!("Error getting Unix Timestamp: {}", e);
         }
     }
 }
