@@ -37,7 +37,7 @@ enum WeaponId {
     P2020 = 105,
     Spitfire = 106,
     TripleTake = 107,
-    Wingman = 108,
+    Wingman = 109,
     Volt = 110,
     _3030Repeater = 111,
     CarSmg = 112,
@@ -55,6 +55,7 @@ const IDWEAPON_BOW: i32 = WeaponId::Bow as i32;
 const IDWEAPON_CHARGE_RIFLE: i32 = WeaponId::ChargeRifle as i32;
 const IDWEAPON_LONGBOW: i32 = WeaponId::Longbow as i32;
 const IDWEAPON_G7_SCOUT: i32 = WeaponId::G7Scout as i32;
+const IDWEAPON_HEMLOCK: i32 = WeaponId::Hemlock as i32;
 const IDWEAPON_KRABER: i32 = WeaponId::Kraber as i32;
 const IDWEAPON_P2020: i32 = WeaponId::P2020 as i32;
 const IDWEAPON_TRIPLE_TAKE: i32 = WeaponId::TripleTake as i32;
@@ -298,6 +299,7 @@ impl Aimbot {
                     IDWEAPON_BOW => true,
                     IDWEAPON_CHARGE_RIFLE => false,
                     IDWEAPON_G7_SCOUT => true,
+                    IDWEAPON_HEMLOCK => true,
                     IDWEAPON_KRABER => false,
                     IDWEAPON_LONGBOW => true,
                     IDWEAPON_SENTINEL => false,
