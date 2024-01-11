@@ -181,6 +181,9 @@ void Entity::enableGlow(int setting_index, uint8_t inside_value,
       outsidevalue; // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
   highlight_settings.outside_radius =
       outline_size; // OutlineRadius: size * 255 / 8
+  highlight_settings.state = 0;
+  highlight_settings.shouldDraw = 1;
+  highlight_settings.postProcess = 0;
   highlight_settings.color1[0] = highlight_color[0];
   highlight_settings.color1[1] = highlight_color[1];
   highlight_settings.color1[2] = highlight_color[2];
@@ -253,6 +256,9 @@ void Entity::glow_weapon_model(bool enable_glow,
       highlightFunctionBits[1]; // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
   highlight_settings.outside_radius =
       highlightFunctionBits[2]; // OutlineRadius: size * 255 / 8
+  highlight_settings.state = 0;
+  highlight_settings.shouldDraw = 0;
+  highlight_settings.postProcess = 0;
   highlight_settings.color1[0] = highlight_color[0];
   highlight_settings.color1[1] = highlight_color[1];
   highlight_settings.color1[2] = highlight_color[2];
@@ -323,12 +329,12 @@ void Item::enableGlow(std::array<unsigned char, 4> highlightFunctionBits,
       highlightFunctionBits[1]; // OutlineFunction: HIGHLIGHT_OUTLINE_OBJECTIVE
   highlight_settings.outside_radius =
       highlightFunctionBits[2]; // OutlineRadius: size * 255 / 8
+  highlight_settings.state = 0;
+  highlight_settings.shouldDraw = 1;
+  highlight_settings.postProcess = 0;
   highlight_settings.color1[0] = highlightParameter[0];
   highlight_settings.color1[1] = highlightParameter[1];
   highlight_settings.color1[2] = highlightParameter[2];
-  highlight_settings.color2[0] = highlightParameter[0];
-  highlight_settings.color2[1] = highlightParameter[1];
-  highlight_settings.color2[2] = highlightParameter[2];
 
   long highlight_settings_ptr;
   apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
