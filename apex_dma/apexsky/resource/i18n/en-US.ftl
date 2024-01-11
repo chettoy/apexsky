@@ -1,7 +1,7 @@
 hello-world = Hello, world!
 menu-value-enabled = Enabled
 menu-value-disabled = Disabled
-main-menu-title = Main Menu
+main-menu-title = Main Menu(Removal of open source for free use only, continuous updating plus Q group: 547759228)
 menu-item-firing-range = Firing Range
 menu-item-tdm-toggle = TDMToggle
 menu-item-keyboard = Keyboard
