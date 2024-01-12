@@ -69,7 +69,7 @@
 #define OFFSET_TIME_BASE 0x2048 //m_currentFramePlayer.timeBase //updated 1/10/2024
 #define OFFSET_VIEW_MODELS 0x2ce0 //m_hViewModels //updated 1/10/2024
 #define OFFSET_CROSSHAIR_LAST 0x1958 //CWeaponX!lastCrosshairTargetTime // CPlayer!lastVisibleTime + 0x8 // updated 1/10/2024
-#define OFFSET_INPUT_SYSTEM 0x1754a80 //InputSystem // updated 1/10/2024 
+#define OFFSET_INPUT_SYSTEM 0x1755c80 //InputSystem // updated 1/12/2024 
 #define OFFSET_WEAPON_BITFIELD 0x16c4 // m_modBitfieldFromPlayer // updated 1/10/2024
 
 #define HIGHLIGHT_SETTINGS 0xB7A6050 //HighlightSettings  // updated 1/12/2024
