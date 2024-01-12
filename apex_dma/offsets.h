@@ -1,15 +1,15 @@
-//Date 1/10/2024
-//GameVersion=v3.0.52.26
+//Date 1/12/2024
+//GameVersion=v3.0.52.30
 
-#define OFFSET_ENTITYLIST 0x1db1cf8 //cl_entitylist  updated 1/10/2024
-#define OFFSET_LOCAL_ENT 0x21603f8 //LocalPlayer updated 1/10/2024
-#define OFFSET_NAME_LIST 0xc450df0 //NameList updated 1/10/2024
-#define OFFSET_GLOBAL_VARS 0x16d55b0 // GlobalVars updated 1/10/2024
+#define OFFSET_ENTITYLIST 0x1db2ed8 //cl_entitylist  updated 1/12/2024
+#define OFFSET_LOCAL_ENT 0x21615d8 //LocalPlayer updated 1/12/2024
+#define OFFSET_NAME_LIST 0xc451fb0 //NameList updated 1/12/2024
+#define OFFSET_GLOBAL_VARS 0x16d65c0 // GlobalVars updated 1/12/2024
  
-#define OFFSET_LEVELNAME 0x16d5ab0 //LevelName //updated 1/10/2024
+#define OFFSET_LEVELNAME 0x16d6ac0 //LevelName //updated 1/12/2024
 #define OFFSET_CLIENTSTATE OFFSET_LEVELNAME - 0x1c0 //ClientState  ClientState = LevelName - 0x1C0  //updated 1/10/2024
 #define OFFSET_SIGNONSTATE OFFSET_CLIENTSTATE + 0xAC //SignonState   ( ClientState + 0xAC)  //updated 1/10/2024
-#define OFFSET_HOST_MAP 0x015ede90 + 0x58 //host_map + 0x58 //updated 1/10/2024
+#define OFFSET_HOST_MAP 0x015eeec0 + 0x58 //host_map + 0x58 //updated 1/12/2024
  
 #define OFFSET_TEAM 0x030c //m_iTeamNum//updated 1/10/2024
 #define OFFSET_HEALTH 0x02fc //m_iHealth//updated 1/10/2024
@@ -30,13 +30,13 @@
 #define OFFSET_WALL_RUN_START_TIME 0x3524 //m_wallRunStartTime //updated 1/10/2024
 #define OFFSET_WALL_RUN_CLEAR_TIME 0x3528 //m_wallRunClearTime //updated 1/10/2024
 #define OFFSET_FLAGS 0x00c8 //m_fFlags //updated 1/10/2024
-#define OFFSET_IN_ATTACK 0x073cc520 // in_attack //updated 1/10/2024
-#define OFFSET_IN_TOGGLE_DUCK 0x073cc560 //in_toggle_duck //updated 1/10/2024
-#define OFFSET_IN_ZOOM 0x073cc6b0 //in_zoom //updated 1/10/2024
-#define OFFSET_IN_FORWARD 0x073cc470 //in_forward //updated 1/10/2024
-#define OFFSET_IN_JUMP 0x073cc630 //in_jump //updated 1/10/2024
-#define OFFSET_IN_DUCK 0x073cc720 //in_duck //updated 1/10/2024
-#define OFFSET_IN_USE 0x073cc6a0 //in_use //updated 1/10/2024
+#define OFFSET_IN_ATTACK 0x073cd740 // in_attack //updated 1/12/2024
+#define OFFSET_IN_TOGGLE_DUCK 0x073cd760 //in_toggle_duck //updated 1/12/2024
+#define OFFSET_IN_ZOOM 0x073cd8c0 //in_zoom //updated 1/12/2024
+#define OFFSET_IN_FORWARD 0x073cd670 //in_forward //updated 1/12/2024
+#define OFFSET_IN_JUMP 0x073cd828 //in_jump //updated 1/12/2024
+#define OFFSET_IN_DUCK 0x073cd920 //in_duck //updated 1/12/2024
+#define OFFSET_IN_USE 0x073cd8a0 //in_use //updated 1/12/2024
 
 #define OFFSET_LIFE_STATE 0x0658 //m_lifeState, >0 = dead //updated 1/10/2024
 #define OFFSET_BLEED_OUT_STATE 0x26a0 //m_bleedoutState, >0 = knocked //updated 1/10/2024
@@ -54,7 +54,7 @@
 
 
 #define OFFSET_MATRIX 0x11a350 //ViewMatrix//updated 1/10/2024
-#define OFFSET_RENDER 0x73cb268 //ViewRender displays ESp, heath dist names etc //updated 1/10/2024
+#define OFFSET_RENDER 0x73cc460 //ViewRender displays ESp, heath dist names etc //updated 1/12/2024
  
 #define OFFSET_PRIMARY_WEAPON 0x18f4 //m_latestPrimaryWeapons //updated 1/10/2024
 #define OFFSET_ACTIVE_WEAPON 0x1888 + 0x0058 // m_inventory + WeaponInventory_Client>activeWeapons //updated 1/10/2024
@@ -72,7 +72,7 @@
 #define OFFSET_INPUT_SYSTEM 0x1754a80 //InputSystem // updated 1/10/2024 
 #define OFFSET_WEAPON_BITFIELD 0x16c4 // m_modBitfieldFromPlayer // updated 1/10/2024
 
-#define HIGHLIGHT_SETTINGS 0xB7A4E90 //HighlightSettings  // updated 1/10/2024
+#define HIGHLIGHT_SETTINGS 0xB7A6050 //HighlightSettings  // updated 1/12/2024
 #define OFFSET_GLOW_CONTEXT 0x28c // updated 1/10/2024
 #define OFFSET_GLOW_THROUGH_WALLS 0x26c // updated 1/10/2024
 #define OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE OFFSET_GLOW_THROUGH_WALLS
