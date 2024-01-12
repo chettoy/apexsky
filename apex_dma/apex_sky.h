@@ -271,6 +271,70 @@ typedef struct {
   float w;
 } vec4_t;
 
+typedef struct {
+  uintptr_t offset_entitylist;
+  uintptr_t offset_local_ent;
+  uintptr_t offset_name_list;
+  uintptr_t offset_global_vars;
+  uintptr_t offset_levelname;
+  uintptr_t offset_clientstate;
+  uintptr_t offset_signonstate;
+  uintptr_t offset_host_map;
+  uintptr_t offset_entity_team;
+  uintptr_t offset_player_health;
+  uintptr_t offset_entity_shield;
+  uintptr_t offset_entity_maxshield;
+  uintptr_t offset_player_helmettype;
+  uintptr_t offset_player_armortype;
+  uintptr_t offset_entiry_name;
+  uintptr_t offset_entity_sign_name;
+  uintptr_t offset_centity_abs_velocity;
+  uintptr_t offset_visible_time;
+  uintptr_t offset_player_zooming;
+  uintptr_t offset_traversal_progress;
+  uintptr_t offset_traversal_starttime;
+  uintptr_t offset_platform_uid;
+  uintptr_t offset_weapon_name;
+  uintptr_t offset_off_weapon;
+  uintptr_t offset_wall_run_start_time;
+  uintptr_t offset_wall_run_clear_time;
+  uintptr_t offset_centity_flags;
+  uintptr_t offset_in_attack;
+  uintptr_t offset_in_toggle_duck;
+  uintptr_t offset_in_zoom;
+  uintptr_t offset_in_forward;
+  uintptr_t offset_in_jump;
+  uintptr_t offset_in_duck;
+  uintptr_t offset_in_use;
+  uintptr_t offset_player_life_state;
+  uintptr_t offset_bleed_out_state;
+  uintptr_t offset_centity_viewoffset;
+  uintptr_t offset_centity_origin;
+  uintptr_t offset_bones;
+  uintptr_t offset_studiohdr;
+  uintptr_t offset_cplayer_aimpunch;
+  uintptr_t offset_cplayer_camerapos;
+  uintptr_t offset_player_viewangles;
+  uintptr_t offset_breath_angles;
+  uintptr_t offset_observer_mode;
+  uintptr_t offset_ovserver_target;
+  uintptr_t offset_matrix;
+  uintptr_t offset_render;
+  uintptr_t offset_primary_weapon;
+  uintptr_t offset_active_weapon;
+  uintptr_t offset_bullet_speed;
+  uintptr_t offset_bullet_scale;
+  uintptr_t offset_weaponx_zoom_fov;
+  uintptr_t offset_weaponx_ammo_in_clip;
+  uintptr_t offset_centity_modelname;
+  uintptr_t offset_cplayer_timebase;
+  uintptr_t offset_cplayer_viewmodels;
+  uintptr_t offset_crosshair_last;
+  uintptr_t offset_input_system;
+  uintptr_t offset_weaponx_bitfield_from_player;
+  uintptr_t offset_entity_highlight_generic_context;
+} exported_offsets_t;
+
 extern "C" {
 void print_run_as_root();
 int32_t add(int32_t lhs, int32_t rhs);
@@ -332,6 +396,8 @@ void aimbot_triggerbot_update(aimbot_state_t *aimbot,
                               const aim_angles_t *aim_angles,
                               int force_attack_state);
 
+exported_offsets_t export_offsets();
+
 /**
  * https://github.com/CasualX/apexdream
  * LISENCE: GPLv3
@@ -352,3 +418,5 @@ void load_settings();
 const settings_t global_settings();
 void update_settings(settings_t state);
 void quit_tui_menu();
+
+const exported_offsets_t offsets = export_offsets();

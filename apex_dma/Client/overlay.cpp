@@ -746,8 +746,7 @@ int Overlay::CreateOverlay() {
                   1000.0f / io.Framerate, io.Framerate);
 
       if (g_settings.calc_game_fps) {
-        ImGui::Text("Game average %.3f ms/frame (%.1f FPS)",
-                    1000.0f / g_settings.game_fps, g_settings.game_fps);
+        ImGui::Text("Game average (%.1f FPS)", global_settings().game_fps);
       }
 
       ImGui::Dummy(ImVec2(0.0f, 5.0f));

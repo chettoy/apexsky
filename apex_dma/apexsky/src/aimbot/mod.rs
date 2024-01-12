@@ -509,22 +509,20 @@ impl Aimbot {
         if !self.is_triggerbot_ready() || !aim_angles.valid {
             return 0;
         }
-        let trigger_threshold =
-            lock_mod!().triggerbot_threshold_fov(self.weapon_zoom_fov, aim_angles.distance);
-        let cross_hair_ready = {
-            if aim_angles.delta_pitch_min == aim_angles.delta_pitch_max {
-                aim_angles.delta_pitch.abs() < trigger_threshold
-                    && aim_angles.delta_yew.abs() < trigger_threshold
-            } else {
-                (aim_angles.delta_pitch_min * aim_angles.delta_pitch_max < 0.0
-                    && aim_angles.delta_yew.abs() < trigger_threshold)
-                    || (aim_angles.delta_pitch_max.powi(2) / 2.5
-                        + aim_angles.delta_yew_max.powi(2) / 1.2)
-                        .sqrt()
-                        < trigger_threshold
-            }
-        };
-        if cross_hair_ready {
+
+        if lock_mod!().triggerbot_cross_hair_ready(
+            aim_angles.view_pitch,
+            aim_angles.view_yew,
+            aim_angles.delta_pitch,
+            aim_angles.delta_yew,
+            aim_angles.delta_pitch_min,
+            aim_angles.delta_pitch_max,
+            aim_angles.delta_yew_min,
+            aim_angles.delta_yew_max,
+            aim_angles.distance,
+            self.weapon_zoom_fov,
+        ) > 0
+        {
             rand::thread_rng().gen_range(40..100)
         } else {
             0

@@ -23,6 +23,7 @@
 #include <vector>
 // this is a test, with seconds
 Memory apex_mem;
+extern const exported_offsets_t offsets;
 
 // Just setting things up, dont edit.
 bool active = true;
@@ -92,11 +93,11 @@ void rainbowColor(int frame_number, std::array<float, 3> &colors) {
 
 void TriggerBotRun() {
   // testing
-  // apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 4);
+  // apex_mem.Write<int>(g_Base + offsets.offset_in_attack + 0x8, 4);
   // std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 5);
+  apex_mem.Write<int>(g_Base + offsets.offset_in_attack + 0x8, 5);
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, 4);
+  apex_mem.Write<int>(g_Base + offsets.offset_in_attack + 0x8, 4);
   // printf("TriggerBotRun\n");
 }
 
@@ -134,17 +135,17 @@ std::mutex spectatorsMtx;
 
 void MapRadarTesting() {
   uintptr_t pLocal;
-  apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, pLocal);
+  apex_mem.Read<uint64_t>(g_Base + offsets.offset_local_ent, pLocal);
   int dt;
-  apex_mem.Read<int>(pLocal + OFFSET_TEAM, dt);
+  apex_mem.Read<int>(pLocal + offsets.offset_entity_team, dt);
   map_testing_local_team = dt;
 
   for (uintptr_t i = 0; i <= 80000; i++) {
-    apex_mem.Write<int>(pLocal + OFFSET_TEAM, 1);
+    apex_mem.Write<int>(pLocal + offsets.offset_entity_team, 1);
   }
 
   for (uintptr_t i = 0; i <= 80000; i++) {
-    apex_mem.Write<int>(pLocal + OFFSET_TEAM, dt);
+    apex_mem.Write<int>(pLocal + offsets.offset_entity_team, dt);
   }
   map_testing_local_team = 0;
 }
@@ -159,40 +160,45 @@ void ClientActions() {
 
       // read player ptr
       uint64_t local_player_ptr = 0;
-      apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, local_player_ptr);
+      apex_mem.Read<uint64_t>(g_Base + offsets.offset_local_ent,
+                              local_player_ptr);
 
       // read game states
-      apex_mem.Read<typeof(button_state)>(g_Base + OFFSET_INPUT_SYSTEM + 0xb0,
-                                          button_state);
+      apex_mem.Read<typeof(button_state)>(
+          g_Base + offsets.offset_input_system + 0xb0, button_state);
 
       int attack_state = 0, zoom_state = 0, tduck_state = 0, jump_state = 0,
           force_jump = 0, force_toggle_duck = 0, force_duck = 0,
           curFrameNumber = 0;
-      apex_mem.Read<int>(g_Base + OFFSET_IN_ATTACK, attack_state);     // 108
-      apex_mem.Read<int>(g_Base + OFFSET_IN_ZOOM, zoom_state);         // 109
-      apex_mem.Read<int>(g_Base + OFFSET_IN_TOGGLE_DUCK, tduck_state); // 61
-      apex_mem.Read<int>(g_Base + OFFSET_IN_JUMP, jump_state);
-      apex_mem.Read<int>(g_Base + OFFSET_IN_JUMP + 0x8, force_jump);
-      apex_mem.Read<int>(g_Base + OFFSET_IN_TOGGLE_DUCK + 0x8,
+      apex_mem.Read<int>(g_Base + offsets.offset_in_attack,
+                         attack_state);                                // 108
+      apex_mem.Read<int>(g_Base + offsets.offset_in_zoom, zoom_state); // 109
+      apex_mem.Read<int>(g_Base + offsets.offset_in_toggle_duck,
+                         tduck_state); // 61
+      apex_mem.Read<int>(g_Base + offsets.offset_in_jump, jump_state);
+      apex_mem.Read<int>(g_Base + offsets.offset_in_jump + 0x8, force_jump);
+      apex_mem.Read<int>(g_Base + offsets.offset_in_toggle_duck + 0x8,
                          force_toggle_duck);
-      apex_mem.Read<int>(g_Base + OFFSET_IN_DUCK + 0x8, force_duck);
-      apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008,
+      apex_mem.Read<int>(g_Base + offsets.offset_in_duck + 0x8, force_duck);
+      apex_mem.Read<int>(g_Base + offsets.offset_global_vars + 0x0008,
                          curFrameNumber); // GlobalVars + 0x0008
 
       float world_time, traversal_start_time, traversal_progress;
-      if (!apex_mem.Read<float>(local_player_ptr + OFFSET_TIME_BASE,
-                                world_time)) {
+      if (!apex_mem.Read<float>(
+              local_player_ptr + offsets.offset_cplayer_timebase, world_time)) {
         // memory_io_panic("read time_base");
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         break;
       }
-      if (!apex_mem.Read<float>(local_player_ptr + OFFSET_TRAVERSAL_STARTTIME,
+      if (!apex_mem.Read<float>(local_player_ptr +
+                                    offsets.offset_traversal_starttime,
                                 traversal_start_time)) {
         // memory_io_panic("read traversal_starttime");
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         break;
       }
-      if (!apex_mem.Read<float>(local_player_ptr + OFFSET_TRAVERSAL_PROGRESS,
+      if (!apex_mem.Read<float>(local_player_ptr +
+                                    offsets.offset_traversal_progress,
                                 traversal_progress)) {
         memory_io_panic("read traversal_progress");
       }
@@ -248,7 +254,7 @@ void ClientActions() {
 
         if (hang_on_wall > hang_start) {
           if (hang_on_wall < hang_cancel) {
-            apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x8, 4);
+            apex_mem.Write<int>(g_Base + offsets.offset_in_jump + 0x8, 4);
           }
           if (traversal_progress > trav_start && hang_on_wall < hang_max &&
               !start_sg) {
@@ -265,11 +271,12 @@ void ClientActions() {
         if (start_sg) {
           // press button
           // g_logger += "sg Press jump\n";
-          apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x8, 5);
+          apex_mem.Write<int>(g_Base + offsets.offset_in_jump + 0x8, 5);
 
           float current_time;
           while (true) {
-            if (apex_mem.Read<float>(local_player_ptr + OFFSET_TIME_BASE,
+            if (apex_mem.Read<float>(local_player_ptr +
+                                         offsets.offset_cplayer_timebase,
                                      current_time)) {
               if (current_time - start_jump_time < action_interval) {
                 // keep looping
@@ -278,10 +285,10 @@ void ClientActions() {
               }
             }
           }
-          apex_mem.Write<int>(g_Base + OFFSET_IN_DUCK + 0x8, 6);
+          apex_mem.Write<int>(g_Base + offsets.offset_in_duck + 0x8, 6);
           std::this_thread::sleep_for(std::chrono::milliseconds(release_wait));
-          apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x8, 4);
-          // Write<int>(g_Base + OFFSET_IN_DUCK + 0x8, 4);
+          apex_mem.Write<int>(g_Base + offsets.offset_in_jump + 0x8, 4);
+          // Write<int>(g_Base + offsets.offset_in_duck + 0x8, 4);
           last_sg_finish = duration_cast<std::chrono::milliseconds>(
               std::chrono::system_clock::now().time_since_epoch());
           // g_logger += "sg\n";
@@ -377,8 +384,9 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
   int setting_index = 0;
   std::array<float, 3> highlight_parameter = {0, 0, 0};
 
-  if (!Target.isGlowing() ||
-      (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
+  // if (!Target.isGlowing() ||
+  //     (int)Target.buffer[OFFSET_GLOW_VISIBLE_TYPE] != 1)
+  {
     float currentEntityTime = 5000.f;
     if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
       // set glow color
@@ -521,7 +529,7 @@ void DoActions() {
 
       char MapName[200] = {0};
       uint64_t MapName_ptr;
-      apex_mem.Read<uint64_t>(g_Base + OFFSET_HOST_MAP, MapName_ptr);
+      apex_mem.Read<uint64_t>(g_Base + offsets.offset_host_map, MapName_ptr);
       apex_mem.ReadArray<char>(MapName_ptr, MapName, 200);
 
       // printf("%s\n", MapName);
@@ -553,7 +561,7 @@ void DoActions() {
           std::chrono::milliseconds(30)); // don't change xD
 
       uint64_t LocalPlayer = 0;
-      apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+      apex_mem.Read<uint64_t>(g_Base + offsets.offset_local_ent, LocalPlayer);
       if (LocalPlayer == 0)
         continue;
 
@@ -563,7 +571,7 @@ void DoActions() {
       if (team_player < 0 || team_player > 50) {
         continue;
       }
-      uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
+      uint64_t entitylist = g_Base + offsets.offset_entitylist;
 
       uint64_t baseent = 0;
       apex_mem.Read<uint64_t>(entitylist, baseent);
@@ -582,7 +590,8 @@ void DoActions() {
       }
 
       int frame_number = 0;
-      apex_mem.Read<int>(g_Base + OFFSET_GLOBAL_VARS + 0x0008, frame_number);
+      apex_mem.Read<int>(g_Base + offsets.offset_global_vars + 0x0008,
+                         frame_number);
 
       std::set<uintptr_t> tmp_specs;
       aimbot_start_select_target(&aimbot);
@@ -692,7 +701,7 @@ static void EspLoop() {
         valid = false;
 
         uint64_t LocalPlayer = 0;
-        apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+        apex_mem.Read<uint64_t>(g_Base + offsets.offset_local_ent, LocalPlayer);
         if (LocalPlayer == 0) {
           next2 = true;
           while (next2 && g_Base != 0 && overlay_t && g_settings.esp) {
@@ -713,13 +722,14 @@ static void EspLoop() {
         esp_local_pos = LocalPlayerPosition;
 
         uint64_t viewRenderer = 0;
-        apex_mem.Read<uint64_t>(g_Base + OFFSET_RENDER, viewRenderer);
+        apex_mem.Read<uint64_t>(g_Base + offsets.offset_render, viewRenderer);
         uint64_t viewMatrix = 0;
-        apex_mem.Read<uint64_t>(viewRenderer + OFFSET_MATRIX, viewMatrix);
+        apex_mem.Read<uint64_t>(viewRenderer + offsets.offset_matrix,
+                                viewMatrix);
 
         apex_mem.Read<Matrix>(viewMatrix, view_matrix_data);
 
-        uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
+        uint64_t entitylist = g_Base + offsets.offset_entitylist;
 
         players.clear();
 
@@ -870,7 +880,7 @@ static void AimbotLoop() {
 
       // Read LocalPlayer
       uint64_t LocalPlayer = 0;
-      apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+      apex_mem.Read<uint64_t>(g_Base + offsets.offset_local_ent, LocalPlayer);
       if (LocalPlayer == 0) {
         continue;
       }
@@ -878,7 +888,8 @@ static void AimbotLoop() {
 
       { // Read held id
         int held_id;
-        apex_mem.Read<int>(LocalPlayer + OFFSET_OFF_WEAPON, held_id); // 0x1a1c
+        apex_mem.Read<int>(LocalPlayer + offsets.offset_off_weapon,
+                           held_id); // 0x1a1c
         aimbot_update_held_id(&aimbot, held_id);
       }
 
@@ -915,7 +926,8 @@ static void AimbotLoop() {
       {
         int trigger_value = aimbot_poll_trigger_action(&aimbot);
         if (trigger_value) {
-          apex_mem.Write<int>(g_Base + OFFSET_IN_ATTACK + 0x8, trigger_value);
+          apex_mem.Write<int>(g_Base + offsets.offset_in_attack + 0x8,
+                              trigger_value);
         }
       }
 
@@ -989,7 +1001,8 @@ static void AimbotLoop() {
 
       // Update Trigger Bot state
       int force_attack_state;
-      apex_mem.Read(g_Base + OFFSET_IN_ATTACK + 0x8, force_attack_state);
+      apex_mem.Read(g_Base + offsets.offset_in_attack + 0x8,
+                    force_attack_state);
       // Ensure that the triggerbot is updated,
       // otherwise there may be issues with not canceling after firing.
       aimbot_triggerbot_update(&aimbot, &aim_result, force_attack_state);
@@ -1019,7 +1032,7 @@ static void item_glow_t() {
         break;
       }
 
-      uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
+      uint64_t entitylist = g_Base + offsets.offset_entitylist;
       // item ENTs to loop, 10k-15k is normal. 10k might be better but will
       // not show all the death boxes i think.
 
@@ -1043,7 +1056,8 @@ static void item_glow_t() {
         // Item filter glow name setup and search.
         char glowName[200] = {0};
         uint64_t name_ptr;
-        apex_mem.Read<uint64_t>(centity + OFFSET_MODELNAME, name_ptr);
+        apex_mem.Read<uint64_t>(centity + offsets.offset_centity_modelname,
+                                name_ptr);
         apex_mem.ReadArray<char>(name_ptr, glowName, 200);
 
         // item ids?
@@ -1056,8 +1070,9 @@ static void item_glow_t() {
         // Level name printf
         // char LevelNAME[200] = { 0 };
         // uint64_t levelname_ptr;
-        // apex_mem.Read<uint64_t>(g_Base + OFFSET_LEVELNAME, levelname_ptr);
-        // apex_mem.ReadArray<char>(levelname_ptr, LevelNAME, 200);
+        // apex_mem.Read<uint64_t>(g_Base + offsets.offset_levelname,
+        // levelname_ptr); apex_mem.ReadArray<char>(levelname_ptr, LevelNAME,
+        // 200);
 
         // printf("%s\n", LevelNAME);
 

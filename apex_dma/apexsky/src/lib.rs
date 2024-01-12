@@ -8,6 +8,7 @@ mod i18n;
 mod love_players;
 mod math;
 mod menu;
+mod offsets;
 mod pitches;
 mod skyapex;
 mod skynade;
@@ -138,6 +139,9 @@ impl From<(f32, f32)> for Vec4 {
 
 // Aimbot
 pub use aimbot::ffi::*;
+
+// OffsetsLoader
+pub use offsets::export_offsets;
 
 #[cfg(test)]
 mod tests {
