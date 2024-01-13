@@ -63,9 +63,10 @@ public:
   Vector getBonePositionByHitbox(int id);
   bool Observing(uint64_t entitylist);
   void get_name(char *name);
-  void glow_weapon_model(bool enable_glow,
+  void glow_weapon_model(bool enable_glow, bool enable_draw,
                          std::array<float, 3> highlight_color);
-  bool check_love_player();
+  LoveStatus check_love_player();
+  int read_xp_level();
 };
 
 class Item {
@@ -131,15 +132,17 @@ typedef struct player {
   int shield = 0;
   // seer
   int maxshield = 0;
+  int xp_level = 0;
   int armortype = 0;
   Vector EntityPosition;
   Vector LocalPlayerPosition;
   QAngle localviewangle;
   float targetyaw = 0;
   bool is_alive = true;
-  bool is_love = false;
+  LoveStatus is_love = LoveStatus::NORMAL;
   bool is_spectator = false;
   char name[33] = {0};
+
 } player;
 
 struct Matrix {

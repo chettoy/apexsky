@@ -624,12 +624,27 @@ void Overlay::RenderEsp() {
                       players[i].b_y - players[i].height, players[i].width,
                       players[i].height, box_width);
             }
-            if (g_settings.esp_visuals.name)
-              String(ImVec2(players[i].boxMiddle,
-                            (players[i].b_y - players[i].height - 15)),
-                     players[i].is_love ? ImColor(231, 27, 100)
-                                        : ImColor(1.0f, 1.0f, 1.0f, alpha),
-                     players[i].name);
+            if (g_settings.esp_visuals.name) {
+              ImColor name_color;
+              if (players[i].is_love == LOVE) {
+                name_color = ImColor(231, 27, 100);
+              } else if (players[i].is_love == HATE) {
+                name_color = ImColor(1.0f, .0f, .0f);
+              } else if (players[i].is_love == AMBIVALENT) {
+                name_color = ImColor(.0f, .0f, .0f);
+              } else {
+                name_color = ImColor(1.0f, 1.0f, 1.0f, alpha);
+              }
+              ImVec2 draw_pos =
+                  ImVec2(players[i].boxMiddle,
+                         (players[i].b_y - players[i].height - 15));
+              ImVec2 nick_pos = ImVec2(draw_pos.x + 50, draw_pos.y);
+              std::string level =
+                  std::string("Lv.") + std::to_string(players[i].xp_level);
+
+              String(draw_pos, ImColor(.0f, 1.0f, .0f, alpha), level.c_str());
+              String(nick_pos, name_color, players[i].name);
+            }
           }
           // Full Radar map, Need Manual setting of cords
           if (g_settings.main_radar_map == true)

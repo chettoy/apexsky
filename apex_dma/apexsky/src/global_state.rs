@@ -18,6 +18,7 @@ lazy_static! {
 pub struct GlobalState {
     pub config: crate::config::Config,
     pub terminal_t: bool,
+    pub tui_forceupdate: bool,
 }
 
 #[repr(C)]
@@ -25,6 +26,7 @@ pub struct GlobalState {
 pub struct CGlobalState {
     pub(crate) settings: crate::config::Settings,
     pub terminal_t: bool,
+    pub tui_forceupdate: bool,
 }
 
 #[macro_export]
@@ -46,6 +48,7 @@ impl From<GlobalState> for CGlobalState {
         CGlobalState {
             settings: value.config.settings,
             terminal_t: value.terminal_t,
+            tui_forceupdate: value.tui_forceupdate,
         }
     }
 }

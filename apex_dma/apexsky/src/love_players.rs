@@ -27,7 +27,16 @@ pub(crate) struct CPlayerInfo {
     pub entity_ptr: u64,
     pub name: String,
     pub uid: u64,
-    pub is_love: bool,
+    pub love_status: LoveStatus,
+}
+
+#[repr(C)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub enum LoveStatus {
+    Normal = 0,
+    Love = 1,
+    Hate = 2,
+    Ambivalent = 3,
 }
 
 lazy_static! {
@@ -53,7 +62,7 @@ pub fn check_my_heart(
     euid: u64,
     name: &str,
     entity_ptr: u64,
-) -> bool {
+) -> LoveStatus {
     let mut update_name: IndexMap<u64, String> = IndexMap::new();
     let mut fold_item = |acc: bool, x: &LovePlayer| {
         if let Some(x_uid) = x.uid {
@@ -73,10 +82,25 @@ pub fn check_my_heart(
                 && (shannon_entropy(&p1) < 1.4
                     || (shannon_entropy(&p1) - shannon_entropy(&p2) + 0.36066723).to_bits() == 0))
     };
-    let result = DEFAULT_LOVE_PLAYER
+    let is_love = DEFAULT_LOVE_PLAYER
         .iter()
         .fold(pre_check(puid, euid), &mut fold_item)
         || config.love_player.iter().fold(false, fold_item);
+
+    let is_hate = config.hate_player.iter().fold(false, |acc, x| match x.uid {
+        Some(x_uid) => x_uid == puid || acc,
+        None => acc,
+    });
+
+    let love_status = if is_love && is_hate {
+        LoveStatus::Ambivalent
+    } else if is_love {
+        LoveStatus::Love
+    } else if is_hate {
+        LoveStatus::Hate
+    } else {
+        LoveStatus::Normal
+    };
 
     if !update_name.is_empty() {
         config.love_player = config
@@ -110,7 +134,7 @@ pub fn check_my_heart(
             }));
     }
 
-    // if config.settings.debug_mode && result {
+    // if config.settings.debug_mode && love_status == LoveStatus::Love {
     //     println!("name={}, puid={}, euid={}, \n", name, puid, euid);
     // }
 
@@ -121,11 +145,11 @@ pub fn check_my_heart(
             entity_ptr,
             name: name.to_string(),
             uid: puid,
-            is_love: result,
+            love_status: love_status.clone(),
         },
     );
 
-    result
+    love_status
 }
 
 pub(crate) fn get_players() -> HashMap<u64, CPlayerInfo> {
@@ -135,12 +159,7 @@ pub(crate) fn get_players() -> HashMap<u64, CPlayerInfo> {
 // FFI
 
 #[no_mangle]
-pub extern "C" fn check_love_player(
-    puid: u64,
-    euid: u64,
-    name: *const i8,
-    entity_ptr: u64,
-) -> bool {
+pub extern "C" fn check_love_player(puid: u64, euid: u64, name: *const i8, entity_ptr: u64) -> i32 {
     let c_str = unsafe { std::ffi::CStr::from_ptr(name) };
     let name_str = c_str.to_string_lossy();
     check_my_heart(
@@ -149,5 +168,5 @@ pub extern "C" fn check_love_player(
         euid,
         &name_str,
         entity_ptr,
-    )
+    ) as i32
 }

@@ -292,11 +292,13 @@ void Overlay::RenderMenu() {
     // Saving
     if (ImGui::Button("Save Config")) {
       save_settings();
+      tui_menu_forceupdate();
     }
     ImGui::SameLine();
     // Loading
     if (ImGui::Button("Load Config")) {
       load_settings();
+      tui_menu_forceupdate();
     }
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     if (menu1 == 1) {
