@@ -66,6 +66,11 @@ public:
   void glow_weapon_model(bool enable_glow, bool enable_draw,
                          std::array<float, 3> highlight_color);
   LoveStatus check_love_player();
+  int xp_level();
+  
+// private:
+  bool is_player = false;
+  int player_xp_level = 0;
   int read_xp_level();
 };
 

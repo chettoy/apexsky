@@ -852,7 +852,7 @@ static void EspLoop() {
                                  health,
                                  shield,
                                  maxshield,
-                                 Target.read_xp_level(),
+                                 Target.xp_level(),
                                  armortype,
                                  EntityPosition,
                                  LocalPlayerPosition,
