@@ -449,7 +449,7 @@ Vector Item::getPosition() {
 float CalculateFov(Entity &from, Entity &target) {
   QAngle ViewAngles = from.GetSwayAngles();
   Vector LocalCamera = from.GetCamPos();
-  Vector EntityPosition = target.getPosition();
+  Vector EntityPosition = target.getBonePositionByHitbox(2);
   QAngle Angle = Math::CalcAngle(LocalCamera, EntityPosition);
   return Math::GetFov(ViewAngles, Angle);
 }
@@ -515,7 +515,7 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
       }
     }
   } else if (aimbot.settings.bone_auto) {
-    TargetBonePositionMax = target.getBonePositionByHitbox(5);
+    TargetBonePositionMax = target.getPosition();
     TargetBonePositionMin = target.getBonePositionByHitbox(0);
   } else {
     TargetBonePositionMax = TargetBonePositionMin =

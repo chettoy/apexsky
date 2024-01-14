@@ -506,9 +506,9 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
 
   if (target.ptr != LPlayer.ptr) {
     // Targeting
-    Vector EntityPosition = target.getPosition();
-    Vector LocalPlayerPosition = LPlayer.getPosition();
-    float dist = LocalPlayerPosition.DistTo(EntityPosition);
+    Vector target_pos_c = target.getBonePositionByHitbox(2);
+    Vector local_pos = LPlayer.getPosition();
+    float dist = local_pos.DistTo(target_pos_c);
     float fov = CalculateFov(LPlayer, target);
     bool vis = target.lastVisTime() > lastvis_aim[index];
     bool love = target.check_love_player();
