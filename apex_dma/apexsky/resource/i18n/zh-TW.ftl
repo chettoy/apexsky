@@ -1,7 +1,7 @@
 hello-world = Hello, world!
 menu-value-enabled = 啓用
 menu-value-disabled = 停用
-main-menu-title = 主選單
+main-menu-title = 主選單（搬運開源僅供免費使用，持續更新加Q群：547759228）
 menu-item-firing-range = 射擊場模式
 menu-item-tdm-toggle = 團隊模式
 menu-item-keyboard = 鍵盤滑鼠模式
