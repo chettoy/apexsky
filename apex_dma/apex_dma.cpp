@@ -494,13 +494,12 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
       return;
   }
 
-  // Firing range stuff
   if (!g_settings.firing_range) {
     if (entity_team < 0 || entity_team > 50 ||
-        (entity_team == local_team && !g_settings.onevone)) {
-      return;
-    }
-    if (map_testing_local_team != 0 && entity_team == map_testing_local_team) {
+        ((entity_team == local_team ||
+          (map_testing_local_team != 0 &&
+           entity_team == map_testing_local_team)) &&
+         !g_settings.onevone)) {
       return;
     }
   }
@@ -1093,14 +1092,6 @@ static void item_glow_t() {
         ItemID2 = ItemID % 301;
         printf("%ld\n", ItemID2); */
         // printf("Model Name: %s, Item ID: %lu\n", glowName, ItemID);
-        // Level name printf
-        // char LevelNAME[200] = { 0 };
-        // uint64_t levelname_ptr;
-        // apex_mem.Read<uint64_t>(g_Base + offsets.offset_levelname,
-        // levelname_ptr); apex_mem.ReadArray<char>(levelname_ptr, LevelNAME,
-        // 200);
-
-        // printf("%s\n", LevelNAME);
 
         // Prints stuff you want to console
         // if (strstr(glowName, "mdl/"))
