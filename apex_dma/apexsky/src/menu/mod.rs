@@ -64,10 +64,19 @@ pub(crate) fn main() -> anyhow::Result<()> {
 
     G_STATE.lock().unwrap().terminal_t = true;
     while apex_menu.app_model().running_state != RunningState::Done {
-        if !G_STATE.lock().unwrap().terminal_t {
+        let (tui_t, forceupdate) = {
+            let g_state = G_STATE.lock().unwrap();
+            (g_state.terminal_t, g_state.tui_forceupdate)
+        };
+        if !tui_t {
             apex_menu.app_model_mut().running_state = RunningState::Done;
             break;
         }
+        if forceupdate {
+            apex_menu.update_menu();
+            G_STATE.lock().unwrap().tui_forceupdate = false;
+        }
+
         // Render the current view
         terminal.draw(|f| view(&mut apex_menu, f))?;
 

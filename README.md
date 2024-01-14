@@ -37,7 +37,7 @@ UnknownCheats thread: https://www.unknowncheats.me/forum/apex-legends/406426-kvm
 
 Bone IDs reference: https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes
 
-Game version (Steam Only right now): v3.0.52.26
+Game version (Steam Only right now): v3.0.53.30
 
 
 
@@ -194,6 +194,7 @@ cd apex_dma
 
 
 * [memflow](https://github.com/memflow/memflow)
+* [ratatui](https://ratatui.rs)
 * [tracel-ai/burn](https://github.com/tracel-ai/burn)
 * [TheCruz's Apex Aimbot+ESP](https://www.unknowncheats.me/forum/apex-legends/369786-apex-directx-wallhack-smooth-aimbot-source.html)
 * [h33p/vmread](https://github.com/h33p/vmread)
@@ -202,6 +203,7 @@ cd apex_dma
 * [KrackerCo/apex_dma_kvm_pub](https://github.com/KrackerCo/apex_dma_kvm_pub)
 * [CasualX/apexdream](https://github.com/CasualX/apexdream)
 * [Nexilist/xap-client](https://github.com/Nexilist/xap-client)
+* [Xnieno/ApexDreamForYou](https://github.com/Xnieno/ApexDreamForYou)
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

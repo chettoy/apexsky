@@ -1,67 +1,102 @@
+use serde::{Deserialize, Serialize};
+
 use super::Skyapex;
 
-#[skyapex_impl]
-pub trait OffsetsLoader {
-    fn export_offsets(&mut self);
-    fn offset_entitylist(&mut self) -> i64;
-    fn offset_local_ent(&mut self) -> i64;
-    fn offset_name_list(&mut self) -> i64;
-    fn offset_global_vars(&mut self) -> i64;
-    fn offset_levelname(&mut self) -> i64;
-    fn offset_clientstate(&mut self) -> i64;
-    fn offset_signonstate(&mut self) -> i64;
-    fn offset_host_map(&mut self) -> i64;
-    fn offset_entity_team(&mut self) -> i64;
-    fn offset_player_health(&mut self) -> i64;
-    fn offset_entity_shield(&mut self) -> i64;
-    fn offset_entity_maxshield(&mut self) -> i64;
-    fn offset_player_helmettype(&mut self) -> i64;
-    fn offset_player_armortype(&mut self) -> i64;
-    fn offset_entiry_name(&mut self) -> i64;
-    fn offset_entity_sign_name(&mut self) -> i64;
-    fn offset_centity_abs_velocity(&mut self) -> i64;
-    fn offset_visible_time(&mut self) -> i64;
-    fn offset_player_zooming(&mut self) -> i64;
-    fn offset_traversal_progress(&mut self) -> i64;
-    fn offset_traversal_starttime(&mut self) -> i64;
-    fn offset_platform_uid(&mut self) -> i64;
-    fn offset_weapon_name(&mut self) -> i64;
-    fn offset_off_weapon(&mut self) -> i64;
-    fn offset_wall_run_start_time(&mut self) -> i64;
-    fn offset_wall_run_clear_time(&mut self) -> i64;
-    fn offset_centity_flags(&mut self) -> i64;
-    fn offset_in_attack(&mut self) -> i64;
-    fn offset_in_toggle_duck(&mut self) -> i64;
-    fn offset_in_zoom(&mut self) -> i64;
-    fn offset_in_forward(&mut self) -> i64;
-    fn offset_in_jump(&mut self) -> i64;
-    fn offset_in_duck(&mut self) -> i64;
-    fn offset_in_use(&mut self) -> i64;
-    fn offset_player_life_state(&mut self) -> i64;
-    fn offset_bleed_out_state(&mut self) -> i64;
-    fn offset_centity_viewoffset(&mut self) -> i64;
-    fn offset_centity_origin(&mut self) -> i64;
-    fn offset_bones(&mut self) -> i64;
-    fn offset_studiohdr(&mut self) -> i64;
-    fn offset_cplayer_aimpunch(&mut self) -> i64;
-    fn offset_cplayer_camerapos(&mut self) -> i64;
-    fn offset_player_viewangles(&mut self) -> i64;
-    fn offset_breath_angles(&mut self) -> i64;
-    fn offset_observer_mode(&mut self) -> i64;
-    fn offset_ovserver_target(&mut self) -> i64;
-    fn offset_matrix(&mut self) -> i64;
-    fn offset_render(&mut self) -> i64;
-    fn offset_primary_weapon(&mut self) -> i64;
-    fn offset_active_weapon(&mut self) -> i64;
-    fn offset_bullet_speed(&mut self) -> i64;
-    fn offset_bullet_scale(&mut self) -> i64;
-    fn offset_weaponx_zoom_fov(&mut self) -> i64;
-    fn offset_weaponx_ammo_in_clip(&mut self) -> i64;
-    fn offset_centity_modelname(&mut self) -> i64;
-    fn offset_cplayer_timebase(&mut self) -> i64;
-    fn offset_cplayer_viewmodels(&mut self) -> i64;
-    fn offset_crosshair_last(&mut self) -> i64;
-    fn offset_input_system(&mut self) -> i64;
-    fn offset_weaponx_bitfield_from_player(&mut self) -> i64;
-    fn offset_entity_highlight_generic_context(&mut self) -> i64;
+macro_rules! import_custom_offsets {
+    ({$($field:ident,)*}) => {
+        paste::paste! {
+            #[skyapex_impl]
+            trait CustomOffsetsLoader {
+                fn export_offsets(&mut self);
+                $(fn [<offset_ $field>](&mut self) -> i64;)*
+            }
+
+            #[doc = "
+            C FFI
+            ```C
+            typedef struct {
+                ... // $(uintptr_t $field;)*
+            } exported_offsets_t;
+            ```"]
+            #[repr(C)]
+            #[derive(Debug, Clone, Serialize, Deserialize)]
+            pub struct CustomOffsets {
+                $(pub $field: u64,)*
+            }
+
+            impl CustomOffsets {
+                pub fn load(skyapex: &mut Skyapex) -> Self {
+                    skyapex.export_offsets();
+                    Self { $($field: skyapex.[<offset_ $field>]() as u64,)* }
+                }
+            }
+        }
+    }
 }
+
+import_custom_offsets!({
+    entitylist,
+    local_ent,
+    name_list,
+    global_vars,
+    levelname,
+    clientstate,
+    signonstate,
+    host_map,
+    entity_team,
+    player_health,
+    entity_shield,
+    entity_maxshield,
+    player_xp,
+    player_helmettype,
+    player_armortype,
+    player_controller_active,
+    entiry_name,
+    entity_sign_name,
+    centity_abs_velocity,
+    visible_time,
+    player_zooming,
+    cplayer_traversal_progress,
+    cplayer_traversal_starttime,
+    player_platform_uid,
+    weaponx_weapon_name,
+    off_weapon,
+    cplayer_wall_run_start_time,
+    cplayer_wall_run_clear_time,
+    centity_flags,
+    in_attack,
+    in_toggle_duck,
+    in_zoom,
+    in_forward,
+    in_jump,
+    in_duck,
+    in_use,
+    player_life_state,
+    player_bleed_out_state,
+    centity_viewoffset,
+    centity_origin,
+    bones,
+    studiohdr,
+    cplayer_aimpunch,
+    cplayer_camerapos,
+    player_viewangles,
+    breath_angles,
+    observer_mode,
+    ovserver_target,
+    view_matrix,
+    view_render,
+    primary_weapon,
+    active_weapon,
+    bullet_speed,
+    bullet_scale,
+    weaponx_zoom_fov,
+    weaponx_ammo_in_clip,
+    centity_modelname,
+    cplayer_timebase,
+    cplayer_viewmodels,
+    crosshair_last,
+    input_system,
+    weaponx_bitfield_from_player,
+    entity_fade_dist,
+    entity_highlight_generic_context,
+});

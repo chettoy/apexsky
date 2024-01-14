@@ -1,6 +1,6 @@
 use crate::{
-    config, i18n::get_fluent_bundle, i18n_msg, i18n_msg_format, lock_config, lock_mod,
-    love_players::LovePlayer, skyapex::spectators::SpecCheck,
+    config, i18n_msg, lock_config, lock_mod, love_players::LovePlayer,
+    skyapex::spectators::SpecCheck,
 };
 use fluent::{FluentBundle, FluentResource};
 use ratatui::{

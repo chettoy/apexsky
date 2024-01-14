@@ -6,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{lock_mod, skyapex::aimbot_utils::AimbotUtils};
 
+#[repr(C)]
 #[allow(dead_code)]
 enum WeaponId {
     R301 = 0,
@@ -27,7 +28,7 @@ enum WeaponId {
     Flatline = 88,
     G7Scout = 89,
     Hemlock = 90,
-    Kraber = 91,
+    Kraber = 92,
     Lstar = 93,
     Mastiff = 95,
     Mozambique = 96,
@@ -88,7 +89,7 @@ pub struct AimbotSettings {
 impl Default for AimbotSettings {
     fn default() -> Self {
         Self {
-            gamepad: false,
+            gamepad: false, // auto
             aim_mode: 2, // 0 no aim, 1 aim with no vis check, 2 aim with vis check
             auto_shoot: true,
             ads_fov: 12.0,
@@ -100,7 +101,7 @@ impl Default for AimbotSettings {
             bone_auto: true,
             max_dist: 3800.0 * 40.0,
             aim_dist: 500.0 * 40.0,
-            headshot_dist: 30.0 * 40.0,
+            headshot_dist: 15.0 * 40.0,
             skynade_dist: 150.0 * 40.0,
             smooth: 200.0,
             skynade_smooth: 200.0 * 0.6667,
@@ -468,10 +469,10 @@ impl Aimbot {
         self.triggerbot_ready = self.settings.auto_shoot && self.triggerbot_key_state > 0;
 
         // Update target lock
-        if !self.aiming {
+        if !self.aiming || self.triggerbot_ready {
             self.cancel_locking();
         }
-        if self.aiming && !self.is_headshot() {
+        if self.aiming && !self.is_headshot() && !self.triggerbot_ready {
             self.lock_target(self.aim_entity);
         }
     }

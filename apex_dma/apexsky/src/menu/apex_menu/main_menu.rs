@@ -32,33 +32,19 @@ pub(super) fn build_main_menu(
         settings.tdm_toggle,
         tdm_toggle
     );
-    menu = menu
-        .add_item(
-            item_enabled(
-                &i18n_bundle,
-                format!(" 3 - {}", i18n_msg!(i18n_bundle, MenuItemKeyboard)),
-                !settings.aimbot_settings.gamepad,
-            ),
-            |_, _| {
-                let settings = &mut lock_config!().settings;
-                settings.aimbot_settings.gamepad = !settings.aimbot_settings.gamepad;
-                None
-            },
-            (),
-        )
-        .add_item(
-            item_enabled(
-                &i18n_bundle,
-                format!(" 4 - {}", i18n_msg!(i18n_bundle, MenuItemGamepad)),
-                settings.aimbot_settings.gamepad,
-            ),
-            |_, _| {
-                let settings = &mut lock_config!().settings;
-                settings.aimbot_settings.gamepad = !settings.aimbot_settings.gamepad;
-                None
-            },
-            (),
-        );
+    menu = menu.skip_id().add_item(
+        item_enabled(
+            &i18n_bundle,
+            format!(" 4 - {}", i18n_msg!(i18n_bundle, MenuItemGamepad)),
+            settings.aimbot_settings.gamepad,
+        ),
+        |_, _| {
+            let settings = &mut lock_config!().settings;
+            settings.aimbot_settings.gamepad = !settings.aimbot_settings.gamepad;
+            None
+        },
+        (),
+    );
     menu = menu_add_toggle_item!(
         menu,
         &i18n_bundle,
