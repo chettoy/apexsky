@@ -78,17 +78,19 @@ Vector Entity::getViewOffset() {
   return *(Vector *)(buffer + offsets.centity_viewoffset);
 }
 
-bool Entity::isPlayer() {
+bool Entity::isPlayer(uintptr_t ptr) {
   // char class_name[33] = {};
   // get_class_name(ptr, class_name);
-  bool r = *(uint64_t *)(buffer + offsets.entiry_name) == 125780153691248;
+  uint64_t entity_name;
+  apex_mem.Read(ptr + offsets.entiry_name, entity_name);
+  bool r = entity_name == 125780153691248;
   // if (r) {
   //   printf("isPlayer %s %d\n", class_name, r);
   // }
   return r;
 }
 // firing range dummys
-bool Entity::isDummy() {
+bool Entity::isDummy(uintptr_t ptr) {
   char class_name[33] = {};
   get_class_name(ptr, class_name);
 
@@ -305,10 +307,10 @@ void Entity::glow_weapon_model(bool enable_glow, bool enable_draw,
 
 LoveStatus Entity::check_love_player() {
   if (global_settings().yuan_p) {
-    if (this->isDummy())
+    if (Entity::isDummy(this->ptr))
       return LOVE;
   } else {
-    if (!this->isPlayer())
+    if (!this->is_player)
       return LoveStatus::NORMAL;
   }
   uint64_t data_fid[4];
@@ -597,7 +599,7 @@ Entity getEntity(uintptr_t ptr) {
   entity.ptr = ptr;
   apex_mem.ReadArray<uint8_t>(ptr, entity.buffer, sizeof(entity.buffer));
   entity.entity_index = *(uint64_t *)(entity.buffer + 0x38);
-  if (entity.isPlayer()) {
+  if (Entity::isPlayer(ptr)) {
     entity.is_player = true;
     entity.player_xp_level = entity.read_xp_level();
   }
