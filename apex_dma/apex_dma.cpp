@@ -127,8 +127,7 @@ bool IsInCrossHair(Entity &target) {
 }
 
 // Visual check and aim check.?
-float lastvis_esp[ENT_NUM];
-float lastvis_aim[ENT_NUM];
+std::map<int, float> lastvis_esp, lastvis_aim;
 std::vector<Entity> spectators, allied_spectators;
 std::mutex spectatorsMtx;
 
@@ -687,7 +686,7 @@ void DoActions() {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<player> players(ENT_NUM);
+std::vector<player> players(100);
 Matrix view_matrix_data = {};
 
 // ESP loop.. this helps right?
