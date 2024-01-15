@@ -28,7 +28,7 @@ extern const exported_offsets_t offsets;
 // Just setting things up, dont edit.
 bool active = true;
 aimbot_state_t aimbot;
-const int toRead = 100;
+const int ENT_NUM = 10000;
 extern Vector aim_target; // for esp
 int map_testing_local_team = 0;
 
@@ -50,7 +50,6 @@ bool valid = false;
 extern float bulletspeed;
 extern float bulletgrav;
 Vector esp_local_pos;
-int playerentcount = 61;
 int itementcount = 10000;
 int map = 0;
 std::vector<TreasureClue> treasure_clues;
@@ -128,8 +127,8 @@ bool IsInCrossHair(Entity &target) {
 }
 
 // Visual check and aim check.?
-float lastvis_esp[toRead];
-float lastvis_aim[toRead];
+float lastvis_esp[ENT_NUM];
+float lastvis_aim[ENT_NUM];
 std::vector<Entity> spectators, allied_spectators;
 std::mutex spectatorsMtx;
 
@@ -580,11 +579,6 @@ void DoActions() {
 
       const auto g_settings = global_settings();
 
-      if (g_settings.firing_range) {
-        playerentcount = 16000;
-      } else {
-        playerentcount = 61;
-      }
       if (g_settings.deathbox) {
         itementcount = 15000;
       } else {
@@ -621,47 +615,27 @@ void DoActions() {
       std::set<uintptr_t> tmp_specs;
       aimbot_start_select_target(&aimbot);
 
-      if (g_settings.firing_range) {
-        int c = 0;
-        for (int i = 0; i < playerentcount; i++) {
-          uint64_t centity = 0;
-          apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
-          if (centity == 0) {
-            continue;
-          }
-          if (LocalPlayer == centity) {
-            continue;
-          }
-
-          Entity Target = getEntity(centity);
-          if (!(Target.isDummy() ||
-                (g_settings.onevone && Target.isPlayer()))) {
-            continue;
-          }
-
-          ProcessPlayer(LPlayer, Target, entitylist, c, frame_number,
-                        tmp_specs);
-          c++;
+      for (int i = 0; i < ENT_NUM; i++) {
+        uint64_t centity = 0;
+        apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
+        if (centity == 0) {
+          continue;
         }
-      } else {
+        if (LocalPlayer == centity) {
+          continue;
+        }
 
-        for (int i = 0; i < toRead; i++) {
-          uint64_t centity = 0;
-          apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
-          if (centity == 0) {
-            continue;
-          }
-          if (LocalPlayer == centity) {
-            continue;
-          }
-
-          Entity Target = getEntity(centity);
-          if (!Target.isPlayer()) {
-            continue;
-          }
-
+        Entity Target = getEntity(centity);
+        if ((g_settings.firing_range && Target.isDummy()) ||
+            (g_settings.firing_range && g_settings.onevone &&
+             Target.isPlayer()) ||
+            (!g_settings.firing_range && Target.isPlayer())) {
           ProcessPlayer(LPlayer, Target, entitylist, i, frame_number,
                         tmp_specs);
+        } else {
+          // char class_name[33] = {0};
+          // get_class_name(Target.ptr, class_name);
+          // printf("entity: %s\n", class_name);
         }
       }
 
@@ -713,7 +687,7 @@ void DoActions() {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<player> players(toRead);
+std::vector<player> players(ENT_NUM);
 Matrix view_matrix_data = {};
 
 // ESP loop.. this helps right?
@@ -765,7 +739,7 @@ static void EspLoop() {
           QAngle localviewangle = LPlayer.GetViewAngles();
 
           // Ammount of ents to loop, dont edit.
-          for (int i = 0; i < toRead; i++) {
+          for (int i = 0; i < ENT_NUM; i++) {
             // Read entity pointer
             uint64_t centity = 0;
             apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
