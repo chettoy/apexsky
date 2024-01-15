@@ -620,22 +620,23 @@ void DoActions() {
         if (centity == 0) {
           continue;
         }
+        // Exclude undesired entity
+        bool is_player = Entity::isPlayer(centity);
+        if (g_settings.firing_range) {
+          if (!(Entity::isDummy(centity) ||
+                (g_settings.onevone && is_player))) {
+            continue;
+          }
+        } else {
+          if (!is_player) {
+            continue;
+          }
+        }
         if (LocalPlayer == centity) {
           continue;
         }
-
         Entity Target = getEntity(centity);
-        if ((g_settings.firing_range && Target.isDummy()) ||
-            (g_settings.firing_range && g_settings.onevone &&
-             Target.isPlayer()) ||
-            (!g_settings.firing_range && Target.isPlayer())) {
-          ProcessPlayer(LPlayer, Target, entitylist, i, frame_number,
-                        tmp_specs);
-        } else {
-          // char class_name[33] = {0};
-          // get_class_name(Target.ptr, class_name);
-          // printf("entity: %s\n", class_name);
-        }
+        ProcessPlayer(LPlayer, Target, entitylist, i, frame_number, tmp_specs);
       }
 
       { // refresh spectators count
@@ -749,6 +750,19 @@ static void EspLoop() {
               continue;
             }
 
+            // Exclude undesired entity
+            bool is_player = Entity::isPlayer(centity);
+            if (g_settings.firing_range) {
+              if (!(Entity::isDummy(centity) ||
+                    (g_settings.onevone && is_player))) {
+                continue;
+              }
+            } else {
+              if (!is_player) {
+                continue;
+              }
+            }
+
             // Exclude self
             if (LocalPlayer == centity) {
               continue;
@@ -756,18 +770,6 @@ static void EspLoop() {
 
             // Get entity data
             Entity Target = getEntity(centity);
-
-            // Exclude undesired entity
-            if (g_settings.firing_range) {
-              if (!(Target.isDummy() ||
-                    (g_settings.onevone && Target.isPlayer()))) {
-                continue;
-              }
-            } else {
-              if (!Target.isPlayer()) {
-                continue;
-              }
-            }
 
             int entity_team = Target.getTeamId();
 
