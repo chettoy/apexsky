@@ -586,6 +586,7 @@ void Overlay::RenderMenu() {
 void Overlay::RenderInfo() {
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   ImGui::SetNextWindowSize(ImVec2(280, 30));
+  ImGui::SetNextWindowBgAlpha(0.6);
   ImGui::Begin(XorStr("##info"), (bool *)true,
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                    ImGuiWindowFlags_NoScrollbar);
@@ -658,8 +659,9 @@ int Overlay::CreateOverlay() {
   // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+
   // only glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // 3.0+ only
 #endif
-  glfwWindowHint(GLFW_RESIZABLE, 1);
-  glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, 1);
+  glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+  glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
 
   // Create window with graphics context
   GLFWwindow *window = glfwCreateWindow(
@@ -667,17 +669,17 @@ int Overlay::CreateOverlay() {
       "Client ImGui GLFW+OpenGL3", glfwGetPrimaryMonitor(), nullptr);
   if (window == nullptr)
     return 1;
-  static const char *GamescopeOverlayProperty = "GAMESCOPE_EXTERNAL_OVERLAY";
-  Display *x11_display = glfwGetX11Display();
-  Window x11_window = glfwGetX11Window(window);
-  if (x11_window && x11_display) {
-    // Set atom for gamescope to render as an overlay.
-    Atom overlay_atom =
-        XInternAtom(x11_display, GamescopeOverlayProperty, False);
-    uint32_t value = 1;
-    XChangeProperty(x11_display, x11_window, overlay_atom, XA_CARDINAL, 32,
-                    PropertyNewValue, (unsigned char *)&value, 1);
-  }
+  // static const char *GamescopeOverlayProperty = "GAMESCOPE_EXTERNAL_OVERLAY";
+  // Display *x11_display = glfwGetX11Display();
+  // Window x11_window = glfwGetX11Window(window);
+  // if (x11_window && x11_display) {
+  //   // Set atom for gamescope to render as an overlay.
+  //   Atom overlay_atom =
+  //       XInternAtom(x11_display, GamescopeOverlayProperty, False);
+  //   uint32_t value = 1;
+  //   XChangeProperty(x11_display, x11_window, overlay_atom, XA_CARDINAL, 32,
+  //                   PropertyNewValue, (unsigned char *)&value, 1);
+  // }
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1); // Enable vsync
 
