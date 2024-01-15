@@ -421,8 +421,8 @@ impl Aimbot {
             self.aim_entity = self.tmp_aimentity;
         }
 
-        // disable aimbot safety if vis check is turned off
-        if self.settings.aim_mode == 1 && !self.is_grenade() {
+        // disable safety if vis check or aimbot is turned off
+        if self.settings.aim_mode < 2 && !self.is_grenade() {
             self.gun_safety = false;
         }
     }
@@ -588,7 +588,7 @@ impl TriggerBot for Aimbot {
     }
 
     fn triggerbot_update(&mut self, aim_angles: &AimAngles, force_attack_state: i32) {
-        // println!("force_attach={}", force_attack_state);
+        // println!("force_attack={}", force_attack_state);
 
         let trigger_delay = self.calculate_trigger_delay(aim_angles);
         let now_ms = get_unix_timestamp_in_millis();

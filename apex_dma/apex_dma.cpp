@@ -929,7 +929,7 @@ static void AimbotLoop() {
         if (i == 0) {
           aimbot_settings(&aimbot, &g_settings.aimbot_settings);
         }
-        if (i > 500) { // Lower update frequency to reduce cpu usage
+        if (i > 30) { // Lower update frequency to reduce cpu usage
           i = 0;
         } else {
           i++;
@@ -993,6 +993,7 @@ static void AimbotLoop() {
         if (!(aiming || trigger_bot_ready)) {
           aim_result = aim_angles_t{false};
         } else if (aimbot_get_gun_safety(&aimbot)) {
+          // printf("safety on\n");
           aim_result = aim_angles_t{false};
         } else if (LPlayer.isKnocked() || !target.isAlive() ||
                    (!g_settings.firing_range && target.isKnocked())) {
