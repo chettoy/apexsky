@@ -540,10 +540,8 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     if ((fov0 + fov1) * 0.5f > max_fov) {
       return aim_angles_t{false};
     }
-    if (aimbot.settings.no_recoil) {
-      CalculatedAnglesMin -= SwayAngles - ViewAngles;
-      CalculatedAnglesMax -= SwayAngles - ViewAngles;
-    }
+    CalculatedAnglesMin -= SwayAngles - ViewAngles;
+    CalculatedAnglesMax -= SwayAngles - ViewAngles;
     Math::NormalizeAngles(CalculatedAnglesMin);
     Math::NormalizeAngles(CalculatedAnglesMax);
     QAngle DeltaMin = CalculatedAnglesMin - ViewAngles;

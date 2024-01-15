@@ -883,7 +883,7 @@ static void AimbotLoop() {
   while (aim_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
     while (g_Base != 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(15));
 
       static std::chrono::milliseconds last_time =
           duration_cast<std::chrono::milliseconds>(
@@ -951,28 +951,27 @@ static void AimbotLoop() {
 
       // Reduce recoil
       static QAngle prev_recoil_angle = QAngle(0, 0, 0);
-      if (aimbot_settings.no_recoil && aimbot.attack_state > 0) {
+      if (aimbot_settings.no_recoil) {
         // get recoil angle
         QAngle recoil_angles = LPlayer.GetRecoil();
+        // printf("prev=%f, recoil=%f\n", prev_recoil_angle.x, recoil_angles.x);
 
-        // get original angles
-        QAngle old_view_angles = LPlayer.GetViewAngles();
+        if (recoil_angles.x < 0.0f) {
+          QAngle delta_angle(0, 0, 0);
+          // removing recoil angles from player view angles
+          delta_angle.x = ((prev_recoil_angle.x - recoil_angles.x) *
+                           (aimbot_settings.recoil_smooth_x / 100.f));
+          delta_angle.y = ((prev_recoil_angle.y - recoil_angles.y) *
+                           (aimbot_settings.recoil_smooth_y / 100.f));
 
-        QAngle new_angle = old_view_angles;
-        // printf("prev=%f, recoil=%f\n", oldRecoilAngle.x, recoilAngles.x);
+          // setting viewangles to new angles
+          QAngle new_angles = LPlayer.GetViewAngles() + delta_angle;
+          Math::NormalizeAngles(new_angles);
+          LPlayer.SetViewAngles(new_angles);
+        }
 
-        // removing recoil angles from player view angles
-        new_angle.x += ((prev_recoil_angle.x - recoil_angles.x) *
-                        (aimbot_settings.recoil_smooth_x / 100.f));
-        new_angle.y += ((prev_recoil_angle.y - recoil_angles.y) *
-                        (aimbot_settings.recoil_smooth_y / 100.f));
-
-        // setting viewangles to new angles
-        LPlayer.SetViewAngles(new_angle);
         // setting old recoil angles to current recoil angles
         prev_recoil_angle = recoil_angles;
-        // normalize view angles
-        Math::NormalizeAngles(prev_recoil_angle);
       } else {
         prev_recoil_angle = QAngle(0, 0, 0);
       }
