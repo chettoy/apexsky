@@ -50,12 +50,12 @@ void get_class_name(uint64_t entity_ptr, char *out_str) {
 int Entity::getTeamId() { return *(int *)(buffer + offsets.entity_team); }
 
 int Entity::getHealth() {
-  assert(this->isPlayer());
+  assert(this->is_player);
   return *(int *)(buffer + offsets.player_health);
 }
 
 int Entity::getArmortype() {
-  assert(this->isPlayer());
+  assert(this->is_player);
   int armortype;
   apex_mem.Read<int>(ptr + offsets.player_armortype, armortype);
   return armortype;
@@ -96,12 +96,12 @@ bool Entity::isDummy() {
 }
 
 bool Entity::isKnocked() {
-  assert(this->isPlayer());
+  assert(this->is_player);
   return *(int *)(buffer + offsets.player_bleed_out_state) > 0;
 }
 
 bool Entity::isAlive() {
-  assert(this->isPlayer());
+  assert(this->is_player);
   return *(int *)(buffer + offsets.player_life_state) == 0;
 }
 
@@ -155,12 +155,12 @@ QAngle Entity::GetSwayAngles() {
 }
 
 QAngle Entity::GetViewAngles() {
-  assert(this->isPlayer());
+  assert(this->is_player);
   return *(QAngle *)(buffer + offsets.player_viewangles);
 }
 
 Vector Entity::GetViewAnglesV() {
-  assert(this->isPlayer());
+  assert(this->is_player);
   return *(Vector *)(buffer + offsets.player_viewangles);
 }
 
@@ -182,7 +182,7 @@ bool Entity::isGlowing() {
 }
 
 bool Entity::isZooming() {
-  assert(this->isPlayer());
+  assert(this->is_player);
   return *(int *)(buffer + offsets.player_zooming) == 1;
 }
 
@@ -229,7 +229,7 @@ void Entity::disableGlow() {
 }
 
 void Entity::SetViewAngles(SVector angles) {
-  assert(this->isPlayer());
+  assert(this->is_player);
   apex_mem.Write<SVector>(ptr + offsets.player_viewangles, angles);
 }
 
@@ -238,12 +238,12 @@ void Entity::SetViewAngles(QAngle &angles) {
 }
 
 Vector Entity::GetCamPos() {
-  assert(this->isPlayer());
+  assert(this->is_player);
   return *(Vector *)(buffer + offsets.cplayer_camerapos);
 }
 
 QAngle Entity::GetRecoil() {
-  assert(this->isPlayer());
+  assert(this->is_player);
   return *(QAngle *)(buffer + offsets.cplayer_aimpunch);
 }
 
@@ -256,7 +256,7 @@ void Entity::get_name(char *name) {
 
 void Entity::glow_weapon_model(bool enable_glow, bool enable_draw,
                                std::array<float, 3> highlight_color) {
-  assert(this->isPlayer());
+  assert(this->is_player);
 
   uint64_t view_model_handle;
   apex_mem.Read<uint64_t>(ptr + offsets.cplayer_viewmodels, view_model_handle);
@@ -324,7 +324,14 @@ LoveStatus Entity::check_love_player() {
   return ::check_love_player(platform_lid, eadp_lid, name, this->ptr);
 }
 
+int Entity::xp_level() {
+  assert(this->is_player);
+  return this->player_xp_level;
+}
+
 int Entity::read_xp_level() {
+  assert(this->is_player);
+
   int xp = 0;
   apex_mem.Read<int>(this->ptr + offsets.player_xp, xp);
 
@@ -442,7 +449,7 @@ Vector Item::getPosition() {
 float CalculateFov(Entity &from, Entity &target) {
   QAngle ViewAngles = from.GetSwayAngles();
   Vector LocalCamera = from.GetCamPos();
-  Vector EntityPosition = target.getPosition();
+  Vector EntityPosition = target.getBonePositionByHitbox(2);
   QAngle Angle = Math::CalcAngle(LocalCamera, EntityPosition);
   return Math::GetFov(ViewAngles, Angle);
 }
@@ -508,7 +515,7 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
       }
     }
   } else if (aimbot.settings.bone_auto) {
-    TargetBonePositionMax = target.getBonePositionByHitbox(5);
+    TargetBonePositionMax = target.getPosition();
     TargetBonePositionMin = target.getBonePositionByHitbox(0);
   } else {
     TargetBonePositionMax = TargetBonePositionMin =
@@ -533,10 +540,8 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     if ((fov0 + fov1) * 0.5f > max_fov) {
       return aim_angles_t{false};
     }
-    if (aimbot.settings.no_recoil) {
-      CalculatedAnglesMin -= SwayAngles - ViewAngles;
-      CalculatedAnglesMax -= SwayAngles - ViewAngles;
-    }
+    CalculatedAnglesMin -= SwayAngles - ViewAngles;
+    CalculatedAnglesMax -= SwayAngles - ViewAngles;
     Math::NormalizeAngles(CalculatedAnglesMin);
     Math::NormalizeAngles(CalculatedAnglesMax);
     QAngle DeltaMin = CalculatedAnglesMin - ViewAngles;
@@ -592,6 +597,10 @@ Entity getEntity(uintptr_t ptr) {
   entity.ptr = ptr;
   apex_mem.ReadArray<uint8_t>(ptr, entity.buffer, sizeof(entity.buffer));
   entity.entity_index = *(uint64_t *)(entity.buffer + 0x38);
+  if (entity.isPlayer()) {
+    entity.is_player = true;
+    entity.player_xp_level = entity.read_xp_level();
+  }
   return entity;
 }
 

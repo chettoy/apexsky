@@ -49,7 +49,7 @@ extern bool overlay_t;
 extern std::vector<player> players;
 extern Matrix view_matrix_data;
 extern Vector esp_local_pos;
-std::vector<std::string> esp_spec_names;
+std::vector<std::string> esp_spec_names, teammates_damage;
 
 // Radar Code
 #define M_PI 3.14159265358979323846 // matches value in gcc v2 math.h
@@ -486,6 +486,7 @@ void Overlay::RenderEsp() {
 
     players.clear();
     esp_spec_names.clear();
+    teammates_damage.clear();
 
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2((float)getWidth(), (float)getHeight()));
@@ -493,7 +494,8 @@ void Overlay::RenderEsp() {
                  ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                      ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
                      ImGuiWindowFlags_NoBackground |
-                     ImGuiWindowFlags_NoBringToFrontOnFocus);
+                     ImGuiWindowFlags_NoBringToFrontOnFocus |
+                     ImGuiWindowFlags_NoInputs);
 
     if (g_settings.show_aim_target && aim_target != Vector(0, 0, 0)) {
       Vector bs = Vector();
@@ -554,15 +556,28 @@ void Overlay::RenderEsp() {
         if (players[i].is_spectator) {
           esp_spec_names.push_back(std::string(players[i].name));
         }
+        if (players[i].is_teammate) {
+          teammates_damage.push_back(std::string(players[i].name) + " " +
+                                     std::to_string(players[i].damage));
+        }
 
         if (!players[i].is_alive) {
           continue;
         }
 
         if (players[i].health > 0) {
-          std::string distance = std::to_string(players[i].dist / 39.62);
-          distance = distance.substr(0, distance.find('.')) + "m(" +
-                     std::to_string(players[i].entity_team) + ")";
+          if (g_settings.esp_visuals.damage &&
+              players[i].dist < g_settings.aimbot_settings.aim_dist) {
+            ImColor color = ImColor(188, 18, 20);
+            ImVec2 draw_pos = ImVec2(players[i].boxMiddle,
+                                     (players[i].b_y - players[i].height - 32));
+            std::string damage_str = std::to_string(players[i].damage);
+            String(draw_pos, color, damage_str.c_str());
+          }
+
+          if (players[i].is_teammate && !g_settings.onevone) {
+            continue;
+          }
 
           float alpha; // The farther away, the more transparent
           if (players[i].dist < g_settings.aimbot_settings.aim_dist) {
@@ -584,22 +599,27 @@ void Overlay::RenderEsp() {
                          players[i].localviewangle.y, radardistance,
                          players[i].entity_team, players[i].targetyaw);
           }
-          if (g_settings.esp_visuals.line)
+          if (g_settings.esp_visuals.line) {
             DrawLine(ImVec2((float)(getWidth() / 2.0), (float)getHeight()),
                      ImVec2(players[i].b_x, players[i].b_y), BLUE,
                      1); // LINE FROM MIDDLE SCREEN
+          }
 
           if (g_settings.esp_visuals.distance) {
-            if (players[i].knocked)
+            std::string distance = std::to_string(players[i].dist / 39.62);
+            distance = distance.substr(0, distance.find('.')) + "m(" +
+                       std::to_string(players[i].entity_team) + ")";
+            if (players[i].knocked) {
               String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)), RED,
                      distance.c_str()); // DISTANCE
-            else
+            } else {
               String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)),
                      ImColor(0.0f, 1.0f, 0.0f, alpha),
                      distance.c_str()); // DISTANCE
+            }
           }
 
-          if (players[i].dist < 16000.0f) {
+          if (players[i].dist < g_settings.aimbot_settings.aim_dist) {
             if (g_settings.esp_visuals.healthbar)
               DrawSeerLikeHealth(
                   (players[i].b_x - (players[i].width / 2.0f) + 5),

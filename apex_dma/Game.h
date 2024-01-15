@@ -66,6 +66,11 @@ public:
   void glow_weapon_model(bool enable_glow, bool enable_draw,
                          std::array<float, 3> highlight_color);
   LoveStatus check_love_player();
+  int xp_level();
+  
+// private:
+  bool is_player = false;
+  int player_xp_level = 0;
   int read_xp_level();
 };
 
@@ -120,6 +125,7 @@ struct ClientClass {
 typedef struct player {
   float dist = 0;
   int entity_team = 0;
+  bool is_teammate = false;
   float boxMiddle = 0;
   float h_y = 0;
   float width = 0;
@@ -133,6 +139,7 @@ typedef struct player {
   // seer
   int maxshield = 0;
   int xp_level = 0;
+  int32_t damage = -99;
   int armortype = 0;
   Vector EntityPosition;
   Vector LocalPlayerPosition;

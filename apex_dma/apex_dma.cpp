@@ -28,7 +28,7 @@ extern const exported_offsets_t offsets;
 // Just setting things up, dont edit.
 bool active = true;
 aimbot_state_t aimbot;
-const int toRead = 100;
+const int ENT_NUM = 10000;
 extern Vector aim_target; // for esp
 int map_testing_local_team = 0;
 
@@ -50,7 +50,6 @@ bool valid = false;
 extern float bulletspeed;
 extern float bulletgrav;
 Vector esp_local_pos;
-int playerentcount = 61;
 int itementcount = 10000;
 int map = 0;
 std::vector<TreasureClue> treasure_clues;
@@ -128,8 +127,7 @@ bool IsInCrossHair(Entity &target) {
 }
 
 // Visual check and aim check.?
-float lastvis_esp[toRead];
-float lastvis_aim[toRead];
+std::map<int, float> lastvis_esp, lastvis_aim;
 std::vector<Entity> spectators, allied_spectators;
 std::mutex spectatorsMtx;
 
@@ -494,22 +492,21 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
       return;
   }
 
-  // Firing range stuff
   if (!g_settings.firing_range) {
     if (entity_team < 0 || entity_team > 50 ||
-        (entity_team == local_team && !g_settings.onevone)) {
-      return;
-    }
-    if (map_testing_local_team != 0 && entity_team == map_testing_local_team) {
+        ((entity_team == local_team ||
+          (map_testing_local_team != 0 &&
+           entity_team == map_testing_local_team)) &&
+         !g_settings.onevone)) {
       return;
     }
   }
 
   if (target.ptr != LPlayer.ptr) {
     // Targeting
-    Vector EntityPosition = target.getPosition();
-    Vector LocalPlayerPosition = LPlayer.getPosition();
-    float dist = LocalPlayerPosition.DistTo(EntityPosition);
+    Vector target_pos_c = target.getBonePositionByHitbox(2);
+    Vector local_pos = LPlayer.getPosition();
+    float dist = local_pos.DistTo(target_pos_c);
     float fov = CalculateFov(LPlayer, target);
     bool vis = target.lastVisTime() > lastvis_aim[index];
     bool love = target.check_love_player();
@@ -581,11 +578,6 @@ void DoActions() {
 
       const auto g_settings = global_settings();
 
-      if (g_settings.firing_range) {
-        playerentcount = 16000;
-      } else {
-        playerentcount = 61;
-      }
       if (g_settings.deathbox) {
         itementcount = 15000;
       } else {
@@ -622,47 +614,27 @@ void DoActions() {
       std::set<uintptr_t> tmp_specs;
       aimbot_start_select_target(&aimbot);
 
-      if (g_settings.firing_range) {
-        int c = 0;
-        for (int i = 0; i < playerentcount; i++) {
-          uint64_t centity = 0;
-          apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
-          if (centity == 0) {
-            continue;
-          }
-          if (LocalPlayer == centity) {
-            continue;
-          }
-
-          Entity Target = getEntity(centity);
-          if (!(Target.isDummy() ||
-                (g_settings.onevone && Target.isPlayer()))) {
-            continue;
-          }
-
-          ProcessPlayer(LPlayer, Target, entitylist, c, frame_number,
-                        tmp_specs);
-          c++;
+      for (int i = 0; i < ENT_NUM; i++) {
+        uint64_t centity = 0;
+        apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
+        if (centity == 0) {
+          continue;
         }
-      } else {
+        if (LocalPlayer == centity) {
+          continue;
+        }
 
-        for (int i = 0; i < toRead; i++) {
-          uint64_t centity = 0;
-          apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
-          if (centity == 0) {
-            continue;
-          }
-          if (LocalPlayer == centity) {
-            continue;
-          }
-
-          Entity Target = getEntity(centity);
-          if (!Target.isPlayer()) {
-            continue;
-          }
-
+        Entity Target = getEntity(centity);
+        if ((g_settings.firing_range && Target.isDummy()) ||
+            (g_settings.firing_range && g_settings.onevone &&
+             Target.isPlayer()) ||
+            (!g_settings.firing_range && Target.isPlayer())) {
           ProcessPlayer(LPlayer, Target, entitylist, i, frame_number,
                         tmp_specs);
+        } else {
+          // char class_name[33] = {0};
+          // get_class_name(Target.ptr, class_name);
+          // printf("entity: %s\n", class_name);
         }
       }
 
@@ -692,13 +664,13 @@ void DoActions() {
         std::array<float, 3> highlight_color;
         if (spectators.size() > 0) {
           highlight_color = {1, 0, 0};
-          LPlayer.glow_weapon_model(true, true, highlight_color);
+          LPlayer.glow_weapon_model(true, false, highlight_color);
         } else if (allied_spectators.size() > 0) {
           highlight_color = {0, 1, 0};
-          LPlayer.glow_weapon_model(true, true, highlight_color);
+          LPlayer.glow_weapon_model(true, false, highlight_color);
         } else {
           rainbowColor(frame_number, highlight_color);
-          LPlayer.glow_weapon_model(true, false, highlight_color);
+          LPlayer.glow_weapon_model(true, true, highlight_color);
         }
         // printf("R: %f, G: %f, B: %f\n", highlight_color[0],
         // highlight_color[1], highlight_color[2]);
@@ -714,7 +686,7 @@ void DoActions() {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<player> players(toRead);
+std::vector<player> players(100);
 Matrix view_matrix_data = {};
 
 // ESP loop.. this helps right?
@@ -765,8 +737,11 @@ static void EspLoop() {
           Vector LocalPlayerPosition = LPlayer.getPosition();
           QAngle localviewangle = LPlayer.GetViewAngles();
 
+          int var_k;
+          apex_mem.Read<int>(g_Base + 0xc936bb8, var_k);
+
           // Ammount of ents to loop, dont edit.
-          for (int i = 0; i < toRead; i++) {
+          for (int i = 0; i < ENT_NUM; i++) {
             // Read entity pointer
             uint64_t centity = 0;
             apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
@@ -801,15 +776,6 @@ static void EspLoop() {
               continue;
             }
 
-            // Exlude teammates if not 1v1
-            if (entity_team == team_player && !g_settings.onevone) {
-              continue;
-            }
-            // if (map_testing_local_team != 0 &&
-            //     entity_team == map_testing_local_team) {
-            //   continue;
-            // }
-
             Vector EntityPosition = Target.getPosition();
             float dist = LocalPlayerPosition.DistTo(EntityPosition);
 
@@ -839,8 +805,10 @@ static void EspLoop() {
               int armortype = Target.getArmortype();
               Vector EntityPosition = Target.getPosition();
               float targetyaw = Target.GetYaw();
+
               player data_buf = {dist,
                                  entity_team,
+                                 entity_team == team_player,
                                  boxMiddle,
                                  hs.y,
                                  width,
@@ -852,7 +820,8 @@ static void EspLoop() {
                                  health,
                                  shield,
                                  maxshield,
-                                 Target.read_xp_level(),
+                                 Target.xp_level(),
+                                 -99,
                                  armortype,
                                  EntityPosition,
                                  LocalPlayerPosition,
@@ -861,15 +830,35 @@ static void EspLoop() {
                                  Target.isAlive(),
                                  Target.check_love_player(),
                                  false};
+
+              int var_ent_i = 0;
+              apex_mem.Read<int>(Target.ptr + 17856, var_ent_i);
+              uintptr_t var_ptr;
+              apex_mem.Read<uintptr_t>(entitylist + (var_ent_i & 0xffff) * 32,
+                                       var_ptr);
+              apex_mem.Read<int>(var_ptr + (var_k << 2) + 2936,
+                                 data_buf.damage);
+
               Target.get_name(data_buf.name);
+
               spectatorsMtx.lock();
-              for (auto &ent : spectators) {
-                if (ent.ptr == centity) {
-                  data_buf.is_spectator = true;
-                  break;
+              if (data_buf.is_teammate) {
+                for (auto &ent : allied_spectators) {
+                  if (ent.ptr == centity) {
+                    data_buf.is_spectator = true;
+                    break;
+                  }
+                }
+              } else {
+                for (auto &ent : spectators) {
+                  if (ent.ptr == centity) {
+                    data_buf.is_spectator = true;
+                    break;
+                  }
                 }
               }
               spectatorsMtx.unlock();
+
               players.push_back(data_buf);
               lastvis_esp[i] = Target.lastVisTime();
               valid = true;
@@ -893,7 +882,7 @@ static void AimbotLoop() {
   while (aim_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
     while (g_Base != 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(15));
 
       static std::chrono::milliseconds last_time =
           duration_cast<std::chrono::milliseconds>(
@@ -939,7 +928,7 @@ static void AimbotLoop() {
         if (i == 0) {
           aimbot_settings(&aimbot, &g_settings.aimbot_settings);
         }
-        if (i > 500) { // Lower update frequency to reduce cpu usage
+        if (i > 30) { // Lower update frequency to reduce cpu usage
           i = 0;
         } else {
           i++;
@@ -961,28 +950,27 @@ static void AimbotLoop() {
 
       // Reduce recoil
       static QAngle prev_recoil_angle = QAngle(0, 0, 0);
-      if (aimbot_settings.no_recoil && aimbot.attack_state > 0) {
+      if (aimbot_settings.no_recoil) {
         // get recoil angle
         QAngle recoil_angles = LPlayer.GetRecoil();
+        // printf("prev=%f, recoil=%f\n", prev_recoil_angle.x, recoil_angles.x);
 
-        // get original angles
-        QAngle old_view_angles = LPlayer.GetViewAngles();
+        if (recoil_angles.x < 0.0f) {
+          QAngle delta_angle(0, 0, 0);
+          // removing recoil angles from player view angles
+          delta_angle.x = ((prev_recoil_angle.x - recoil_angles.x) *
+                           (aimbot_settings.recoil_smooth_x / 100.f));
+          delta_angle.y = ((prev_recoil_angle.y - recoil_angles.y) *
+                           (aimbot_settings.recoil_smooth_y / 100.f));
 
-        QAngle new_angle = old_view_angles;
-        // printf("prev=%f, recoil=%f\n", oldRecoilAngle.x, recoilAngles.x);
+          // setting viewangles to new angles
+          QAngle new_angles = LPlayer.GetViewAngles() + delta_angle;
+          Math::NormalizeAngles(new_angles);
+          LPlayer.SetViewAngles(new_angles);
+        }
 
-        // removing recoil angles from player view angles
-        new_angle.x += ((prev_recoil_angle.x - recoil_angles.x) *
-                        (aimbot_settings.recoil_smooth_x / 100.f));
-        new_angle.y += ((prev_recoil_angle.y - recoil_angles.y) *
-                        (aimbot_settings.recoil_smooth_y / 100.f));
-
-        // setting viewangles to new angles
-        LPlayer.SetViewAngles(new_angle);
         // setting old recoil angles to current recoil angles
         prev_recoil_angle = recoil_angles;
-        // normalize view angles
-        Math::NormalizeAngles(prev_recoil_angle);
       } else {
         prev_recoil_angle = QAngle(0, 0, 0);
       }
@@ -1004,6 +992,7 @@ static void AimbotLoop() {
         if (!(aiming || trigger_bot_ready)) {
           aim_result = aim_angles_t{false};
         } else if (aimbot_get_gun_safety(&aimbot)) {
+          // printf("safety on\n");
           aim_result = aim_angles_t{false};
         } else if (LPlayer.isKnocked() || !target.isAlive() ||
                    (!g_settings.firing_range && target.isKnocked())) {
@@ -1093,14 +1082,6 @@ static void item_glow_t() {
         ItemID2 = ItemID % 301;
         printf("%ld\n", ItemID2); */
         // printf("Model Name: %s, Item ID: %lu\n", glowName, ItemID);
-        // Level name printf
-        // char LevelNAME[200] = { 0 };
-        // uint64_t levelname_ptr;
-        // apex_mem.Read<uint64_t>(g_Base + offsets.offset_levelname,
-        // levelname_ptr); apex_mem.ReadArray<char>(levelname_ptr, LevelNAME,
-        // 200);
-
-        // printf("%s\n", LevelNAME);
 
         // Prints stuff you want to console
         // if (strstr(glowName, "mdl/"))

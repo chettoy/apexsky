@@ -4,7 +4,7 @@ use crate::{
 };
 
 #[no_mangle]
-pub fn import_offsets() -> CustomOffsets {
+pub extern "C" fn import_offsets() -> CustomOffsets {
     let default_offsets = include_str!("../../resource/default/offsets.ini");
     let offsets_file_path = std::env::current_dir().unwrap().join("offsets.ini");
     if !offsets_file_path.exists() {

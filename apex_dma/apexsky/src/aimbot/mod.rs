@@ -90,7 +90,7 @@ impl Default for AimbotSettings {
     fn default() -> Self {
         Self {
             gamepad: false, // auto
-            aim_mode: 2, // 0 no aim, 1 aim with no vis check, 2 aim with vis check
+            aim_mode: 2,    // 0 no aim, 1 aim with no vis check, 2 aim with vis check
             auto_shoot: true,
             ads_fov: 12.0,
             non_ads_fov: 50.0,
@@ -421,8 +421,8 @@ impl Aimbot {
             self.aim_entity = self.tmp_aimentity;
         }
 
-        // disable aimbot safety if vis check is turned off
-        if self.settings.aim_mode == 1 && !self.is_grenade() {
+        // disable safety if vis check or aimbot is turned off
+        if self.settings.aim_mode < 2 && !self.is_grenade() {
             self.gun_safety = false;
         }
     }
@@ -588,23 +588,25 @@ impl TriggerBot for Aimbot {
     }
 
     fn triggerbot_update(&mut self, aim_angles: &AimAngles, force_attack_state: i32) {
-        // println!("force_attach={}", force_attack_state);
+        // println!("force_attack={}", force_attack_state);
 
         let trigger_delay = self.calculate_trigger_delay(aim_angles);
         let now_ms = get_unix_timestamp_in_millis();
 
         if trigger_delay > 0 {
             let semi_auto = self.is_semi_auto();
+            let attack_pressed = force_attack_state == 5;
 
             match self.triggerbot_state {
                 TriggerState::Idle => {
                     // Prepare for the next trigger.
-                    if self.weapon_id == 2 && force_attack_state == 5 {
+                    if self.weapon_id == 2 && attack_pressed {
                         // Release the drawn bow.
                         self.triggerbot_release_time =
                             now_ms + rand::thread_rng().gen_range(60..150);
                         self.triggerbot_state = TriggerState::WaitRelease;
-                    } else {
+                    } else if !attack_pressed {
+                        // Do not interrupt user attacks
                         self.triggerbot_trigger_time = now_ms + trigger_delay;
                         self.triggerbot_state = TriggerState::WaitTrigger;
                     }
