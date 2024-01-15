@@ -665,13 +665,13 @@ void DoActions() {
         std::array<float, 3> highlight_color;
         if (spectators.size() > 0) {
           highlight_color = {1, 0, 0};
-          LPlayer.glow_weapon_model(true, true, highlight_color);
+          LPlayer.glow_weapon_model(true, false, highlight_color);
         } else if (allied_spectators.size() > 0) {
           highlight_color = {0, 1, 0};
-          LPlayer.glow_weapon_model(true, true, highlight_color);
+          LPlayer.glow_weapon_model(true, false, highlight_color);
         } else {
           rainbowColor(frame_number, highlight_color);
-          LPlayer.glow_weapon_model(true, false, highlight_color);
+          LPlayer.glow_weapon_model(true, true, highlight_color);
         }
         // printf("R: %f, G: %f, B: %f\n", highlight_color[0],
         // highlight_color[1], highlight_color[2]);
@@ -738,6 +738,9 @@ static void EspLoop() {
           Vector LocalPlayerPosition = LPlayer.getPosition();
           QAngle localviewangle = LPlayer.GetViewAngles();
 
+          int var_k;
+          apex_mem.Read<int>(g_Base + 0xc936bb8, var_k);
+
           // Ammount of ents to loop, dont edit.
           for (int i = 0; i < ENT_NUM; i++) {
             // Read entity pointer
@@ -774,15 +777,6 @@ static void EspLoop() {
               continue;
             }
 
-            // Exlude teammates if not 1v1
-            if (entity_team == team_player && !g_settings.onevone) {
-              continue;
-            }
-            // if (map_testing_local_team != 0 &&
-            //     entity_team == map_testing_local_team) {
-            //   continue;
-            // }
-
             Vector EntityPosition = Target.getPosition();
             float dist = LocalPlayerPosition.DistTo(EntityPosition);
 
@@ -812,8 +806,10 @@ static void EspLoop() {
               int armortype = Target.getArmortype();
               Vector EntityPosition = Target.getPosition();
               float targetyaw = Target.GetYaw();
+
               player data_buf = {dist,
                                  entity_team,
+                                 entity_team == team_player,
                                  boxMiddle,
                                  hs.y,
                                  width,
@@ -826,6 +822,7 @@ static void EspLoop() {
                                  shield,
                                  maxshield,
                                  Target.xp_level(),
+                                 -99,
                                  armortype,
                                  EntityPosition,
                                  LocalPlayerPosition,
@@ -834,15 +831,35 @@ static void EspLoop() {
                                  Target.isAlive(),
                                  Target.check_love_player(),
                                  false};
+
+              int var_ent_i = 0;
+              apex_mem.Read<int>(Target.ptr + 17856, var_ent_i);
+              uintptr_t var_ptr;
+              apex_mem.Read<uintptr_t>(entitylist + (var_ent_i & 0xffff) * 32,
+                                       var_ptr);
+              apex_mem.Read<int>(var_ptr + (var_k << 2) + 2936,
+                                 data_buf.damage);
+
               Target.get_name(data_buf.name);
+
               spectatorsMtx.lock();
-              for (auto &ent : spectators) {
-                if (ent.ptr == centity) {
-                  data_buf.is_spectator = true;
-                  break;
+              if (data_buf.is_teammate) {
+                for (auto &ent : allied_spectators) {
+                  if (ent.ptr == centity) {
+                    data_buf.is_spectator = true;
+                    break;
+                  }
+                }
+              } else {
+                for (auto &ent : spectators) {
+                  if (ent.ptr == centity) {
+                    data_buf.is_spectator = true;
+                    break;
+                  }
                 }
               }
               spectatorsMtx.unlock();
+
               players.push_back(data_buf);
               lastvis_esp[i] = Target.lastVisTime();
               valid = true;

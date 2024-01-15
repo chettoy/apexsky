@@ -13,6 +13,7 @@ pub struct EspVisuals {
     pub health_bar: bool,
     pub shield_bar: bool,
     pub name: bool,
+    pub damage: bool,
 }
 
 #[repr(C)]
@@ -220,6 +221,7 @@ impl Default for EspVisuals {
             health_bar: false,
             shield_bar: false,
             name: false,
+            damage: true,
         }
     }
 }

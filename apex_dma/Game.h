@@ -125,6 +125,7 @@ struct ClientClass {
 typedef struct player {
   float dist = 0;
   int entity_team = 0;
+  bool is_teammate = false;
   float boxMiddle = 0;
   float h_y = 0;
   float width = 0;
@@ -138,6 +139,7 @@ typedef struct player {
   // seer
   int maxshield = 0;
   int xp_level = 0;
+  int32_t damage = -99;
   int armortype = 0;
   Vector EntityPosition;
   Vector LocalPlayerPosition;

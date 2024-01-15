@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include <cstddef>
 #include <stdio.h>
 #include <vector>
 #define GL_SILENCE_DEPRECATION
@@ -32,7 +33,7 @@ extern float bulletgrav;
 // Aimbot
 extern const aimbot_state_t aimbot; // read aimbot state
 extern const std::vector<Entity> spectators, allied_spectators; // read
-extern const std::vector<string> esp_spec_names;
+extern const std::vector<string> esp_spec_names, teammates_damage;
 // Left and Right Aim key toggle
 bool toggleaim = false;
 bool toggleaim2 = false;
@@ -253,6 +254,8 @@ void Overlay::RenderMenu() {
     ImGui::Checkbox(XorStr("Shield bar"), &g_settings.esp_visuals.shieldbar);
     ImGui::SameLine();
     ImGui::Checkbox(XorStr("Name"), &g_settings.esp_visuals.name);
+    ImGui::SameLine();
+    ImGui::Checkbox(XorStr("Damage"), &g_settings.esp_visuals.damage);
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
     ImGui::Checkbox(XorStr("Show aimbot target"), &g_settings.show_aim_target);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
@@ -737,18 +740,29 @@ int Overlay::CreateOverlay() {
     // 2. Show a simple window that we create ourselves. We use a Begin/End pair
     // to create a named window.
     {
-      ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!"
-                                     // and append into it.
+      ImGui::SetNextWindowBgAlpha(0.4);
+      ImGui::Begin(
+          "Hello, world!", NULL,
+          ImGuiWindowFlags_AlwaysAutoResize); // Create a window called "Hello,
+                                              // world!" and append into it.
 
       ImGui::Checkbox(
           "Demo Window",
           &show_demo_window); // Edit bools storing our window open/close state
 
-      ImGui::Text("Overlay average %.3f ms/frame (%.1f FPS)",
-                  1000.0f / io.Framerate, io.Framerate);
-
+      ImGui::Text("Overlay(%.1f FPS)", io.Framerate);
       if (g_settings.calc_game_fps) {
-        ImGui::Text("Game average (%.1f FPS)", global_settings().game_fps);
+        ImGui::SameLine();
+        ImGui::Text(" Game(%.1f FPS)", global_settings().game_fps);
+      }
+      ImGui::Dummy(ImVec2(0.0f, 5.0f));
+      if (teammates_damage.size() > 0) {
+        const char *info[teammates_damage.size()];
+        for (int i = 0; i < teammates_damage.size(); i++) {
+          info[i] = teammates_damage[i].c_str();
+        }
+        int current_item = 0;
+        ImGui::ListBox("Damage", &current_item, info, teammates_damage.size());
       }
 
       ImGui::Dummy(ImVec2(0.0f, 5.0f));

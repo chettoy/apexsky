@@ -74,6 +74,7 @@ typedef struct {
   bool healthbar;
   bool shieldbar;
   bool name;
+  bool damage;
 } visuals;
 
 typedef struct {
