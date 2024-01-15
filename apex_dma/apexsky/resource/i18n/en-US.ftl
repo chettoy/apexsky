@@ -252,3 +252,5 @@ menu-item-skynade-smooth = Sky Grenade Smooth
 menu-item-spectators-menu = Spectators
 spectators-menu-title = Spectators Menu
 spectators-section = Spectators Section
+menu-item-shotgun-auto-shot = Shotgun Auto Shot
+menu-item-super-grpple = Super Grpple

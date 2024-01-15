@@ -233,6 +233,8 @@ pub enum MessageId {
     MenuItemSpectatorsMenu,
     SpectatorsMenuTitle,
     SpectatorsSection,
+    MenuItemShotgunAutoShot,
+    MenuItemSuperGrpple,
 }
 
 pub fn get_fluent_bundle() -> FluentBundle<FluentResource> {

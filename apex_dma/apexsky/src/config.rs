@@ -172,6 +172,7 @@ pub struct Settings {
     pub loot_filled_toggle: bool,
     pub player_filled_toggle: bool,
     pub super_key_toggle: bool,
+    pub super_grpple: bool,
     pub onevone: bool,
     pub tdm_toggle: bool,
     pub item_glow: bool,
@@ -381,6 +382,7 @@ impl Default for Settings {
             loot_filled_toggle: true,
             player_filled_toggle: true,
             super_key_toggle: true,
+            super_grpple: true,
             // end Terminal Stuff
             onevone: false,
             tdm_toggle: false,

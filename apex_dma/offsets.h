@@ -12,3 +12,8 @@
 // Mode: HighlightSettings + 0x34 * Context + 0x0
 // Color: HighlightSettings + 0x34 * Context + 0x4
 
+
+#define OFFSET_IS_SKYDIVING 0x462c //m_skydiveState
+#define OFFSET_GRAPPLE 0x2c08 //[RecvTable.DT_Player].m_grapple GrappleData
+#define OFFSET_GRAPPLE_ACTIVE 0x2c98 //m_grappleActive  int
+#define OFFSET_GRAPPLE_ATTACHED 0x0048//m_grappleAttached  int

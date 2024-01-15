@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <unordered_map> // Include the unordered_map header
 #include <vector>
+#include <fstream>
 // this is a test, with seconds
 Memory apex_mem;
 extern const exported_offsets_t offsets;
@@ -328,6 +329,19 @@ void ClientActions() {
         } else {
           aimbot_update_triggerbot_key_state(0);
         }
+      }
+
+      int isGrppleActived, isGrppleAttached;
+      apex_mem.Read<int>(local_player_ptr + OFFSET_GRAPPLE_ACTIVE, isGrppleActived);
+      if (g_settings.super_grpple) {
+          if (isGrppleActived) {
+              apex_mem.Read<int>(local_player_ptr + OFFSET_GRAPPLE + OFFSET_GRAPPLE_ATTACHED, isGrppleAttached);
+              if (isGrppleAttached == 1) {
+                  apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x08, 5);
+                  std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                  apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x08, 4);
+              }
+          }
       }
 
       // Trigger ring check on F8 key press for over 0.5 seconds
@@ -1531,7 +1545,7 @@ int main(int argc, char *argv[]) {
         control_thr.~thread();
       }
 
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+      std::this_thread::sleep_for(std::chrono::seconds(2));
       printf("%s", xorstr_("Searching for apex process...\n"));
 
       apex_mem.open_proc(xorstr_("r5apex.exe"));

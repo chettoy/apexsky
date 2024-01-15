@@ -254,3 +254,5 @@ menu-item-skynade-smooth = 天空手雷平滑度
 menu-item-spectators-menu = 记仇
 spectators-menu-title = 观战者菜单
 spectators-section = 观战列表
+menu-item-shotgun-auto-shot = 霰弹枪扳机
+menu-item-super-grpple = 超级钩
