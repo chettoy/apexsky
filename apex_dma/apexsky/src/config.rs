@@ -365,8 +365,8 @@ impl Default for Settings {
             // Enable Loading of setting file automaticly.
             load_settings: true,
             no_overlay: true,
-            screen_width: 1920,
-            screen_height: 1080,
+            screen_width: 2560,
+            screen_height: 1440,
             yuan_p: false,
             debug_mode: false,
             super_key: true,
@@ -385,10 +385,10 @@ impl Default for Settings {
             onevone: false,
             tdm_toggle: false,
             item_glow: false,
-            player_glow: false,
+            player_glow: true,
             player_glow_armor_color: true,
             player_glow_love_user: true,
-            weapon_model_glow: false,
+            weapon_model_glow: true,
             kbd_backlight_control: false,
             deathbox: false,
             esp: true,
@@ -401,10 +401,10 @@ impl Default for Settings {
             main_map_radar_dot_size1: 5,
             main_map_radar_dot_size2: 5,
             max_dist: 3800.0 * 40.0, // Max Distance of ESP 3800 is full map
-            map_radar_testing: false,
+            map_radar_testing: true,
             show_aim_target: true,
             game_fps: 75.0,       // Game FPS for aim prediction
-            calc_game_fps: false, // Automatic calculation of game fps
+            calc_game_fps: true, // Automatic calculation of game fps
             firing_range: false,
             // Player Glow Color and Brightness.
             // inside fill
