@@ -92,9 +92,9 @@ impl Default for AimbotSettings {
             gamepad: false, // auto
             aim_mode: 2,    // 0 no aim, 1 aim with no vis check, 2 aim with vis check
             auto_shoot: true,
-            ads_fov: 12.0,
-            non_ads_fov: 50.0,
-            auto_nade_aim: true,
+            ads_fov: 4.0,
+            non_ads_fov: 8.0,
+            auto_nade_aim: false,
             no_recoil: true,
             bone: 2,
             bone_nearest: false,
@@ -103,10 +103,10 @@ impl Default for AimbotSettings {
             aim_dist: 500.0 * 40.0,
             headshot_dist: 15.0 * 40.0,
             skynade_dist: 150.0 * 40.0,
-            smooth: 200.0,
-            skynade_smooth: 200.0 * 0.6667,
-            recoil_smooth_x: 51.4,
-            recoil_smooth_y: 51.4,
+            smooth: 120.0,
+            skynade_smooth: 400.0 * 0.6667,
+            recoil_smooth_x: 25.0,
+            recoil_smooth_y: 25.0,
         }
     }
 }
