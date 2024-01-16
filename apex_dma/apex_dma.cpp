@@ -742,7 +742,7 @@ static void EspLoop() {
           apex_mem.Read<int>(g_Base + 0xc936bb8, var_k);
 
           // Ammount of ents to loop, dont edit.
-          for (int i = 0; i < ENT_NUM; i++) {
+          for (int i = 0; i < 100; i++) {
             // Read entity pointer
             uint64_t centity = 0;
             apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
