@@ -21,6 +21,7 @@
 #include <functional>
 #include <iomanip>
 #include <thread>
+#include <shared_mutex>
 
 #include "../Game.h"
 
@@ -33,6 +34,7 @@ extern float bulletgrav;
 
 // Aimbot
 extern const aimbot_state_t aimbot; // read aimbot state
+extern std::shared_mutex aimbot_mutex_;
 extern const std::vector<Entity> spectators, allied_spectators; // read
 extern const std::vector<string> esp_spec_names, teammates_damage;
 // Left and Right Aim key toggle
@@ -95,6 +97,7 @@ void Overlay::RenderMenu() {
   //{
   if (ImGui::CollapsingHeader("Main Toggle Settings")) {
     menu1 = 1;
+    std::shared_lock aimbot_rlock(aimbot_mutex_);
     ImGui::Checkbox(XorStr("ESP On/Off"), &g_settings.esp);
     // ImGui::SameLine();
     // ImGui::Checkbox(XorStr("Thirdperson"), &thirdperson);
@@ -592,6 +595,7 @@ void Overlay::RenderInfo() {
   ImGui::Begin(XorStr("##info"), (bool *)true,
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                    ImGuiWindowFlags_NoScrollbar);
+  std::shared_lock aimbot_rlock(aimbot_mutex_);
   DrawLine(ImVec2(1, 2), ImVec2(280, 2), RED, 2);
   if (spectators.size() == 0) {
     ImGui::TextColored(GREEN, "%zu", spectators.size());

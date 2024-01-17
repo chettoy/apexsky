@@ -13,7 +13,9 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <set>
+#include <shared_mutex>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -28,6 +30,7 @@ extern const exported_offsets_t offsets;
 // Just setting things up, dont edit.
 bool active = true;
 aimbot_state_t aimbot;
+std::shared_mutex aimbot_mutex_;
 const int ENT_NUM = 10000;
 extern Vector aim_target; // for esp
 int map_testing_local_team = 0;
@@ -312,22 +315,26 @@ void ClientActions() {
         }
       }
 
-      if (isPressed(g_settings.aimbot_hot_key_1)) {
-        aimbot_update_aim_key_state(&aimbot, g_settings.aimbot_hot_key_1);
-      } else if (isPressed(g_settings.aimbot_hot_key_2)) {
-        aimbot_update_aim_key_state(&aimbot, g_settings.aimbot_hot_key_2);
-      } else {
-        aimbot_update_aim_key_state(&aimbot, 0);
-      }
+      { // Update key state for aimbot
+        std::unique_lock lock(aimbot_mutex_);
 
-      aimbot_update_attack_state(&aimbot, attack_state);
-      aimbot_update_zoom_state(&aimbot, zoom_state);
+        if (isPressed(g_settings.aimbot_hot_key_1)) {
+          aimbot_update_aim_key_state(&aimbot, g_settings.aimbot_hot_key_1);
+        } else if (isPressed(g_settings.aimbot_hot_key_2)) {
+          aimbot_update_aim_key_state(&aimbot, g_settings.aimbot_hot_key_2);
+        } else {
+          aimbot_update_aim_key_state(&aimbot, 0);
+        }
 
-      if (isPressed(g_settings.trigger_bot_hot_key)) {
-        aimbot_update_triggerbot_key_state(&aimbot,
-                                           g_settings.trigger_bot_hot_key);
-      } else {
-        aimbot_update_triggerbot_key_state(&aimbot, 0);
+        aimbot_update_attack_state(&aimbot, attack_state);
+        aimbot_update_zoom_state(&aimbot, zoom_state);
+
+        if (isPressed(g_settings.trigger_bot_hot_key)) {
+          aimbot_update_triggerbot_key_state(&aimbot,
+                                             g_settings.trigger_bot_hot_key);
+        } else {
+          aimbot_update_triggerbot_key_state(&aimbot, 0);
+        }
       }
 
       // Trigger ring check on F8 key press for over 0.5 seconds
@@ -511,7 +518,11 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
     float fov = CalculateFov(LPlayer, target);
     bool vis = target.lastVisTime() > lastvis_aim[index];
     bool love = target.check_love_player();
-    aimbot_add_select_target(&aimbot, fov, dist, vis, love, target.ptr);
+
+    {
+      std::unique_lock lock(aimbot_mutex_);
+      aimbot_add_select_target(&aimbot, fov, dist, vis, love, target.ptr);
+    }
 
     // Player Glow
     SetPlayerGlow(LPlayer, target, index, frame_number);
@@ -613,7 +624,11 @@ void DoActions() {
       apex_mem.Read<int>(g_Base + offsets.global_vars + 0x0008, frame_number);
 
       std::set<uintptr_t> tmp_specs;
-      aimbot_start_select_target(&aimbot);
+
+      {
+        std::unique_lock lock(aimbot_mutex_);
+        aimbot_start_select_target(&aimbot);
+      }
 
       for (int i = 0; i < ENT_NUM; i++) {
         uint64_t centity = 0;
@@ -659,7 +674,10 @@ void DoActions() {
         spectatorsMtx.unlock();
       }
 
-      aimbot_finish_select_target(&aimbot);
+      {
+        std::unique_lock lock(aimbot_mutex_);
+        aimbot_finish_select_target(&aimbot);
+      }
 
       // weapon model glow
       // printf("%d\n", LPlayer.getHealth());
@@ -910,6 +928,8 @@ static void AimbotLoop() {
         continue;
       }
       Entity LPlayer = getEntity(LocalPlayer);
+
+      std::unique_lock aimbot_wlock(aimbot_mutex_);
 
       { // Read held id
         int held_id;
@@ -1501,7 +1521,11 @@ void terminal() {
 
 int main(int argc, char *argv[]) {
   load_settings();
-  aimbot = aimbot_new();
+
+  {
+    std::unique_lock lock(aimbot_mutex_);
+    aimbot = aimbot_new();
+  }
 
   if (geteuid() != 0) {
     // run as root..
