@@ -125,8 +125,8 @@ Additional information:
 
 
 1. Please put the overlay window on the top of the VM screen after start. For example, on top of the looking-glass window.
-2. The window can't get the focus at the same time with the VM screen,  please passthrough some keyboard, mouse or joystick into the VM,  otherwise you can't operate the game.
-3. Press insert key on the overlay window to open the overlay menu.
+2. For a better experience, please passthrough your keyboard, mouse or controller into the VM.
+3. Press Insert to open the Overlay menu. Press and hold the Insert key to temporarily interact with the overlay.
 4. If you are using a resolution other than 1080p, save the configuration and then modify the `screen_width` and `screen_height` in *settings.toml* and reload the configuration.
 
 

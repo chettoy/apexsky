@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include <GL/gl.h>
 #include <cstddef>
 #include <stdio.h>
 #include <vector>
@@ -56,7 +57,6 @@ int menu4 = 0;
 int width;
 int height;
 bool k_leftclick = false;
-bool k_ins = false;
 bool show_menu = false;
 
 // extern bool IsKeyDown(int vk);
@@ -84,8 +84,10 @@ void Overlay::RenderMenu() {
   }
 
   ImGui::SetNextWindowPos(ImVec2(0, 0));
-  ImGui::SetNextWindowSize(ImVec2(450, 860), ImGuiCond_Once);
-  ImGui::Begin(XorStr("##title"), (bool *)true,
+  ImGui::SetNextWindowSize(ImVec2(450, this->getHeight() * 0.9),
+                           ImGuiCond_Once);
+  ImGui::SetNextWindowBgAlpha(0.87);
+  ImGui::Begin(XorStr("##MenuTitle"), (bool *)true,
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
   // if (ImGui::BeginTabBar(XorStr("Tab")))
   //{
@@ -659,9 +661,13 @@ int Overlay::CreateOverlay() {
   // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+
   // only glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // 3.0+ only
 #endif
+  glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
   glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
   glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+  glfwWindowHint(GLFW_MOUSE_PASSTHROUGH, GLFW_TRUE);
+  glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
 
   // Create window with graphics context
   GLFWwindow *window = glfwCreateWindow(
@@ -681,6 +687,7 @@ int Overlay::CreateOverlay() {
   //                   PropertyNewValue, (unsigned char *)&value, 1);
   // }
   glfwMakeContextCurrent(window);
+
   glfwSwapInterval(1); // Enable vsync
 
   // Setup Dear ImGui context
@@ -743,6 +750,9 @@ int Overlay::CreateOverlay() {
     // to create a named window.
     {
       ImGui::SetNextWindowBgAlpha(0.4);
+      ImGui::SetNextWindowPos(
+          ImVec2(this->getWidth() * 0.8f, this->getHeight() / 3.0f),
+          ImGuiCond_FirstUseEver);
       ImGui::Begin(
           "Hello, world!", NULL,
           ImGuiWindowFlags_AlwaysAutoResize); // Create a window called "Hello,
@@ -805,12 +815,26 @@ int Overlay::CreateOverlay() {
     //   k_leftclick = false;
     // }
     {
-      bool key_insert_pressed = IsKeyDown(ImGuiKey_Insert) || isPressed(72);
+      static bool k_ins = false;
+      static std::chrono::milliseconds last_press =
+          std::chrono::milliseconds(0);
+      std::chrono::milliseconds now_ms =
+          duration_cast<std::chrono::milliseconds>(
+              std::chrono::system_clock::now().time_since_epoch());
+      if (IsKeyDown(ImGuiKey_Insert)) {
+        last_press = now_ms;
+      }
+      bool key_insert_pressed_ui = (now_ms - last_press).count() < 400;
+      bool key_insert_pressed_game = isPressed(72);
+      bool key_insert_pressed = key_insert_pressed_ui || key_insert_pressed_game;
       if (key_insert_pressed && !k_ins) {
-        show_menu = !show_menu;
         k_ins = true;
+        glfwSetWindowAttrib(window, GLFW_MOUSE_PASSTHROUGH, GLFW_FALSE);
       } else if (!key_insert_pressed && k_ins) {
         k_ins = false;
+        show_menu = !show_menu;
+        glfwSetWindowAttrib(window, GLFW_MOUSE_PASSTHROUGH,
+                            show_menu ? GLFW_FALSE : GLFW_TRUE);
       }
     }
 
@@ -833,11 +857,11 @@ int Overlay::CreateOverlay() {
       }
     }
 
-    if (show_menu)
+    if (show_menu) {
       RenderMenu();
-    else
+    } else {
       RenderInfo();
-
+    }
     RenderEsp();
 
     // Rendering
@@ -850,10 +874,8 @@ int Overlay::CreateOverlay() {
     glViewport(0, 0, display_w, display_h);
     width = display_w;
     height = display_h;
-    // glClearColor(clear_color.x * clear_color.w, clear_color.y *
-    // clear_color.w, clear_color.z * clear_color.w, clear_color.w);
     glClearColor(0, 0, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     glfwSwapBuffers(window);
