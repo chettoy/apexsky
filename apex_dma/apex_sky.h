@@ -288,12 +288,14 @@ typedef struct {
   uintptr_t levelname;
   uintptr_t clientstate;
   uintptr_t signonstate;
+  uintptr_t net_var_table;
   uintptr_t host_map;
   uintptr_t entity_team;
   uintptr_t player_health;
   uintptr_t entity_shield;
   uintptr_t entity_maxshield;
   uintptr_t player_xp;
+  uintptr_t player_net_var;
   uintptr_t player_helmettype;
   uintptr_t player_armortype;
   uintptr_t player_controller_active;
@@ -316,6 +318,9 @@ typedef struct {
   uintptr_t in_forward;
   uintptr_t in_jump;
   uintptr_t in_duck;
+  uintptr_t in_left;
+  uintptr_t in_right;
+  uintptr_t in_strafe;
   uintptr_t in_use;
   uintptr_t player_life_state;
   uintptr_t player_bleed_out_state;
