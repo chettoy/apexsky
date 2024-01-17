@@ -399,6 +399,8 @@ impl Aimbot {
         if score < self.target_score_max {
             self.target_score_max = score;
             self.tmp_aimentity = target_ptr;
+            // println!("dist {}", distance);
+            // println!("aim ent {}", target_ptr);
         }
 
         if self.aim_entity == target_ptr {

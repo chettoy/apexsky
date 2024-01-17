@@ -456,15 +456,17 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
 }
 
 void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
-                   int index, int frame_number,
-                   std::set<uintptr_t> &tmp_specs) {
-  const auto g_settings = global_settings();
+                   int index, int frame_number, std::set<uintptr_t> &tmp_specs,
+                   const settings_t g_settings) {
+  if (!lastvis_aim.contains(index)) {
+    lastvis_aim[index] = 0.0f;
+  }
 
   int entity_team = target.getTeamId();
   int local_team = LPlayer.getTeamId();
   // printf("Target Team: %i\n", entity_team);
 
-  if (!target.isAlive() || !LPlayer.isAlive()) {
+  if (target.is_player && (!target.isAlive() || !LPlayer.isAlive())) {
     // Update yew to spec checker
     tick_yew(target.ptr, target.GetYaw());
     // Exclude self from list when watching others
@@ -493,20 +495,19 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   }
 
   if (!g_settings.firing_range) {
-    if (entity_team < 0 || entity_team > 50 ||
-        ((entity_team == local_team ||
-          (map_testing_local_team != 0 &&
-           entity_team == map_testing_local_team)) &&
-         !g_settings.onevone)) {
+    if ((entity_team == local_team ||
+         (map_testing_local_team != 0 &&
+          entity_team == map_testing_local_team)) &&
+        !g_settings.onevone) {
       return;
     }
   }
 
   if (target.ptr != LPlayer.ptr) {
     // Targeting
-    Vector target_pos_c = target.getBonePositionByHitbox(2);
+    Vector target_pos = target.getPosition();
     Vector local_pos = LPlayer.getPosition();
-    float dist = local_pos.DistTo(target_pos_c);
+    float dist = local_pos.DistTo(target_pos);
     float fov = CalculateFov(LPlayer, target);
     bool vis = target.lastVisTime() > lastvis_aim[index];
     bool love = target.check_love_player();
@@ -636,7 +637,8 @@ void DoActions() {
           continue;
         }
         Entity Target = getEntity(centity);
-        ProcessPlayer(LPlayer, Target, entitylist, i, frame_number, tmp_specs);
+        ProcessPlayer(LPlayer, Target, entitylist, i, frame_number, tmp_specs,
+                      g_settings);
       }
 
       { // refresh spectators count
@@ -807,6 +809,9 @@ static void EspLoop() {
               int armortype = Target.getArmortype();
               Vector EntityPosition = Target.getPosition();
               float targetyaw = Target.GetYaw();
+              if (!lastvis_esp.contains(i)) {
+                lastvis_esp[i] = 0.0f;
+              }
 
               player data_buf = {dist,
                                  entity_team,
