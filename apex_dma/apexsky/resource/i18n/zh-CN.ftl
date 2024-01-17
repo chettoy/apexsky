@@ -8,7 +8,13 @@ menu-item-keyboard = 键鼠模式
 menu-item-gamepad = 手柄模式
 menu-item-item-glow = 物品透视
 menu-item-player-glow = 玩家热能
-menu-item-smooth-value = 平滑
+menu-item-smooth-value = 平滑1
+menu-item-smooth1-value = 平滑2
+menu-item-recoilx-value = 垂直方向无后平滑
+menu-item-recoily-value = 水平方向无后平滑
+input-prompt-recoil-value = 无后平滑值 (0~100):
+info-invalid-recoil-value = 输入无效。
+    平滑值可设置范围是 0 到 100
 input-prompt-smooth-value = 瞄准平滑值 (50~500):
 info-invalid-smooth-value = 输入无效。
     平滑值可设置范围是 50 到 500

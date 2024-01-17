@@ -80,6 +80,7 @@ pub struct AimbotSettings {
     pub headshot_dist: f32,
     pub skynade_dist: f32,
     pub smooth: f32,
+    pub smooth1: f32,
     pub skynade_smooth: f32,
     pub recoil_smooth_x: f32,
     pub recoil_smooth_y: f32,
@@ -103,6 +104,7 @@ impl Default for AimbotSettings {
             headshot_dist: 30.0 * 40.0,
             skynade_dist: 150.0 * 40.0,
             smooth: 200.0,
+            smooth1: 200.0,
             skynade_smooth: 200.0 * 0.6667,
             recoil_smooth_x: 51.4,
             recoil_smooth_y: 51.4,
@@ -533,28 +535,48 @@ impl Aimbot {
 
     pub fn smooth_aim_angles(&self, aim_angles: &AimAngles, smooth_factor: f32) -> (f32, f32) {
         assert!(aim_angles.valid);
-
         let smooth = if self.weapon_grenade {
             self.settings.skynade_smooth
         } else {
             self.settings.smooth
         } / smooth_factor;
-
+        let smooth1 = self.settings.smooth1 / smooth_factor;
+    
         let mut sm = lock_mod!();
-        (
-            sm.aimbot_smooth_x(
-                self.aim_entity as i64,
-                aim_angles.view_pitch,
-                aim_angles.delta_pitch,
-                smooth,
-            ),
-            sm.aimbot_smooth_y(
-                self.aim_entity as i64,
-                aim_angles.view_yew,
-                aim_angles.delta_yew,
-                smooth,
-            ),
-        )
+        if self.aim_key_state == 1 {
+            (
+                sm.aimbot_smooth_x(
+                    self.aim_entity as i64,
+                    aim_angles.view_pitch,
+                    aim_angles.delta_pitch,
+                    smooth,
+                ),
+                sm.aimbot_smooth_y(
+                    self.aim_entity as i64,
+                    aim_angles.view_yew,
+                    aim_angles.delta_yew,
+                    smooth,
+                ),
+            )
+        } else if self.aim_key_state == 2 {
+            (
+                sm.aimbot_smooth_x(
+                    self.aim_entity as i64,
+                    aim_angles.view_pitch,
+                    aim_angles.delta_pitch,
+                    smooth1,
+                ),
+                sm.aimbot_smooth_y(
+                    self.aim_entity as i64,
+                    aim_angles.view_yew,
+                    aim_angles.delta_yew,
+                    smooth1,
+                ),
+            )
+        } else {
+            //返回原始的 aim_angles
+            (aim_angles.view_pitch, aim_angles.view_yew)
+        }
     }
 }
 

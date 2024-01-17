@@ -309,9 +309,9 @@ void ClientActions() {
       }
 
       if (isPressed(g_settings.aimbot_hot_key_1)) {
-        aimbot_update_aim_key_state(&aimbot, g_settings.aimbot_hot_key_1);
+        aimbot_update_aim_key_state(&aimbot, 1);
       } else if (isPressed(g_settings.aimbot_hot_key_2)) {
-        aimbot_update_aim_key_state(&aimbot, g_settings.aimbot_hot_key_2);
+        aimbot_update_aim_key_state(&aimbot, 2);
       } else {
         aimbot_update_aim_key_state(&aimbot, 0);
       }
@@ -376,6 +376,7 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
   const auto g_settings = global_settings();
   int setting_index = 0;
   std::array<float, 3> highlight_parameter = {0, 0, 0};
+  uint8_t player_glow_inside_value = g_settings.player_glow_inside_value;
 
   if (!Target.isGlowing() ||
       (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1) {
@@ -384,12 +385,14 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
       // set glow color
       if (!(g_settings.firing_range) &&
           (Target.isKnocked() || !Target.isAlive())) {
+        player_glow_inside_value = 0;
         setting_index = 80;
         highlight_parameter = {g_settings.glow_r_knocked,
                                g_settings.glow_g_knocked,
                                g_settings.glow_b_knocked};
       } else if (Target.lastVisTime() > lastvis_aim[index] ||
                  (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f)) {
+        player_glow_inside_value = 0;
         setting_index = 81;
         highlight_parameter = {g_settings.glow_r_viz, g_settings.glow_g_viz,
                                g_settings.glow_b_viz};
@@ -434,7 +437,7 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
 
       // enable glow
       if (g_settings.player_glow) {
-        Target.enableGlow(setting_index, g_settings.player_glow_inside_value,
+        Target.enableGlow(setting_index, player_glow_inside_value,
                           g_settings.player_glow_outline_size,
                           highlight_parameter);
       } else {
@@ -498,7 +501,12 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
     Vector LocalPlayerPosition = LPlayer.getPosition();
     float dist = LocalPlayerPosition.DistTo(EntityPosition);
     float fov = CalculateFov(LPlayer, target);
-    bool vis = target.lastVisTime() > lastvis_aim[index];
+    bool vis;
+    if (isPressed(68)) {
+        vis = true; 
+    } else {
+        vis = target.lastVisTime() > lastvis_aim[index];
+    }
     bool love = target.check_love_player();
     aimbot_add_select_target(&aimbot, fov, dist, vis, love, target.ptr);
 

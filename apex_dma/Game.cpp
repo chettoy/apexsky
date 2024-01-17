@@ -406,10 +406,10 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
   // Calculate the time since the last frame (in seconds)
   float deltaTime = 1.0 / aimbot.game_fps;
 
-  if (aimbot.weapon_headshot && distance <= aimbot.settings.headshot_dist) {
+  /*if (aimbot.weapon_headshot && distance <= aimbot.settings.headshot_dist) {
     TargetBonePositionMax = TargetBonePositionMin =
         target.getBonePositionByHitbox(0);
-  } else if (aimbot.settings.bone_nearest) {
+  } else*/ if (aimbot.settings.bone_nearest) {
     // find nearest bone
     float NearestBoneDistance = aimbot.settings.max_dist;
     for (int i = 0; i < 4; i++) {

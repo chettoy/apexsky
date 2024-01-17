@@ -749,7 +749,104 @@ fn build_aimbot_menu(
     .add_input_item(
         format_item(
             &i18n_bundle,
-            format!("12 - {}", i18n_msg!(i18n_bundle, MenuItemSkynadeSmooth)),
+            format!("12 - {}", i18n_msg!(i18n_bundle, MenuItemSmooth1Value)),
+            if settings.aimbot_settings.smooth1 < 120.0 {
+                Span::styled(
+                    format!("{}", settings.aimbot_settings.smooth1),
+                    Style::default().fg(Color::Red),
+                )
+            } else if settings.aimbot_settings.smooth1 >= 160.0 {
+                Span::styled(
+                    format!("{}", settings.aimbot_settings.smooth1),
+                    Style::default().fg(Color::Green),
+                )
+            } else {
+                Span::from(format!("{}", settings.aimbot_settings.smooth1))
+            },
+        ),
+        &i18n_msg!(i18n_bundle, InputPromptSmoothValue),
+        |val| {
+            if let Some(new_val) = val.parse::<u16>().ok() {
+                if new_val >= 50 && new_val <= 500 {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.smooth1 = new_val.into();
+                    // settings.aimbot_settings.skynade_smooth =
+                    //     settings.aimbot_settings.smooth1 * 0.6667;
+                    return None;
+                }
+            }
+            let i18n_bundle = get_fluent_bundle();
+            Some(i18n_msg!(i18n_bundle, InfoInvalidSmoothValue).to_string())
+        },
+    )
+
+    .add_input_item(
+        format_item(
+            &i18n_bundle,
+            format!("13 - {}", i18n_msg!(i18n_bundle, MenuItemRecoilxValue)),
+            if settings.aimbot_settings.recoil_smooth_x > 70.0 {
+                Span::styled(
+                    format!("{}", settings.aimbot_settings.recoil_smooth_x),
+                    Style::default().fg(Color::Red),
+                )
+            } else if settings.aimbot_settings.recoil_smooth_x <= 70.0 {
+                Span::styled(
+                    format!("{}", settings.aimbot_settings.recoil_smooth_x),
+                    Style::default().fg(Color::Green),
+                )
+            } else {
+                Span::from(format!("{}", settings.aimbot_settings.recoil_smooth_x))
+            },
+        ),
+        &i18n_msg!(i18n_bundle, InputPromptRecoilValue),
+        |val| {
+            if let Some(new_val) = val.parse::<u16>().ok() {
+                if new_val >= 0 && new_val <= 100 {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.recoil_smooth_x = new_val.into();
+                    return None;
+                }
+            }
+            let i18n_bundle = get_fluent_bundle();
+            Some(i18n_msg!(i18n_bundle, InfoInvalidRecoilValue).to_string())
+        },
+    )
+
+    .add_input_item(
+        format_item(
+            &i18n_bundle,
+            format!("14 - {}", i18n_msg!(i18n_bundle, MenuItemRecoilyValue)),
+            if settings.aimbot_settings.recoil_smooth_y > 70.0 {
+                Span::styled(
+                    format!("{}", settings.aimbot_settings.recoil_smooth_y),
+                    Style::default().fg(Color::Red),
+                )
+            } else if settings.aimbot_settings.recoil_smooth_y <= 70.0 {
+                Span::styled(
+                    format!("{}", settings.aimbot_settings.recoil_smooth_y),
+                    Style::default().fg(Color::Green),
+                )
+            } else {
+                Span::from(format!("{}", settings.aimbot_settings.recoil_smooth_y))
+            },
+        ),
+        &i18n_msg!(i18n_bundle, InputPromptRecoilValue),
+        |val| {
+            if let Some(new_val) = val.parse::<u16>().ok() {
+                if new_val >= 0 && new_val <= 100 {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.recoil_smooth_y = new_val.into();
+                    return None;
+                }
+            }
+            let i18n_bundle = get_fluent_bundle();
+            Some(i18n_msg!(i18n_bundle, InfoInvalidRecoilValue).to_string())
+        },
+    )
+    .add_input_item(
+        format_item(
+            &i18n_bundle,
+            format!("15 - {}", i18n_msg!(i18n_bundle, MenuItemSkynadeSmooth)),
             if settings.aimbot_settings.skynade_smooth < 90.0 * 0.6667 {
                 Span::styled(
                     format!("{}", settings.aimbot_settings.skynade_smooth),

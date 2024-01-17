@@ -18,6 +18,7 @@ typedef struct {
   float headshot_dist;
   float skynade_dist;
   float smooth;
+  float smooth1;
   float skynade_smooth;
   float recoil_smooth_x;
   float recoil_smooth_y;
