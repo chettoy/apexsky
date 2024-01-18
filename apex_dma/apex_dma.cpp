@@ -975,33 +975,6 @@ static void AimbotLoop() {
         }
       }
 
-      // Reduce recoil
-      static QAngle prev_recoil_angle = QAngle(0, 0, 0);
-      if (aimbot_settings.no_recoil) {
-        // get recoil angle
-        QAngle recoil_angles = LPlayer.GetRecoil();
-        // printf("prev=%f, recoil=%f\n", prev_recoil_angle.x, recoil_angles.x);
-
-        if (recoil_angles.x < 0.0f) {
-          QAngle delta_angle(0, 0, 0);
-          // removing recoil angles from player view angles
-          delta_angle.x = ((prev_recoil_angle.x - recoil_angles.x) *
-                           (aimbot_settings.recoil_smooth_x / 100.f));
-          delta_angle.y = ((prev_recoil_angle.y - recoil_angles.y) *
-                           (aimbot_settings.recoil_smooth_y / 100.f));
-
-          // setting viewangles to new angles
-          QAngle new_angles = LPlayer.GetViewAngles() + delta_angle;
-          Math::NormalizeAngles(new_angles);
-          LPlayer.SetViewAngles(new_angles);
-        }
-
-        // setting old recoil angles to current recoil angles
-        prev_recoil_angle = recoil_angles;
-      } else {
-        prev_recoil_angle = QAngle(0, 0, 0);
-      }
-
       // Update Aimbot state
       aimbot_update(&aimbot, LocalPlayer, g_settings.game_fps);
 
@@ -1051,11 +1024,41 @@ static void AimbotLoop() {
       aimbot_triggerbot_update(&aimbot, &aim_result, force_attack_state);
 
       // Aim Assist
+      QAngle aim_angles;
       if (aiming && aim_result.valid) {
         auto smoothed_angles =
             aimbot_smooth_aim_angles(&aimbot, &aim_result, smooth_factor);
-        LPlayer.SetViewAngles(
-            QAngle(smoothed_angles.x, smoothed_angles.y, smoothed_angles.z));
+        aim_angles =
+            QAngle(smoothed_angles.x, smoothed_angles.y, smoothed_angles.z);
+      } else {
+        aim_angles = LPlayer.GetViewAngles();
+      }
+
+      // Reduce recoil
+      static QAngle prev_recoil_angle = QAngle(0, 0, 0);
+      if (aimbot_settings.no_recoil) {
+        // get recoil angle
+        QAngle recoil_angles = LPlayer.GetRecoil();
+        // printf("prev=%f, recoil=%f\n", prev_recoil_angle.x, recoil_angles.x);
+
+        if (recoil_angles.x < 0.0f) {
+          QAngle delta_angle(0, 0, 0);
+          // removing recoil angles from player view angles
+          delta_angle.x = ((prev_recoil_angle.x - recoil_angles.x) *
+                           (aimbot_settings.recoil_smooth_x / 100.f));
+          delta_angle.y = ((prev_recoil_angle.y - recoil_angles.y) *
+                           (aimbot_settings.recoil_smooth_y / 100.f));
+
+          // setting viewangles to new angles
+          QAngle new_angles = aim_angles + delta_angle;
+          Math::NormalizeAngles(new_angles);
+          LPlayer.SetViewAngles(new_angles);
+        }
+
+        // setting old recoil angles to current recoil angles
+        prev_recoil_angle = recoil_angles;
+      } else {
+        prev_recoil_angle = QAngle(0, 0, 0);
       }
 
     } // end loop

@@ -106,7 +106,7 @@ impl Default for AimbotSettings {
             smooth: 200.0,
             skynade_smooth: 200.0 * 0.6667,
             recoil_smooth_x: 51.4,
-            recoil_smooth_y: 51.4,
+            recoil_smooth_y: 11.4,
         }
     }
 }
