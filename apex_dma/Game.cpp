@@ -549,6 +549,8 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     Math::NormalizeAngles(CalculatedAnglesMax);
     QAngle DeltaMin = CalculatedAnglesMin - ViewAngles;
     QAngle DeltaMax = CalculatedAnglesMax - ViewAngles;
+    Math::NormalizeDeltaAngles(DeltaMin);
+    Math::NormalizeDeltaAngles(DeltaMax);
 
     QAngle Delta = QAngle(0, 0, 0);
     if (DeltaMin.x * DeltaMax.x > 0)
@@ -593,8 +595,8 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     // printf("weap=%d, bitfield=%d, (%.1f, %.1f)\n", weapon_id,
     //        weapon_mod_bitfield, TargetAngles.x, TargetAngles.y);
 
-    Math::NormalizeAngles(target_aim_angles);
     QAngle Delta = target_aim_angles - ViewAngles;
+    Math::NormalizeDeltaAngles(Delta);
     return aim_angles_t{true,    ViewAngles.x, ViewAngles.y, Delta.x, Delta.y,
                         Delta.x, Delta.x,      Delta.y,      Delta.y, distance};
   }

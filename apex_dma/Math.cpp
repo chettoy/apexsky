@@ -15,6 +15,21 @@ void Math::NormalizeAngles(QAngle& angle)
 		angle.y += 360.f;
 }
 
+void Math::NormalizeDeltaAngles(QAngle& angle)
+{
+	while (angle.x > 180.0f)
+		angle.x -= 180.f;
+
+	while (angle.x < -180.0f)
+		angle.x += 180.f;
+
+	while (angle.y > 180.f)
+		angle.y -= 360.f;
+
+	while (angle.y < -180.f)
+		angle.y += 360.f;
+}
+
 QAngle Math::CalcAngle(const Vector& src, const Vector& dst)
 {
 	QAngle angle = QAngle();
