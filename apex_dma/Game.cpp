@@ -5,6 +5,7 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -548,15 +549,12 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     Math::NormalizeAngles(CalculatedAnglesMax);
     QAngle DeltaMin = CalculatedAnglesMin - ViewAngles;
     QAngle DeltaMax = CalculatedAnglesMax - ViewAngles;
-    Math::NormalizeAngles(DeltaMin);
-    Math::NormalizeAngles(DeltaMax);
 
     QAngle Delta = QAngle(0, 0, 0);
     if (DeltaMin.x * DeltaMax.x > 0)
       Delta.x = (DeltaMin.x + DeltaMax.x) * 0.5f;
     if (DeltaMin.y * DeltaMax.y > 0)
       Delta.y = (DeltaMin.y + DeltaMax.y) * 0.5f;
-    Math::NormalizeAngles(Delta);
 
     return aim_angles_t{true,       ViewAngles.x, ViewAngles.y, Delta.x,
                         Delta.y,    DeltaMin.x,   DeltaMax.x,   DeltaMin.y,
@@ -569,6 +567,12 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     Vector view_origin = local_origin + view_offset;
     Vector target_origin = target.getPosition() + targetVel * deltaTime;
     aim_target = target_origin;
+
+    QAngle target_angle = Math::CalcAngle(view_origin, target_origin);
+    if (abs(target_angle.x) > 80) {
+      return aim_angles_t{false};
+    }
+
     vec4_t skynade_angles =
         skynade_angle(aimbot.weapon_id, aimbot.weapon_mod_bitfield,
                       aimbot.bullet_gravity / 750.0f, aimbot.bullet_speed,
@@ -584,13 +588,13 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     }
 
     const float PIS_IN_180 = 57.2957795130823208767981548141051703f;
-    QAngle TargetAngles = QAngle(-skynade_angles.x * PIS_IN_180,
-                                 skynade_angles.y * PIS_IN_180, 0);
+    QAngle target_aim_angles = QAngle(-skynade_angles.x * PIS_IN_180,
+                                      skynade_angles.y * PIS_IN_180, 0);
     // printf("weap=%d, bitfield=%d, (%.1f, %.1f)\n", weapon_id,
     //        weapon_mod_bitfield, TargetAngles.x, TargetAngles.y);
 
-    QAngle Delta = TargetAngles - ViewAngles;
-    Math::NormalizeAngles(Delta);
+    Math::NormalizeAngles(target_aim_angles);
+    QAngle Delta = target_aim_angles - ViewAngles;
     return aim_angles_t{true,    ViewAngles.x, ViewAngles.y, Delta.x, Delta.y,
                         Delta.x, Delta.x,      Delta.y,      Delta.y, distance};
   }
