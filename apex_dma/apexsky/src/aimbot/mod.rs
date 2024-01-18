@@ -6,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{lock_mod, skyapex::aimbot_utils::AimbotUtils};
 
+#[repr(C)]
 #[allow(dead_code)]
 enum WeaponId {
     R301 = 0,
@@ -27,7 +28,7 @@ enum WeaponId {
     Flatline = 88,
     G7Scout = 89,
     Hemlock = 90,
-    Kraber = 91,
+    Kraber = 92,
     Lstar = 93,
     Mastiff = 95,
     Mozambique = 96,
@@ -89,8 +90,8 @@ pub struct AimbotSettings {
 impl Default for AimbotSettings {
     fn default() -> Self {
         Self {
-            gamepad: false,
-            aim_mode: 2, // 0 no aim, 1 aim with no vis check, 2 aim with vis check
+            gamepad: false, // auto
+            aim_mode: 2,    // 0 no aim, 1 aim with no vis check, 2 aim with vis check
             auto_shoot: true,
             ads_fov: 12.0,
             non_ads_fov: 50.0,
@@ -101,7 +102,7 @@ impl Default for AimbotSettings {
             bone_auto: true,
             max_dist: 3800.0 * 40.0,
             aim_dist: 500.0 * 40.0,
-            headshot_dist: 30.0 * 40.0,
+            headshot_dist: 15.0 * 40.0,
             skynade_dist: 150.0 * 40.0,
             smooth: 200.0,
             smooth1: 200.0,
@@ -400,6 +401,8 @@ impl Aimbot {
         if score < self.target_score_max {
             self.target_score_max = score;
             self.tmp_aimentity = target_ptr;
+            // println!("dist {}", distance);
+            // println!("aim ent {}", target_ptr);
         }
 
         if self.aim_entity == target_ptr {
@@ -422,8 +425,8 @@ impl Aimbot {
             self.aim_entity = self.tmp_aimentity;
         }
 
-        // disable aimbot safety if vis check is turned off
-        if self.settings.aim_mode == 1 && !self.is_grenade() {
+        // disable safety if vis check or aimbot is turned off
+        if self.settings.aim_mode < 2 && !self.is_grenade() {
             self.gun_safety = false;
         }
     }
@@ -470,10 +473,10 @@ impl Aimbot {
         self.triggerbot_ready = self.settings.auto_shoot && self.triggerbot_key_state > 0;
 
         // Update target lock
-        if !self.aiming {
+        if !self.aiming || self.triggerbot_ready {
             self.cancel_locking();
         }
-        if self.aiming && !self.is_headshot() {
+        if self.aiming && !self.is_headshot() && !self.triggerbot_ready {
             self.lock_target(self.aim_entity);
         }
     }
@@ -511,22 +514,20 @@ impl Aimbot {
         if !self.is_triggerbot_ready() || !aim_angles.valid {
             return 0;
         }
-        let trigger_threshold =
-            lock_mod!().triggerbot_threshold_fov(self.weapon_zoom_fov, aim_angles.distance);
-        let cross_hair_ready = {
-            if aim_angles.delta_pitch_min == aim_angles.delta_pitch_max {
-                aim_angles.delta_pitch.abs() < trigger_threshold
-                    && aim_angles.delta_yew.abs() < trigger_threshold
-            } else {
-                (aim_angles.delta_pitch_min * aim_angles.delta_pitch_max < 0.0
-                    && aim_angles.delta_yew.abs() < trigger_threshold)
-                    || (aim_angles.delta_pitch_max.powi(2) / 2.5
-                        + aim_angles.delta_yew_max.powi(2) / 1.2)
-                        .sqrt()
-                        < trigger_threshold
-            }
-        };
-        if cross_hair_ready {
+
+        if lock_mod!().triggerbot_cross_hair_ready(
+            aim_angles.view_pitch,
+            aim_angles.view_yew,
+            aim_angles.delta_pitch,
+            aim_angles.delta_yew,
+            aim_angles.delta_pitch_min,
+            aim_angles.delta_pitch_max,
+            aim_angles.delta_yew_min,
+            aim_angles.delta_yew_max,
+            aim_angles.distance,
+            self.weapon_zoom_fov,
+        ) > 0
+        {
             rand::thread_rng().gen_range(40..100)
         } else {
             0
@@ -611,23 +612,25 @@ impl TriggerBot for Aimbot {
     }
 
     fn triggerbot_update(&mut self, aim_angles: &AimAngles, force_attack_state: i32) {
-        // println!("force_attach={}", force_attack_state);
+        // println!("force_attack={}", force_attack_state);
 
         let trigger_delay = self.calculate_trigger_delay(aim_angles);
         let now_ms = get_unix_timestamp_in_millis();
 
         if trigger_delay > 0 {
             let semi_auto = self.is_semi_auto();
+            let attack_pressed = force_attack_state == 5;
 
             match self.triggerbot_state {
                 TriggerState::Idle => {
                     // Prepare for the next trigger.
-                    if self.weapon_id == 2 && force_attack_state == 5 {
+                    if self.weapon_id == 2 && attack_pressed {
                         // Release the drawn bow.
                         self.triggerbot_release_time =
                             now_ms + rand::thread_rng().gen_range(60..150);
                         self.triggerbot_state = TriggerState::WaitRelease;
-                    } else {
+                    } else if !attack_pressed {
+                        // Do not interrupt user attacks
                         self.triggerbot_trigger_time = now_ms + trigger_delay;
                         self.triggerbot_state = TriggerState::WaitTrigger;
                     }

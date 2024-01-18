@@ -5,6 +5,7 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -13,6 +14,7 @@
 #include <thread>
 
 extern Memory apex_mem;
+extern const exported_offsets_t offsets;
 
 float bulletspeed = 0.08;
 float bulletgrav = 0.05;
@@ -25,7 +27,7 @@ extern float veltest;
 extern Vector aim_target;
 
 bool Entity::Observing(uint64_t entitylist) {
-  return *(bool *)(buffer + OFFSET_OBSERVER_MODE);
+  return *(bool *)(buffer + offsets.observer_mode);
 }
 
 // https://github.com/CasualX/apexbot/blob/master/src/state.cpp#L104
@@ -46,41 +48,50 @@ void get_class_name(uint64_t entity_ptr, char *out_str) {
   apex_mem.ReadArray<char>(client_class.pNetworkName, out_str, 32);
 }
 
-int Entity::getTeamId() { return *(int *)(buffer + OFFSET_TEAM); }
+int Entity::getTeamId() { return *(int *)(buffer + offsets.entity_team); }
 
-int Entity::getHealth() { return *(int *)(buffer + OFFSET_HEALTH); }
-// seer health and shield i added
+int Entity::getHealth() {
+  assert(this->is_player);
+  return *(int *)(buffer + offsets.player_health);
+}
 
 int Entity::getArmortype() {
+  assert(this->is_player);
   int armortype;
-  apex_mem.Read<int>(ptr + OFFSET_ARMORTYPE, armortype);
+  apex_mem.Read<int>(ptr + offsets.player_armortype, armortype);
   return armortype;
 }
 
-int Entity::getShield() { return *(int *)(buffer + OFFSET_SHIELD); }
+int Entity::getShield() { return *(int *)(buffer + offsets.entity_shield); }
 
-int Entity::getMaxshield() { return *(int *)(buffer + OFFSET_MAXSHIELD); }
+int Entity::getMaxshield() {
+  return *(int *)(buffer + offsets.entity_maxshield);
+}
 
 Vector Entity::getAbsVelocity() {
-  return *(Vector *)(buffer + OFFSET_ABS_VELOCITY);
+  return *(Vector *)(buffer + offsets.centity_abs_velocity);
 }
 
-Vector Entity::getPosition() { return *(Vector *)(buffer + OFFSET_ORIGIN); }
+Vector Entity::getPosition() {
+  return *(Vector *)(buffer + offsets.centity_origin);
+}
 Vector Entity::getViewOffset() {
-  return *(Vector *)(buffer + OFFSET_VIEW_OFFSET);
+  return *(Vector *)(buffer + offsets.centity_viewoffset);
 }
 
-bool Entity::isPlayer() {
+bool Entity::isPlayer(uintptr_t ptr) {
   // char class_name[33] = {};
   // get_class_name(ptr, class_name);
-  bool r = *(uint64_t *)(buffer + OFFSET_NAME) == 125780153691248;
+  uint64_t entity_name;
+  apex_mem.Read(ptr + offsets.entiry_name, entity_name);
+  bool r = entity_name == 125780153691248;
   // if (r) {
   //   printf("isPlayer %s %d\n", class_name, r);
   // }
   return r;
 }
 // firing range dummys
-bool Entity::isDummy() {
+bool Entity::isDummy(uintptr_t ptr) {
   char class_name[33] = {};
   get_class_name(ptr, class_name);
 
@@ -88,22 +99,28 @@ bool Entity::isDummy() {
 }
 
 bool Entity::isKnocked() {
-  return *(int *)(buffer + OFFSET_BLEED_OUT_STATE) > 0;
+  assert(this->is_player);
+  return *(int *)(buffer + offsets.player_bleed_out_state) > 0;
 }
 
-bool Entity::isAlive() { return *(int *)(buffer + OFFSET_LIFE_STATE) == 0; }
+bool Entity::isAlive() {
+  assert(this->is_player);
+  return *(int *)(buffer + offsets.player_life_state) == 0;
+}
 
-float Entity::lastVisTime() { return *(float *)(buffer + OFFSET_VISIBLE_TIME); }
+float Entity::lastVisTime() {
+  return *(float *)(buffer + offsets.visible_time);
+}
 
 float Entity::lastCrossHairTime() {
-  return *(float *)(buffer + OFFSET_CROSSHAIR_LAST);
+  return *(float *)(buffer + offsets.crosshair_last);
 }
 
 Vector Entity::getBonePositionByHitbox(int id) {
   Vector origin = getPosition();
 
   // BoneByHitBox
-  uint64_t Model = *(uint64_t *)(buffer + OFFSET_STUDIOHDR);
+  uint64_t Model = *(uint64_t *)(buffer + offsets.studiohdr);
 
   // get studio hdr
   uint64_t StudioHdr;
@@ -126,7 +143,7 @@ Vector Entity::getBonePositionByHitbox(int id) {
     return Vector();
 
   // hitpos
-  uint64_t Bones = *(uint64_t *)(buffer + OFFSET_BONES);
+  uint64_t Bones = *(uint64_t *)(buffer + offsets.bones);
 
   matrix3x4_t Matrix = {};
   apex_mem.Read<matrix3x4_t>(Bones + Bone * sizeof(matrix3x4_t), Matrix);
@@ -137,15 +154,17 @@ Vector Entity::getBonePositionByHitbox(int id) {
 }
 
 QAngle Entity::GetSwayAngles() {
-  return *(QAngle *)(buffer + OFFSET_BREATH_ANGLES);
+  return *(QAngle *)(buffer + offsets.breath_angles);
 }
 
 QAngle Entity::GetViewAngles() {
-  return *(QAngle *)(buffer + OFFSET_VIEWANGLES);
+  assert(this->is_player);
+  return *(QAngle *)(buffer + offsets.player_viewangles);
 }
 
 Vector Entity::GetViewAnglesV() {
-  return *(Vector *)(buffer + OFFSET_VIEWANGLES);
+  assert(this->is_player);
+  return *(Vector *)(buffer + offsets.player_viewangles);
 }
 
 float Entity::GetYaw() {
@@ -162,10 +181,13 @@ float Entity::GetYaw() {
 }
 
 bool Entity::isGlowing() {
-  return *(uint8_t *)(buffer + OFFSET_GLOW_CONTEXT) == 7;
+  return *(uint8_t *)(buffer + OFFSET_GLOW_CONTEXT_ID) == 7;
 }
 
-bool Entity::isZooming() { return *(int *)(buffer + OFFSET_ZOOMING) == 1; }
+bool Entity::isZooming() {
+  assert(this->is_player);
+  return *(int *)(buffer + offsets.player_zooming) == 1;
+}
 
 extern uint64_t g_Base;
 
@@ -189,63 +211,75 @@ void Entity::enableGlow(int setting_index, uint8_t inside_value,
   highlight_settings.color1[2] = highlight_color[2];
 
   uint8_t context_id = setting_index;
-  apex_mem.Write<uint8_t>(ptr + OFFSET_GLOW_CONTEXT, context_id);
-  apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 2);
+  apex_mem.Write<uint8_t>(ptr + OFFSET_GLOW_CONTEXT_ID, context_id);
+  apex_mem.Write<int>(ptr + GLOW_VISIBLE_TYPE, 2);
 
   long highlight_settings_ptr;
   apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
   apex_mem.Write<HighlightSetting_t>(highlight_settings_ptr + 0x34 * context_id,
                                      highlight_settings);
 
+  apex_mem.Write<float>(ptr + offsets.entity_fade_dist, 8.0E+4);
+
   apex_mem.Write(g_Base + OFFSET_GLOW_FIX, 1);
-  // apex_mem.Write<float>(ptr + GLOW_DISTANCE, 1.0E+10);
 }
 
 void Entity::disableGlow() {
-  uint8_t context_id = *(uint8_t *)(this->buffer + OFFSET_GLOW_CONTEXT);
+  uint8_t context_id = *(uint8_t *)(this->buffer + OFFSET_GLOW_CONTEXT_ID);
   if (context_id >= 80 && context_id < 100) {
-    apex_mem.Write<uint8_t>(this->ptr + OFFSET_GLOW_CONTEXT, 0);
+    apex_mem.Write<uint8_t>(this->ptr + OFFSET_GLOW_CONTEXT_ID, 0);
   }
 }
 
 void Entity::SetViewAngles(SVector angles) {
-  apex_mem.Write<SVector>(ptr + OFFSET_VIEWANGLES, angles);
+  assert(this->is_player);
+  apex_mem.Write<SVector>(ptr + offsets.player_viewangles, angles);
 }
 
-void Entity::SetViewAngles(QAngle &angles) { SetViewAngles(SVector(angles)); }
+void Entity::SetViewAngles(QAngle &angles) {
+  this->SetViewAngles(SVector(angles));
+}
 
-Vector Entity::GetCamPos() { return *(Vector *)(buffer + OFFSET_CAMERAPOS); }
+Vector Entity::GetCamPos() {
+  assert(this->is_player);
+  return *(Vector *)(buffer + offsets.cplayer_camerapos);
+}
 
-QAngle Entity::GetRecoil() { return *(QAngle *)(buffer + OFFSET_AIMPUNCH); }
+QAngle Entity::GetRecoil() {
+  assert(this->is_player);
+  return *(QAngle *)(buffer + offsets.cplayer_aimpunch);
+}
 
 void Entity::get_name(char *name) {
   uint64_t index = (this->entity_index - 1) << 4;
   uint64_t name_ptr = 0;
-  apex_mem.Read<uint64_t>(g_Base + OFFSET_NAME_LIST + index, name_ptr);
+  apex_mem.Read<uint64_t>(g_Base + offsets.name_list + index, name_ptr);
   apex_mem.ReadArray<char>(name_ptr, name, 32);
 }
 
-void Entity::glow_weapon_model(bool enable_glow,
+void Entity::glow_weapon_model(bool enable_glow, bool enable_draw,
                                std::array<float, 3> highlight_color) {
+  assert(this->is_player);
+
   uint64_t view_model_handle;
-  apex_mem.Read<uint64_t>(ptr + OFFSET_VIEW_MODELS, view_model_handle);
+  apex_mem.Read<uint64_t>(ptr + offsets.cplayer_viewmodels, view_model_handle);
   view_model_handle &= 0xFFFF;
   uint64_t view_model_ptr = 0;
-  apex_mem.Read<uint64_t>(g_Base + OFFSET_ENTITYLIST + (view_model_handle << 5),
-                          view_model_ptr);
+  apex_mem.Read<uint64_t>(
+      g_Base + offsets.entitylist + (view_model_handle << 5), view_model_ptr);
 
   // printf("view model handle=%lu, ptr=%lu, \n", view_model_handle,
   // view_model_ptr);
 
   // uint64_t name_ptr;
   // char name_str[200];
-  // apex_mem.Read<uint64_t>(view_model_ptr + OFFSET_MODELNAME, name_ptr);
-  // apex_mem.ReadArray<char>(name_ptr, name_str, 200);
+  // apex_mem.Read<uint64_t>(view_model_ptr + offsets.offset_centity_modelname,
+  // name_ptr); apex_mem.ReadArray<char>(name_ptr, name_str, 200);
   // printf("name=%s\n", name_str);
 
   std::array<unsigned char, 4> highlightFunctionBits = {0, 125, 64, 64};
   if (!enable_glow) {
-    apex_mem.Write<uint8_t>(view_model_ptr + OFFSET_GLOW_CONTEXT, 0);
+    apex_mem.Write<uint8_t>(view_model_ptr + OFFSET_GLOW_CONTEXT_ID, 0);
     return;
   }
 
@@ -257,7 +291,7 @@ void Entity::glow_weapon_model(bool enable_glow,
   highlight_settings.outside_radius =
       highlightFunctionBits[2]; // OutlineRadius: size * 255 / 8
   highlight_settings.state = 0;
-  highlight_settings.shouldDraw = 0;
+  highlight_settings.shouldDraw = enable_draw;
   highlight_settings.postProcess = 0;
   highlight_settings.color1[0] = highlight_color[0];
   highlight_settings.color1[1] = highlight_color[1];
@@ -267,30 +301,90 @@ void Entity::glow_weapon_model(bool enable_glow,
   apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
 
   uint8_t context_id = 99;
-  apex_mem.Write<uint8_t>(view_model_ptr + OFFSET_GLOW_CONTEXT, context_id);
+  apex_mem.Write<uint8_t>(view_model_ptr + OFFSET_GLOW_CONTEXT_ID, context_id);
   apex_mem.Write<HighlightSetting_t>(highlight_settings_ptr + 0x34 * context_id,
                                      highlight_settings);
 }
 
-bool Entity::check_love_player() {
+LoveStatus Entity::check_love_player() {
   if (global_settings().yuan_p) {
-    if (this->isDummy())
-      return true;
+    if (Entity::isDummy(this->ptr))
+      return LOVE;
   } else {
-    if (!this->isPlayer())
-      return false;
+    if (!this->is_player)
+      return LoveStatus::NORMAL;
   }
   uint64_t data_fid[4];
-  data_fid[0] = *((uint64_t *)(buffer + OFFSET_PLATFORM_UID + 0));
-  data_fid[1] = *((uint64_t *)(buffer + OFFSET_PLATFORM_UID + 4));
-  data_fid[2] = *((uint64_t *)(buffer + OFFSET_PLATFORM_UID + 16));
-  data_fid[3] = *((uint64_t *)(buffer + OFFSET_PLATFORM_UID + 20));
+  data_fid[0] = *((uint64_t *)(buffer + offsets.player_platform_uid + 0));
+  data_fid[1] = *((uint64_t *)(buffer + offsets.player_platform_uid + 4));
+  data_fid[2] = *((uint64_t *)(buffer + offsets.player_platform_uid + 16));
+  data_fid[3] = *((uint64_t *)(buffer + offsets.player_platform_uid + 20));
   uint64_t platform_lid = data_fid[0] | data_fid[1] << 32;
   uint64_t eadp_lid = data_fid[1] | data_fid[2] << 32;
   char name[33] = {0};
   this->get_name(&name[0]);
   // printf("check love: %s\n", name);
   return ::check_love_player(platform_lid, eadp_lid, name, this->ptr);
+}
+
+int Entity::xp_level() {
+  assert(this->is_player);
+  return this->player_xp_level;
+}
+
+int Entity::read_xp_level() {
+  assert(this->is_player);
+
+  int xp = 0;
+  apex_mem.Read<int>(this->ptr + offsets.player_xp, xp);
+
+  /*
+    MIT License
+
+    Copyright (c) 2023 Xnieno
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to
+    deal in the Software without restriction, including without limitation the
+    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+    sell copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+    IN THE SOFTWARE.
+  */
+  static int levels[] = {2750,   6650,   11400,  17000,  23350,  30450,  38300,
+                         46450,  55050,  64100,  73600,  83550,  93950,  104800,
+                         116100, 127850, 140050, 152400, 164900, 177550, 190350,
+                         203300, 216400, 229650, 243050, 256600, 270300, 284150,
+                         298150, 312300, 326600, 341050, 355650, 370400, 385300,
+                         400350, 415550, 430900, 446400, 462050, 477850, 493800,
+                         509900, 526150, 542550, 559100, 575800, 592650, 609650,
+                         626800, 644100, 661550, 679150, 696900, 714800};
+
+  if (xp < 0)
+    return 0;
+  if (xp < 100)
+    return 1;
+
+  int level = 56;
+  int arraySize = sizeof(levels) / sizeof(levels[0]);
+
+  for (int i = 0; i < arraySize; i++) {
+    if (xp < levels[i]) {
+      return i + 1;
+    }
+  }
+
+  return level + ((xp - levels[arraySize - 1] + 1) / 18000);
 }
 
 // Items
@@ -340,7 +434,7 @@ void Item::enableGlow(std::array<unsigned char, 4> highlightFunctionBits,
   apex_mem.Read<long>(g_Base + HIGHLIGHT_SETTINGS, highlight_settings_ptr);
 
   uint8_t context_id = settingIndex;
-  apex_mem.Write<uint8_t>(this->ptr + OFFSET_GLOW_CONTEXT, context_id);
+  apex_mem.Write<uint8_t>(this->ptr + OFFSET_GLOW_CONTEXT_ID, context_id);
   apex_mem.Write<HighlightSetting_t>(highlight_settings_ptr + 0x34 * context_id,
                                      highlight_settings);
 }
@@ -351,12 +445,14 @@ void Item::enableGlow(std::array<unsigned char, 4> highlightFunctionBits,
 //   apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE, 5);
 // }
 
-Vector Item::getPosition() { return *(Vector *)(buffer + OFFSET_ORIGIN); }
+Vector Item::getPosition() {
+  return *(Vector *)(buffer + offsets.centity_origin);
+}
 
 float CalculateFov(Entity &from, Entity &target) {
   QAngle ViewAngles = from.GetSwayAngles();
   Vector LocalCamera = from.GetCamPos();
-  Vector EntityPosition = target.getPosition();
+  Vector EntityPosition = target.getBonePositionByHitbox(2);
   QAngle Angle = Math::CalcAngle(LocalCamera, EntityPosition);
   return Math::GetFov(ViewAngles, Angle);
 }
@@ -422,7 +518,7 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
       }
     }
   } else if (aimbot.settings.bone_auto) {
-    TargetBonePositionMax = target.getBonePositionByHitbox(5);
+    TargetBonePositionMax = target.getPosition();
     TargetBonePositionMin = target.getBonePositionByHitbox(0);
   } else {
     TargetBonePositionMax = TargetBonePositionMin =
@@ -447,16 +543,12 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     if ((fov0 + fov1) * 0.5f > max_fov) {
       return aim_angles_t{false};
     }
-    if (aimbot.settings.no_recoil) {
-      CalculatedAnglesMin -= SwayAngles - ViewAngles;
-      CalculatedAnglesMax -= SwayAngles - ViewAngles;
-    }
+    CalculatedAnglesMin -= SwayAngles - ViewAngles;
+    CalculatedAnglesMax -= SwayAngles - ViewAngles;
     Math::NormalizeAngles(CalculatedAnglesMin);
     Math::NormalizeAngles(CalculatedAnglesMax);
     QAngle DeltaMin = CalculatedAnglesMin - ViewAngles;
     QAngle DeltaMax = CalculatedAnglesMax - ViewAngles;
-    Math::NormalizeAngles(DeltaMin);
-    Math::NormalizeAngles(DeltaMax);
 
     QAngle Delta = QAngle(0, 0, 0);
     if (DeltaMin.x * DeltaMax.x > 0)
@@ -475,6 +567,12 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     Vector view_origin = local_origin + view_offset;
     Vector target_origin = target.getPosition() + targetVel * deltaTime;
     aim_target = target_origin;
+
+    QAngle target_angle = Math::CalcAngle(view_origin, target_origin);
+    if (abs(target_angle.x) > 80) {
+      return aim_angles_t{false};
+    }
+
     vec4_t skynade_angles =
         skynade_angle(aimbot.weapon_id, aimbot.weapon_mod_bitfield,
                       aimbot.bullet_gravity / 750.0f, aimbot.bullet_speed,
@@ -490,12 +588,13 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
     }
 
     const float PIS_IN_180 = 57.2957795130823208767981548141051703f;
-    QAngle TargetAngles = QAngle(-skynade_angles.x * PIS_IN_180,
-                                 skynade_angles.y * PIS_IN_180, 0);
+    QAngle target_aim_angles = QAngle(-skynade_angles.x * PIS_IN_180,
+                                      skynade_angles.y * PIS_IN_180, 0);
     // printf("weap=%d, bitfield=%d, (%.1f, %.1f)\n", weapon_id,
     //        weapon_mod_bitfield, TargetAngles.x, TargetAngles.y);
 
-    QAngle Delta = TargetAngles - ViewAngles;
+    Math::NormalizeAngles(target_aim_angles);
+    QAngle Delta = target_aim_angles - ViewAngles;
     return aim_angles_t{true,    ViewAngles.x, ViewAngles.y, Delta.x, Delta.y,
                         Delta.x, Delta.x,      Delta.y,      Delta.y, distance};
   }
@@ -506,6 +605,10 @@ Entity getEntity(uintptr_t ptr) {
   entity.ptr = ptr;
   apex_mem.ReadArray<uint8_t>(ptr, entity.buffer, sizeof(entity.buffer));
   entity.entity_index = *(uint64_t *)(entity.buffer + 0x38);
+  if (Entity::isPlayer(ptr)) {
+    entity.is_player = true;
+    entity.player_xp_level = entity.read_xp_level();
+  }
   return entity;
 }
 
@@ -547,9 +650,9 @@ bool WorldToScreen(Vector from, float *m_vMatrix, int targetWidth,
 
 void WeaponXEntity::update(uint64_t LocalPlayer) {
   extern uint64_t g_Base;
-  uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
+  uint64_t entitylist = g_Base + offsets.entitylist;
   uint64_t wephandle = 0;
-  apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_ACTIVE_WEAPON, wephandle);
+  apex_mem.Read<uint64_t>(LocalPlayer + offsets.active_weapon, wephandle);
 
   wephandle &= 0xffff;
 
@@ -557,21 +660,22 @@ void WeaponXEntity::update(uint64_t LocalPlayer) {
   apex_mem.Read<uint64_t>(entitylist + (wephandle << 5), wep_entity);
 
   projectile_speed = 0;
-  apex_mem.Read<float>(wep_entity + OFFSET_BULLET_SPEED, projectile_speed);
+  apex_mem.Read<float>(wep_entity + offsets.bullet_speed, projectile_speed);
   projectile_scale = 0;
-  apex_mem.Read<float>(wep_entity + OFFSET_BULLET_SCALE, projectile_scale);
+  apex_mem.Read<float>(wep_entity + offsets.bullet_scale, projectile_scale);
   zoom_fov = 0;
-  apex_mem.Read<float>(wep_entity + OFFSET_ZOOM_FOV, zoom_fov);
+  apex_mem.Read<float>(wep_entity + offsets.weaponx_zoom_fov, zoom_fov);
   ammo = 0;
-  apex_mem.Read<int>(wep_entity + OFFSET_AMMO, ammo);
+  apex_mem.Read<int>(wep_entity + offsets.weaponx_ammo_in_clip, ammo);
   memset(name_str, 0, sizeof(name_str));
   uint64_t name_ptr;
-  apex_mem.Read<uint64_t>(wep_entity + OFFSET_MODELNAME, name_ptr);
+  apex_mem.Read<uint64_t>(wep_entity + offsets.centity_modelname, name_ptr);
   apex_mem.ReadArray<char>(name_ptr, name_str, 200);
   mod_bitfield = 0;
-  apex_mem.Read<int>(wep_entity + OFFSET_WEAPON_BITFIELD, mod_bitfield);
+  apex_mem.Read<int>(wep_entity + offsets.weaponx_bitfield_from_player,
+                     mod_bitfield);
   weap_id = 0;
-  apex_mem.Read<uint32_t>(wep_entity + OFFSET_WEAPON_NAME, weap_id);
+  apex_mem.Read<uint32_t>(wep_entity + offsets.weaponx_weapon_name, weap_id);
 }
 
 float WeaponXEntity::get_projectile_speed() { return projectile_speed; }

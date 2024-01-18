@@ -3,6 +3,8 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include <GL/gl.h>
+#include <cstddef>
 #include <stdio.h>
 #include <vector>
 #define GL_SILENCE_DEPRECATION
@@ -19,6 +21,7 @@
 #include <functional>
 #include <iomanip>
 #include <thread>
+#include <shared_mutex>
 
 #include "../Game.h"
 
@@ -31,8 +34,9 @@ extern float bulletgrav;
 
 // Aimbot
 extern const aimbot_state_t aimbot; // read aimbot state
+extern std::shared_mutex aimbot_mutex_;
 extern const std::vector<Entity> spectators, allied_spectators; // read
-extern const std::vector<string> esp_spec_names;
+extern const std::vector<string> esp_spec_names, teammates_damage;
 // Left and Right Aim key toggle
 bool toggleaim = false;
 bool toggleaim2 = false;
@@ -55,7 +59,6 @@ int menu4 = 0;
 int width;
 int height;
 bool k_leftclick = false;
-bool k_ins = false;
 bool show_menu = false;
 
 // extern bool IsKeyDown(int vk);
@@ -83,8 +86,10 @@ void Overlay::RenderMenu() {
   }
 
   ImGui::SetNextWindowPos(ImVec2(0, 0));
-  ImGui::SetNextWindowSize(ImVec2(450, 860), ImGuiCond_Once);
-  ImGui::Begin(XorStr("##title"), (bool *)true,
+  ImGui::SetNextWindowSize(ImVec2(450, this->getHeight() * 0.9),
+                           ImGuiCond_Once);
+  ImGui::SetNextWindowBgAlpha(0.87);
+  ImGui::Begin(XorStr("##MenuTitle"), (bool *)true,
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
   // if (ImGui::BeginTabBar(XorStr("Tab")))
   //{
@@ -92,6 +97,7 @@ void Overlay::RenderMenu() {
   //{
   if (ImGui::CollapsingHeader("Main Toggle Settings")) {
     menu1 = 1;
+    std::shared_lock aimbot_rlock(aimbot_mutex_);
     ImGui::Checkbox(XorStr("ESP On/Off"), &g_settings.esp);
     // ImGui::SameLine();
     // ImGui::Checkbox(XorStr("Thirdperson"), &thirdperson);
@@ -253,6 +259,8 @@ void Overlay::RenderMenu() {
     ImGui::Checkbox(XorStr("Shield bar"), &g_settings.esp_visuals.shieldbar);
     ImGui::SameLine();
     ImGui::Checkbox(XorStr("Name"), &g_settings.esp_visuals.name);
+    ImGui::SameLine();
+    ImGui::Checkbox(XorStr("Damage"), &g_settings.esp_visuals.damage);
     ImGui::Dummy(ImVec2(0.0f, 5.0f));
     ImGui::Checkbox(XorStr("Show aimbot target"), &g_settings.show_aim_target);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
@@ -292,11 +300,13 @@ void Overlay::RenderMenu() {
     // Saving
     if (ImGui::Button("Save Config")) {
       save_settings();
+      tui_menu_forceupdate();
     }
     ImGui::SameLine();
     // Loading
     if (ImGui::Button("Load Config")) {
       load_settings();
+      tui_menu_forceupdate();
     }
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     if (menu1 == 1) {
@@ -581,9 +591,11 @@ void Overlay::RenderMenu() {
 void Overlay::RenderInfo() {
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   ImGui::SetNextWindowSize(ImVec2(280, 30));
+  ImGui::SetNextWindowBgAlpha(0.6);
   ImGui::Begin(XorStr("##info"), (bool *)true,
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                    ImGuiWindowFlags_NoScrollbar);
+  std::shared_lock aimbot_rlock(aimbot_mutex_);
   DrawLine(ImVec2(1, 2), ImVec2(280, 2), RED, 2);
   if (spectators.size() == 0) {
     ImGui::TextColored(GREEN, "%zu", spectators.size());
@@ -653,8 +665,13 @@ int Overlay::CreateOverlay() {
   // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+
   // only glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // 3.0+ only
 #endif
-  glfwWindowHint(GLFW_RESIZABLE, 1);
-  glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, 1);
+  glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+  glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
+  glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+  glfwWindowHint(GLFW_MOUSE_PASSTHROUGH, GLFW_TRUE);
+  glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
 
   // Create window with graphics context
   GLFWwindow *window = glfwCreateWindow(
@@ -662,18 +679,19 @@ int Overlay::CreateOverlay() {
       "Client ImGui GLFW+OpenGL3", glfwGetPrimaryMonitor(), nullptr);
   if (window == nullptr)
     return 1;
-  static const char *GamescopeOverlayProperty = "GAMESCOPE_EXTERNAL_OVERLAY";
-  Display *x11_display = glfwGetX11Display();
-  Window x11_window = glfwGetX11Window(window);
-  if (x11_window && x11_display) {
-    // Set atom for gamescope to render as an overlay.
-    Atom overlay_atom =
-        XInternAtom(x11_display, GamescopeOverlayProperty, False);
-    uint32_t value = 1;
-    XChangeProperty(x11_display, x11_window, overlay_atom, XA_CARDINAL, 32,
-                    PropertyNewValue, (unsigned char *)&value, 1);
-  }
+  // static const char *GamescopeOverlayProperty = "GAMESCOPE_EXTERNAL_OVERLAY";
+  // Display *x11_display = glfwGetX11Display();
+  // Window x11_window = glfwGetX11Window(window);
+  // if (x11_window && x11_display) {
+  //   // Set atom for gamescope to render as an overlay.
+  //   Atom overlay_atom =
+  //       XInternAtom(x11_display, GamescopeOverlayProperty, False);
+  //   uint32_t value = 1;
+  //   XChangeProperty(x11_display, x11_window, overlay_atom, XA_CARDINAL, 32,
+  //                   PropertyNewValue, (unsigned char *)&value, 1);
+  // }
   glfwMakeContextCurrent(window);
+
   glfwSwapInterval(1); // Enable vsync
 
   // Setup Dear ImGui context
@@ -735,19 +753,32 @@ int Overlay::CreateOverlay() {
     // 2. Show a simple window that we create ourselves. We use a Begin/End pair
     // to create a named window.
     {
-      ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!"
-                                     // and append into it.
+      ImGui::SetNextWindowBgAlpha(0.4);
+      ImGui::SetNextWindowPos(
+          ImVec2(this->getWidth() * 0.8f, this->getHeight() / 3.0f),
+          ImGuiCond_FirstUseEver);
+      ImGui::Begin(
+          "Hello, world!", NULL,
+          ImGuiWindowFlags_AlwaysAutoResize); // Create a window called "Hello,
+                                              // world!" and append into it.
 
       ImGui::Checkbox(
           "Demo Window",
           &show_demo_window); // Edit bools storing our window open/close state
 
-      ImGui::Text("Overlay average %.3f ms/frame (%.1f FPS)",
-                  1000.0f / io.Framerate, io.Framerate);
-
+      ImGui::Text("Overlay(%.1f FPS)", io.Framerate);
       if (g_settings.calc_game_fps) {
-        ImGui::Text("Game average %.3f ms/frame (%.1f FPS)",
-                    1000.0f / g_settings.game_fps, g_settings.game_fps);
+        ImGui::SameLine();
+        ImGui::Text(" Game(%.1f FPS)", global_settings().game_fps);
+      }
+      ImGui::Dummy(ImVec2(0.0f, 5.0f));
+      if (teammates_damage.size() > 0) {
+        const char *info[teammates_damage.size()];
+        for (int i = 0; i < teammates_damage.size(); i++) {
+          info[i] = teammates_damage[i].c_str();
+        }
+        int current_item = 0;
+        ImGui::ListBox("Damage", &current_item, info, teammates_damage.size());
       }
 
       ImGui::Dummy(ImVec2(0.0f, 5.0f));
@@ -788,12 +819,26 @@ int Overlay::CreateOverlay() {
     //   k_leftclick = false;
     // }
     {
-      bool key_insert_pressed = IsKeyDown(ImGuiKey_Insert) || isPressed(72);
+      static bool k_ins = false;
+      static std::chrono::milliseconds last_press =
+          std::chrono::milliseconds(0);
+      std::chrono::milliseconds now_ms =
+          duration_cast<std::chrono::milliseconds>(
+              std::chrono::system_clock::now().time_since_epoch());
+      if (IsKeyDown(ImGuiKey_Insert)) {
+        last_press = now_ms;
+      }
+      bool key_insert_pressed_ui = (now_ms - last_press).count() < 400;
+      bool key_insert_pressed_game = isPressed(72);
+      bool key_insert_pressed = key_insert_pressed_ui || key_insert_pressed_game;
       if (key_insert_pressed && !k_ins) {
-        show_menu = !show_menu;
         k_ins = true;
+        glfwSetWindowAttrib(window, GLFW_MOUSE_PASSTHROUGH, GLFW_FALSE);
       } else if (!key_insert_pressed && k_ins) {
         k_ins = false;
+        show_menu = !show_menu;
+        glfwSetWindowAttrib(window, GLFW_MOUSE_PASSTHROUGH,
+                            show_menu ? GLFW_FALSE : GLFW_TRUE);
       }
     }
 
@@ -816,11 +861,11 @@ int Overlay::CreateOverlay() {
       }
     }
 
-    if (show_menu)
+    if (show_menu) {
       RenderMenu();
-    else
+    } else {
       RenderInfo();
-
+    }
     RenderEsp();
 
     // Rendering
@@ -833,10 +878,8 @@ int Overlay::CreateOverlay() {
     glViewport(0, 0, display_w, display_h);
     width = display_w;
     height = display_h;
-    // glClearColor(clear_color.x * clear_color.w, clear_color.y *
-    // clear_color.w, clear_color.z * clear_color.w, clear_color.w);
     glClearColor(0, 0, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     glfwSwapBuffers(window);

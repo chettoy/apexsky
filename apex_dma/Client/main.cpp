@@ -6,9 +6,11 @@
 #include <cstdio>
 #include <map>
 #include <random>
+#include <shared_mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
 typedef Vector D3DXVECTOR3;
 
 typedef uint8_t *PBYTE;
@@ -43,13 +45,14 @@ extern bool next2; // read write sync
 
 Vector aim_target = Vector(0, 0, 0);
 extern const aimbot_state_t aimbot; // read
+extern std::shared_mutex aimbot_mutex_;
 
 extern bool overlay_t;
 
 extern std::vector<player> players;
 extern Matrix view_matrix_data;
 extern Vector esp_local_pos;
-std::vector<std::string> esp_spec_names;
+std::vector<std::string> esp_spec_names, teammates_damage;
 
 // Radar Code
 #define M_PI 3.14159265358979323846 // matches value in gcc v2 math.h
@@ -486,6 +489,7 @@ void Overlay::RenderEsp() {
 
     players.clear();
     esp_spec_names.clear();
+    teammates_damage.clear();
 
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2((float)getWidth(), (float)getHeight()));
@@ -493,14 +497,17 @@ void Overlay::RenderEsp() {
                  ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                      ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
                      ImGuiWindowFlags_NoBackground |
-                     ImGuiWindowFlags_NoBringToFrontOnFocus);
+                     ImGuiWindowFlags_NoBringToFrontOnFocus |
+                     ImGuiWindowFlags_NoInputs);
 
     if (g_settings.show_aim_target && aim_target != Vector(0, 0, 0)) {
       Vector bs = Vector();
       WorldToScreen(aim_target, view_matrix_data.matrix, getWidth(),
                     getHeight(), bs);
       const float indicator_radius = 10.0f;
+      std::shared_lock aimbot_rlock(aimbot_mutex_);
       bool aimbot_locked = aimbot_is_locked(&aimbot);
+      aimbot_rlock.unlock();
       ImColor indicator_color = aimbot_locked
                                     ? ImColor(1.0f, 0.647f, 0.0f, 0.618f)
                                     : ImColor(1.0f, 1.0f, 1.0f, 0.618f);
@@ -554,15 +561,28 @@ void Overlay::RenderEsp() {
         if (players[i].is_spectator) {
           esp_spec_names.push_back(std::string(players[i].name));
         }
+        if (players[i].is_teammate) {
+          teammates_damage.push_back(std::string(players[i].name) + " " +
+                                     std::to_string(players[i].damage));
+        }
 
         if (!players[i].is_alive) {
           continue;
         }
 
         if (players[i].health > 0) {
-          std::string distance = std::to_string(players[i].dist / 39.62);
-          distance = distance.substr(0, distance.find('.')) + "m(" +
-                     std::to_string(players[i].entity_team) + ")";
+          if (g_settings.esp_visuals.damage &&
+              players[i].dist < g_settings.aimbot_settings.aim_dist) {
+            ImColor color = ImColor(188, 18, 20);
+            ImVec2 draw_pos = ImVec2(players[i].boxMiddle,
+                                     (players[i].b_y - players[i].height - 32));
+            std::string damage_str = std::to_string(players[i].damage);
+            String(draw_pos, color, damage_str.c_str());
+          }
+
+          if (players[i].is_teammate && !g_settings.onevone) {
+            continue;
+          }
 
           float alpha; // The farther away, the more transparent
           if (players[i].dist < g_settings.aimbot_settings.aim_dist) {
@@ -584,22 +604,27 @@ void Overlay::RenderEsp() {
                          players[i].localviewangle.y, radardistance,
                          players[i].entity_team, players[i].targetyaw);
           }
-          if (g_settings.esp_visuals.line)
+          if (g_settings.esp_visuals.line) {
             DrawLine(ImVec2((float)(getWidth() / 2.0), (float)getHeight()),
                      ImVec2(players[i].b_x, players[i].b_y), BLUE,
                      1); // LINE FROM MIDDLE SCREEN
+          }
 
           if (g_settings.esp_visuals.distance) {
-            if (players[i].knocked)
+            std::string distance = std::to_string(players[i].dist / 39.62);
+            distance = distance.substr(0, distance.find('.')) + "m(" +
+                       std::to_string(players[i].entity_team) + ")";
+            if (players[i].knocked) {
               String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)), RED,
                      distance.c_str()); // DISTANCE
-            else
+            } else {
               String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)),
                      ImColor(0.0f, 1.0f, 0.0f, alpha),
                      distance.c_str()); // DISTANCE
+            }
           }
 
-          if (players[i].dist < 16000.0f) {
+          if (players[i].dist < g_settings.aimbot_settings.aim_dist) {
             if (g_settings.esp_visuals.healthbar)
               DrawSeerLikeHealth(
                   (players[i].b_x - (players[i].width / 2.0f) + 5),
@@ -624,12 +649,27 @@ void Overlay::RenderEsp() {
                       players[i].b_y - players[i].height, players[i].width,
                       players[i].height, box_width);
             }
-            if (g_settings.esp_visuals.name)
-              String(ImVec2(players[i].boxMiddle,
-                            (players[i].b_y - players[i].height - 15)),
-                     players[i].is_love ? ImColor(231, 27, 100)
-                                        : ImColor(1.0f, 1.0f, 1.0f, alpha),
-                     players[i].name);
+            if (g_settings.esp_visuals.name) {
+              ImColor name_color;
+              if (players[i].is_love == LOVE) {
+                name_color = ImColor(231, 27, 100);
+              } else if (players[i].is_love == HATE) {
+                name_color = ImColor(1.0f, .0f, .0f);
+              } else if (players[i].is_love == AMBIVALENT) {
+                name_color = ImColor(.0f, .0f, .0f);
+              } else {
+                name_color = ImColor(1.0f, 1.0f, 1.0f, alpha);
+              }
+              ImVec2 draw_pos =
+                  ImVec2(players[i].boxMiddle,
+                         (players[i].b_y - players[i].height - 15));
+              ImVec2 nick_pos = ImVec2(draw_pos.x + 50, draw_pos.y);
+              std::string level =
+                  std::string("Lv.") + std::to_string(players[i].xp_level);
+
+              String(draw_pos, ImColor(.0f, 1.0f, .0f, alpha), level.c_str());
+              String(nick_pos, name_color, players[i].name);
+            }
           }
           // Full Radar map, Need Manual setting of cords
           if (g_settings.main_radar_map == true)

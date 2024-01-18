@@ -54,6 +54,8 @@ ExternalProject_Add(
 find_package(Threads REQUIRED)
 
 # GLFW
+set(GLFW_USE_WAYLAND ON)
+set(GLFW_BUILD_X11 OFF)
 set(GLFW_DIR ${PROJECT_SOURCE_DIR}/Client/glfw)
 option(GLFW_BUILD_EXAMPLES "Build the GLFW example programs" OFF)
 option(GLFW_BUILD_TESTS "Build the GLFW test programs" OFF)

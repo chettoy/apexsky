@@ -37,7 +37,7 @@ UnknownCheats thread: https://www.unknowncheats.me/forum/apex-legends/406426-kvm
 
 Bone IDs reference: https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes
 
-Game version (Steam Only right now): v3.0.52.26
+Game version (Steam Only right now): v3.0.53.30
 
 
 
@@ -125,8 +125,8 @@ Additional information:
 
 
 1. Please put the overlay window on the top of the VM screen after start. For example, on top of the looking-glass window.
-2. The window can't get the focus at the same time with the VM screen,  please passthrough some keyboard, mouse or joystick into the VM,  otherwise you can't operate the game.
-3. Press insert key on the overlay window to open the overlay menu.
+2. For a better experience, please passthrough your keyboard, mouse or controller into the VM.
+3. Press Insert to open the Overlay menu. Press and hold the Insert key to temporarily interact with the overlay.
 4. If you are using a resolution other than 1080p, save the configuration and then modify the `screen_width` and `screen_height` in *settings.toml* and reload the configuration.
 
 
@@ -194,6 +194,7 @@ cd apex_dma
 
 
 * [memflow](https://github.com/memflow/memflow)
+* [ratatui](https://ratatui.rs)
 * [tracel-ai/burn](https://github.com/tracel-ai/burn)
 * [TheCruz's Apex Aimbot+ESP](https://www.unknowncheats.me/forum/apex-legends/369786-apex-directx-wallhack-smooth-aimbot-source.html)
 * [h33p/vmread](https://github.com/h33p/vmread)
@@ -202,6 +203,7 @@ cd apex_dma
 * [KrackerCo/apex_dma_kvm_pub](https://github.com/KrackerCo/apex_dma_kvm_pub)
 * [CasualX/apexdream](https://github.com/CasualX/apexdream)
 * [Nexilist/xap-client](https://github.com/Nexilist/xap-client)
+* [Xnieno/ApexDreamForYou](https://github.com/Xnieno/ApexDreamForYou)
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

@@ -8,6 +8,7 @@ mod i18n;
 mod love_players;
 mod math;
 mod menu;
+mod offsets;
 mod pitches;
 mod skyapex;
 mod skynade;
@@ -36,6 +37,7 @@ pub extern "C" fn __update_global_states(state: CGlobalState) {
     let global_state = &mut G_STATE.lock().unwrap();
     global_state.config.settings = state.settings;
     global_state.terminal_t = state.terminal_t;
+    global_state.tui_forceupdate = state.tui_forceupdate;
 }
 
 // config
@@ -138,6 +140,9 @@ impl From<(f32, f32)> for Vec4 {
 
 // Aimbot
 pub use aimbot::ffi::*;
+
+// OffsetsLoader
+pub use offsets::import_offsets;
 
 #[cfg(test)]
 mod tests {

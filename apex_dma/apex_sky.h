@@ -75,6 +75,7 @@ typedef struct {
   bool healthbar;
   bool shieldbar;
   bool name;
+  bool damage;
 } visuals;
 
 typedef struct {
@@ -263,6 +264,7 @@ typedef struct {
 typedef struct {
   settings_t settings;
   bool terminal_t;
+  bool tui_forceupdate;
 } global_state_t;
 
 typedef struct {
@@ -271,6 +273,85 @@ typedef struct {
   float z;
   float w;
 } vec4_t;
+
+typedef enum {
+  NORMAL = 0,
+  LOVE = 1,
+  HATE = 2,
+  AMBIVALENT = 3,
+} LoveStatus;
+
+typedef struct {
+  uintptr_t entitylist;
+  uintptr_t local_ent;
+  uintptr_t name_list;
+  uintptr_t global_vars;
+  uintptr_t levelname;
+  uintptr_t clientstate;
+  uintptr_t signonstate;
+  uintptr_t net_var_table;
+  uintptr_t host_map;
+  uintptr_t entity_team;
+  uintptr_t player_health;
+  uintptr_t entity_shield;
+  uintptr_t entity_maxshield;
+  uintptr_t player_xp;
+  uintptr_t player_net_var;
+  uintptr_t player_helmettype;
+  uintptr_t player_armortype;
+  uintptr_t player_controller_active;
+  uintptr_t entiry_name;
+  uintptr_t entity_sign_name;
+  uintptr_t centity_abs_velocity;
+  uintptr_t visible_time;
+  uintptr_t player_zooming;
+  uintptr_t cplayer_traversal_progress;
+  uintptr_t cplayer_traversal_starttime;
+  uintptr_t player_platform_uid;
+  uintptr_t weaponx_weapon_name;
+  uintptr_t off_weapon;
+  uintptr_t cplayer_wall_run_start_time;
+  uintptr_t cplayer_wall_run_clear_time;
+  uintptr_t centity_flags;
+  uintptr_t in_attack;
+  uintptr_t in_toggle_duck;
+  uintptr_t in_zoom;
+  uintptr_t in_forward;
+  uintptr_t in_jump;
+  uintptr_t in_duck;
+  uintptr_t in_left;
+  uintptr_t in_right;
+  uintptr_t in_strafe;
+  uintptr_t in_use;
+  uintptr_t player_life_state;
+  uintptr_t player_bleed_out_state;
+  uintptr_t centity_viewoffset;
+  uintptr_t centity_origin;
+  uintptr_t bones;
+  uintptr_t studiohdr;
+  uintptr_t cplayer_aimpunch;
+  uintptr_t cplayer_camerapos;
+  uintptr_t player_viewangles;
+  uintptr_t breath_angles;
+  uintptr_t observer_mode;
+  uintptr_t ovserver_target;
+  uintptr_t view_matrix;
+  uintptr_t view_render;
+  uintptr_t primary_weapon;
+  uintptr_t active_weapon;
+  uintptr_t bullet_speed;
+  uintptr_t bullet_scale;
+  uintptr_t weaponx_zoom_fov;
+  uintptr_t weaponx_ammo_in_clip;
+  uintptr_t centity_modelname;
+  uintptr_t cplayer_timebase;
+  uintptr_t cplayer_viewmodels;
+  uintptr_t crosshair_last;
+  uintptr_t input_system;
+  uintptr_t weaponx_bitfield_from_player;
+  uintptr_t entity_fade_dist;
+  uintptr_t entity_highlight_generic_context;
+} exported_offsets_t;
 
 extern "C" {
 void print_run_as_root();
@@ -284,8 +365,8 @@ bool save_settings();
 
 void run_tui_menu();
 
-bool check_love_player(uint64_t puid, uint64_t euid, const char *name,
-                       uint64_t entity_ptr);
+LoveStatus check_love_player(uint64_t puid, uint64_t euid, const char *name,
+                             uint64_t entity_ptr);
 
 void init_spec_checker(uintptr_t local_player_ptr);
 void tick_yew(uintptr_t target_ptr, float yew);
@@ -333,6 +414,8 @@ void aimbot_triggerbot_update(aimbot_state_t *aimbot,
                               const aim_angles_t *aim_angles,
                               int force_attack_state);
 
+exported_offsets_t import_offsets();
+
 /**
  * https://github.com/CasualX/apexdream
  * LISENCE: GPLv3
@@ -352,4 +435,7 @@ vec4_t linear_predict(float weapon_projectile_grav,
 void load_settings();
 const settings_t global_settings();
 void update_settings(settings_t state);
-void quit_tui_menu();
+void tui_menu_quit();
+void tui_menu_forceupdate();
+
+const exported_offsets_t offsets = import_offsets();

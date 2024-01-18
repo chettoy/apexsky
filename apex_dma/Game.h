@@ -33,8 +33,8 @@ public:
   uint64_t entity_index;
   uint8_t buffer[0x3FF0];
   Vector getPosition();
-  bool isDummy();
-  bool isPlayer();
+  static bool isDummy(uintptr_t ptr);
+  static bool isPlayer(uintptr_t ptr);
   bool isKnocked();
   bool isAlive();
   float lastVisTime();
@@ -63,9 +63,15 @@ public:
   Vector getBonePositionByHitbox(int id);
   bool Observing(uint64_t entitylist);
   void get_name(char *name);
-  void glow_weapon_model(bool enable_glow,
+  void glow_weapon_model(bool enable_glow, bool enable_draw,
                          std::array<float, 3> highlight_color);
-  bool check_love_player();
+  LoveStatus check_love_player();
+  int xp_level();
+  
+// private:
+  bool is_player = false;
+  int player_xp_level = 0;
+  int read_xp_level();
 };
 
 class Item {
@@ -119,6 +125,7 @@ struct ClientClass {
 typedef struct player {
   float dist = 0;
   int entity_team = 0;
+  bool is_teammate = false;
   float boxMiddle = 0;
   float h_y = 0;
   float width = 0;
@@ -131,15 +138,18 @@ typedef struct player {
   int shield = 0;
   // seer
   int maxshield = 0;
+  int xp_level = 0;
+  int32_t damage = -99;
   int armortype = 0;
   Vector EntityPosition;
   Vector LocalPlayerPosition;
   QAngle localviewangle;
   float targetyaw = 0;
   bool is_alive = true;
-  bool is_love = false;
+  LoveStatus is_love = LoveStatus::NORMAL;
   bool is_spectator = false;
   char name[33] = {0};
+
 } player;
 
 struct Matrix {
