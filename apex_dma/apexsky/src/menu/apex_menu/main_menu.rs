@@ -274,8 +274,14 @@ pub(super) fn build_main_menu(
         format!("24 - {}", i18n_msg!(i18n_bundle, MenuItemSuperGrpple)),
         settings.super_grpple,
         super_grpple
+    );
+    menu = menu_add_toggle_item!(
+        menu,
+        &i18n_bundle,
+        format!("25 - {}", i18n_msg!(i18n_bundle, MenuItemAutoTapstrafe)),
+        settings.auto_tapstrafe,
+        auto_tapstrafe
     )
-    .skip_id()
     .skip_id();
     menu = menu_add_toggle_item!(
         menu,

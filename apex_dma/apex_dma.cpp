@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib> // For the system() function
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -24,7 +25,6 @@
 #include <unistd.h>
 #include <unordered_map> // Include the unordered_map header
 #include <vector>
-#include <fstream>
 // this is a test, with seconds
 Memory apex_mem;
 extern const exported_offsets_t offsets;
@@ -130,7 +130,7 @@ bool IsInCrossHair(Entity &target) {
   return is_in_cross_hair;
 }
 
-void MapRadarTesting() {
+void MapRadarTesting() { // 为什么这能把雷达搞出来...不就来回写了一个地址
   uintptr_t pLocal;
   apex_mem.Read<uint64_t>(g_Base + offsets.local_ent, pLocal);
   int dt;
@@ -164,18 +164,40 @@ void ClientActions() {
                                           button_state);
 
       int attack_state = 0, zoom_state = 0, tduck_state = 0, jump_state = 0,
+          backward_state = 0, forward_state = 0, skydrive_state = 0,
           force_jump = 0, force_toggle_duck = 0, force_duck = 0,
-          curFrameNumber = 0;
+          force_forward = 0, curFrameNumber = 0, flags = 0, duck_state = 0;
+      float wallrun_start = 0.0f, wallrun_clear = 0.0f;
+      bool longclimb = false;
       apex_mem.Read<int>(g_Base + offsets.in_attack,
                          attack_state);                         // 108
       apex_mem.Read<int>(g_Base + offsets.in_zoom, zoom_state); // 109
       apex_mem.Read<int>(g_Base + offsets.in_toggle_duck,
                          tduck_state); // 61
       apex_mem.Read<int>(g_Base + offsets.in_jump, jump_state);
+
       apex_mem.Read<int>(g_Base + offsets.in_jump + 0x8, force_jump);
       apex_mem.Read<int>(g_Base + offsets.in_toggle_duck + 0x8,
                          force_toggle_duck);
       apex_mem.Read<int>(g_Base + offsets.in_duck + 0x8, force_duck);
+      apex_mem.Read<int>(g_Base + OFFSET_IN_BACKWARD,
+                         backward_state); // 后退状态
+      apex_mem.Read<int>(local_player_ptr + offsets.centity_flags,
+                         flags); // 玩家空间状态？
+      apex_mem.Read<float>(local_player_ptr +
+                               offsets.cplayer_wall_run_start_time,
+                           wallrun_start);
+      apex_mem.Read<float>(local_player_ptr +
+                               offsets.cplayer_wall_run_clear_time,
+                           wallrun_clear);
+      apex_mem.Read<int>(local_player_ptr + OFFSET_SKYDRIVESTATE,
+                         skydrive_state); // 跳伞状态
+      apex_mem.Read<int>(local_player_ptr + OFFSET_IN_DUCKSTATE,
+                         duck_state); // 玩家下蹲状态
+      apex_mem.Read<int>(g_Base + offsets.in_forward,
+                         forward_state); // 前进状态
+      apex_mem.Read<int>(g_Base + offsets.in_forward + 0x8,
+                         force_forward); // 前进按键
       apex_mem.Read<int>(g_Base + offsets.global_vars + 0x0008,
                          curFrameNumber); // GlobalVars + 0x0008
 
@@ -205,6 +227,63 @@ void ClientActions() {
       //   printf("Jump Value: %i\n", force_jump);
       //   printf("ToggleDuck Value: %i\n", force_toggle_duck);
       //   printf("Duck Value: %i\n", force_duck);
+      if (g_settings.auto_tapstrafe) {
+        bool ts_start = true;
+        // autoTapstrafe
+        if (wallrun_start > wallrun_clear) {
+          float climbTime = world_time - wallrun_start;
+          if (climbTime > 0.8) {
+            longclimb = true;
+            ts_start = false;
+          } else {
+            ts_start = true;
+          }
+        }
+        if (ts_start) {
+          if (longclimb) {
+            if (world_time > wallrun_clear + 0.1)
+              longclimb = false;
+          }
+          // printf("longclimb:%d\n", longclimb);
+          // printf("duck_state:%d"\n, duck_state); 向下蹲1 完全蹲下2 起身过程3
+          // 其他0 printf("jump_state:%d"\n, jump_state); 按着跳跃65 其他0
+          // printf("foreward_state:%d"\n, foreward_state); 按w时33，其他0
+          // 滚轮前进不触发 printf("flags:%d"\n, flags);  空中状态64 蹲下67
+          // 站立65 printf("force_foreward :%d\n", force_foreward);按下w是1
+          // 其他0 printf("force_jump :%d\n", force_jump);按着跳跃5 其他4
+          //  when player is in air  and  not skydrive    and  not longclimb and
+          //  not backward
+          if (((flags & 0x1) == 0) && !(skydrive_state > 0) && !longclimb &&
+              !(backward_state > 0)) {
+            if (((duck_state > 0) && (forward_state == 33))) { // previously 33
+              if (force_forward == 0) {
+                apex_mem.Write<int>(g_Base + offsets.in_forward + 0x8, 1);
+              } else {
+                apex_mem.Write<int>(g_Base + offsets.in_forward + 0x8, 0);
+              }
+            }
+          } else if ((flags & 0x1) != 0) {
+            if (forward_state == 0) {
+              apex_mem.Write<int>(g_Base + offsets.in_forward + 0x8, 0);
+            } else if (forward_state == 33) {
+              apex_mem.Write<int>(g_Base + offsets.in_forward + 0x8, 1);
+            }
+          }
+        }
+      }
+      ////// bunny hop
+      /*
+      if (jump_state == 65 && ((flags & 0x1) != 0)) {
+          if (force_jump == 5 && !bunnyhop && (world_time > (bhopTick + 0.1))) {
+              apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x8, 4);
+              bunnyhop = true;
+          }
+          else if (bunnyhop) {
+              apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x8, 5);
+              bunnyhop = false;
+              bhopTick = world_time;
+          }
+      }*/
 
       if (g_settings.super_key_toggle) {
         /** SuperGlide
@@ -332,16 +411,19 @@ void ClientActions() {
       }
 
       int isGrppleActived, isGrppleAttached;
-      apex_mem.Read<int>(local_player_ptr + OFFSET_GRAPPLE_ACTIVE, isGrppleActived);
+      apex_mem.Read<int>(local_player_ptr + OFFSET_GRAPPLE_ACTIVE,
+                         isGrppleActived);
       if (g_settings.super_grpple) {
-          if (isGrppleActived) {
-              apex_mem.Read<int>(local_player_ptr + OFFSET_GRAPPLE + OFFSET_GRAPPLE_ATTACHED, isGrppleAttached);
-              if (isGrppleAttached == 1) {
-                  apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x08, 5);
-                  std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                  apex_mem.Write<int>(g_Base + OFFSET_IN_JUMP + 0x08, 4);
-              }
+        if (isGrppleActived) {
+          apex_mem.Read<int>(local_player_ptr + OFFSET_GRAPPLE +
+                                 OFFSET_GRAPPLE_ATTACHED,
+                             isGrppleAttached);
+          if (isGrppleAttached == 1) {
+            apex_mem.Write<int>(g_Base + offsets.in_jump + 0x08, 5);
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            apex_mem.Write<int>(g_Base + offsets.in_jump + 0x08, 4);
           }
+        }
       }
 
       // Trigger ring check on F8 key press for over 0.5 seconds

@@ -117,6 +117,7 @@ item-armors = 護甲
 item-healing = 治療
 item-nades = 手榴彈
 item-backpacks = 揹包
+item-hop-ups = 特殊配件
 item-scopes = 瞄準鏡
 red-is-disable = {"紅色 = 未選"}
 greed-is-enabled = {"綠色 = 選中"}
@@ -144,7 +145,12 @@ loot-turbo-charger = 渦輪增壓器
 loot-skull-piecer = 穿顱者膛線
 loot-hammer-points = 槌點彈藥
 loot-disruptor-rounds = 干擾器
-loot-boosted-loader = 強化裝填器
+loot-boosted-loader = 強化裝填器(不可拾取)
+loot-anvil-receiver = 铁砧接收器(未开放)
+loot-doubletap-trigger = 双发扳机(未开放)
+loot-dual-shell = 双弹装填器(未开放)
+loot-kinetic-feeder = 动能供弹器(未开放)
+loot-quickdraw-holster = 快捷枪套(未开放)
 heavy-weapons-menu-title = 重型武器選單
 heavy-weapons-section = 重型武器:
 weapon-flatline = 平行步槍
@@ -254,3 +260,4 @@ spectators-menu-title = 觀戰者選單
 spectators-section = 觀戰列表
 menu-item-shotgun-auto-shot = 霰彈槍扳機
 menu-item-super-grpple = 超级抓钩
+menu-item-auto-tapstrafe = 自動tapstrafe

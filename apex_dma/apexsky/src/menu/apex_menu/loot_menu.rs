@@ -79,7 +79,15 @@ pub(super) fn build_item_filter_menu(
             (),
         )
         .add_item(
-            item_text(format!("9 - {}", i18n_msg!(i18n_bundle, ItemScopes))),
+            item_text(format!("9 - {}", i18n_msg!(i18n_bundle, ItemHopUps))),
+            |handle: &mut TerminalMenu, _| {
+                handle.nav_menu(MenuLevel::HopUpsMenu);
+                None
+            },
+            (),
+        )
+        .add_item(
+            item_text(format!("10 - {}", i18n_msg!(i18n_bundle, ItemScopes))),
             |handle: &mut TerminalMenu, _| {
                 handle.nav_menu(MenuLevel::ScopesMenu);
                 None
@@ -88,7 +96,7 @@ pub(super) fn build_item_filter_menu(
         )
         .add_item(
             item_text(format!(
-                "10 - {}",
+                "11 - {}",
                 i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
             )),
             |handle: &mut TerminalMenu, _| {
@@ -1535,6 +1543,120 @@ pub(super) fn build_backpacks_menu(
         .add_item(
             item_text(format!(
                 "5 - {}",
+                i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
+            )),
+            |handle: &mut TerminalMenu, _| {
+                handle.nav_menu(MenuLevel::MainMenu);
+                None
+            },
+            (),
+        )
+        .into()
+}
+
+pub(super) fn build_hopups_menu(
+    i18n_bundle: FluentBundle<FluentResource>,
+    settings: config::Settings,
+) -> MenuState<'static> {
+    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, WeaponHopUpsMenuTitle));
+    menu = menu
+        .add_item(
+            ListItem::new(Line::from(vec![
+                Span::from(i18n_msg!(i18n_bundle, RedIsDisable).to_string()).red(),
+                Span::from(" - ").dark_gray(),
+                Span::from(i18n_msg!(i18n_bundle, GreedIsEnabled).to_string()).green(),
+            ])),
+            |_, _| None,
+            (),
+        )
+        .no_id()
+        .add_dummy_item()
+        .add_text_item(i18n_msg!(i18n_bundle, WeaponHopUpsSection))
+        .add_dummy_item();
+    menu = menu_add_pick_item!(
+        menu,
+        i18n_bundle,
+        "1 - ",
+        LootTurboCharger,
+        settings.loot.turbo_charger,
+        turbo_charger
+    );
+    menu = menu_add_pick_item!(
+        menu,
+        i18n_bundle,
+        "2 - ",
+        LootSkullPiecer,
+        settings.loot.skull_piecer,
+        skull_piecer
+    );
+    menu = menu_add_pick_item!(
+        menu,
+        i18n_bundle,
+        "3 - ",
+        LootHammerPoints,
+        settings.loot.hammer_point,
+        hammer_point
+    );
+    menu = menu_add_pick_item!(
+        menu,
+        i18n_bundle,
+        "4 - ",
+        LootDisruptorRounds,
+        settings.loot.disruptor_rounds,
+        disruptor_rounds
+    );
+    menu = menu_add_pick_item!(
+        menu,
+        i18n_bundle,
+        "5 - ",
+        LootBoostedLoader,
+        settings.loot.boosted_loader,
+        boosted_loader
+    );
+    menu = menu_add_pick_item!(
+        menu,
+        i18n_bundle,
+        "6 - ",
+        LootAnvilReceiver,
+        settings.loot.anvil_receiver,
+        anvil_receiver
+    );
+    menu = menu_add_pick_item!(
+        menu,
+        i18n_bundle,
+        "7 - ",
+        LootDoubletapTrigger,
+        settings.loot.doubletap_trigger,
+        doubletap_trigger
+    );
+    menu = menu_add_pick_item!(
+        menu,
+        i18n_bundle,
+        "8 - ",
+        LootDualShell,
+        settings.loot.dual_shell,
+        dual_shell
+    );
+    menu = menu_add_pick_item!(
+        menu,
+        i18n_bundle,
+        "9 - ",
+        LootKineticFeeder,
+        settings.loot.kinetic_feeder,
+        kinetic_feeder
+    );
+    menu = menu_add_pick_item!(
+        menu,
+        i18n_bundle,
+        "10 - ",
+        LootQuickdrawHolster,
+        settings.loot.quickdraw_holster,
+        quickdraw_holster
+    );
+    menu.add_dummy_item()
+        .add_item(
+            item_text(format!(
+                "11 - {}",
                 i18n_msg!(i18n_bundle, MenuItemBackToMainMenu)
             )),
             |handle: &mut TerminalMenu, _| {
