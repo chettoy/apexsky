@@ -759,7 +759,7 @@ static void EspLoop() {
           QAngle localviewangle = LPlayer.GetViewAngles();
 
           int var_k;
-          apex_mem.Read<int>(g_Base + 0xc936bb8, var_k);
+          apex_mem.Read<int>(g_Base + 0xcacec58, var_k);
 
           // Ammount of ents to loop, dont edit.
           for (int i = 0; i < 100; i++) {
@@ -857,7 +857,8 @@ static void EspLoop() {
                                  false};
 
               int var_ent_i = 0;
-              apex_mem.Read<int>(Target.ptr + 17856, var_ent_i);
+              apex_mem.Read<int>(Target.ptr + offsets.player_net_var,
+                                 var_ent_i);
               uintptr_t var_ptr;
               apex_mem.Read<uintptr_t>(entitylist + (var_ent_i & 0xffff) * 32,
                                        var_ptr);
