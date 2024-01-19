@@ -151,7 +151,6 @@ static void TeamMiniMap(int x, int y, int radius, int team_id,
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, 255);
-    RGBA2 color;
     do {
       color = {dis(gen), dis(gen), dis(gen), 255};
     } while (color.R + color.G + color.B < MIN_SUM_RGB);
@@ -559,7 +558,7 @@ void Overlay::RenderEsp() {
 
     if (next2 && valid) {
 
-      for (int i = 0; i < players.size(); i++) {
+      for (size_t i = 0; i < players.size(); i++) {
         if (players[i].is_spectator) {
           esp_spec_names.push_back(std::string(players[i].name));
         }
