@@ -20,8 +20,8 @@
 #include <fstream>
 #include <functional>
 #include <iomanip>
-#include <thread>
 #include <shared_mutex>
+#include <thread>
 
 #include "../Game.h"
 
@@ -36,6 +36,7 @@ extern float bulletgrav;
 extern const aimbot_state_t aimbot; // read aimbot state
 extern std::shared_mutex aimbot_mutex_;
 extern const std::vector<Entity> spectators, allied_spectators; // read
+extern std::shared_mutex spectators_mutex_;
 extern const std::vector<string> esp_spec_names, teammates_damage;
 // Left and Right Aim key toggle
 bool toggleaim = false;
@@ -97,7 +98,6 @@ void Overlay::RenderMenu() {
   //{
   if (ImGui::CollapsingHeader("Main Toggle Settings")) {
     menu1 = 1;
-    std::shared_lock aimbot_rlock(aimbot_mutex_);
     ImGui::Checkbox(XorStr("ESP On/Off"), &g_settings.esp);
     // ImGui::SameLine();
     // ImGui::Checkbox(XorStr("Thirdperson"), &thirdperson);
@@ -187,7 +187,12 @@ void Overlay::RenderMenu() {
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::Text(XorStr("Current:"));
     ImGui::SameLine();
-    ImGui::TextColored(GREEN, "%.f", aimbot_get_max_fov(&aimbot));
+    float aimbot_fov;
+    {
+      std::shared_lock lock(aimbot_mutex_);
+      aimbot_fov = aimbot_get_max_fov(&aimbot);
+    }
+    ImGui::TextColored(GREEN, "%.f", aimbot_fov);
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
@@ -595,30 +600,46 @@ void Overlay::RenderInfo() {
   ImGui::Begin(XorStr("##info"), (bool *)true,
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                    ImGuiWindowFlags_NoScrollbar);
-  std::shared_lock aimbot_rlock(aimbot_mutex_);
+
+  int spec, allied_spec;
+  {
+    std::shared_lock lock(spectators_mutex_);
+    spec = spectators.size();
+    allied_spec = allied_spectators.size();
+  }
+
+  float aimbot_fov;
+  bool aimbot_locked, aimbot_gun_safety, aimbot_grenade;
+  {
+    std::shared_lock lock(aimbot_mutex_);
+    aimbot_fov = aimbot_get_max_fov(&aimbot);
+    aimbot_locked = aimbot_is_locked(&aimbot);
+    aimbot_gun_safety = aimbot_get_gun_safety(&aimbot);
+    aimbot_grenade = aimbot_is_grenade(&aimbot);
+  }
+
   DrawLine(ImVec2(1, 2), ImVec2(280, 2), RED, 2);
-  if (spectators.size() == 0) {
-    ImGui::TextColored(GREEN, "%zu", spectators.size());
+  if (spec == 0) {
+    ImGui::TextColored(GREEN, "%d", spec);
   } else {
-    ImGui::TextColored(RED, "%zu", spectators.size());
+    ImGui::TextColored(RED, "%d", spec);
   }
   ImGui::SameLine();
   ImGui::Text("--");
   ImGui::SameLine();
-  ImGui::TextColored(GREEN, "%zu", allied_spectators.size());
+  ImGui::TextColored(GREEN, "%d", allied_spec);
   ImGui::SameLine();
   ImGui::Text("--");
   ImGui::SameLine();
-  ImGui::TextColored(WHITE, "%.f", aimbot_get_max_fov(&aimbot));
+  ImGui::TextColored(WHITE, "%.f", aimbot_fov);
   ImGui::SameLine();
   ImGui::Text("--");
   ImGui::SameLine();
   // Aim is on = 2, On but No Vis Check = 1, Off = 0
   const auto g_settings = global_settings();
-  if (aimbot_is_locked(&aimbot)) {
-    ImGui::TextColored(aimbot_get_gun_safety(&aimbot) ? GREEN : ORANGE,
-                       "[TARGET LOCK!]");
-  } else if (aimbot_is_grenade(&aimbot)) {
+  if (aimbot_locked) {
+    ImGui::TextColored(aimbot_gun_safety ? GREEN : ORANGE, "[TARGET LOCK!]");
+  } else if (aimbot_grenade) {
     ImGui::TextColored(BLUE, "Skynade On");
   } else if (g_settings.aimbot_settings.aim_mode == 2) {
     ImGui::TextColored(GREEN, "Aim On");
@@ -830,7 +851,8 @@ int Overlay::CreateOverlay() {
       }
       bool key_insert_pressed_ui = (now_ms - last_press).count() < 400;
       bool key_insert_pressed_game = isPressed(72);
-      bool key_insert_pressed = key_insert_pressed_ui || key_insert_pressed_game;
+      bool key_insert_pressed =
+          key_insert_pressed_ui || key_insert_pressed_game;
       if (key_insert_pressed && !k_ins) {
         k_ins = true;
         glfwSetWindowAttrib(window, GLFW_MOUSE_PASSTHROUGH, GLFW_FALSE);

@@ -13,7 +13,6 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
-#include <mutex>
 #include <set>
 #include <shared_mutex>
 #include <stdio.h>
@@ -56,6 +55,9 @@ Vector esp_local_pos;
 int itementcount = 10000;
 int map = 0;
 std::vector<TreasureClue> treasure_clues;
+std::map<int, float> lastvis_esp, lastvis_aim;
+std::vector<Entity> spectators, allied_spectators;
+std::shared_mutex spectators_mutex_;
 
 //^^ Don't EDIT^^
 
@@ -128,11 +130,6 @@ bool IsInCrossHair(Entity &target) {
   }
   return is_in_cross_hair;
 }
-
-// Visual check and aim check.?
-std::map<int, float> lastvis_esp, lastvis_aim;
-std::vector<Entity> spectators, allied_spectators;
-std::mutex spectatorsMtx;
 
 void MapRadarTesting() {
   uintptr_t pLocal;
@@ -371,9 +368,11 @@ void ControlLoop() {
   control_t = true;
   while (control_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    spectatorsMtx.lock();
-    int spec_count = spectators.size();
-    spectatorsMtx.unlock();
+    int spec_count = 0;
+    {
+      std::shared_lock lock(spectators_mutex_);
+      spec_count = spectators.size();
+    }
     if (spec_count > 0) {
       kbd_backlight_blink(spec_count);
       std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000 - 100));
@@ -597,16 +596,20 @@ void DoActions() {
       }
 
       Entity LPlayer = getEntity(LocalPlayer);
-
       const int team_player = LPlayer.getTeamId();
-      if (team_player < 0 || team_player > 50) {
-        continue;
-      }
       uint64_t entitylist = g_Base + offsets.entitylist;
 
       uint64_t baseent = 0;
       apex_mem.Read<uint64_t>(entitylist, baseent);
-      if (baseent == 0) {
+
+      if (team_player < 0 || team_player > 50 || baseent == 0) {
+        // clear spectators
+        {
+          std::unique_lock lock(spectators_mutex_);
+          spectators.clear();
+          allied_spectators.clear();
+        }
+
         continue;
       }
 
@@ -658,7 +661,6 @@ void DoActions() {
 
       { // refresh spectators count
         std::vector<Entity> tmp_spec, tmp_all_spec;
-        spectatorsMtx.lock();
         for (auto it = tmp_specs.begin(); it != tmp_specs.end(); it++) {
           Entity target = getEntity(*it);
           if (target.getTeamId() == team_player) {
@@ -667,11 +669,13 @@ void DoActions() {
             tmp_spec.push_back(target);
           }
         }
-        spectators.clear();
-        allied_spectators.clear();
-        spectators = tmp_spec;
-        allied_spectators = tmp_all_spec;
-        spectatorsMtx.unlock();
+        {
+          std::unique_lock lock(spectators_mutex_);
+          spectators.clear();
+          allied_spectators.clear();
+          spectators = tmp_spec;
+          allied_spectators = tmp_all_spec;
+        }
       }
 
       {
@@ -682,11 +686,18 @@ void DoActions() {
       // weapon model glow
       // printf("%d\n", LPlayer.getHealth());
       if (g_settings.weapon_model_glow && LPlayer.getHealth() > 0) {
+        int spec = 0, allied_spec = 0;
+        {
+          std::shared_lock lock(spectators_mutex_);
+          spec = spectators.size();
+          allied_spec = allied_spectators.size();
+        }
+
         std::array<float, 3> highlight_color;
-        if (spectators.size() > 0) {
+        if (spec > 0) {
           highlight_color = {1, 0, 0};
           LPlayer.glow_weapon_model(true, false, highlight_color);
-        } else if (allied_spectators.size() > 0) {
+        } else if (allied_spec > 0) {
           highlight_color = {0, 1, 0};
           LPlayer.glow_weapon_model(true, false, highlight_color);
         } else {
@@ -867,8 +878,8 @@ static void EspLoop() {
 
               Target.get_name(data_buf.name);
 
-              spectatorsMtx.lock();
               if (data_buf.is_teammate) {
+                std::shared_lock lock(spectators_mutex_);
                 for (auto &ent : allied_spectators) {
                   if (ent.ptr == centity) {
                     data_buf.is_spectator = true;
@@ -876,6 +887,7 @@ static void EspLoop() {
                   }
                 }
               } else {
+                std::shared_lock lock(spectators_mutex_);
                 for (auto &ent : spectators) {
                   if (ent.ptr == centity) {
                     data_buf.is_spectator = true;
@@ -883,7 +895,6 @@ static void EspLoop() {
                   }
                 }
               }
-              spectatorsMtx.unlock();
 
               players.push_back(data_buf);
               lastvis_esp[i] = Target.lastVisTime();

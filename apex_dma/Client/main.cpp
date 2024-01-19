@@ -505,9 +505,11 @@ void Overlay::RenderEsp() {
       WorldToScreen(aim_target, view_matrix_data.matrix, getWidth(),
                     getHeight(), bs);
       const float indicator_radius = 10.0f;
-      std::shared_lock aimbot_rlock(aimbot_mutex_);
-      bool aimbot_locked = aimbot_is_locked(&aimbot);
-      aimbot_rlock.unlock();
+      bool aimbot_locked;
+      {
+        std::shared_lock lock(aimbot_mutex_);
+        aimbot_locked = aimbot_is_locked(&aimbot);
+      }
       ImColor indicator_color = aimbot_locked
                                     ? ImColor(1.0f, 0.647f, 0.0f, 0.618f)
                                     : ImColor(1.0f, 1.0f, 1.0f, 0.618f);
