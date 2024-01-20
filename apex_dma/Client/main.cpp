@@ -433,12 +433,12 @@ void worldToScreenMap(D3DXVECTOR3 origin, int team_id) {
   ImVec2 s1;
   // Is it me being lazy? or that i dont know how? prob both. True or False for
   // the map detection, set in the overlay menu.
-  if (map == 1) { // Storm Point
+  if (map == 2) { // Storm Point
     ratioX = StormPoint.ratioX;
     ratioY = StormPoint.ratioY;
     w1 = StormPoint.w1;
     s1 = StormPoint.s1;
-  } else if (map == 2) { // KingsCanyon
+  } else if (map == 1) { // KingsCanyon
     ratioX = KingsCanyon.ratioX;
     ratioY = KingsCanyon.ratioY;
     w1 = KingsCanyon.w1;

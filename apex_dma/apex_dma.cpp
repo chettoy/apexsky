@@ -620,6 +620,7 @@ void DoActions() {
   actions_t = true;
   while (actions_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     while (g_Base != 0) {
       std::this_thread::sleep_for(
@@ -648,6 +649,7 @@ void DoActions() {
       } else if (strcmp(level_name, xorstr_("mp_rr_divided_moon")) == 0) {
         map = 5;
       } else {
+        map = -1;
         map = -1;
       }
 
