@@ -603,7 +603,7 @@ void Overlay::RenderInfo() {
 
   int spec, allied_spec;
   {
-    std::shared_lock lock(spectators_mutex_);
+    //std::shared_lock lock(spectators_mutex_);
     spec = spectators.size();
     allied_spec = allied_spectators.size();
   }

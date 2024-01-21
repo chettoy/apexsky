@@ -368,7 +368,7 @@ void ControlLoop() {
   control_t = true;
   while (control_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    int spec_count = 0;
+    int spec_count;
     {
       std::shared_lock lock(spectators_mutex_);
       spec_count = spectators.size();
@@ -686,7 +686,7 @@ void DoActions() {
       // weapon model glow
       // printf("%d\n", LPlayer.getHealth());
       if (g_settings.weapon_model_glow && LPlayer.getHealth() > 0) {
-        int spec = 0, allied_spec = 0;
+        int spec, allied_spec;
         {
           std::shared_lock lock(spectators_mutex_);
           spec = spectators.size();
