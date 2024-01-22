@@ -37,7 +37,7 @@ extern const aimbot_state_t aimbot; // read aimbot state
 extern std::shared_mutex aimbot_mutex_;
 extern const std::vector<Entity> spectators, allied_spectators; // read
 extern std::shared_mutex spectators_mutex_;
-extern const std::vector<string> esp_spec_names, teammates_damage;
+extern const std::vector<string> esp_spec_names, esp_teammates_damage;
 // Left and Right Aim key toggle
 bool toggleaim = false;
 bool toggleaim2 = false;
@@ -793,13 +793,13 @@ int Overlay::CreateOverlay() {
         ImGui::Text(" Game(%.1f FPS)", global_settings().game_fps);
       }
       ImGui::Dummy(ImVec2(0.0f, 5.0f));
-      if (teammates_damage.size() > 0) {
-        const char *info[teammates_damage.size()];
-        for (int i = 0; i < teammates_damage.size(); i++) {
-          info[i] = teammates_damage[i].c_str();
+      if (esp_teammates_damage.size() > 0) {
+        const char *info[esp_teammates_damage.size()];
+        for (int i = 0; i < esp_teammates_damage.size(); i++) {
+          info[i] = esp_teammates_damage[i].c_str();
         }
         int current_item = 0;
-        ImGui::ListBox("Damage", &current_item, info, teammates_damage.size());
+        ImGui::ListBox("Damage", &current_item, info, esp_teammates_damage.size());
       }
 
       ImGui::Dummy(ImVec2(0.0f, 5.0f));

@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <set>
 #include <shared_mutex>
 #include <stdio.h>
@@ -47,17 +48,16 @@ bool aim_t = false;
 bool item_t = false;
 bool control_t = false;
 uint64_t g_Base;
-bool next2 = false;
-bool valid = false;
 extern float bulletspeed;
 extern float bulletgrav;
-Vector esp_local_pos;
+Vector g_esp_local_pos;
 int itementcount = 10000;
 int map = 0;
 std::vector<TreasureClue> treasure_clues;
 std::map<int, float> lastvis_esp, lastvis_aim;
 std::vector<Entity> spectators, allied_spectators;
 std::shared_mutex spectators_mutex_;
+std::mutex esp_mtx;
 
 //^^ Don't EDIT^^
 
@@ -719,195 +719,190 @@ void DoActions() {
 // /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 std::vector<player> players(100);
-Matrix view_matrix_data = {};
+Matrix g_view_matrix = {};
 
 // ESP loop.. this helps right?
 static void EspLoop() {
   esp_t = true;
   while (esp_t) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    // Update ESP data
     while (g_Base != 0 && overlay_t) {
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
+
       const auto g_settings = global_settings();
 
-      if (g_settings.esp) {
-        valid = false;
-
-        uint64_t LocalPlayer = 0;
-        apex_mem.Read<uint64_t>(g_Base + offsets.local_ent, LocalPlayer);
-        if (LocalPlayer == 0) {
-          next2 = true;
-          while (next2 && g_Base != 0 && overlay_t && g_settings.esp) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-          }
-          continue;
-        }
-        Entity LPlayer = getEntity(LocalPlayer);
-        int team_player = LPlayer.getTeamId();
-        if (team_player < 0 || team_player > 50) {
-          next2 = true;
-          while (next2 && g_Base != 0 && overlay_t && g_settings.esp) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-          }
-          continue;
-        }
-        Vector LocalPlayerPosition = LPlayer.getPosition();
-        esp_local_pos = LocalPlayerPosition;
-
-        uint64_t viewRenderer = 0;
-        apex_mem.Read<uint64_t>(g_Base + offsets.view_render, viewRenderer);
-        uint64_t viewMatrix = 0;
-        apex_mem.Read<uint64_t>(viewRenderer + offsets.view_matrix, viewMatrix);
-
-        apex_mem.Read<Matrix>(viewMatrix, view_matrix_data);
-
-        uint64_t entitylist = g_Base + offsets.entitylist;
-
-        players.clear();
-
-        {
-          Vector LocalPlayerPosition = LPlayer.getPosition();
-          QAngle localviewangle = LPlayer.GetViewAngles();
-
-          int var_k;
-          apex_mem.Read<int>(g_Base + 0xcacec58, var_k);
-
-          // Ammount of ents to loop, dont edit.
-          for (int i = 0; i < 100; i++) {
-            // Read entity pointer
-            uint64_t centity = 0;
-            apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
-            if (centity == 0) {
-              continue;
-            }
-
-            // Exclude undesired entity
-            bool is_player = Entity::isPlayer(centity);
-            if (g_settings.firing_range) {
-              if (!(Entity::isDummy(centity) ||
-                    (g_settings.onevone && is_player))) {
-                continue;
-              }
-            } else {
-              if (!is_player) {
-                continue;
-              }
-            }
-
-            // Exclude self
-            if (LocalPlayer == centity) {
-              continue;
-            }
-
-            // Get entity data
-            Entity Target = getEntity(centity);
-
-            int entity_team = Target.getTeamId();
-
-            // Exclude invalid team
-            if (entity_team < 0 || entity_team > 50) {
-              continue;
-            }
-
-            Vector EntityPosition = Target.getPosition();
-            float dist = LocalPlayerPosition.DistTo(EntityPosition);
-
-            // Excluding targets that are too far or too close
-            if (dist > g_settings.max_dist || dist < 20.0f) {
-              continue;
-            }
-
-            Vector bs = Vector();
-            // Change res to your res here, default is 1080p but can copy paste
-            // 1440p here
-            WorldToScreen(EntityPosition, view_matrix_data.matrix,
-                          g_settings.screen_width, g_settings.screen_height,
-                          bs); // 2560, 1440
-            if (g_settings.esp) {
-              Vector hs = Vector();
-              Vector HeadPosition = Target.getBonePositionByHitbox(0);
-              WorldToScreen(HeadPosition, view_matrix_data.matrix,
-                            g_settings.screen_width, g_settings.screen_height,
-                            hs); // 2560, 1440
-              float height = abs(abs(hs.y) - abs(bs.y));
-              float width = height / 2.0f;
-              float boxMiddle = bs.x - (width / 2.0f);
-              int health = Target.getHealth();
-              int shield = Target.getShield();
-              int maxshield = Target.getMaxshield();
-              int armortype = Target.getArmortype();
-              Vector EntityPosition = Target.getPosition();
-              float targetyaw = Target.GetYaw();
-              if (!lastvis_esp.contains(i)) {
-                lastvis_esp[i] = 0.0f;
-              }
-
-              player data_buf = {dist,
-                                 entity_team,
-                                 entity_team == team_player,
-                                 boxMiddle,
-                                 hs.y,
-                                 width,
-                                 height,
-                                 bs.x,
-                                 bs.y,
-                                 Target.isKnocked(),
-                                 (Target.lastVisTime() > lastvis_esp[i]),
-                                 health,
-                                 shield,
-                                 maxshield,
-                                 Target.xp_level(),
-                                 -99,
-                                 armortype,
-                                 EntityPosition,
-                                 LocalPlayerPosition,
-                                 localviewangle,
-                                 targetyaw,
-                                 Target.isAlive(),
-                                 Target.check_love_player(),
-                                 false};
-
-              int var_ent_i = 0;
-              apex_mem.Read<int>(Target.ptr + offsets.player_net_var,
-                                 var_ent_i);
-              uintptr_t var_ptr;
-              apex_mem.Read<uintptr_t>(entitylist + (var_ent_i & 0xffff) * 32,
-                                       var_ptr);
-              apex_mem.Read<int>(var_ptr + (var_k << 2) + 2936,
-                                 data_buf.damage);
-
-              Target.get_name(data_buf.name);
-
-              if (data_buf.is_teammate) {
-                std::shared_lock lock(spectators_mutex_);
-                for (auto &ent : allied_spectators) {
-                  if (ent.ptr == centity) {
-                    data_buf.is_spectator = true;
-                    break;
-                  }
-                }
-              } else {
-                std::shared_lock lock(spectators_mutex_);
-                for (auto &ent : spectators) {
-                  if (ent.ptr == centity) {
-                    data_buf.is_spectator = true;
-                    break;
-                  }
-                }
-              }
-
-              players.push_back(data_buf);
-              lastvis_esp[i] = Target.lastVisTime();
-              valid = true;
-            }
-          }
-        }
-
-        next2 = true;
-        while (next2 && g_Base != 0 && overlay_t && g_settings.esp) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
+      if (!g_settings.esp) {
+        break;
       }
+
+      // LOCK mutex
+      std::lock_guard<std::mutex> esp_lock(esp_mtx);
+      // esp_mtx.lock();
+      //  Clear players data
+      players.clear();
+
+      // Read local entity and team
+      uint64_t local_ent_ptr = 0;
+      apex_mem.Read<uint64_t>(g_Base + offsets.local_ent, local_ent_ptr);
+      if (local_ent_ptr == 0) {
+        // esp_mtx.unlock();
+        break;
+      }
+      Entity local_player = getEntity(local_ent_ptr);
+      int team_player = local_player.getTeamId();
+      if (team_player < 0 || team_player > 50) {
+        // esp_mtx.unlock();
+        break;
+      }
+
+      // Read matrix for ESP
+      uint64_t viewRenderer = 0;
+      apex_mem.Read<uint64_t>(g_Base + offsets.view_render, viewRenderer);
+      uint64_t viewMatrix = 0;
+      apex_mem.Read<uint64_t>(viewRenderer + offsets.view_matrix, viewMatrix);
+
+      apex_mem.Read<Matrix>(viewMatrix, g_view_matrix);
+
+      Vector local_ent_pos = local_player.getPosition();
+      QAngle local_viewangle = local_player.GetViewAngles();
+
+      // Update local_ent position for ESP
+      g_esp_local_pos = local_ent_pos;
+
+      // Read variable for damage display
+      int var_k;
+      apex_mem.Read<int>(g_Base + 0xcacec58, var_k);
+
+      // Read players
+      uint64_t entitylist = g_Base + offsets.entitylist;
+      for (int i = 0; i < 100; i++) {
+        // Read entity pointer
+        uint64_t centity = 0;
+        apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
+        if (centity == 0) {
+          continue;
+        }
+
+        // Exclude undesired entity
+        bool is_player = Entity::isPlayer(centity);
+        if (g_settings.firing_range) {
+          if (!(Entity::isDummy(centity) ||
+                (g_settings.onevone && is_player))) {
+            continue;
+          }
+        } else {
+          if (!is_player) {
+            continue;
+          }
+        }
+
+        // Exclude self
+        if (local_ent_ptr == centity) {
+          continue;
+        }
+
+        // Get entity data
+        Entity Target = getEntity(centity);
+
+        int entity_team = Target.getTeamId();
+
+        // Exclude invalid team
+        if (entity_team < 0 || entity_team > 50) {
+          continue;
+        }
+
+        Vector EntityPosition = Target.getPosition();
+        float dist = local_ent_pos.DistTo(EntityPosition);
+
+        // Excluding targets that are too far or too close
+        if (dist > g_settings.max_dist || dist < 20.0f) {
+          continue;
+        }
+
+        Vector bs = Vector();
+        // Change res to your res here, default is 1080p but can copy paste
+        // 1440p here
+        WorldToScreen(EntityPosition, g_view_matrix.matrix,
+                      g_settings.screen_width, g_settings.screen_height,
+                      bs); // 2560, 1440
+        if (g_settings.esp) {
+          Vector hs = Vector();
+          Vector HeadPosition = Target.getBonePositionByHitbox(0);
+          WorldToScreen(HeadPosition, g_view_matrix.matrix,
+                        g_settings.screen_width, g_settings.screen_height,
+                        hs); // 2560, 1440
+          float height = abs(abs(hs.y) - abs(bs.y));
+          float width = height / 2.0f;
+          float boxMiddle = bs.x - (width / 2.0f);
+          int health = Target.getHealth();
+          int shield = Target.getShield();
+          int maxshield = Target.getMaxshield();
+          int armortype = Target.getArmortype();
+          Vector EntityPosition = Target.getPosition();
+          float targetyaw = Target.GetYaw();
+          if (!lastvis_esp.contains(i)) {
+            lastvis_esp[i] = 0.0f;
+          }
+
+          player data_buf = {dist,
+                             entity_team,
+                             entity_team == team_player,
+                             boxMiddle,
+                             hs.y,
+                             width,
+                             height,
+                             bs.x,
+                             bs.y,
+                             Target.isKnocked(),
+                             (Target.lastVisTime() > lastvis_esp[i]),
+                             health,
+                             shield,
+                             maxshield,
+                             Target.xp_level(),
+                             -99,
+                             armortype,
+                             EntityPosition,
+                             local_ent_pos,
+                             local_viewangle,
+                             targetyaw,
+                             Target.isAlive(),
+                             Target.check_love_player(),
+                             false};
+
+          int var_ent_i = 0;
+          apex_mem.Read<int>(Target.ptr + offsets.player_net_var, var_ent_i);
+          uintptr_t var_ptr;
+          apex_mem.Read<uintptr_t>(entitylist + (var_ent_i & 0xffff) * 32,
+                                   var_ptr);
+          apex_mem.Read<int>(var_ptr + (var_k << 2) + 2936, data_buf.damage);
+
+          Target.get_name(data_buf.name);
+
+          if (data_buf.is_teammate) {
+            std::shared_lock lock(spectators_mutex_);
+            for (auto &ent : allied_spectators) {
+              if (ent.ptr == centity) {
+                data_buf.is_spectator = true;
+                break;
+              }
+            }
+          } else {
+            std::shared_lock lock(spectators_mutex_);
+            for (auto &ent : spectators) {
+              if (ent.ptr == centity) {
+                data_buf.is_spectator = true;
+                break;
+              }
+            }
+          }
+
+          players.push_back(data_buf);
+          lastvis_esp[i] = Target.lastVisTime();
+        }
+      } // for loop end
+      // esp_mtx.unlock();
     }
   }
   esp_t = false;
@@ -1138,7 +1133,7 @@ static void item_glow_t() {
           TreasureClue &clue = new_treasure_clues[i];
           if (ItemID == new_treasure_clues[i].item_id) {
             Vector position = item.getPosition();
-            float distance = esp_local_pos.DistTo(position);
+            float distance = g_esp_local_pos.DistTo(position);
             if (distance < clue.distance) {
               clue.position = position;
               clue.distance = distance;
