@@ -24,7 +24,7 @@ jobs:
         working-directory: apex_dma
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -49,7 +49,7 @@ jobs:
       run: ctest -C ${{env.BUILD_TYPE}}
     
     - name: Archive output artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: output
@@ -58,7 +58,7 @@ jobs:
         retention-days: 2
     
     - name: Archive production artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: apex_dma_kvm_build
         path: |
