@@ -37,7 +37,7 @@ UnknownCheats thread: https://www.unknowncheats.me/forum/apex-legends/406426-kvm
 
 Bone IDs reference: https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes
 
-Game version (Steam Only right now): v3.0.53.30
+Game version (Steam Only right now): v3.0.54.31
 
 
 
@@ -93,14 +93,17 @@ Game version (Steam Only right now): v3.0.53.30
     * Improved target locking.
     * Advanced targeting options with various bone selection effects.
     * Calculate and display the game's frame rate.
-    * Aiming Target Indicator (requires overlay enabled)
-    * Config file editing and saving capabilities.
-    * Interactive terminal menu for user-friendly customization.
+    * **Aiming Target Indicator:** Aiming Target Indicator feature (requires overlay enabled).
+    * **Config File Management:** Config file editing and saving capabilities.
+    * **User-Friendly Customization:** Interactive terminal menu with a more intuitive and user-friendly design for customization.
     * Dynamic color changes indicate target armor status.
-    * Highlight favorite gamers for quick identification.
-    * Weapon model glow and spectated indicator.
+    * **Favorite Gamer Highlight:** Highlights favorite gamers for quick identification.
+    * **Weapon Model Glow:** Adds weapon model glow and spectated indicator.
     * Utilize keyboard backlight to display the number of spectators (requires D-Bus support).
-    * Multilingual support for global accessibility.
+    * **Multilingual Support:** Supports multilingual functionality for global accessibility.
+    * **Predictive Auto Trigger:** Includes a feature with predictive capabilities for automatic triggering.
+    * **Auto-Loading Offsets:** Automatically loads offsets, making it convenient to keep up with game version updates.
+    * **Real-time Team Damage Display:** Shows the total damage dealt by teammates in real-time.
 
 
 
