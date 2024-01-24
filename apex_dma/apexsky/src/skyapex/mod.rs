@@ -45,7 +45,8 @@ impl Skyapex {
         //     .unwrap();
         // }
 
-        let mod_bytes = wat::parse_str(include_str!("../../resource/mod/skyapex.wat"))?;
+        include_flate::flate!(static SKYAPEX_WAT: str from "resource/mod/skyapex.wat");
+        let mod_bytes = wat::parse_str(SKYAPEX_WAT.as_str())?;
         #[cfg(feature = "wasmedge")]
         {
             let config = ConfigBuilder::new(CommonConfigOptions::default())
