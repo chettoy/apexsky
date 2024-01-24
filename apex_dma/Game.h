@@ -1,6 +1,5 @@
 #include "Math.h"
 #include "apex_sky.h"
-#include "glowmode.h"
 #include "memory.hpp"
 #include "offsets.h"
 #include "vector.h"
@@ -67,8 +66,8 @@ public:
                          std::array<float, 3> highlight_color);
   LoveStatus check_love_player();
   int xp_level();
-  
-// private:
+
+  // private:
   bool is_player = false;
   int player_xp_level = 0;
   int read_xp_level();

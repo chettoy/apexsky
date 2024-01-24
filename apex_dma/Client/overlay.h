@@ -1,8 +1,8 @@
 #pragma once
 
-#include "impl/libraries/xor/xorstr.hpp"
-#define XorStr xorstr_
-
+#include "../apex_sky.h"
+#include "../lib/xorstr/xorstr.hpp"
+#include "../vector.h"
 #include "imgui.h"
 #include <chrono>
 #include <cwchar>
@@ -10,8 +10,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "../vector.h"
-#include "../apex_sky.h"
 
 #define GREEN ImColor(0, 255, 0)
 #define RED ImColor(255, 0, 0)

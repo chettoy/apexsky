@@ -44,8 +44,6 @@ extern int map;
 extern std::mutex esp_mtx;
 
 Vector aim_target = Vector(0, 0, 0);
-extern const aimbot_state_t aimbot; // read
-extern std::shared_mutex aimbot_mutex_;
 
 extern bool overlay_t;
 
@@ -489,14 +487,13 @@ void Overlay::RenderEsp() {
 
   // Lock mutex
   std::lock_guard<std::mutex> esp_lock(esp_mtx);
-  //esp_mtx.lock();
 
   esp_spec_names.clear();
   esp_teammates_damage.clear();
 
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   ImGui::SetNextWindowSize(ImVec2((float)getWidth(), (float)getHeight()));
-  ImGui::Begin(XorStr("##esp"), (bool *)true,
+  ImGui::Begin(xorstr_("##esp"), (bool *)true,
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
                    ImGuiWindowFlags_NoBackground |
@@ -508,11 +505,7 @@ void Overlay::RenderEsp() {
     WorldToScreen(aim_target, g_view_matrix.matrix, getWidth(), getHeight(),
                   bs);
     const float indicator_radius = 10.0f;
-    bool aimbot_locked;
-    {
-      std::shared_lock lock(aimbot_mutex_);
-      aimbot_locked = aimbot_is_locked(&aimbot);
-    }
+    bool aimbot_locked = aimbot_is_locked();
     ImColor indicator_color = aimbot_locked
                                   ? ImColor(1.0f, 0.647f, 0.0f, 0.618f)
                                   : ImColor(1.0f, 1.0f, 1.0f, 0.618f);
@@ -548,7 +541,7 @@ void Overlay::RenderEsp() {
                  ImColor(1.0f, 1.0f, 1.0f, 0.5f), 1.0f);
         std::string distance = std::to_string(clue.distance / 39.62);
         distance = std::to_string(clue.item_id) + "(" +
-                   distance.substr(0, distance.find('.')) + "m)";
+                   distance.substr(0, distance.find('.')) + xorstr_("m)");
         String(ImVec2(bs_loot.x, bs_loot.y), ImColor(212, 175, 55),
                distance.c_str());
       }
@@ -561,7 +554,7 @@ void Overlay::RenderEsp() {
     }
     if (players[i].is_teammate) {
       esp_teammates_damage.push_back(std::string(players[i].name) + " " +
-                                 std::to_string(players[i].damage));
+                                     std::to_string(players[i].damage));
     }
 
     if (!players[i].is_alive) {
@@ -609,7 +602,7 @@ void Overlay::RenderEsp() {
 
       if (g_settings.esp_visuals.distance) {
         std::string distance = std::to_string(players[i].dist / 39.62);
-        distance = distance.substr(0, distance.find('.')) + "m(" +
+        distance = distance.substr(0, distance.find('.')) + xorstr_("m(") +
                    std::to_string(players[i].entity_team) + ")";
         if (players[i].knocked) {
           String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)), RED,
@@ -659,7 +652,7 @@ void Overlay::RenderEsp() {
                                    (players[i].b_y - players[i].height - 15));
           ImVec2 nick_pos = ImVec2(draw_pos.x + 50, draw_pos.y);
           std::string level =
-              std::string("Lv.") + std::to_string(players[i].xp_level);
+              std::string(xorstr_("Lv.")) + std::to_string(players[i].xp_level);
 
           String(draw_pos, ImColor(.0f, 1.0f, .0f, alpha), level.c_str());
           String(nick_pos, name_color, players[i].name);
@@ -673,7 +666,6 @@ void Overlay::RenderEsp() {
   }
 
   ImGui::End();
-  //esp_mtx.unlock();
 }
 
 void start_overlay() {

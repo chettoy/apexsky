@@ -34,6 +34,7 @@ pub fn launch2view(pitches: &[Pitch], launch: f32) -> f32 {
 	low.view + fraction * (high.view - low.view)
 }
 
+#[allow(dead_code)]
 pub fn view2launch(pitches: &[Pitch], view: f32) -> f32 {
 	if pitches.len() < 2 {
 		return view;

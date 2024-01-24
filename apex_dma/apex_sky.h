@@ -371,54 +371,44 @@ void init_spec_checker(uintptr_t local_player_ptr);
 void tick_yew(uintptr_t target_ptr, float yew);
 bool is_spec(uintptr_t target_ptr);
 
-aimbot_state_t aimbot_new();
-aimbot_settings_t aimbot_get_settings(const aimbot_state_t *aimbot);
-void aimbot_settings(aimbot_state_t *aimbot, const aimbot_settings_t *settings);
-bool aimbot_is_aiming(const aimbot_state_t *aimbot);
-bool aimbot_is_grenade(const aimbot_state_t *aimbot);
-bool aimbot_is_headshot(const aimbot_state_t *aimbot);
-bool aimbot_is_semi_auto(const aimbot_state_t *aimbot);
-bool aimbot_is_locked(const aimbot_state_t *aimbot);
-bool aimbot_is_triggerbot_ready(const aimbot_state_t *aimbot);
-float aimbot_get_max_fov(const aimbot_state_t *aimbot);
-int aimbot_get_held_id(const aimbot_state_t *aimbot);
-void aimbot_update_held_id(aimbot_state_t *aimbot, int held_id);
-int aimbot_get_weapon_id(const aimbot_state_t *aimbot);
-void aimbot_update_weapon_info(aimbot_state_t *aimbot, int weapon_id,
-                               float bullet_speed, float bullet_gravity,
-                               float weapon_zoom_fov, int weapon_mod_bitfield);
-bool aimbot_get_gun_safety(const aimbot_state_t *aimbot);
-void aimbot_set_gun_safety(aimbot_state_t *aimbot, bool gun_safety);
-int aimbot_get_aim_key_state(const aimbot_state_t *aimbot);
-void aimbot_update_aim_key_state(aimbot_state_t *aimbot, int aim_key_state);
-void aimbot_update_triggerbot_key_state(aimbot_state_t *aimbot,
-                                        int triggerbot_key_state);
-void aimbot_update_attack_state(aimbot_state_t *aimbot, int attack_state);
-void aimbot_update_zoom_state(aimbot_state_t *aimbot, int zoom_state);
-uint64_t aimbot_get_aim_entity(const aimbot_state_t *aimbot);
-bool aimbot_target_distance_check(const aimbot_state_t *aimbot, float distance);
-void aimbot_start_select_target(aimbot_state_t *aimbot);
-void aimbot_add_select_target(aimbot_state_t *aimbot, float fov, float distance,
-                              bool visible, bool love, uint64_t target_ptr);
-void aimbot_finish_select_target(aimbot_state_t *aimbot);
-void aimbot_lock_target(aimbot_state_t *aimbot, uint64_t target_ptr);
-void aimbot_cancel_locking(aimbot_state_t *aimbot);
-void aimbot_update(aimbot_state_t *aimbot, uintptr_t local_entity,
-                   float game_fps);
-vec4_t aimbot_smooth_aim_angles(const aimbot_state_t *aimbot,
-                                const aim_angles_t *aim_angles,
+aimbot_state_t aimbot_get_state();
+aimbot_settings_t aimbot_get_settings();
+void aimbot_settings(const aimbot_settings_t *settings);
+bool aimbot_is_aiming();
+bool aimbot_is_grenade();
+bool aimbot_is_headshot();
+bool aimbot_is_semi_auto();
+bool aimbot_is_locked();
+bool aimbot_is_triggerbot_ready();
+float aimbot_get_max_fov();
+int aimbot_get_held_id();
+void aimbot_update_held_id(int held_id);
+int aimbot_get_weapon_id();
+void aimbot_update_weapon_info(int weapon_id, float bullet_speed,
+                               float bullet_gravity, float weapon_zoom_fov,
+                               int weapon_mod_bitfield);
+bool aimbot_get_gun_safety();
+void aimbot_set_gun_safety(bool gun_safety);
+int aimbot_get_aim_key_state();
+void aimbot_update_aim_key_state(int aim_key_state);
+void aimbot_update_triggerbot_key_state(int triggerbot_key_state);
+void aimbot_update_attack_state(int attack_state);
+void aimbot_update_zoom_state(int zoom_state);
+uint64_t aimbot_get_aim_entity();
+bool aimbot_target_distance_check(float distance);
+void aimbot_start_select_target();
+void aimbot_add_select_target(float fov, float distance, bool visible,
+                              bool love, uint64_t target_ptr);
+void aimbot_finish_select_target();
+void aimbot_lock_target(uint64_t target_ptr);
+void aimbot_cancel_locking();
+void aimbot_update(uintptr_t local_entity, float game_fps);
+vec4_t aimbot_smooth_aim_angles(const aim_angles_t *aim_angles,
                                 float smooth_factor);
-int aimbot_poll_trigger_action(aimbot_state_t *aimbot);
-void aimbot_triggerbot_update(aimbot_state_t *aimbot,
-                              const aim_angles_t *aim_angles,
+int aimbot_poll_trigger_action();
+void aimbot_triggerbot_update(const aim_angles_t *aim_angles,
                               int force_attack_state);
 
-exported_offsets_t import_offsets();
-
-/**
- * https://github.com/CasualX/apexdream
- * LISENCE: GPLv3
- */
 vec4_t skynade_angle(uint32_t weapon_id, uint32_t weapon_mod_bitfield,
                      float weapon_projectile_scale,
                      float weapon_projectile_speed, float local_view_origin_x,
@@ -429,6 +419,8 @@ vec4_t linear_predict(float weapon_projectile_grav,
                       float local_y, float local_z, float target_x,
                       float target_y, float target_z, float vel_x, float vel_y,
                       float vel_z);
+
+exported_offsets_t import_offsets();
 }
 
 void load_settings();

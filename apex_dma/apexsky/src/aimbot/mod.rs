@@ -1,5 +1,7 @@
+mod apexdream;
 pub mod ffi;
 
+use obfstr::obfstr as s;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -660,7 +662,7 @@ fn get_unix_timestamp_in_millis() -> u64 {
         }
         Err(e) => {
             // Handle errors, such as clock rollback
-            panic!("Error getting Unix Timestamp: {}", e);
+            panic!("{}{}", s!("Error getting Unix Timestamp: "), e);
         }
     }
 }

@@ -4,6 +4,7 @@ pub mod spectators;
 pub mod utils;
 
 use anyhow::Ok;
+use obfstr::obfstr as s;
 #[cfg(feature = "wasmedge")]
 use wasmedge_sdk::{
     config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
@@ -54,19 +55,19 @@ impl Skyapex {
                 .with_config(config)
                 // .with_plugin_wasi_nn()
                 .build()?
-                .register_module_from_bytes("skyapex", mod_bytes)?;
+                .register_module_from_bytes(s!("skyapex"), mod_bytes)?;
             let args: Vec<String> = std::env::args().collect();
             let envs: Vec<String> = std::env::vars()
                 .map(|(key, value)| format!("{}={}", key, value))
                 .collect();
-            let preopens = vec!["/", "/tmp", "/mnt", "/mnt/host:."];
-            let wasi_module = vm.wasi_module_mut().expect("Not found wasi module");
+            let preopens = vec![s!("/"), s!("/tmp"), s!("/mnt"), s!("/mnt/host:.")];
+            let wasi_module = vm.wasi_module_mut().expect(s!("Not found wasi module"));
             wasi_module.initialize(
                 Some(args.iter().map(|s| s.as_str()).collect()),
                 Some(envs.iter().map(|s| s.as_str()).collect()),
                 Some(preopens),
             );
-            vm.run_func(Some("skyapex"), "load", params!())?;
+            vm.run_func(Some(s!("skyapex")), s!("load"), params!())?;
 
             Ok(Skyapex { vm })
         }
@@ -95,7 +96,7 @@ impl Skyapex {
                 rt
             };
 
-            let mut wasi_env = WasiEnv::builder("skyapex")
+            let mut wasi_env = WasiEnv::builder(s!("skyapex"))
                 .args(std::env::args())
                 .envs(std::env::vars())
                 .sandbox_fs({
@@ -107,11 +108,11 @@ impl Skyapex {
                         .build();
                     let fs_backing: Arc<dyn FileSystem + Send + Sync> =
                         Arc::new(PassthruFileSystem::new(default_fs_backing()));
-                    root_fs.remove_dir(Path::new("/tmp"))?;
-                    root_fs.create_dir(Path::new("/mnt"))?;
+                    root_fs.remove_dir(Path::new(s!("/tmp")))?;
+                    root_fs.create_dir(Path::new(s!("/mnt")))?;
                     for (host, guest) in vec![
-                        (PathBuf::from("/tmp"), "/tmp"),
-                        (std::env::current_dir()?.to_path_buf(), "/mnt/host"),
+                        (PathBuf::from(s!("/tmp")), s!("/tmp")),
+                        (std::env::current_dir()?.to_path_buf(), s!("/mnt/host")),
                     ] {
                         let host = if !host.is_absolute() {
                             Path::new("/").join(host)
@@ -135,7 +136,7 @@ impl Skyapex {
             wasi_env.initialize(&mut store, instance.clone())?;
             instance
                 .exports
-                .get_function("load")?
+                .get_function(s!("load"))?
                 .call(&mut store, &[])?;
             Ok(Skyapex {
                 store,
@@ -151,7 +152,7 @@ impl Skyapex {
         func_name: impl AsRef<str>,
         args: impl IntoIterator<Item = WasmValue>,
     ) -> anyhow::Result<Vec<WasmValue>> {
-        let res = self.vm.run_func(Some("skyapex"), func_name, args)?;
+        let res = self.vm.run_func(Some(s!("skyapex")), func_name, args)?;
         Ok(res)
     }
     #[cfg(feature = "wasmer")]

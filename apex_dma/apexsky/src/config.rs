@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-
+use obfstr::obfstr as s;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 use crate::{aimbot::AimbotSettings, love_players::LovePlayer};
 
@@ -444,16 +444,16 @@ impl Default for Config {
 }
 
 pub fn get_config_path() -> PathBuf {
-    let base_path = std::env::current_dir().expect("Failed to determine the current directory");
+    let base_path = std::env::current_dir().expect(s!("Failed to determine the current directory"));
     let configuration_directory = base_path;
-    configuration_directory.join("settings.toml")
+    configuration_directory.join(s!("settings.toml"))
 }
 
 pub fn get_configuration() -> Result<Config, config::ConfigError> {
     let settings = config::Config::builder()
         .add_source(config::Config::try_from::<Config>(&Config::default())?)
         .add_source(config::File::from(get_config_path()))
-        .add_source(config::Environment::with_prefix("APP"))
+        .add_source(config::Environment::with_prefix(s!("APP")))
         .build()?;
 
     settings.try_deserialize::<Config>()
