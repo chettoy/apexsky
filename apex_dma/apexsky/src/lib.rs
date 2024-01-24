@@ -10,8 +10,10 @@ mod love_players;
 mod math;
 mod menu;
 mod offsets;
+mod pb;
 mod skyapex;
 mod system;
+mod web_map_radar;
 
 #[macro_use]
 extern crate lazy_static;
