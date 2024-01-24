@@ -301,11 +301,16 @@ typedef struct {
   uintptr_t player_health;
   uintptr_t entity_shield;
   uintptr_t entity_maxshield;
+  uintptr_t player_duck_state;
+  uintptr_t player_lean_state;
+  uintptr_t player_grapple;
+  uintptr_t player_grapple_active;
   uintptr_t player_xp;
   uintptr_t player_net_var;
   uintptr_t player_helmettype;
   uintptr_t player_armortype;
   uintptr_t player_controller_active;
+  uintptr_t player_skydive_state;
   uintptr_t entiry_name;
   uintptr_t entity_sign_name;
   uintptr_t centity_abs_velocity;
@@ -320,6 +325,7 @@ typedef struct {
   uintptr_t cplayer_wall_run_clear_time;
   uintptr_t centity_flags;
   uintptr_t in_attack;
+  uintptr_t in_backward;
   uintptr_t in_toggle_duck;
   uintptr_t in_zoom;
   uintptr_t in_forward;
@@ -357,6 +363,8 @@ typedef struct {
   uintptr_t weaponx_bitfield_from_player;
   uintptr_t entity_fade_dist;
   uintptr_t entity_highlight_generic_context;
+  uintptr_t grapple_attached;
+  uintptr_t grapple_pulling;
 } exported_offsets_t;
 
 extern "C" {

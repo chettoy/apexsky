@@ -180,7 +180,7 @@ void ClientActions() {
       apex_mem.Read<int>(g_Base + offsets.in_toggle_duck + 0x8,
                          force_toggle_duck);
       apex_mem.Read<int>(g_Base + offsets.in_duck + 0x8, force_duck);
-      apex_mem.Read<int>(g_Base + OFFSET_IN_BACKWARD,
+      apex_mem.Read<int>(g_Base + offsets.in_backward,
                          backward_state); // 后退状态
       apex_mem.Read<int>(local_player_ptr + offsets.centity_flags,
                          flags); // 玩家空间状态？
@@ -190,9 +190,9 @@ void ClientActions() {
       apex_mem.Read<float>(local_player_ptr +
                                offsets.cplayer_wall_run_clear_time,
                            wallrun_clear);
-      apex_mem.Read<int>(local_player_ptr + OFFSET_SKYDRIVESTATE,
+      apex_mem.Read<int>(local_player_ptr + offsets.player_skydive_state,
                          skydrive_state); // 跳伞状态
-      apex_mem.Read<int>(local_player_ptr + OFFSET_IN_DUCKSTATE,
+      apex_mem.Read<int>(local_player_ptr + offsets.player_duck_state,
                          duck_state); // 玩家下蹲状态
       apex_mem.Read<int>(g_Base + offsets.in_forward,
                          forward_state); // 前进状态
@@ -411,12 +411,12 @@ void ClientActions() {
       }
 
       int isGrppleActived, isGrppleAttached;
-      apex_mem.Read<int>(local_player_ptr + OFFSET_GRAPPLE_ACTIVE,
+      apex_mem.Read<int>(local_player_ptr + offsets.player_grapple_active,
                          isGrppleActived);
       if (g_settings.super_grpple) {
         if (isGrppleActived) {
-          apex_mem.Read<int>(local_player_ptr + OFFSET_GRAPPLE +
-                                 OFFSET_GRAPPLE_ATTACHED,
+          apex_mem.Read<int>(local_player_ptr + offsets.player_grapple +
+                                 offsets.grapple_attached,
                              isGrppleAttached);
           if (isGrppleAttached == 1) {
             apex_mem.Write<int>(g_Base + offsets.in_jump + 0x08, 5);
