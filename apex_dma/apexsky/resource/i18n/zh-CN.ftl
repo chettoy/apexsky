@@ -63,9 +63,9 @@ menu-item-toggle-nade-aim = 高抛雷
 menu-value-no-nade-aim = 开镜瞄准
 menu-value-nade-aim-on = 开镜取消
 menu-item-toggle-onevone = 1v1
-menu-item-toggle-no-recoil = 无后坐
-menu-item-recoil-x-value = 垂直后坐力平滑度
-menu-item-recoil-y-value = 水平后坐力平滑度
+menu-item-toggle-no-recoil = 切换后坐力减弱
+menu-item-recoil-x-value = 竖直后坐力减弱 (%)
+menu-item-recoil-y-value = 水平后坐力减弱 (%)
 input-prompt-recoil-value = 无后平滑值 (0~100):
 info-invalid-recoil-value = 输入无效。
     平滑值可设置范围是 0 到 100
