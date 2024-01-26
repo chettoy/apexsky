@@ -394,7 +394,7 @@ impl Default for Settings {
             player_filled_toggle: true,
             super_key_toggle: true,
             super_grpple: true,
-            auto_tapstrafe: true,
+            auto_tapstrafe: false,
             // end Terminal Stuff
             onevone: false,
             tdm_toggle: false,
