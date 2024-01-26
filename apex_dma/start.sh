@@ -6,9 +6,6 @@ set -x
 # Exit immediately when a command fails
 set -eo pipefail
 
-# Print Rust version
-cargo --version
-
 # Determine the script's directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
