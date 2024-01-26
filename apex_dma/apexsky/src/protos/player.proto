@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package player;
+
+message PlayerState {
+  string name = 1;
+  int64 uid = 2;
+  int32 entity_team = 3;
+  bool knocked = 4;
+  int32 health = 5;
+  int32 shield = 6;
+  int32 max_shield = 7;
+  int32 xp_level = 8;
+  int32 damage = 9;
+  int32 armor_type = 10;
+  float position_x = 11;
+  float position_y = 12;
+  float position_z = 13;
+  float yaw = 14;
+  bool is_alive = 15;
+}
+
+message Players {
+  repeated PlayerState players = 1;
+}

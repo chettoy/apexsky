@@ -271,14 +271,29 @@ pub(super) fn build_main_menu(
     menu = menu_add_toggle_item!(
         menu,
         &i18n_bundle,
-        format!("24 - {}", i18n_msg!(i18n_bundle, MenuItemToggleOnevone)),
+        format!("24 - {}", i18n_msg!(i18n_bundle, MenuItemSuperGrpple)),
+        settings.super_grpple,
+        super_grpple
+    );
+    menu = menu_add_toggle_item!(
+        menu,
+        &i18n_bundle,
+        format!("25 - {}", i18n_msg!(i18n_bundle, MenuItemAutoTapstrafe)),
+        settings.auto_tapstrafe,
+        auto_tapstrafe
+    )
+    .skip_id();
+    menu = menu_add_toggle_item!(
+        menu,
+        &i18n_bundle,
+        format!("27 - {}", i18n_msg!(i18n_bundle, MenuItemToggleOnevone)),
         settings.onevone,
         onevone
     );
     menu = menu.add_item(
         item_enabled(
             &i18n_bundle,
-            format!("25 - {}", i18n_msg!(i18n_bundle, MenuItemWeaponModelGlow)),
+            format!("28 - {}", i18n_msg!(i18n_bundle, MenuItemWeaponModelGlow)),
             settings.weapon_model_glow,
         ),
         |_handle: &mut TerminalMenu, _| {
@@ -296,7 +311,7 @@ pub(super) fn build_main_menu(
     menu = menu.add_item(
         item_enabled(
             &i18n_bundle,
-            format!("26 - {}", i18n_msg!(i18n_bundle, MenuItemKbdBacklightCtrl)),
+            format!("29 - {}", i18n_msg!(i18n_bundle, MenuItemKbdBacklightCtrl)),
             settings.kbd_backlight_control,
         ),
         |_handle: &mut TerminalMenu, _| {
@@ -314,14 +329,14 @@ pub(super) fn build_main_menu(
     menu = menu_add_toggle_item!(
         menu,
         &i18n_bundle,
-        format!("27 - {}", i18n_msg!(i18n_bundle, MenuItemBigMapFeat)),
+        format!("30 - {}", i18n_msg!(i18n_bundle, MenuItemBigMapFeat)),
         settings.map_radar_testing,
         map_radar_testing
     );
     menu.add_dummy_item()
         .add_item(
             item_text(format!(
-                "28 - {}",
+                "31 - {}",
                 i18n_msg!(i18n_bundle, MenuItemSpectatorsMenu)
             )),
             |handle: &mut TerminalMenu, _| {
@@ -330,9 +345,6 @@ pub(super) fn build_main_menu(
             },
             (),
         )
-        .skip_id()
-        .skip_id()
-        .skip_id()
         .add_item(
             format_item(
                 &i18n_bundle,

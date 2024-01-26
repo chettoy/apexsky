@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Mutex};
 use anyhow::Context;
 use entropy::shannon_entropy;
 use indexmap::IndexMap;
+use obfstr::obfstr as s;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -48,10 +49,10 @@ fn default_love() -> Vec<LovePlayer> {
     let data1 = include_str!("../resource/default/list.json");
     let data2 = include_str!("../resource/default/love.json");
     let list1: DefaultLoveList = serde_json::from_str(data1)
-        .context("Parse error: list.json")
+        .context(String::from(s!("Parse error: list.json")))
         .unwrap();
     let list2: Vec<LovePlayer> = serde_json::from_str(data2)
-        .context("Parse error: love.json")
+        .context(String::from(s!("Parse error: love.json")))
         .unwrap();
     [list1.list, list2].concat()
 }

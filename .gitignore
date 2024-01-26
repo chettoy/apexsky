@@ -1,5 +1,7 @@
 apex_dma/.cache
 apex_dma/build
+apex_dma/apexsky/src/pb/*.rs
+!apex_dma/apexsky/src/pb/mod.rs
 .vs/
 x64/
 *.o

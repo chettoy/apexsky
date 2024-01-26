@@ -1,6 +1,24 @@
+use std::sync::RwLock;
+
+use super::apexdream::*;
+use super::{AimAngles, Aimbot, AimbotSettings, TriggerBot};
 use crate::Vec4;
 
-use super::{AimAngles, Aimbot, AimbotSettings, TriggerBot};
+lazy_static! {
+    pub static ref G_AIMBOT: RwLock<Aimbot> = RwLock::new(Aimbot::new());
+}
+
+macro_rules! aimbot_read {
+    () => {
+        G_AIMBOT.read().unwrap()
+    };
+}
+
+macro_rules! aimbot_write {
+    () => {
+        G_AIMBOT.write().unwrap()
+    };
+}
 
 #[no_mangle]
 pub extern "C" fn skynade_angle(
@@ -15,7 +33,7 @@ pub extern "C" fn skynade_angle(
     target_y: f32,
     target_z: f32,
 ) -> Vec4 {
-    if let Some(tup) = crate::skynade::skynade_angle(
+    if let Some(tup) = skynade::skynade_angle(
         weapon_id,
         weapon_mod_bitfield,
         weapon_projectile_scale,
@@ -47,9 +65,9 @@ pub extern "C" fn linear_predict(
     vel_y: f32,
     vel_z: f32,
 ) -> Vec4 {
-    use crate::solver::{solve, LinearPredictor};
+    use solver::{solve, LinearPredictor};
     struct Weapon(f32, f32);
-    impl crate::solver::ProjectileWeapon for Weapon {
+    impl solver::ProjectileWeapon for Weapon {
         fn projectile_speed(&self) -> f32 {
             self.0
         }
@@ -79,80 +97,79 @@ pub extern "C" fn linear_predict(
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_new() -> Aimbot {
-    Aimbot::new()
+pub extern "C" fn aimbot_get_state() -> Aimbot {
+    aimbot_read!().clone()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_get_settings(aimbot: &Aimbot) -> AimbotSettings {
-    aimbot.get_settings()
+pub extern "C" fn aimbot_get_settings() -> AimbotSettings {
+    aimbot_read!().get_settings()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_settings(aimbot: &mut Aimbot, settings: &AimbotSettings) {
-    aimbot.settings(settings.clone())
+pub extern "C" fn aimbot_settings(settings: &AimbotSettings) {
+    aimbot_write!().settings(settings.clone())
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_is_aiming(aimbot: &Aimbot) -> bool {
-    aimbot.is_aiming()
+pub extern "C" fn aimbot_is_aiming() -> bool {
+    aimbot_read!().is_aiming()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_is_grenade(aimbot: &Aimbot) -> bool {
-    aimbot.is_grenade()
+pub extern "C" fn aimbot_is_grenade() -> bool {
+    aimbot_read!().is_grenade()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_is_headshot(aimbot: &Aimbot) -> bool {
-    aimbot.is_headshot()
+pub extern "C" fn aimbot_is_headshot() -> bool {
+    aimbot_read!().is_headshot()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_is_semi_auto(aimbot: &Aimbot) -> bool {
-    aimbot.is_semi_auto()
+pub extern "C" fn aimbot_is_semi_auto() -> bool {
+    aimbot_read!().is_semi_auto()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_is_locked(aimbot: &Aimbot) -> bool {
-    aimbot.is_locked()
+pub extern "C" fn aimbot_is_locked() -> bool {
+    aimbot_read!().is_locked()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_is_triggerbot_ready(aimbot: &Aimbot) -> bool {
-    aimbot.is_triggerbot_ready()
+pub extern "C" fn aimbot_is_triggerbot_ready() -> bool {
+    aimbot_read!().is_triggerbot_ready()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_get_max_fov(aimbot: &Aimbot) -> f32 {
-    aimbot.get_max_fov()
+pub extern "C" fn aimbot_get_max_fov() -> f32 {
+    aimbot_read!().get_max_fov()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_get_held_id(aimbot: &Aimbot) -> i32 {
-    aimbot.get_held_id()
+pub extern "C" fn aimbot_get_held_id() -> i32 {
+    aimbot_read!().get_held_id()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_update_held_id(aimbot: &mut Aimbot, held_id: i32) {
-    aimbot.update_held_id(held_id)
+pub extern "C" fn aimbot_update_held_id(held_id: i32) {
+    aimbot_write!().update_held_id(held_id)
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_get_weapon_id(aimbot: &Aimbot) -> i32 {
-    aimbot.get_weapon_id()
+pub extern "C" fn aimbot_get_weapon_id() -> i32 {
+    aimbot_read!().get_weapon_id()
 }
 
 #[no_mangle]
 pub extern "C" fn aimbot_update_weapon_info(
-    aimbot: &mut Aimbot,
     weapon_id: i32,
     bullet_speed: f32,
     bullet_gravity: f32,
     weapon_zoom_fov: f32,
     weapon_mod_bitfield: i32,
 ) {
-    aimbot.update_weapon_info(
+    aimbot_write!().update_weapon_info(
         weapon_id,
         bullet_speed,
         bullet_gravity,
@@ -162,111 +179,102 @@ pub extern "C" fn aimbot_update_weapon_info(
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_get_gun_safety(aimbot: &Aimbot) -> bool {
-    aimbot.get_gun_safety()
+pub extern "C" fn aimbot_get_gun_safety() -> bool {
+    aimbot_read!().get_gun_safety()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_set_gun_safety(aimbot: &mut Aimbot, gun_safety: bool) {
-    aimbot.set_gun_safety(gun_safety)
+pub extern "C" fn aimbot_set_gun_safety(gun_safety: bool) {
+    aimbot_write!().set_gun_safety(gun_safety)
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_get_aim_key_state(aimbot: &Aimbot) -> i32 {
-    aimbot.get_aim_key_state()
+pub extern "C" fn aimbot_get_aim_key_state() -> i32 {
+    aimbot_read!().get_aim_key_state()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_update_aim_key_state(aimbot: &mut Aimbot, aim_key_state: i32) {
-    aimbot.update_aim_key_state(aim_key_state)
+pub extern "C" fn aimbot_update_aim_key_state(aim_key_state: i32) {
+    aimbot_write!().update_aim_key_state(aim_key_state)
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_update_triggerbot_key_state(
-    aimbot: &mut Aimbot,
-    triggerbot_key_state: i32,
-) {
-    aimbot.update_triggerbot_key_state(triggerbot_key_state)
+pub extern "C" fn aimbot_update_triggerbot_key_state(triggerbot_key_state: i32) {
+    aimbot_write!().update_triggerbot_key_state(triggerbot_key_state)
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_update_attack_state(aimbot: &mut Aimbot, attack_state: i32) {
-    aimbot.update_attack_state(attack_state)
+pub extern "C" fn aimbot_update_attack_state(attack_state: i32) {
+    aimbot_write!().update_attack_state(attack_state)
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_update_zoom_state(aimbot: &mut Aimbot, zoom_state: i32) {
-    aimbot.update_zoom_state(zoom_state)
+pub extern "C" fn aimbot_update_zoom_state(zoom_state: i32) {
+    aimbot_write!().update_zoom_state(zoom_state)
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_get_aim_entity(aimbot: &Aimbot) -> u64 {
-    aimbot.get_aim_entity()
+pub extern "C" fn aimbot_get_aim_entity() -> u64 {
+    aimbot_read!().get_aim_entity()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_target_distance_check(aimbot: &Aimbot, distance: f32) -> bool {
-    aimbot.target_distance_check(distance)
+pub extern "C" fn aimbot_target_distance_check(distance: f32) -> bool {
+    aimbot_read!().target_distance_check(distance)
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_start_select_target(aimbot: &mut Aimbot) {
-    aimbot.start_select_target()
+pub extern "C" fn aimbot_start_select_target() {
+    aimbot_write!().start_select_target()
 }
 
 #[no_mangle]
 pub extern "C" fn aimbot_add_select_target(
-    aimbot: &mut Aimbot,
     fov: f32,
     distance: f32,
     visible: bool,
     love: bool,
     target_ptr: u64,
 ) {
-    aimbot.add_select_target(fov, distance, visible, love, target_ptr)
+    aimbot_write!().add_select_target(fov, distance, visible, love, target_ptr)
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_finish_select_target(aimbot: &mut Aimbot) {
-    aimbot.finish_select_target()
+pub extern "C" fn aimbot_finish_select_target() {
+    aimbot_write!().finish_select_target()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_lock_target(aimbot: &mut Aimbot, target_ptr: u64) {
-    aimbot.lock_target(target_ptr)
+pub extern "C" fn aimbot_lock_target(target_ptr: u64) {
+    aimbot_write!().lock_target(target_ptr)
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_cancel_locking(aimbot: &mut Aimbot) {
-    aimbot.cancel_locking()
+pub extern "C" fn aimbot_cancel_locking() {
+    aimbot_write!().cancel_locking()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_update(aimbot: &mut Aimbot, local_entity: u64, game_fps: f32) {
+pub extern "C" fn aimbot_update(local_entity: u64, game_fps: f32) {
+    let mut aimbot = aimbot_write!();
     aimbot.local_entity = local_entity;
     aimbot.game_fps = game_fps;
     aimbot.update();
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_smooth_aim_angles(
-    aimbot: &Aimbot,
-    aim_angles: &AimAngles,
-    smooth_factor: f32,
-) -> Vec4 {
-    aimbot.smooth_aim_angles(aim_angles, smooth_factor).into()
+pub extern "C" fn aimbot_smooth_aim_angles(aim_angles: &AimAngles, smooth_factor: f32) -> Vec4 {
+    aimbot_read!()
+        .smooth_aim_angles(aim_angles, smooth_factor)
+        .into()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_poll_trigger_action(aimbot: &mut Aimbot) -> i32 {
-    aimbot.poll_trigger_action()
+pub extern "C" fn aimbot_poll_trigger_action() -> i32 {
+    aimbot_write!().poll_trigger_action()
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_triggerbot_update(
-    aimbot: &mut Aimbot,
-    aim_angles: &AimAngles,
-    force_attack_state: i32,
-) {
-    aimbot.triggerbot_update(aim_angles, force_attack_state)
+pub extern "C" fn aimbot_triggerbot_update(aim_angles: &AimAngles, force_attack_state: i32) {
+    aimbot_write!().triggerbot_update(aim_angles, force_attack_state)
 }

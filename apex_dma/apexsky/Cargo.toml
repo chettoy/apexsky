@@ -41,6 +41,12 @@ apexsky-derive = { path = "apexsky-derive" }
 ctrlc = "3.4.2"
 chinese-lunisolar-calendar = "0.2.0"
 paste = "1.0.14"
+obfstr = "0.4.3"
+include-flate = "0.3.0"
+prost = "0.12.3"
+
+[build-dependencies]
+prost-build = "0.12.3"
 
 [features]
 default = ["wasmer"]

@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <map>
+#include <mutex>
 #include <random>
 #include <shared_mutex>
 #include <string>
@@ -40,19 +41,16 @@ bool stormpoint = true;      // Set for map, ONLY ONE THO
 // Map number
 extern int map;
 
-extern bool valid; // write sync
-extern bool next2; // read write sync
+extern std::mutex esp_mtx;
 
 Vector aim_target = Vector(0, 0, 0);
-extern const aimbot_state_t aimbot; // read
-extern std::shared_mutex aimbot_mutex_;
 
 extern bool overlay_t;
 
 extern std::vector<player> players;
-extern Matrix view_matrix_data;
-extern Vector esp_local_pos;
-std::vector<std::string> esp_spec_names, teammates_damage;
+extern Matrix g_view_matrix;
+extern Vector g_esp_local_pos;
+std::vector<std::string> esp_spec_names, esp_teammates_damage;
 
 // Radar Code
 #define M_PI 3.14159265358979323846 // matches value in gcc v2 math.h
@@ -435,12 +433,12 @@ void worldToScreenMap(D3DXVECTOR3 origin, int team_id) {
   ImVec2 s1;
   // Is it me being lazy? or that i dont know how? prob both. True or False for
   // the map detection, set in the overlay menu.
-  if (map == 1) { // Storm Point
+  if (map == 2) { // Storm Point
     ratioX = StormPoint.ratioX;
     ratioY = StormPoint.ratioY;
     w1 = StormPoint.w1;
     s1 = StormPoint.s1;
-  } else if (map == 2) { // KingsCanyon
+  } else if (map == 1) { // KingsCanyon
     ratioX = KingsCanyon.ratioX;
     ratioY = KingsCanyon.ratioY;
     w1 = KingsCanyon.w1;
@@ -482,208 +480,192 @@ void worldToScreenMap(D3DXVECTOR3 origin, int team_id) {
 }
 
 void Overlay::RenderEsp() {
-  next2 = false;
   const auto g_settings = global_settings();
-  if (g_Base != 0 && g_settings.esp) {
-
-    players.clear();
-    esp_spec_names.clear();
-    teammates_damage.clear();
-
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2((float)getWidth(), (float)getHeight()));
-    ImGui::Begin(XorStr("##esp"), (bool *)true,
-                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-                     ImGuiWindowFlags_NoBackground |
-                     ImGuiWindowFlags_NoBringToFrontOnFocus |
-                     ImGuiWindowFlags_NoInputs);
-
-    if (g_settings.show_aim_target && aim_target != Vector(0, 0, 0)) {
-      Vector bs = Vector();
-      WorldToScreen(aim_target, view_matrix_data.matrix, getWidth(),
-                    getHeight(), bs);
-      const float indicator_radius = 10.0f;
-      bool aimbot_locked;
-      {
-        std::shared_lock lock(aimbot_mutex_);
-        aimbot_locked = aimbot_is_locked(&aimbot);
-      }
-      ImColor indicator_color = aimbot_locked
-                                    ? ImColor(1.0f, 0.647f, 0.0f, 0.618f)
-                                    : ImColor(1.0f, 1.0f, 1.0f, 0.618f);
-      ImVec2 p1 = ImVec2(bs.x + indicator_radius, bs.y - indicator_radius);
-      ImVec2 p2 = ImVec2(bs.x - indicator_radius, bs.y - indicator_radius);
-      ImVec2 p3 = ImVec2(bs.x - indicator_radius, bs.y + indicator_radius);
-      ImVec2 p4 = ImVec2(bs.x + indicator_radius, bs.y + indicator_radius);
-      ImDrawList &draw_list = *ImGui::GetWindowDrawList();
-      draw_list.AddRect(p2, p4, indicator_color, indicator_radius, 0, 1.6726f);
-      if (aimbot_locked) {
-        indicator_color = RED;
-        draw_list.AddLine(p1, p3, indicator_color, 2.718f);
-        draw_list.AddLine(p2, p4, indicator_color, 2.718f);
-      }
-    }
-
-    if (treasure_clues.size() > 0) {
-      Vector bs_loot, bs_local;
-      WorldToScreen(esp_local_pos, view_matrix_data.matrix, getWidth(),
-                    getHeight(), bs_local);
-      if (!(bs_local.x == 0 && bs_local.y == 0)) {
-        for (size_t i = 0; i < treasure_clues.size(); i++) {
-          TreasureClue clue = treasure_clues[i];
-          if (clue.position == Vector(0, 0, 0))
-            continue;
-          // printf("%f,%f,%f\n",
-          // clue.position.x,clue.position.y,clue.position.z);
-          WorldToScreen(clue.position, view_matrix_data.matrix, getWidth(),
-                        getHeight(), bs_loot);
-          if (bs_loot.x == 0 && bs_loot.y == 0)
-            continue;
-          DrawLine(ImVec2(bs_local.x, bs_local.y), ImVec2(bs_loot.x, bs_loot.y),
-                   ImColor(1.0f, 1.0f, 1.0f, 0.5f), 1.0f);
-          std::string distance = std::to_string(clue.distance / 39.62);
-          distance = std::to_string(clue.item_id) + "(" +
-                     distance.substr(0, distance.find('.')) + "m)";
-          String(ImVec2(bs_loot.x, bs_loot.y), ImColor(212, 175, 55),
-                 distance.c_str());
-        }
-      }
-    }
-
-    if (!g_settings.firing_range)
-      while (!next2 && g_settings.esp) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
-      }
-
-    if (next2 && valid) {
-
-      for (size_t i = 0; i < players.size(); i++) {
-        if (players[i].is_spectator) {
-          esp_spec_names.push_back(std::string(players[i].name));
-        }
-        if (players[i].is_teammate) {
-          teammates_damage.push_back(std::string(players[i].name) + " " +
-                                     std::to_string(players[i].damage));
-        }
-
-        if (!players[i].is_alive) {
-          continue;
-        }
-
-        if (players[i].health > 0) {
-          if (g_settings.esp_visuals.damage &&
-              players[i].dist < g_settings.aimbot_settings.aim_dist) {
-            ImColor color = ImColor(188, 18, 20);
-            ImVec2 draw_pos = ImVec2(players[i].boxMiddle,
-                                     (players[i].b_y - players[i].height - 32));
-            std::string damage_str = std::to_string(players[i].damage);
-            String(draw_pos, color, damage_str.c_str());
-          }
-
-          if (players[i].is_teammate && !g_settings.onevone) {
-            continue;
-          }
-
-          float alpha; // The farther away, the more transparent
-          if (players[i].dist < g_settings.aimbot_settings.aim_dist) {
-            alpha = 1.0f;
-          } else if (players[i].dist > 16000.0f) {
-            alpha = 0.4f;
-          } else {
-            alpha = 1.0f -
-                    ((players[i].dist - g_settings.aimbot_settings.aim_dist) /
-                     (16000.0f - g_settings.aimbot_settings.aim_dist) * 0.6f);
-          }
-
-          float radardistance = (int)(players[i].dist / 39.62);
-
-          // Radar Stuff
-          if (g_settings.mini_map_radar == true) {
-            MiniMapRadar(players[i].EntityPosition,
-                         players[i].LocalPlayerPosition,
-                         players[i].localviewangle.y, radardistance,
-                         players[i].entity_team, players[i].targetyaw);
-          }
-          if (g_settings.esp_visuals.line) {
-            DrawLine(ImVec2((float)(getWidth() / 2.0), (float)getHeight()),
-                     ImVec2(players[i].b_x, players[i].b_y), BLUE,
-                     1); // LINE FROM MIDDLE SCREEN
-          }
-
-          if (g_settings.esp_visuals.distance) {
-            std::string distance = std::to_string(players[i].dist / 39.62);
-            distance = distance.substr(0, distance.find('.')) + "m(" +
-                       std::to_string(players[i].entity_team) + ")";
-            if (players[i].knocked) {
-              String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)), RED,
-                     distance.c_str()); // DISTANCE
-            } else {
-              String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)),
-                     ImColor(0.0f, 1.0f, 0.0f, alpha),
-                     distance.c_str()); // DISTANCE
-            }
-          }
-
-          if (players[i].dist < g_settings.aimbot_settings.aim_dist) {
-            if (g_settings.esp_visuals.healthbar)
-              DrawSeerLikeHealth(
-                  (players[i].b_x - (players[i].width / 2.0f) + 5),
-                  (players[i].b_y - players[i].height - 10), players[i].shield,
-                  players[i].maxshield, players[i].armortype,
-                  players[i].health); // health bar
-
-            if (g_settings.esp_visuals.box) {
-              ImColor box_color = ImColor(0.0f, 0.0f, 0.0f, alpha);
-              float box_width = 1.0f;
-              if (players[i].visible) {
-                box_color =
-                    ImColor(g_settings.glow_r_viz, g_settings.glow_g_viz,
-                            g_settings.glow_b_viz, alpha);
-                box_width = 2.0f;
-              } else {
-                box_color =
-                    ImColor(g_settings.glow_r_not, g_settings.glow_g_not,
-                            g_settings.glow_b_not, alpha);
-              }
-              DrawBox(box_color, players[i].b_x - (players[i].width / 2.0f),
-                      players[i].b_y - players[i].height, players[i].width,
-                      players[i].height, box_width);
-            }
-            if (g_settings.esp_visuals.name) {
-              ImColor name_color;
-              if (players[i].is_love == LOVE) {
-                name_color = ImColor(231, 27, 100);
-              } else if (players[i].is_love == HATE) {
-                name_color = ImColor(1.0f, .0f, .0f);
-              } else if (players[i].is_love == AMBIVALENT) {
-                name_color = ImColor(.0f, .0f, .0f);
-              } else {
-                name_color = ImColor(1.0f, 1.0f, 1.0f, alpha);
-              }
-              ImVec2 draw_pos =
-                  ImVec2(players[i].boxMiddle,
-                         (players[i].b_y - players[i].height - 15));
-              ImVec2 nick_pos = ImVec2(draw_pos.x + 50, draw_pos.y);
-              std::string level =
-                  std::string("Lv.") + std::to_string(players[i].xp_level);
-
-              String(draw_pos, ImColor(.0f, 1.0f, .0f, alpha), level.c_str());
-              String(nick_pos, name_color, players[i].name);
-            }
-          }
-          // Full Radar map, Need Manual setting of cords
-          if (g_settings.main_radar_map == true)
-
-            worldToScreenMap(players[i].EntityPosition, players[i].entity_team);
-
-          // String(ImVec2(players[i].boxMiddle, (players[i].b_y -
-          // players[i].height - 15)), WHITE, players[i].name);
-        }
-      }
-    }
-    ImGui::End();
+  if (g_Base == 0 || !g_settings.esp) {
+    return;
   }
+
+  // Lock mutex
+  std::lock_guard<std::mutex> esp_lock(esp_mtx);
+
+  esp_spec_names.clear();
+  esp_teammates_damage.clear();
+
+  ImGui::SetNextWindowPos(ImVec2(0, 0));
+  ImGui::SetNextWindowSize(ImVec2((float)getWidth(), (float)getHeight()));
+  ImGui::Begin(xorstr_("##esp"), (bool *)true,
+               ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                   ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                   ImGuiWindowFlags_NoBackground |
+                   ImGuiWindowFlags_NoBringToFrontOnFocus |
+                   ImGuiWindowFlags_NoInputs);
+
+  if (g_settings.show_aim_target && aim_target != Vector(0, 0, 0)) {
+    Vector bs = Vector();
+    WorldToScreen(aim_target, g_view_matrix.matrix, getWidth(), getHeight(),
+                  bs);
+    const float indicator_radius = 10.0f;
+    bool aimbot_locked = aimbot_is_locked();
+    ImColor indicator_color = aimbot_locked
+                                  ? ImColor(1.0f, 0.647f, 0.0f, 0.618f)
+                                  : ImColor(1.0f, 1.0f, 1.0f, 0.618f);
+    ImVec2 p1 = ImVec2(bs.x + indicator_radius, bs.y - indicator_radius);
+    ImVec2 p2 = ImVec2(bs.x - indicator_radius, bs.y - indicator_radius);
+    ImVec2 p3 = ImVec2(bs.x - indicator_radius, bs.y + indicator_radius);
+    ImVec2 p4 = ImVec2(bs.x + indicator_radius, bs.y + indicator_radius);
+    ImDrawList &draw_list = *ImGui::GetWindowDrawList();
+    draw_list.AddRect(p2, p4, indicator_color, indicator_radius, 0, 1.6726f);
+    if (aimbot_locked) {
+      indicator_color = RED;
+      draw_list.AddLine(p1, p3, indicator_color, 2.718f);
+      draw_list.AddLine(p2, p4, indicator_color, 2.718f);
+    }
+  }
+
+  if (treasure_clues.size() > 0) {
+    Vector bs_loot, bs_local;
+    WorldToScreen(g_esp_local_pos, g_view_matrix.matrix, getWidth(),
+                  getHeight(), bs_local);
+    if (!(bs_local.x == 0 && bs_local.y == 0)) {
+      for (size_t i = 0; i < treasure_clues.size(); i++) {
+        TreasureClue clue = treasure_clues[i];
+        if (clue.position == Vector(0, 0, 0))
+          continue;
+        // printf("%f,%f,%f\n",
+        // clue.position.x,clue.position.y,clue.position.z);
+        WorldToScreen(clue.position, g_view_matrix.matrix, getWidth(),
+                      getHeight(), bs_loot);
+        if (bs_loot.x == 0 && bs_loot.y == 0)
+          continue;
+        DrawLine(ImVec2(bs_local.x, bs_local.y), ImVec2(bs_loot.x, bs_loot.y),
+                 ImColor(1.0f, 1.0f, 1.0f, 0.5f), 1.0f);
+        std::string distance = std::to_string(clue.distance / 39.62);
+        distance = std::to_string(clue.item_id) + "(" +
+                   distance.substr(0, distance.find('.')) + xorstr_("m)");
+        String(ImVec2(bs_loot.x, bs_loot.y), ImColor(212, 175, 55),
+               distance.c_str());
+      }
+    }
+  }
+
+  for (size_t i = 0; i < players.size(); i++) {
+    if (players[i].is_spectator) {
+      esp_spec_names.push_back(std::string(players[i].name));
+    }
+    if (players[i].is_teammate) {
+      esp_teammates_damage.push_back(std::string(players[i].name) + " " +
+                                     std::to_string(players[i].damage));
+    }
+
+    if (!players[i].is_alive) {
+      continue;
+    }
+
+    if (players[i].health > 0) {
+      if (g_settings.esp_visuals.damage &&
+          players[i].dist < g_settings.aimbot_settings.aim_dist) {
+        ImColor color = ImColor(188, 18, 20);
+        ImVec2 draw_pos = ImVec2(players[i].boxMiddle,
+                                 (players[i].b_y - players[i].height - 32));
+        std::string damage_str = std::to_string(players[i].damage);
+        String(draw_pos, color, damage_str.c_str());
+      }
+
+      if (players[i].is_teammate && !g_settings.onevone) {
+        continue;
+      }
+
+      float alpha; // The farther away, the more transparent
+      if (players[i].dist < g_settings.aimbot_settings.aim_dist) {
+        alpha = 1.0f;
+      } else if (players[i].dist > 16000.0f) {
+        alpha = 0.4f;
+      } else {
+        alpha =
+            1.0f - ((players[i].dist - g_settings.aimbot_settings.aim_dist) /
+                    (16000.0f - g_settings.aimbot_settings.aim_dist) * 0.6f);
+      }
+
+      float radardistance = (int)(players[i].dist / 39.62);
+
+      // Radar Stuff
+      if (g_settings.mini_map_radar == true) {
+        MiniMapRadar(players[i].EntityPosition, players[i].LocalPlayerPosition,
+                     players[i].localviewangle.y, radardistance,
+                     players[i].entity_team, players[i].targetyaw);
+      }
+      if (g_settings.esp_visuals.line) {
+        DrawLine(ImVec2((float)(getWidth() / 2.0), (float)getHeight()),
+                 ImVec2(players[i].b_x, players[i].b_y), BLUE,
+                 1); // LINE FROM MIDDLE SCREEN
+      }
+
+      if (g_settings.esp_visuals.distance) {
+        std::string distance = std::to_string(players[i].dist / 39.62);
+        distance = distance.substr(0, distance.find('.')) + xorstr_("m(") +
+                   std::to_string(players[i].entity_team) + ")";
+        if (players[i].knocked) {
+          String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)), RED,
+                 distance.c_str()); // DISTANCE
+        } else {
+          String(ImVec2(players[i].boxMiddle, (players[i].b_y + 1)),
+                 ImColor(0.0f, 1.0f, 0.0f, alpha),
+                 distance.c_str()); // DISTANCE
+        }
+      }
+
+      if (players[i].dist < g_settings.aimbot_settings.aim_dist) {
+        if (g_settings.esp_visuals.healthbar)
+          DrawSeerLikeHealth((players[i].b_x - (players[i].width / 2.0f) + 5),
+                             (players[i].b_y - players[i].height - 10),
+                             players[i].shield, players[i].maxshield,
+                             players[i].armortype,
+                             players[i].health); // health bar
+
+        if (g_settings.esp_visuals.box) {
+          ImColor box_color = ImColor(0.0f, 0.0f, 0.0f, alpha);
+          float box_width = 1.0f;
+          if (players[i].visible) {
+            box_color = ImColor(g_settings.glow_r_viz, g_settings.glow_g_viz,
+                                g_settings.glow_b_viz, alpha);
+            box_width = 2.0f;
+          } else {
+            box_color = ImColor(g_settings.glow_r_not, g_settings.glow_g_not,
+                                g_settings.glow_b_not, alpha);
+          }
+          DrawBox(box_color, players[i].b_x - (players[i].width / 2.0f),
+                  players[i].b_y - players[i].height, players[i].width,
+                  players[i].height, box_width);
+        }
+        if (g_settings.esp_visuals.name) {
+          ImColor name_color;
+          if (players[i].is_love == LOVE) {
+            name_color = ImColor(231, 27, 100);
+          } else if (players[i].is_love == HATE) {
+            name_color = ImColor(1.0f, .0f, .0f);
+          } else if (players[i].is_love == AMBIVALENT) {
+            name_color = ImColor(.0f, .0f, .0f);
+          } else {
+            name_color = ImColor(1.0f, 1.0f, 1.0f, alpha);
+          }
+          ImVec2 draw_pos = ImVec2(players[i].boxMiddle,
+                                   (players[i].b_y - players[i].height - 15));
+          ImVec2 nick_pos = ImVec2(draw_pos.x + 50, draw_pos.y);
+          std::string level =
+              std::string(xorstr_("Lv.")) + std::to_string(players[i].xp_level);
+
+          String(draw_pos, ImColor(.0f, 1.0f, .0f, alpha), level.c_str());
+          String(nick_pos, name_color, players[i].name);
+        }
+      }
+      // Full Radar map, Need Manual setting of cords
+      if (g_settings.main_radar_map) {
+        worldToScreenMap(players[i].EntityPosition, players[i].entity_team);
+      }
+    }
+  }
+
+  ImGui::End();
 }
 
 void start_overlay() {

@@ -1,6 +1,6 @@
-use std::sync::Mutex;
-
 use anyhow::Context;
+use obfstr::obfstr as s;
+use std::sync::Mutex;
 
 use crate::{skyapex::Skyapex, system::SysContext};
 
@@ -9,8 +9,8 @@ lazy_static! {
     pub static ref G_CONTEXT: Mutex<SysContext> = Mutex::new(SysContext::new().unwrap());
     pub static ref G_MOD: Mutex<Skyapex> = Mutex::new(
         Skyapex::load()
-            .context("Failed to load skyapex mod!")
-            .unwrap()
+            .context(String::from(s!("Failed to load skyapex mod!")))
+            .unwrap(),
     );
 }
 
@@ -22,11 +22,29 @@ pub struct GlobalState {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct CGlobalState {
     pub(crate) settings: crate::config::Settings,
     pub terminal_t: bool,
     pub tui_forceupdate: bool,
+}
+
+impl From<GlobalState> for CGlobalState {
+    fn from(value: GlobalState) -> Self {
+        CGlobalState {
+            settings: value.config.settings,
+            terminal_t: value.terminal_t,
+            tui_forceupdate: value.tui_forceupdate,
+        }
+    }
+}
+
+impl GlobalState {
+    pub fn update(&mut self, c_state: CGlobalState) {
+        self.config.settings = c_state.settings;
+        self.terminal_t = c_state.terminal_t;
+        self.tui_forceupdate = c_state.tui_forceupdate;
+    }
 }
 
 #[macro_export]
@@ -41,14 +59,4 @@ macro_rules! lock_mod {
     () => {
         crate::global_state::G_MOD.lock().unwrap()
     };
-}
-
-impl From<GlobalState> for CGlobalState {
-    fn from(value: GlobalState) -> Self {
-        CGlobalState {
-            settings: value.config.settings,
-            terminal_t: value.terminal_t,
-            tui_forceupdate: value.tui_forceupdate,
-        }
-    }
 }

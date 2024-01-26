@@ -1,5 +1,6 @@
 #include "Game.h"
 #include "apex_sky.h"
+#include "lib/xorstr/xorstr.hpp"
 #include "prediction.h"
 #include "vector.h"
 #include <array>
@@ -95,7 +96,7 @@ bool Entity::isDummy(uintptr_t ptr) {
   char class_name[33] = {};
   get_class_name(ptr, class_name);
 
-  return strncmp(class_name, "CAI_BaseNPC", 11) == 0;
+  return strncmp(class_name, xorstr_("CAI_BaseNPC"), 11) == 0;
 }
 
 bool Entity::isKnocked() {
@@ -392,21 +393,21 @@ bool Item::isItem() {
   char class_name[33] = {};
   get_class_name(ptr, class_name);
 
-  return strncmp(class_name, "CPropSurvival", 13) == 0;
+  return strncmp(class_name, xorstr_("CPropSurvival"), 13) == 0;
 }
 // Deathboxes
 bool Item::isBox() {
   char class_name[33] = {};
   get_class_name(ptr, class_name);
 
-  return strncmp(class_name, "CDeathBoxProp", 13) == 0;
+  return strncmp(class_name, xorstr_("CDeathBoxProp"), 13) == 0;
 }
 // Traps
 bool Item::isTrap() {
   char class_name[33] = {};
   get_class_name(ptr, class_name);
 
-  return strncmp(class_name, "caustic_trap", 13) == 0;
+  return strncmp(class_name, xorstr_("caustic_trap"), 13) == 0;
 }
 
 // bool Item::isGlowing() {
