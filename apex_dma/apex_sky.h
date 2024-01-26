@@ -365,6 +365,7 @@ typedef struct {
   uintptr_t entity_highlight_generic_context;
   uintptr_t grapple_attached;
   uintptr_t grapple_pulling;
+  uintptr_t var_damage;
 } exported_offsets_t;
 
 extern "C" {

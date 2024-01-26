@@ -112,4 +112,5 @@ import_custom_offsets!({
     entity_highlight_generic_context,
     grapple_attached,
     grapple_pulling,
+    var_damage,
 });

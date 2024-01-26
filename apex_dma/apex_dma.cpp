@@ -837,8 +837,8 @@ static void EspLoop() {
       g_esp_local_pos = local_ent_pos;
 
       // Read variable for damage display
-      int var_k;
-      apex_mem.Read<int>(g_Base + 0xcacec58, var_k);
+      int var_damage;
+      apex_mem.Read<int>(g_Base + offsets.var_damage, var_damage);
 
       // Read players
       uint64_t entitylist = g_Base + offsets.entitylist;
@@ -941,7 +941,8 @@ static void EspLoop() {
           uintptr_t var_ptr;
           apex_mem.Read<uintptr_t>(entitylist + (var_ent_i & 0xffff) * 32,
                                    var_ptr);
-          apex_mem.Read<int>(var_ptr + (var_k << 2) + 2936, data_buf.damage);
+          apex_mem.Read<int>(var_ptr + (var_damage << 2) + 2936,
+                             data_buf.damage);
 
           Target.get_name(data_buf.name);
 
