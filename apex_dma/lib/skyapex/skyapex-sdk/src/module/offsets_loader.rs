@@ -7,7 +7,8 @@ macro_rules! import_custom_offsets {
         paste::paste! {
             #[skyapex_impl]
             trait CustomOffsetsLoader {
-                fn export_offsets(&mut self);
+                fn export_offsets_from_file(&mut self);
+                fn export_offsets_from_str(&mut self, buf: i32);
                 $(fn [<offset_ $field>](&mut self) -> i64;)*
             }
 
@@ -25,8 +26,14 @@ macro_rules! import_custom_offsets {
             }
 
             impl CustomOffsets {
-                pub fn load(skyapex: &mut Skyapex) -> Self {
-                    skyapex.export_offsets();
+                pub fn from_file(skyapex: &mut Skyapex) -> Self {
+                    skyapex.export_offsets_from_file();
+                    Self { $($field: skyapex.[<offset_ $field>]() as u64,)* }
+                }
+
+                pub fn from_string(skyapex: &mut Skyapex, data: String) -> Self {
+                    let buf = skyapex.pass_string(data).unwrap();
+                    skyapex.export_offsets_from_str(buf);
                     Self { $($field: skyapex.[<offset_ $field>]() as u64,)* }
                 }
             }

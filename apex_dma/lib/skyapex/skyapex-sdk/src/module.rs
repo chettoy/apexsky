@@ -3,6 +3,8 @@ mod offsets_loader;
 mod spectators;
 mod utils;
 
+use std::ffi::CString;
+
 pub use aimbot_utils::*;
 pub use offsets_loader::*;
 pub use spectators::*;
@@ -39,6 +41,11 @@ pub struct Skyapex {
     _runtime: PluggableRuntime,
 }
 
+#[skyapex_impl]
+trait PassData {
+    fn new_buf(&mut self, size: i32) -> i32;
+}
+
 impl Skyapex {
     pub fn load() -> anyhow::Result<Self> {
         // {
@@ -66,12 +73,17 @@ impl Skyapex {
             let envs: Vec<String> = std::env::vars()
                 .map(|(key, value)| format!("{}={}", key, value))
                 .collect();
-            let preopens = vec![s!("/"), s!("/tmp"), s!("/mnt"), s!("/mnt/host:.")];
+            let preopens = vec![
+                s!("/").to_string(),
+                s!("/tmp").to_string(),
+                s!("/mnt").to_string(),
+                s!("/mnt/host:.").to_string(),
+            ];
             let wasi_module = vm.wasi_module_mut().expect(s!("Not found wasi module"));
             wasi_module.initialize(
-                Some(args.iter().map(|s| s.as_str()).collect()),
-                Some(envs.iter().map(|s| s.as_str()).collect()),
-                Some(preopens),
+                Some(args.iter().map(String::as_str).collect()),
+                Some(envs.iter().map(String::as_str).collect()),
+                Some(preopens.iter().map(String::as_str).collect()),
             );
             vm.run_func(Some(s!("skyapex")), s!("load"), params!())?;
 
@@ -150,6 +162,31 @@ impl Skyapex {
                 _runtime: runtime,
             })
         }
+    }
+
+    pub fn pass_string(&mut self, data: String) -> anyhow::Result<i32> {
+        let cstr = CString::new(data).expect(s!("CString::new failed"));
+        let data = cstr.as_bytes_with_nul();
+
+        let new_ptr = self.new_buf(data.len().try_into()?);
+
+        // Write the string into the lineary memory
+        #[cfg(feature = "wasmedge")]
+        {
+            let mut memory = self
+                .vm
+                .named_module_mut(s!("skyapex"))?
+                .memory(s!("memory"))?;
+            memory.write(data, new_ptr as u32)?;
+        }
+        #[cfg(feature = "wasmer")]
+        {
+            let memory = self.instance.exports.get_memory(s!("memory"))?;
+            let mem_view = memory.view(&self.store);
+            mem_view.write(new_ptr as u64, data)?;
+        }
+
+        Ok(new_ptr)
     }
 
     #[cfg(feature = "wasmedge")]
