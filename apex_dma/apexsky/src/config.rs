@@ -476,11 +476,13 @@ pub fn get_configuration() -> Result<Config, config::ConfigError> {
 pub fn save_configuration(config_state: Config) -> Result<(), std::io::Error> {
     use std::fs;
     use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
 
     let mut config_write = fs::OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
+        .mode(0o600)
         .open(get_config_path())?;
     let toml_con = toml::to_string(&config_state).unwrap();
     write!(config_write, "{}", toml_con)?;

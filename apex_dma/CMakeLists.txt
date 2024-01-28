@@ -28,28 +28,12 @@ ExternalProject_Add(
     BUILD_BYPRODUCTS ${DEP_LIBS_DIR}/memflow/target/release/libmemflow_ffi.a
     LOG_BUILD ON)
 ExternalProject_Add(
-    memflow_kvm
+    memflow_native
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BINARY_DIR ${DEP_LIBS_DIR}/memflow-kvm/
+    BINARY_DIR ${DEP_LIBS_DIR}/memflow-native/
     BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-kvm/target/release/libmemflow_kvm.so ${CMAKE_BINARY_DIR}/
-    LOG_BUILD ON)
-ExternalProject_Add(
-    memflow_qemu
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BINARY_DIR ${DEP_LIBS_DIR}/memflow-qemu/
-    BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-qemu/target/release/libmemflow_qemu.so ${CMAKE_BINARY_DIR}/
-    LOG_BUILD ON)
-ExternalProject_Add(
-    memflow_win32
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BINARY_DIR ${DEP_LIBS_DIR}/memflow-win32/
-    BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-win32/target/release/libmemflow_win32.so ${CMAKE_BINARY_DIR}/
+    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-native/target/release/libmemflow_native.so ${CMAKE_BINARY_DIR}/
     LOG_BUILD ON)
 find_package(Threads REQUIRED)
 
@@ -97,9 +81,7 @@ ExternalProject_Add(
 add_dependencies(apex_dma 
     apexsky
     memflow_ffi
-    memflow_kvm
-    memflow_qemu
-    memflow_win32)
+    memflow_native)
 
 target_link_libraries(
     apex_dma

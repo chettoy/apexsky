@@ -1,5 +1,9 @@
 <a name="readme-top"></a>
 
+> [!CAUTION]
+> This branch does not use kvm and works directly on the linux version of the game.
+> Can't bypass anti-cheat, don't use it.
+
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
 [![Issues][issues-shield]][issues-url]
@@ -38,8 +42,6 @@ UnknownCheats thread: https://www.unknowncheats.me/forum/apex-legends/406426-kvm
 Bone IDs reference: https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes
 
 Game version (Steam Only right now): v3.0.55.37
-
-**Please delete the old offsets.ini after updating.**
 
 
 
