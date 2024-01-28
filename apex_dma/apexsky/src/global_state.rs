@@ -1,8 +1,9 @@
 use anyhow::Context;
 use obfstr::obfstr as s;
+use skyapex_sdk::Skyapex;
 use std::sync::Mutex;
 
-use crate::{skyapex::Skyapex, system::SysContext};
+use crate::system::SysContext;
 
 lazy_static! {
     pub static ref G_STATE: Mutex<GlobalState> = Mutex::new(GlobalState::default());

@@ -720,7 +720,7 @@ int Overlay::CreateOverlay() {
   io.ConfigFlags |=
       ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
 
-#include "impl/render/font.h"
+#include "font.h"
   io.Fonts->AddFontFromMemoryCompressedTTF(
       LXGWNeoXiHei_compressed_data, LXGWNeoXiHei_compressed_size, 15, NULL,
       io.Fonts->GetGlyphRangesChineseFull());

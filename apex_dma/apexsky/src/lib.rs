@@ -1,6 +1,7 @@
 use global_state::CGlobalState;
 use obfstr::obfstr as s;
 use serde::{Deserialize, Serialize};
+use skyapex_sdk::module::Utils;
 
 mod aimbot;
 mod config;
@@ -11,19 +12,14 @@ mod math;
 mod menu;
 mod offsets;
 mod pb;
-mod skyapex;
 mod system;
 mod web_map_radar;
 
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
-extern crate apexsky_derive;
-
 use global_state::G_CONTEXT;
 use global_state::G_STATE;
-use skyapex::utils::Utils;
 
 // state sync
 
@@ -75,19 +71,19 @@ pub use love_players::check_love_player;
 
 #[no_mangle]
 pub extern "C" fn init_spec_checker(local_player_ptr: u64) {
-    use skyapex::spectators::SpecCheck;
+    use skyapex_sdk::module::SpecCheck;
     lock_mod!().init_spec_checker(local_player_ptr);
 }
 
 #[no_mangle]
 pub extern "C" fn tick_yew(target_ptr: u64, yew: f32) {
-    use skyapex::spectators::SpecCheck;
+    use skyapex_sdk::module::SpecCheck;
     lock_mod!().tick_yew(target_ptr, yew);
 }
 
 #[no_mangle]
 pub extern "C" fn is_spec(target_ptr: u64) -> bool {
-    use skyapex::spectators::SpecCheck;
+    use skyapex_sdk::module::SpecCheck;
     lock_mod!().is_spec(target_ptr)
 }
 

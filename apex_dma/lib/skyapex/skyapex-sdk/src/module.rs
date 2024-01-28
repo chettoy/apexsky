@@ -1,7 +1,12 @@
-pub mod aimbot_utils;
-pub mod offsets_loader;
-pub mod spectators;
-pub mod utils;
+mod aimbot_utils;
+mod offsets_loader;
+mod spectators;
+mod utils;
+
+pub use aimbot_utils::*;
+pub use offsets_loader::*;
+pub use spectators::*;
+pub use utils::*;
 
 use anyhow::Ok;
 use obfstr::obfstr as s;
@@ -45,7 +50,7 @@ impl Skyapex {
         //     .unwrap();
         // }
 
-        include_flate::flate!(static SKYAPEX_WAT: str from "resource/mod/skyapex.wat");
+        include_flate::flate!(static SKYAPEX_WAT: str from "mod/skyapex.wat");
         let mod_bytes = wat::parse_str(SKYAPEX_WAT.as_str())?;
         #[cfg(feature = "wasmedge")]
         {

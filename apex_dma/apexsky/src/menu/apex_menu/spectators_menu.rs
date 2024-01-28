@@ -1,13 +1,11 @@
-use crate::{
-    config, i18n_msg, lock_config, lock_mod, love_players::LovePlayer,
-    skyapex::spectators::SpecCheck,
-};
+use crate::{config, i18n_msg, lock_config, lock_mod, love_players::LovePlayer};
 use fluent::{FluentBundle, FluentResource};
 use ratatui::{
     style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::ListItem,
 };
+use skyapex_sdk::module::SpecCheck;
 
 use super::{item_text, MenuBuilder, MenuLevel, MenuState, TerminalMenu};
 

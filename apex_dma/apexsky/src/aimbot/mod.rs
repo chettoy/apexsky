@@ -4,9 +4,10 @@ pub mod ffi;
 use obfstr::obfstr as s;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use skyapex_sdk::module::AimbotUtils;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{lock_mod, skyapex::aimbot_utils::AimbotUtils};
+use crate::lock_mod;
 
 #[repr(C)]
 #[allow(dead_code)]

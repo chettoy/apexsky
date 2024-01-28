@@ -1,5 +1,6 @@
-use crate::{lock_mod, skyapex::offsets_loader::CustomOffsets};
+use crate::lock_mod;
 use obfstr::obfstr as s;
+use skyapex_sdk::module::CustomOffsets;
 
 #[no_mangle]
 pub extern "C" fn import_offsets() -> CustomOffsets {
