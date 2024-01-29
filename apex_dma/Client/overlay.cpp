@@ -689,23 +689,38 @@ int Overlay::CreateOverlay() {
   glfwWindowHint(GLFW_MOUSE_PASSTHROUGH, GLFW_TRUE);
   glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
 
+  bool is_x11 = glfwGetPlatform() == GLFW_PLATFORM_X11;
+  GLFWmonitor *glfw_monitor = glfwGetPrimaryMonitor();
+  if (is_x11) {
+    glfw_monitor = NULL;
+  }
+
   // Create window with graphics context
   GLFWwindow *window = glfwCreateWindow(
       g_settings.screen_width, g_settings.screen_height,
-      xorstr_("Client ImGui GLFW+OpenGL3"), glfwGetPrimaryMonitor(), nullptr);
+      xorstr_("Client ImGui GLFW+OpenGL3"), glfw_monitor, nullptr);
   if (window == nullptr)
     return 1;
-  // static const char *GamescopeOverlayProperty = "GAMESCOPE_EXTERNAL_OVERLAY";
-  // Display *x11_display = glfwGetX11Display();
-  // Window x11_window = glfwGetX11Window(window);
-  // if (x11_window && x11_display) {
-  //   // Set atom for gamescope to render as an overlay.
-  //   Atom overlay_atom =
-  //       XInternAtom(x11_display, GamescopeOverlayProperty, False);
-  //   uint32_t value = 1;
-  //   XChangeProperty(x11_display, x11_window, overlay_atom, XA_CARDINAL, 32,
-  //                   PropertyNewValue, (unsigned char *)&value, 1);
-  // }
+
+  if (is_x11) {
+    // static const char *GamescopeOverlayProperty = "GAMESCOPE_EXTERNAL_OVERLAY";
+    // Display *x11_display = glfwGetX11Display();
+    // Window x11_window = glfwGetX11Window(window);
+    // if (x11_window && x11_display) {
+    //   // Set atom for gamescope to render as an overlay.
+    //   Atom overlay_atom =
+    //       XInternAtom(x11_display, GamescopeOverlayProperty, False);
+    //   uint32_t value = 1;
+    //   XChangeProperty(x11_display, x11_window, overlay_atom, XA_CARDINAL, 32,
+    //                   PropertyNewValue, (unsigned char *)&value, 1);
+    // }
+
+    // Centering
+    const GLFWvidmode *vidMode = glfwGetVideoMode(glfw_monitor);
+    glfwSetWindowPos(window, (vidMode->width - g_settings.screen_width) / 2,
+                     (vidMode->height - g_settings.screen_height) / 2);
+  }
+
   glfwMakeContextCurrent(window);
 
   glfwSwapInterval(1); // Enable vsync
