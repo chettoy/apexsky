@@ -102,27 +102,8 @@ int Memory::open_os() {
   }
   printf("inventory initialized: %p\n", inventory);
 
-  const char *conn_name = "native";
-  const char *conn_arg = "";
-
-  const char *os_name = "linux";
+  const char *os_name = "native";
   const char *os_arg = "";
-
-  ConnectorInstance connector;
-  conn = &connector;
-
-  // initialize the connector plugin
-  if (conn) {
-    printf("Using %s connector.\n", conn_name);
-    if (inventory_create_connector(inventory, conn_name, conn_arg,
-                                   &connector)) {
-      printf("Unable to initialize %s connector.\n", conn_name);
-      return 1;
-    }
-
-    printf("Connector initialized: %p\n",
-           connector.container.instance.instance);
-  }
 
   // initialize the OS plugin
   if (inventory_create_os(inventory, os_name, os_arg, conn, &os)) {
