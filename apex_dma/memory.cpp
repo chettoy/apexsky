@@ -1,5 +1,11 @@
 #include "memory.hpp"
 
+#include "lib/xorstr/xorstr.hpp"
+#include <ios>
+#include <iostream>
+#include <string>
+#include <unistd.h>
+
 struct FindProcessContext {
   OsInstance<> *os;
   const char *name;
@@ -97,49 +103,56 @@ int Memory::open_os() {
   }
   inventory = inventory_scan();
   if (!inventory) {
-    log_error("unable to create inventory");
+    log_error(xorstr_("unable to create inventory"));
     return 1;
   }
-  printf("inventory initialized: %p\n", inventory);
+  printf("%s%p\n", xorstr_("inventory initialized: "), inventory);
 
-  const char *conn_name = "kvm";
-  const char *conn_arg = "";
+  const std::string conn_name(xorstr_("kvm"));
+  const std::string conn_arg;
 
-  const char *conn2_name = "qemu";
-  const char *conn2_arg = "";
+  const std::string conn2_name(xorstr_("qemu"));
+  const std::string conn2_arg;
 
-  const char *os_name = "win32";
-  const char *os_arg = "";
+  const std::string os_name(xorstr_("win32"));
+  const std::string os_arg;
 
   ConnectorInstance connector;
   conn = &connector;
 
   // initialize the connector plugin
   if (conn) {
-    printf("Using %s connector.\n", conn_name);
-    if (inventory_create_connector(inventory, conn_name, conn_arg,
-                                   &connector)) {
-      printf("Unable to initialize %s connector.\n", conn_name);
-      printf("Fallback to %s connector.\n", conn2_name);
+    printf("%s%s%s", xorstr_("Using "), conn_name.c_str(),
+           xorstr_(" connector.\n"));
+    if (access(xorstr_("/dev/memflow"), F_OK) == -1 ||
+        inventory_create_connector(inventory, conn_name.c_str(),
+                                   conn_arg.c_str(), &connector)) {
+      printf("%s%s%s", xorstr_("Unable to initialize "), conn_name.c_str(),
+             xorstr_(" connector.\n"));
+      printf("%s%s%s", xorstr_("Fallback to "), conn2_name.c_str(),
+             xorstr_(" connector.\n"));
 
-      if (inventory_create_connector(inventory, conn2_name, conn2_arg,
-                                     &connector)) {
-        printf("Unable to initialize %s connector.\n", conn2_name);
+      if (inventory_create_connector(inventory, conn2_name.c_str(),
+                                     conn2_arg.c_str(), &connector)) {
+        printf("%s%s%s", xorstr_("Unable to initialize "), conn2_name.c_str(),
+               xorstr_(" connector.\n"));
         return 1;
       }
     }
 
-    printf("Connector initialized: %p\n",
+    printf("%s%p\n", xorstr_("Connector initialized: "),
            connector.container.instance.instance);
   }
 
   // initialize the OS plugin
-  if (inventory_create_os(inventory, os_name, os_arg, conn, &os)) {
-    printf("unable to initialize OS\n");
+  if (inventory_create_os(inventory, os_name.c_str(), os_arg.c_str(), conn,
+                          &os)) {
+    printf(xorstr_("unable to initialize OS\n"));
     return 1;
   }
 
-  printf("os plugin initialized: %p\n", os.container.instance.instance);
+  printf("%s%p\n", xorstr_("os plugin initialized: "),
+         os.container.instance.instance);
   return 0;
 }
 
@@ -155,16 +168,18 @@ int Memory::open_proc(const char *name) {
                                  &proc.hProcess))) {
     const struct ProcessInfo *info = proc.hProcess.info();
 
-    printf("%s process found: 0x%lx] %d %s %s\n", target_proc, info->address,
-           info->pid, info->name, info->path);
+    std::cout << target_proc << xorstr_(" process found: 0x") << std::hex
+              << info->address << xorstr_("] ") << info->pid << " "
+              << info->name << " " << info->path << std::endl;
 
     // find the module by its name
     ModuleInfo module_info;
     if (!(ret = proc.hProcess.module_by_name(CSliceRef<uint8_t>(target_module),
                                              &module_info))) {
-      printf("%s module found: 0x%lx] 0x%lx %s %s\n", target_proc,
-             module_info.address, module_info.base, module_info.name,
-             module_info.path);
+      std::cout << target_proc << xorstr_(" module found: 0x") << std::hex
+                << module_info.address << xorstr_("] 0x") << std::hex
+                << module_info.base << " " << module_info.name << " "
+                << module_info.path << std::endl;
 
       proc.baseaddr = module_info.base;
       status = process_status::FOUND_READY;
@@ -172,7 +187,7 @@ int Memory::open_proc(const char *name) {
       status = process_status::FOUND_NO_ACCESS;
       close_proc();
 
-      printf("unable to find module: %s\n", target_module);
+      printf("%s%s\n", xorstr_("unable to find module: "), target_module);
       log_debug_errorcode(ret);
     }
   } else {
@@ -186,7 +201,7 @@ Memory::~Memory() {
   if (inventory) {
     inventory_free(inventory);
     inventory = nullptr;
-    log_info("inventory freed");
+    log_info(xorstr_("inventory freed"));
   }
 }
 
