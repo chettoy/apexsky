@@ -4,9 +4,9 @@ name: CMake on a single platform
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "dma" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "dma" ]
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -67,8 +67,7 @@ jobs:
         name: apex_dma_${{ steps.vars.outputs.sha_short }}_b${{ github.run_number }}
         path: |
           build/apex_dma
-          build/libmemflow_kvm.so
-          build/libmemflow_qemu.so
+          build/libmemflow_pcileech.so
           build/libmemflow_win32.so
           README.md
         retention-days: 5
