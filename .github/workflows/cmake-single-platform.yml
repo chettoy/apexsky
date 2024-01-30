@@ -64,7 +64,7 @@ jobs:
     - name: Archive production artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: apex_dma_${{ steps.vars.outputs.sha_short }}_b${{ github.run_number }}
+        name: apexsky_kvm_${{ steps.vars.outputs.sha_short }}_b${{ github.run_number }}
         path: |
           build/apex_dma
           build/libmemflow_kvm.so
