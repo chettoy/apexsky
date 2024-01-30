@@ -1,7 +1,7 @@
 <a name="readme-top"></a>
 
 > [!CAUTION]
-> This branch does not use kvm and works directly on the linux version of the game.
+> This branch does not use kvm and works directly on the Linux version of the game.
 > Can't bypass anti-cheat, don't use it.
 
 [![Contributors][contributors-shield]][contributors-url]
@@ -11,10 +11,10 @@
 <br />
 <div align="center">
 
-  <h3 align="center">apex_dma_kvm_pub</h3>
+  <h3 align="center">apexsky</h3>
 
   <p align="center">
-    Apex Legends QEMU/KVM hack
+    Apex Legends hack
     <br />
     <br />
     <br />
@@ -35,7 +35,7 @@
 
 
 ## About The Project
-Apex Legends QEMU/KVM hack
+Apex Legends QEMU/KVM/DMA/Linux hack
 
 UnknownCheats thread: https://www.unknowncheats.me/forum/apex-legends/406426-kvm-vmread-apex-esp-aimbot.html
 
@@ -47,7 +47,7 @@ Game version (Steam Only right now): v3.0.55.37
 
  **Features**
 
-1. KrackerCo Fork's no-overlay features.
+1. apex_dma_kvm_pub no-overlay features.
 
     > This is the No Client(Windows) Branch, nothing is needed on the windows side.
     >
@@ -63,7 +63,7 @@ Game version (Steam Only right now): v3.0.55.37
     >
     > Left/Right or both mouse buttons to aim.
 
-2. KrackerCo Fork's Client features.
+2. apex_dma_kvm_pub Client features.
 
     > ESP Glow color picker for knocked and alive, visable or not visable.
     >
@@ -87,10 +87,9 @@ Game version (Steam Only right now): v3.0.55.37
     >
     > Save and Load config buttons and at s
 
-3. chettoy Fork's features
+3. apexsky features
 
-    * Inherits all features from KrackerCo's original no-overlay branch.
-    * Includes all features from the original repository's overlay branch. (requires overlay enabled)
+    * Inherits all features from apex_dma_kvm_pub.
     * Optional glow box to replace player glow (ideal for screenshot prevention or live broadcasting). (requires overlay enabled)
     * Sky Grenade feature.
     * Improved target locking.
@@ -117,6 +116,8 @@ Look forward to your testing and feedback.
 
 ## Getting Started
 
+**apexsky_kvm:**
+
 There are really only two steps:
 
 1. Run the game on a windows guest in a kvm virtual machine.
@@ -137,7 +138,7 @@ Additional information:
 
 
 
-Click on *[Actions](https://github.com/chettoy/apex_dma_kvm_pub/actions)* to download the auto-built artifacts.
+Click on *[Actions](https://github.com/chettoy/apexsky/actions)* to download the auto-built artifacts.
 
 Or compile it yourself.
 
@@ -161,14 +162,14 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 **Install Build Dependencies (Ubuntu):**
 
 ```bash
-sudo apt install cmake clang protobuf-compiler libzstd-dev libglfw3-dev libfreetype6-dev libvulkan-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev wayland-protocols libwayland-dev libxkbcommon-dev
+sudo apt install cmake clang protobuf-compiler libusb-1.0-0-dev libzstd-dev libglfw3-dev libfreetype6-dev libvulkan-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev wayland-protocols libwayland-dev libxkbcommon-dev
 ```
 
 **Build:**
 
 ```shell
-git clone --recurse https://github.com/chettoy/apex_dma_kvm_pub
-cd apex_dma_kvm_pub
+git clone --recurse https://github.com/chettoy/apexsky
+cd apexsky
 git submodule update --init --recursive
 cd apex_dma
 ./build.sh
