@@ -4,7 +4,6 @@
 #include <ios>
 #include <iostream>
 #include <string>
-#include <unistd.h>
 
 struct FindProcessContext {
   OsInstance<> *os;

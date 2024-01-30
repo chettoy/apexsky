@@ -22,9 +22,17 @@
 #include <string.h>
 #include <sys/types.h>
 #include <thread>
-#include <unistd.h>
 #include <unordered_map> // Include the unordered_map header
 #include <vector>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+#ifdef __linux__
+#include <unistd.h>
+#endif
+
 // this is a test, with seconds
 Memory apex_mem;
 extern const exported_offsets_t offsets;
@@ -160,8 +168,8 @@ void ClientActions() {
       apex_mem.Read<uint64_t>(g_Base + offsets.local_ent, local_player_ptr);
 
       // read game states
-      apex_mem.Read<typeof(button_state)>(g_Base + offsets.input_system + 0xb0,
-                                          button_state);
+      apex_mem.ReadArray<uint32_t>(g_Base + offsets.input_system + 0xb0,
+                                   button_state, 4);
 
       int attack_state = 0, zoom_state = 0, tduck_state = 0, jump_state = 0,
           backward_state = 0, forward_state = 0, skydrive_state = 0,
@@ -1583,16 +1591,6 @@ void terminal() {
 int main(int argc, char *argv[]) {
   load_settings();
 
-  // memflow-kvm available or run as root
-  if (geteuid() != 0 && access(xorstr_("/dev/memflow"), F_OK) == -1) {
-    // run as root..
-    print_run_as_root();
-
-    // test menu
-    run_tui_menu();
-    return 0;
-  }
-
   std::thread aimbot_thr;
   std::thread esp_thr;
   std::thread actions_thr;
@@ -1638,7 +1636,7 @@ int main(int argc, char *argv[]) {
       if (apex_mem.get_proc_status() == process_status::FOUND_READY) {
         g_Base = apex_mem.get_proc_baseaddr();
         printf("%s", xorstr_("\nApex process found\n"));
-        printf("%s%lx%s", xorstr_("Base: "), g_Base, xorstr_("\n"));
+        printf("%s%llx%s", xorstr_("Base: "), g_Base, xorstr_("\n"));
 
         aimbot_thr = std::thread(AimbotLoop);
         esp_thr = std::thread(EspLoop);

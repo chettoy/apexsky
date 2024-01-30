@@ -3,9 +3,8 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-#include <GL/gl.h>
 #include <cstddef>
-#include <stdio.h>
+#include <cstdio>
 #include <vector>
 #define GL_SILENCE_DEPRECATION
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -13,9 +12,11 @@
 #endif
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
+#ifdef __linux__
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
 #include <X11/Xatom.h>
+#endif
 
 #include <fstream>
 #include <functional>
@@ -32,8 +33,8 @@ extern float veltest;
 extern float bulletspeed;
 extern float bulletgrav;
 
-extern const size_t g_spectators, g_allied_spectators; // read
-extern const std::vector<string> esp_spec_names, esp_teammates_damage;
+extern size_t g_spectators, g_allied_spectators; // read
+extern std::vector<string> esp_spec_names, esp_teammates_damage;
 // Left and Right Aim key toggle
 bool toggleaim = false;
 bool toggleaim2 = false;
@@ -789,23 +790,23 @@ int Overlay::CreateOverlay() {
       }
       ImGui::Dummy(ImVec2(0.0f, 5.0f));
       if (esp_teammates_damage.size() > 0) {
-        const char *info[esp_teammates_damage.size()];
+        std::vector<const char *> info(esp_teammates_damage.size());
         for (size_t i = 0; i < esp_teammates_damage.size(); i++) {
-          info[i] = esp_teammates_damage[i].c_str();
+          info.push_back(esp_teammates_damage[i].c_str());
         }
         int current_item = 0;
-        ImGui::ListBox(xorstr_("Damage"), &current_item, info,
+        ImGui::ListBox(xorstr_("Damage"), &current_item, &info[0],
                        esp_teammates_damage.size());
       }
 
       ImGui::Dummy(ImVec2(0.0f, 5.0f));
       if (esp_spec_names.size() > 0) {
-        const char *names[esp_spec_names.size()];
+        std::vector<const char *> names(esp_spec_names.size());
         for (size_t i = 0; i < esp_spec_names.size(); i++) {
-          names[i] = esp_spec_names[i].c_str();
+          names.push_back(esp_spec_names[i].c_str());
         }
         int current_item = 0;
-        ImGui::ListBox(xorstr_("Spectators"), &current_item, names,
+        ImGui::ListBox(xorstr_("Spectators"), &current_item, &names[0],
                        esp_spec_names.size());
       } else {
         ImGui::Text("%s", xorstr_("No Spectators"));
