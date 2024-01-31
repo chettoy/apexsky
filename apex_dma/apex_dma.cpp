@@ -1,4 +1,3 @@
-#include "Client/main.h"
 #include "Game.h"
 #include "apex_sky.h"
 #include "lib/xorstr/xorstr.hpp"
@@ -40,7 +39,7 @@ extern const exported_offsets_t offsets;
 // Just setting things up, dont edit.
 bool active = true;
 const int ENT_NUM = 10000;
-extern Vector aim_target; // for esp
+Vector aim_target; // for esp
 int map_testing_local_team = 0;
 
 // Removed but not all the way, dont edit.
@@ -1591,12 +1590,16 @@ void terminal() {
 int main(int argc, char *argv[]) {
   load_settings();
 
+  if (argc == 2 && strcmp("menu", argv[1]) == 0) {
+    run_tui_menu();
+    return 0;
+  }
+
   std::thread aimbot_thr;
   std::thread esp_thr;
   std::thread actions_thr;
   std::thread cactions_thr;
   std::thread terminal_thr;
-  std::thread overlay_thr;
   std::thread itemglow_thr;
   std::thread control_thr;
 
@@ -1612,7 +1615,6 @@ int main(int argc, char *argv[]) {
         actions_t = false;
         cactions_t = false;
         terminal_t = false;
-        overlay_t = false;
         item_t = false;
         control_t = false;
         g_Base = 0;
@@ -1623,7 +1625,6 @@ int main(int argc, char *argv[]) {
         actions_thr.~thread();
         cactions_thr.~thread();
         terminal_thr.~thread();
-        overlay_thr.~thread();
         itemglow_thr.~thread();
         control_thr.~thread();
       }
@@ -1665,16 +1666,6 @@ int main(int argc, char *argv[]) {
           terminal_thr.detach();
         }
         // wish_list.clear();
-      }
-      if (g_settings.no_overlay) {
-        if (overlay_t) {
-          overlay_t = false;
-        }
-      } else {
-        if (!overlay_t) {
-          overlay_thr = std::thread(start_overlay);
-          overlay_thr.detach();
-        }
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));

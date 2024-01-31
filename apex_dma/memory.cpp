@@ -108,7 +108,7 @@ int Memory::open_os() {
   printf("%s%p\n", xorstr_("inventory initialized: "), inventory);
 
   const std::string conn_name(xorstr_("pcileech"));
-  const std::string conn_arg;
+  const std::string conn_arg(xorstr_(":device=FPGA"));
 
   const std::string os_name(xorstr_("win32"));
   const std::string os_arg;

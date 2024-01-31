@@ -13,11 +13,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CXX_STANDARD_REQUIRED ON)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -stdlib=libc++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++")
 endif()
 
 if(NOT WIN32)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wformat -march=native")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wformat")
 endif()
 
 set(CMAKE_BUILD_TYPE "Release")
@@ -42,77 +43,51 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
     BINARY_DIR ${DEP_LIBS_DIR}/memflow/
-    BUILD_COMMAND cargo build --release
+    BUILD_COMMAND cargo build --target aarch64-linux-android --release
     INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${DEP_LIBS_DIR}/memflow/target/release/${LIB_PREFIX}memflow_ffi${STATIC_LIB_EXT}
+    BUILD_BYPRODUCTS ${DEP_LIBS_DIR}/memflow/target/aarch64-linux-android/release/${LIB_PREFIX}memflow_ffi${STATIC_LIB_EXT}
     LOG_BUILD ON)
 
-ExternalProject_Add(
-    memflow_pcileech
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BINARY_DIR ${DEP_LIBS_DIR}/memflow-pcileech/
-    BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-pcileech/target/release/${LIB_PREFIX}memflow_pcileech${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
-    LOG_BUILD ON)
+# ExternalProject_Add(
+#     memflow_pcileech
+#     DOWNLOAD_COMMAND ""
+#     CONFIGURE_COMMAND ""
+#     BINARY_DIR ${DEP_LIBS_DIR}/memflow-pcileech/
+#     BUILD_COMMAND cargo build --target aarch64-linux-android --release --all-features
+#     INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-pcileech/target/release/${LIB_PREFIX}memflow_pcileech${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
+#     LOG_BUILD ON)
 
-ExternalProject_Add(
-    memflow_win32
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BINARY_DIR ${DEP_LIBS_DIR}/memflow-win32/
-    BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-win32/target/release/${LIB_PREFIX}memflow_win32${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
-    LOG_BUILD ON)
+# ExternalProject_Add(
+#     memflow_win32
+#     DOWNLOAD_COMMAND ""
+#     CONFIGURE_COMMAND ""
+#     BINARY_DIR ${DEP_LIBS_DIR}/memflow-win32/
+#     BUILD_COMMAND cargo build --target aarch64-linux-android --release --all-features
+#     INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-win32/target/release/${LIB_PREFIX}memflow_win32${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
+#     LOG_BUILD ON)
 
 find_package(Threads REQUIRED)
 
-# GLFW
-set(GLFW_USE_WAYLAND ON)
-set(GLFW_BUILD_X11 OFF)
-set(GLFW_DIR ${PROJECT_SOURCE_DIR}/Client/glfw)
-option(GLFW_BUILD_EXAMPLES "Build the GLFW example programs" OFF)
-option(GLFW_BUILD_TESTS "Build the GLFW test programs" OFF)
-option(GLFW_BUILD_DOCS "Build the GLFW documentation" OFF)
-option(GLFW_INSTALL "Generate installation target" OFF)
-option(GLFW_DOCUMENT_INTERNALS "Include internals in documentation" OFF)
-add_subdirectory(${GLFW_DIR} glfw-prefix EXCLUDE_FROM_ALL)
-include_directories(${GLFW_DIR}/include)
-
-# Dear ImGui
-set(IMGUI_DIR ${PROJECT_SOURCE_DIR}/Client/imgui)
-include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends)
-
-
 # apex_dma
 add_executable(apex_dma
-    apex_dma.cpp apex_sky.cpp Game.cpp Math.cpp memory.cpp
-    ${PROJECT_SOURCE_DIR}/Client/main.cpp
-    ${PROJECT_SOURCE_DIR}/Client/overlay.cpp
-    ${PROJECT_SOURCE_DIR}/Client/font.cpp
-    ${IMGUI_DIR}/imgui.cpp
-    ${IMGUI_DIR}/imgui_demo.cpp
-    ${IMGUI_DIR}/imgui_draw.cpp
-    ${IMGUI_DIR}/imgui_tables.cpp
-    ${IMGUI_DIR}/imgui_widgets.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp)
+    apex_dma.cpp apex_sky.cpp Game.cpp Math.cpp memory.cpp)
 
 ExternalProject_Add(
     apexsky
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
     BINARY_DIR ${PROJECT_SOURCE_DIR}/apexsky/
-    BUILD_COMMAND cargo build --release
+    BUILD_COMMAND cargo build --target aarch64-linux-android --release
     INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/apexsky/target/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
+    BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/apexsky/target/aarch64-linux-android/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
     LOG_BUILD ON)
 
 add_dependencies(apex_dma 
     apexsky
     memflow_ffi
-    memflow_pcileech
-    memflow_win32)
+    #memflow_pcileech
+    #memflow_win32
+    )
 
     
 if (WIN32)
@@ -120,8 +95,6 @@ if (WIN32)
         apex_dma
         ${PROJECT_SOURCE_DIR}/apexsky/target/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
         ${DEP_LIBS_DIR}/memflow/target/release/${LIB_PREFIX}memflow_ffi${STATIC_LIB_EXT}
-        glfw
-        opengl32
         zstd
         ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_DL_LIBS}
@@ -136,11 +109,8 @@ if (WIN32)
 else()
     target_link_libraries(
         apex_dma
-        ${PROJECT_SOURCE_DIR}/apexsky/target/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
-        ${DEP_LIBS_DIR}/memflow/target/release/${LIB_PREFIX}memflow_ffi${STATIC_LIB_EXT}
-        glfw
-        GL
-        zstd
+        ${PROJECT_SOURCE_DIR}/apexsky/target/aarch64-linux-android/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
+        ${DEP_LIBS_DIR}/memflow/target/aarch64-linux-android/release/${LIB_PREFIX}memflow_ffi${STATIC_LIB_EXT}
         ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_DL_LIBS}
         m)

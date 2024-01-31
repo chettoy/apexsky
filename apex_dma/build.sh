@@ -19,7 +19,12 @@ mkdir -p "$BUILD_DIR"
 # Build release version of apexsky
 cd "$SCRIPT_DIR/apexsky"
 
-cargo build --release
+# Set env
+export AR=/opt/android-ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+export CC=/opt/android-ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang
+export CXX=/opt/android-ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang++
+
+cargo build --target aarch64-linux-android --release
 cd "$SCRIPT_DIR"
 
 # Build CMake project

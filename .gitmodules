@@ -1,9 +1,3 @@
-[submodule "apex_dma/Client/glfw"]
-	path = apex_dma/Client/glfw
-	url = https://github.com/glfw/glfw
-[submodule "apex_dma/Client/imgui"]
-	path = apex_dma/Client/imgui
-	url = https://github.com/ocornut/imgui
 [submodule "apex_dma/lib/memflow"]
 	path = apex_dma/lib/memflow
 	url = https://github.com/memflow/memflow
