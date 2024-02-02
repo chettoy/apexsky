@@ -2,13 +2,13 @@ use std::collections::HashMap;
 
 use fluent::{FluentBundle, FluentResource};
 use obfstr::obfstr as s;
-use strum::{EnumString, EnumVariantNames};
+use strum::{EnumString, VariantNames};
 use strum_macros::EnumIter;
 use sys_locale::get_locale;
 // Used to provide a locale for the bundle.
 use unic_langid::LanguageIdentifier;
 
-#[derive(Debug, EnumString, EnumVariantNames, strum::Display, EnumIter)]
+#[derive(Debug, EnumString, VariantNames, strum::Display, EnumIter)]
 #[strum(serialize_all = "kebab-case")]
 pub enum MessageId {
     HelloWorld,
