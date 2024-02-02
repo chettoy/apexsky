@@ -91,7 +91,7 @@ impl Skyapex {
         }
         #[cfg(feature = "wasmer")]
         {
-            use std::path::{Path, PathBuf};
+            use std::path::Path;
             use std::sync::Arc;
 
             let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -116,7 +116,7 @@ impl Skyapex {
 
             let mut wasi_env = WasiEnv::builder(s!("skyapex"))
                 .args(std::env::args())
-                .envs(std::env::vars())
+                .envs(std::env::vars().filter(|(k, _v)| !k.starts_with("=")))
                 .sandbox_fs({
                     // If we preopen anything from the host then shallow copy it over
                     let root_fs = RootFileSystemBuilder::new()
@@ -129,7 +129,7 @@ impl Skyapex {
                     root_fs.remove_dir(Path::new(s!("/tmp")))?;
                     root_fs.create_dir(Path::new(s!("/mnt")))?;
                     for (host, guest) in vec![
-                        (PathBuf::from(s!("/tmp")), s!("/tmp")),
+                        (std::env::temp_dir(), s!("/tmp")),
                         (std::env::current_dir()?.to_path_buf(), s!("/mnt/host")),
                     ] {
                         let host = if !host.is_absolute() {
