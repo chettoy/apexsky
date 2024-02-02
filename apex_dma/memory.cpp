@@ -1,6 +1,7 @@
 #include "memory.hpp"
 
 #include "lib/xorstr/xorstr.hpp"
+#include <cstdint>
 #include <ios>
 #include <iostream>
 #include <string>
@@ -139,6 +140,35 @@ int Memory::open_os() {
   printf("%s%p\n", xorstr_("os plugin initialized: "),
          os.container.instance.instance);
   return 0;
+}
+
+void Memory::speed_test() {
+  std::chrono::milliseconds start_time =
+      duration_cast<std::chrono::milliseconds>(
+          std::chrono::system_clock::now().time_since_epoch());
+  int32_t counter = 0;
+  while (counter <= 50000000) {
+    uint8_t buf[0x1000];
+    if (conn->phys_view().read_raw_into(
+            0x1000,
+            CSliceMut<uint8_t>((char *)buf, sizeof(uint8_t) * 0x1000)) != 0) {
+      puts(xorstr_("speed_test: unable to read physical memory"));
+      return;
+    }
+
+    counter += 1;
+    if ((counter % 10000000) == 0) {
+      std::chrono::milliseconds now_ms =
+          duration_cast<std::chrono::milliseconds>(
+              std::chrono::system_clock::now().time_since_epoch());
+      long elapsed = (now_ms - start_time).count();
+      if (elapsed > 0) {
+        std::cout << ((float)counter) / elapsed * 1000.0 << " reads/sec"
+                  << std::endl;
+        std::cout << elapsed / ((float)counter) << " ms/read" << std::endl;
+      }
+    }
+  }
 }
 
 int Memory::open_proc(const char *name) {

@@ -56,6 +56,8 @@ public:
 
   int open_os();
 
+  void speed_test();
+
   int open_proc(const char *name);
 
   void close_proc();

@@ -1604,6 +1604,10 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
+  apex_mem.speed_test();
+  puts(xorstr_("Press any key to continue.."));
+  getchar();
+
   while (active) {
     if (apex_mem.get_proc_status() != process_status::FOUND_READY) {
       if (aim_t) {
