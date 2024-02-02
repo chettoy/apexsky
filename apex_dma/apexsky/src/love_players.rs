@@ -110,7 +110,7 @@ pub fn check_my_heart(
             .map(|x| {
                 if let Some(x_uid) = x.uid {
                     update_name
-                        .remove(&x_uid)
+                        .shift_remove(&x_uid)
                         .and_then(|u| {
                             Some(LovePlayer {
                                 name: x.name.to_owned(),
