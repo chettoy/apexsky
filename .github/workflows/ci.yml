@@ -118,8 +118,6 @@ jobs:
         name: apexsky_dma_${{ steps.strings.outputs.sha_short }}_b${{ github.run_number }}-${{ matrix.arch-name }}
         path: |
           build/${{ matrix.bin-prefix }}apex_dma${{ matrix.bin-ext }}
-          build/${{ matrix.lib-prefix }}memflow_pcileech${{ matrix.lib-ext }}
-          build/${{ matrix.lib-prefix }}memflow_win32${{ matrix.lib-ext }}
           README.md
         retention-days: 5
 
