@@ -1601,12 +1601,14 @@ int main(int argc, char *argv[]) {
   std::thread control_thr;
 
   if (apex_mem.open_os() != 0) {
+    std::cout << xorstr_("Press any key to exit..") << std::endl;
+    std::cin.ignore();
     exit(0);
   }
 
   apex_mem.speed_test();
-  puts(xorstr_("Press any key to continue.."));
-  getchar();
+  std::cout << xorstr_("Press any key to continue..") << std::endl;
+  std::cin.ignore();
 
   while (active) {
     if (apex_mem.get_proc_status() != process_status::FOUND_READY) {

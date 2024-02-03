@@ -147,6 +147,9 @@ void Memory::speed_test() {
       duration_cast<std::chrono::milliseconds>(
           std::chrono::system_clock::now().time_since_epoch());
   int32_t counter = 0;
+
+  puts(xorstr_("== speed test start =="));
+
   while (counter <= 50000000) {
     uint8_t buf[0x1000];
     if (conn->phys_view().read_raw_into(
@@ -163,12 +166,15 @@ void Memory::speed_test() {
               std::chrono::system_clock::now().time_since_epoch());
       long elapsed = (now_ms - start_time).count();
       if (elapsed > 0) {
-        std::cout << ((float)counter) / elapsed * 1000.0 << " reads/sec"
+        std::cout << ((float)counter) / elapsed * 1000.0
+                  << xorstr_(" reads/sec") << std::endl;
+        std::cout << elapsed / ((float)counter) << xorstr_(" ms/read")
                   << std::endl;
-        std::cout << elapsed / ((float)counter) << " ms/read" << std::endl;
       }
     }
   }
+
+  puts(xorstr_("== speed test end =="));
 }
 
 int Memory::open_proc(const char *name) {
