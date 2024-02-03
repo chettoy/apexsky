@@ -164,7 +164,7 @@ void Memory::speed_test() {
 
   puts(xorstr_("== speed test start =="));
 
-  while (counter <= 50000000) {
+  while (counter <= 500) {
     uint8_t buf[0x1000];
     if (proc.hProcess.read_raw_into(
             addr, CSliceMut<uint8_t>((char *)buf, sizeof(uint8_t) * 0x1000)) !=
@@ -174,7 +174,7 @@ void Memory::speed_test() {
     }
 
     counter += 1;
-    if ((counter % 10000000) == 0) {
+    if ((counter % 100) == 0) {
       std::chrono::milliseconds now_ms =
           duration_cast<std::chrono::milliseconds>(
               std::chrono::system_clock::now().time_since_epoch());
