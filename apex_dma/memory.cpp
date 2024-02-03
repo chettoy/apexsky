@@ -149,7 +149,7 @@ void Memory::speed_test() {
   int32_t counter = 0;
 
   puts(xorstr_("Received metadata:"));
-  auto metadata = conn->metadata();
+  auto metadata = os.physicalmemory_metadata();
   std::cout << xorstr_("ideal_batch_size=") << std::hex
             << metadata.ideal_batch_size << std::endl;
   std::cout << xorstr_("real_size=") << std::hex << metadata.real_size
@@ -161,13 +161,6 @@ void Memory::speed_test() {
 
   uintptr_t addr = 0x1000;
   uint8_t mem[8];
-  if (conn->phys_view().read_raw_into(
-          addr, CSliceMut<uint8_t>((char *)mem, sizeof(uint8_t) * 0x1000)) !=
-      0) {
-    puts(xorstr_("conn->phys_view().read_raw_into failed"));
-  }
-  std::cout << xorstr_("Received memory: ") << std::hex << mem << std::endl;
-  std::cout << std::endl;
 
   if (os.read_raw_into(addr, CSliceMut<uint8_t>(
                                  (char *)mem, sizeof(uint8_t) * 0x1000)) != 0) {

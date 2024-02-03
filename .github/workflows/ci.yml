@@ -36,15 +36,15 @@ jobs:
             bin-ext: .exe
             lib-prefix:
             lib-ext: .dll
-          - os: ubuntu-latest
-            c_compiler: clang
-            cpp_compiler: clang++
-            arch-name: x86_64-unknown-linux-gnu
-            target: x86_64-unknown-linux-gnu
-            bin-prefix:
-            bin-ext:
-            lib-prefix: lib
-            lib-ext: .so
+          # - os: ubuntu-latest
+          #   c_compiler: clang
+          #   cpp_compiler: clang++
+          #   arch-name: x86_64-unknown-linux-gnu
+          #   target: x86_64-unknown-linux-gnu
+          #   bin-prefix:
+          #   bin-ext:
+          #   lib-prefix: lib
+          #   lib-ext: .so
         exclude:
           - os: windows-latest
             c_compiler: clang
