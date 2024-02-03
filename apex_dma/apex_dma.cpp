@@ -1606,10 +1606,6 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
-  apex_mem.speed_test();
-  std::cout << xorstr_("Press any key to continue..") << std::endl;
-  std::cin.ignore();
-
   while (active) {
     if (apex_mem.get_proc_status() != process_status::FOUND_READY) {
       if (aim_t) {
@@ -1643,6 +1639,10 @@ int main(int argc, char *argv[]) {
         g_Base = apex_mem.get_proc_baseaddr();
         printf("%s", xorstr_("\nApex process found\n"));
         printf("%s%llx%s", xorstr_("Base: "), g_Base, xorstr_("\n"));
+
+        apex_mem.speed_test();
+        std::cout << xorstr_("Press any key to continue..") << std::endl;
+        std::cin.ignore();
 
         aimbot_thr = std::thread(AimbotLoop);
         esp_thr = std::thread(EspLoop);
