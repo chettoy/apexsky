@@ -148,13 +148,41 @@ void Memory::speed_test() {
           std::chrono::system_clock::now().time_since_epoch());
   int32_t counter = 0;
 
+  puts(xorstr_("Received metadata:"));
+  auto metadata = conn->metadata();
+  std::cout << xorstr_("ideal_batch_size=") << std::hex
+            << metadata.ideal_batch_size << std::endl;
+  std::cout << xorstr_("real_size=") << std::hex << metadata.real_size
+            << std::endl;
+  std::cout << xorstr_("max_address=") << std::hex << metadata.max_address
+            << std::endl;
+  std::cout << xorstr_("readonly=") << metadata.readonly << std::endl;
+  std::cout << std::endl;
+
+  uintptr_t addr = 0x1000;
+  uint8_t mem[8];
+  if (conn->phys_view().read_raw_into(
+          addr, CSliceMut<uint8_t>((char *)mem, sizeof(uint8_t) * 0x1000)) !=
+      0) {
+    puts(xorstr_("conn->phys_view().read_raw_into failed"));
+  }
+  std::cout << xorstr_("Received memory: ") << std::hex << mem << std::endl;
+  std::cout << std::endl;
+
+  if (os.read_raw_into(addr, CSliceMut<uint8_t>(
+                                 (char *)mem, sizeof(uint8_t) * 0x1000)) != 0) {
+    puts(xorstr_("os.read_raw_into failed"));
+  }
+  std::cout << xorstr_("Received memory: ") << std::hex << mem << std::endl;
+  std::cout << std::endl;
+
   puts(xorstr_("== speed test start =="));
 
   while (counter <= 50000000) {
     uint8_t buf[0x1000];
-    if (conn->phys_view().read_raw_into(
-            0x1000,
-            CSliceMut<uint8_t>((char *)buf, sizeof(uint8_t) * 0x1000)) != 0) {
+    if (os.read_raw_into(
+            addr, CSliceMut<uint8_t>((char *)buf, sizeof(uint8_t) * 0x1000)) !=
+        0) {
       puts(xorstr_("speed_test: unable to read physical memory"));
       return;
     }
