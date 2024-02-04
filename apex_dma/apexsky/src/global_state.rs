@@ -25,7 +25,7 @@ pub struct GlobalState {
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct CGlobalState {
-    pub(crate) settings: crate::config::Settings,
+    pub settings: crate::config::Settings,
     pub terminal_t: bool,
     pub tui_forceupdate: bool,
 }

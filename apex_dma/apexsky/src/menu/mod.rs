@@ -48,7 +48,7 @@ enum Message {
 // ANCHOR_END: message
 
 // ANCHOR: main
-pub(crate) fn main() -> anyhow::Result<()> {
+pub fn main() -> anyhow::Result<()> {
     tui::install_panic_hook();
     let mut terminal = tui::init_terminal()?;
     let mut apex_menu = apex_menu::TerminalMenu::new(Model {
@@ -363,7 +363,7 @@ fn time() -> u128 {
         .as_millis()
 }
 
-mod tui {
+pub mod tui {
     use crossterm::{
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
         ExecutableCommand,

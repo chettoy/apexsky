@@ -13,3 +13,9 @@
 [submodule "apex_dma/lib/memflow-win32"]
 	path = apex_dma/lib/memflow-win32
 	url = https://github.com/memflow/memflow-win32
+[submodule "apex_dma/lib/memflow-qemu"]
+	path = apex_dma/lib/memflow-qemu
+	url = https://github.com/memflow/memflow-qemu
+[submodule "apex_dma/lib/memflow-kvm"]
+	path = apex_dma/lib/memflow-kvm
+	url = https://github.com/memflow/memflow-kvm

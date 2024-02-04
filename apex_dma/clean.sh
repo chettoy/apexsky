@@ -29,7 +29,7 @@ echo "Running 'cargo clean' in apexsky..."
 cd "${PROJECT_DIR}/apex_dma/apexsky" && cargo clean
 
 # Run 'cargo clean' in lib subdirectories
-for subdirectory in "memflow" "memflow-pcileech" "memflow-win32"; do
+for subdirectory in "memflow" "memflow-pcileech" "memflow-win32" "skyapex"; do
     if [ -d "${PROJECT_DIR}/apex_dma/lib/${subdirectory}" ]; then
         echo "Running 'cargo clean' in ${subdirectory}..."
         (cd "${PROJECT_DIR}/apex_dma/lib/${subdirectory}" && cargo clean)

@@ -153,7 +153,7 @@ pub struct Loot {
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct Config {
-    pub(crate) settings: Settings,
+    pub settings: Settings,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub(crate) love_player: Vec<LovePlayer>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -422,7 +422,7 @@ impl Default for Settings {
             firing_range: false,
             // Player Glow Color and Brightness.
             // inside fill
-            player_glow_inside_value: 14, // 0 = no fill, 14 = full fill
+            player_glow_inside_value: 12, // 0 = no fill, 14 = full fill
             player_glow_outline_size: 32, // 0-255
             // Not Visable
             glow_r_not: 1.0, // Red 0-1, higher is brighter color.

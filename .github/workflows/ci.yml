@@ -4,7 +4,7 @@ name: CI
 
 on:
   push:
-    branches: [ "dma" ]
+    branches: [ "dma", "dma-next" ]
   pull_request:
     branches: [ "dma" ]
 

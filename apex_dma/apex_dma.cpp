@@ -40,7 +40,7 @@ extern const exported_offsets_t offsets;
 
 // Just setting things up, dont edit.
 bool active = true;
-const int ENT_NUM = 10000;
+const int ENT_NUM = 300;
 extern Vector aim_target; // for esp
 int map_testing_local_team = 0;
 
@@ -139,19 +139,19 @@ bool IsInCrossHair(Entity &target) {
   return is_in_cross_hair;
 }
 
-void MapRadarTesting() { // 为什么这能把雷达搞出来...不就来回写了一个地址
+void MapRadarTesting() {
   uintptr_t pLocal;
   apex_mem.Read<uint64_t>(g_Base + offsets.local_ent, pLocal);
   int dt;
-  apex_mem.Read<int>(pLocal + offsets.entity_team, dt);
+  apex_mem.Read<int>(pLocal + offsets.entity_team_num, dt);
   map_testing_local_team = dt;
 
   for (uintptr_t i = 0; i <= 80000; i++) {
-    apex_mem.Write<int>(pLocal + offsets.entity_team, 1);
+    apex_mem.Write<int>(pLocal + offsets.entity_team_num, 1);
   }
 
   for (uintptr_t i = 0; i <= 80000; i++) {
-    apex_mem.Write<int>(pLocal + offsets.entity_team, dt);
+    apex_mem.Write<int>(pLocal + offsets.entity_team_num, dt);
   }
   map_testing_local_team = 0;
 }
@@ -629,7 +629,6 @@ void DoActions() {
   actions_t = true;
   while (actions_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     while (g_Base != 0) {
       std::this_thread::sleep_for(
@@ -641,14 +640,14 @@ void DoActions() {
         continue;
 
       char level_name[200] = {0};
-      apex_mem.ReadArray<char>(g_Base + offsets.levelname, level_name, 200);
+      apex_mem.ReadArray<char>(g_Base + offsets.level_name, level_name, 200);
       // printf("%s\n", level_name);
       if (strcmp(level_name, xorstr_("mp_lobby")) == 0) {
         map = 0;
       } else if (strcmp(level_name, xorstr_("mp_rr_canyonlands_staging_mu1")) ==
                  0) {
         map = 1;
-      } else if (strcmp(level_name, xorstr_("mp_rr_tropic_island_mu1_storm")) ==
+      } else if (strcmp(level_name, xorstr_("mp_rr_tropic_island_mu2")) ==
                  0) {
         map = 2;
       } else if (strcmp(level_name, xorstr_("mp_rr_desertlands_hu")) == 0) {
@@ -663,16 +662,11 @@ void DoActions() {
       }
 
       {
-        int pad = 0;
-        apex_mem.Read<int>(LocalPlayer + offsets.player_controller_active, pad);
-        bool controller_active = pad == 1;
         bool firing_range_mode = map == 1;
 
         bool update = true;
         auto settings = global_settings();
-        if (settings.aimbot_settings.gamepad != controller_active) {
-          settings.aimbot_settings.gamepad = controller_active;
-        } else if (settings.firing_range != firing_range_mode) {
+        if (settings.firing_range != firing_range_mode) {
           settings.firing_range = firing_range_mode;
         } else {
           update = false;
@@ -950,7 +944,7 @@ static void EspLoop() {
           uintptr_t var_ptr;
           apex_mem.Read<uintptr_t>(entitylist + (var_ent_i & 0xffff) * 32,
                                    var_ptr);
-          apex_mem.Read<int>(var_ptr + (var_damage << 2) + 2936,
+          apex_mem.Read<int>(var_ptr + (var_damage << 2) + 2968,
                              data_buf.damage);
 
           Target.get_name(data_buf.name);
@@ -995,7 +989,7 @@ static void AimbotLoop() {
 
       { // Read held id
         int held_id;
-        apex_mem.Read<int>(LocalPlayer + offsets.off_weapon,
+        apex_mem.Read<int>(LocalPlayer + offsets.bcc_off_weapon,
                            held_id); // 0x1a1c
         aimbot_update_held_id(held_id);
       }
@@ -1162,6 +1156,7 @@ static void item_glow_t() {
       }
 
       for (int i = 0; i < itementcount; i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
         uint64_t centity = 0;
         apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
         if (centity == 0)
@@ -1601,7 +1596,10 @@ int main(int argc, char *argv[]) {
   std::thread itemglow_thr;
   std::thread control_thr;
 
-  if (apex_mem.open_os() != 0) {
+  if (argc == 2 && strcmp("menu", argv[1]) == 0) {
+    run_tui_menu();
+    return 0;
+  } else if (apex_mem.open_os() != 0) {
     std::cout << xorstr_("Press any key to exit..") << std::endl;
     std::cin.ignore();
     exit(0);

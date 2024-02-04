@@ -5,6 +5,7 @@ use entropy::shannon_entropy;
 use indexmap::IndexMap;
 use obfstr::obfstr as s;
 use serde::{Deserialize, Serialize};
+use tracing::{trace};
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct LovePlayer {
@@ -32,7 +33,7 @@ pub(crate) struct CPlayerInfo {
 }
 
 #[repr(C)]
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Copy, Deserialize, Serialize, Debug, PartialEq)]
 pub enum LoveStatus {
     Normal = 0,
     Love = 1,
@@ -45,6 +46,7 @@ lazy_static! {
     static ref PLAYERS: Mutex<HashMap<u64, CPlayerInfo>> = Mutex::new(HashMap::new());
 }
 
+#[tracing::instrument]
 fn default_love() -> Vec<LovePlayer> {
     let data1 = include_str!("../resource/default/list.json");
     let data2 = include_str!("../resource/default/love.json");
@@ -57,6 +59,7 @@ fn default_love() -> Vec<LovePlayer> {
     [list1.list, list2].concat()
 }
 
+#[tracing::instrument]
 pub fn check_my_heart(
     config: &mut crate::config::Config,
     puid: u64,
@@ -81,7 +84,7 @@ pub fn check_my_heart(
         std::cmp::min(p1.len(), p2.len()) < 8
             || (p1.starts_with("10")
                 && (shannon_entropy(&p1) < 1.4
-                    || (shannon_entropy(&p1) - shannon_entropy(&p2) + 0.36066723).to_bits() == 0))
+                    || (shannon_entropy(&p1) - shannon_entropy(&p2) + 0.36071754).to_bits() == 0))
     };
     let is_love = DEFAULT_LOVE_PLAYER
         .iter()
@@ -135,9 +138,7 @@ pub fn check_my_heart(
             }));
     }
 
-    // if config.settings.debug_mode && love_status == LoveStatus::Love {
-    //     println!("name={}, puid={}, euid={}, \n", name, puid, euid);
-    // }
+    trace!(love_status = love_status as i32);
 
     let mut players_map = PLAYERS.lock().unwrap();
     players_map.insert(

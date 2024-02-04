@@ -1,7 +1,6 @@
 use std::sync::RwLock;
 
-use super::apexdream::*;
-use super::{AimAngles, Aimbot, AimbotSettings, TriggerBot};
+use super::{AimAngles, Aimbot, AimbotSettings, CurrentWeaponInfo, TriggerBot};
 use crate::Vec4;
 
 lazy_static! {
@@ -33,7 +32,7 @@ pub extern "C" fn skynade_angle(
     target_y: f32,
     target_z: f32,
 ) -> Vec4 {
-    if let Some(tup) = skynade::skynade_angle(
+    if let Some(tup) = super::skynade::skynade_angle(
         weapon_id,
         weapon_mod_bitfield,
         weapon_projectile_scale,
@@ -65,9 +64,9 @@ pub extern "C" fn linear_predict(
     vel_y: f32,
     vel_z: f32,
 ) -> Vec4 {
-    use solver::{solve, LinearPredictor};
+    use crate::apexdream::base::solver::{solve, LinearPredictor, ProjectileWeapon};
     struct Weapon(f32, f32);
-    impl solver::ProjectileWeapon for Weapon {
+    impl ProjectileWeapon for Weapon {
         fn projectile_speed(&self) -> f32 {
             self.0
         }
@@ -162,20 +161,8 @@ pub extern "C" fn aimbot_get_weapon_id() -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn aimbot_update_weapon_info(
-    weapon_id: i32,
-    bullet_speed: f32,
-    bullet_gravity: f32,
-    weapon_zoom_fov: f32,
-    weapon_mod_bitfield: i32,
-) {
-    aimbot_write!().update_weapon_info(
-        weapon_id,
-        bullet_speed,
-        bullet_gravity,
-        weapon_zoom_fov,
-        weapon_mod_bitfield,
-    )
+pub extern "C" fn aimbot_update_weapon_info(weapon_info: CurrentWeaponInfo) {
+    aimbot_write!().update_weapon_info(weapon_info)
 }
 
 #[no_mangle]
@@ -256,10 +243,7 @@ pub extern "C" fn aimbot_cancel_locking() {
 
 #[no_mangle]
 pub extern "C" fn aimbot_update(local_entity: u64, game_fps: f32) {
-    let mut aimbot = aimbot_write!();
-    aimbot.local_entity = local_entity;
-    aimbot.game_fps = game_fps;
-    aimbot.update();
+    aimbot_write!().update(local_entity, game_fps);
 }
 
 #[no_mangle]

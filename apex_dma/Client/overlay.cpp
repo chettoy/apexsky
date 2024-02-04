@@ -40,7 +40,7 @@ bool toggleaim = false;
 bool toggleaim2 = false;
 int e = 0;
 // Main Map Radar
-bool mainradartoggle = 1;
+bool mainradartoggle = false;
 
 // Menu Stuff
 int menu1 = 0;
@@ -252,9 +252,9 @@ void Overlay::RenderMenu() {
     ImGui::Checkbox(xorstr_("Line"), &g_settings.esp_visuals.line);
     ImGui::SameLine();
     ImGui::Checkbox(xorstr_("Distance"), &g_settings.esp_visuals.distance);
-    ImGui::Checkbox(xorstr_("Health bar"), &g_settings.esp_visuals.healthbar);
+    ImGui::Checkbox(xorstr_("Health bar"), &g_settings.esp_visuals.health_bar);
     ImGui::SameLine();
-    ImGui::Checkbox(xorstr_("Shield bar"), &g_settings.esp_visuals.shieldbar);
+    ImGui::Checkbox(xorstr_("Shield bar"), &g_settings.esp_visuals.shield_bar);
     ImGui::SameLine();
     ImGui::Checkbox(xorstr_("Name"), &g_settings.esp_visuals.name);
     ImGui::SameLine();
@@ -864,19 +864,10 @@ int Overlay::CreateOverlay() {
     // Main Map Radar, Needs Manual Setting of cords
     {
       bool key_m_pressed = IsKeyDown(ImGuiKey_M) || isPressed(23);
-      if (key_m_pressed && mainradartoggle == 0) {
-        mainradartoggle = 1;
-        auto g_settings = global_settings();
-        if (!g_settings.main_radar_map) {
-          g_settings.main_radar_map = true;
-          g_settings.mini_map_radar = false;
-        } else {
-          g_settings.main_radar_map = false;
-          g_settings.mini_map_radar = true;
-        }
-        update_settings(g_settings);
-      } else if (!key_m_pressed && mainradartoggle == 1) {
-        mainradartoggle = 0;
+      if (key_m_pressed && !mainradartoggle) {
+        mainradartoggle = true;
+      } else if (!key_m_pressed && mainradartoggle) {
+        mainradartoggle = false;
       }
     }
 

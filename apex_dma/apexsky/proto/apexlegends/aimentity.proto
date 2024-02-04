@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package apexlegends;
+
+message ColorRgb {
+    uint8 r = 1;
+    uint8 g = 2;
+    uint8 b = 3;
+}
+
+message ConsumableItem {
+    uint16 item = 1;
+    uint16 count = 2;
+}
+
+message AimEntityState {
+  int32 verion = 1;
+
+  uint64 entity_ptr = 2;
+  uint32 entity_index = 3;
+
+  Vec3 origin = 4;
+  Vec3 angles = 5;
+  Vec3 velocity = 6;
+  Vec3 accel = 7;
+
+  repeated Vec3 trail;
+  double trail_next;
+
+  int32 health = 5;
+  int32 shield_health = 6;
+  int32 max_health = 7;
+  int32 max_shield_health = 8;
+  uint32 ground_entity;
+  float max_speed;
+
+  int32 team_num = 11;
+  ColorRgb team_color = 12;
+  int32 team_member_index = 12;
+  int32 squad_id;
+  int32 grade;
+
+  string model_name;
+  repeated Vec3 bone_array = 10;
+
+  Vec3 camera_origin = 4;
+  Vec3 camera_angles;
+
+  float time_base;
+  Vec3 server_angles;
+
+  ConsumableItem consumables;
+
+  Vec3 view_offset = 5;
+  Vec3 view_origin;
+  Vec3 breath_angles = 7;
+  Vec3 recoil_angles;
+
+  int32 observer_mode;
+  uint32 observer_target;
+
+  int32 flags = 13;
+  bool is_alive = 14;
+  bool is_knocked = 15;
+  bool is_in_crosshair;
+  bool is_visible = 11;
+  double visible_time;
+  
+  int32 helmet_type = 9;
+  int32 armor_type = 10;
+  int32 team_num = 11;
+  int32 xp = 12;
+  
+  int32 love_state = 16;
+  int32 active_weapon = 17;
+  string player_name = 18;
+  uint64 platform_uid = 19;
+  uint64 eadp_uid = 20;
+  bool controller_active = 22;
+  int32 character_index = 23;
+  repeated Badge badges = 24;
+  int32 kills = 25;
+  int32 damageDealt = 26;
+  bool kill_leader = 27;
+  bool winning_team = 28;
+}
