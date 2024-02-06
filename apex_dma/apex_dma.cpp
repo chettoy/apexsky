@@ -654,16 +654,17 @@ void DoActions() {
       }
 
       {
-        int pad = 0;
-        apex_mem.Read<int>(LocalPlayer + offsets.player_controller_active, pad);
-        bool controller_active = pad == 1;
+        // int pad = 0;
+        // apex_mem.Read<int>(LocalPlayer + offsets.player_controller_active, pad);
+        // bool controller_active = pad == 1;
         bool firing_range_mode = map == 1;
 
         bool update = true;
         auto settings = global_settings();
-        if (settings.aimbot_settings.gamepad != controller_active) {
-          settings.aimbot_settings.gamepad = controller_active;
-        } else if (settings.firing_range != firing_range_mode) {
+        // if (settings.aimbot_settings.gamepad != controller_active) {
+        //   settings.aimbot_settings.gamepad = controller_active;
+        // } else 
+        if (settings.firing_range != firing_range_mode) {
           settings.firing_range = firing_range_mode;
         } else {
           update = false;
