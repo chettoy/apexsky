@@ -529,7 +529,7 @@ impl Aimbot {
             self.weapon_zoom_fov,
         ) > 0
         {
-            rand::thread_rng().gen_range(40..100)
+            rand::thread_rng().gen_range(5..20)
         } else {
             0
         }
@@ -597,9 +597,9 @@ impl TriggerBot for Aimbot {
 
         let trigger_delay = self.calculate_trigger_delay(aim_angles);
         let now_ms = get_unix_timestamp_in_millis();
+        let semi_auto = self.is_semi_auto();
 
         if trigger_delay > 0 {
-            let semi_auto = self.is_semi_auto();
             let attack_pressed = force_attack_state == 5;
 
             match self.triggerbot_state {
@@ -640,7 +640,9 @@ impl TriggerBot for Aimbot {
             match self.triggerbot_state {
                 TriggerState::Idle => (),
                 TriggerState::WaitTrigger => {
-                    self.triggerbot_state = TriggerState::Idle;
+                    if semi_auto {
+                        self.triggerbot_state = TriggerState::Idle;
+                    }
                 }
                 TriggerState::Trigger => {
                     // It's time to release
