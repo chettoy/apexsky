@@ -865,15 +865,6 @@ int Overlay::CreateOverlay() {
       bool key_m_pressed = IsKeyDown(ImGuiKey_M) || isPressed(23);
       if (key_m_pressed && mainradartoggle == 0) {
         mainradartoggle = 1;
-        auto g_settings = global_settings();
-        if (!g_settings.main_radar_map) {
-          g_settings.main_radar_map = true;
-          g_settings.mini_map_radar = false;
-        } else {
-          g_settings.main_radar_map = false;
-          g_settings.mini_map_radar = true;
-        }
-        update_settings(g_settings);
       } else if (!key_m_pressed && mainradartoggle == 1) {
         mainradartoggle = 0;
       }
