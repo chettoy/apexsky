@@ -12,7 +12,7 @@ use crate::lock_mod;
 #[repr(C)]
 #[allow(dead_code)]
 enum WeaponId {
-    R301 = 0,
+    R301 = 80,
     Sentinel = 122,
     Bow = 2,
     R2R5 = 3,
