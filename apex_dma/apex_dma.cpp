@@ -1477,7 +1477,7 @@ static void item_glow_t() {
         else if (g_settings.loot.weapon_kraber && ItemID == 1) {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
-        } else if (g_settings.loot.weapon_mastiff && ItemID == 3) {
+        } else if (g_settings.loot.weapon_mastiff && ItemID == 2) {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
         } else if (g_settings.loot.weapon_lstar && ItemID == 7) {
@@ -1510,7 +1510,7 @@ static void item_glow_t() {
         } else if (g_settings.loot.weapon_r99 && ItemID == 49) {
           std::array<float, 3> highlightParameter = {1, 0.5490, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 66);
-        } else if (g_settings.loot.weapon_prowler && ItemID == 56) {
+        } else if (g_settings.loot.weapon_prowler && ItemID == 54) {
           std::array<float, 3> highlightParameter = {0, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 65);
         } else if (g_settings.loot.weapon_volt && ItemID == 60) {
@@ -1528,13 +1528,13 @@ static void item_glow_t() {
         } else if (g_settings.loot.weapon_r301 && ItemID == 80) {
           std::array<float, 3> highlightParameter = {1, 0.5490, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 66);
-        } else if (g_settings.loot.weapon_eva8 && ItemID == 85) {
+        } else if (g_settings.loot.weapon_eva8 && ItemID == 86) {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
-        } else if (g_settings.loot.weapon_peacekeeper && ItemID == 90) {
+        } else if (g_settings.loot.weapon_peacekeeper && ItemID == 91) {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
-        } else if (g_settings.loot.weapon_mozambique && ItemID == 95) {
+        } else if (g_settings.loot.weapon_mozambique && ItemID == 96) {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
         } else if (g_settings.loot.weapon_wingman && ItemID == 106) {
