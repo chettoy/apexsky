@@ -1463,13 +1463,13 @@ static void item_glow_t() {
           item.enableGlow(highlightFunctionBits, highlightParameter, 75);
         }
         // Nades
-        else if (g_settings.loot.grenade_frag && ItemID == 223) {
+        else if (g_settings.loot.grenade_frag && ItemID == 225) {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
         } else if (g_settings.loot.grenade_thermite && ItemID == 224) {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
-        } else if (g_settings.loot.grenade_arc_star && ItemID == 225) {
+        } else if (g_settings.loot.grenade_arc_star && ItemID == 226) {
           std::array<float, 3> highlightParameter = {0, 0, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 70);
         }
