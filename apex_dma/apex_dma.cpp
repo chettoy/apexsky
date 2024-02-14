@@ -1202,10 +1202,10 @@ static void item_glow_t() {
                               // HIGHLIGHT_OUTLINE_LOOT_SCANNED
             64, 64};
         if (g_settings.loot.lightbackpack && ItemID == 219) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.medbackpack && ItemID == 220) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.heavybackpack && ItemID == 221) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
@@ -1215,11 +1215,11 @@ static void item_glow_t() {
           item.enableGlow(highlightFunctionBits, highlightParameter, 75);
         } else if (g_settings.loot.shieldupgrade1 &&
                    (ItemID == 214748364993 || ItemID == 14073963583897798)) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.shieldupgrade2 &&
                    (ItemID == 322122547394 || ItemID == 21110945375846599)) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.shieldupgrade3 &&
                    (ItemID == 429496729795 || ItemID == 52776987629977800)) {
@@ -1232,10 +1232,10 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
         } else if (g_settings.loot.shieldupgradehead1 && ItemID == 195) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.shieldupgradehead2 && ItemID == 196) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.shieldupgradehead3 && ItemID == 197) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
@@ -1244,7 +1244,7 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0.8431, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 75);
         } else if (g_settings.loot.accelerant && ItemID == 189) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.phoenix && ItemID == 190) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
@@ -1282,25 +1282,25 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightMode, highlightParameter, 67);
         } else if (g_settings.loot.healthlarge && ItemID == 191) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.healthsmall && ItemID == 192) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.shieldbattsmall && ItemID == 194) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.shieldbattlarge && ItemID == 193) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.sniperammo && ItemID == 144) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.heavyammo && ItemID == 143) {
           std::array<float, 3> highlightParameter = {0, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 65);
         } else if (g_settings.loot.optic1xhcog && ItemID == 227) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.lightammo && ItemID == 140) {
           std::array<float, 3> highlightParameter = {1, 0.5490, 0};
@@ -1312,19 +1312,19 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
         } else if (g_settings.loot.lasersight1 && ItemID == 241) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.lasersight2 && ItemID == 242) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.lasersight3 && ItemID == 243) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
           item.enableGlow(highlightFunctionBits, highlightParameter, 74);
         } else if (g_settings.loot.sniperammomag1 && ItemID == 256) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.sniperammomag2 && ItemID == 257) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.sniperammomag3 && ItemID == 258) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
@@ -1333,10 +1333,10 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0.8431, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 75);
         } else if (g_settings.loot.energyammomag1 && ItemID == 252) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.energyammomag2 && ItemID == 253) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.energyammomag3 && ItemID == 254) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
@@ -1345,28 +1345,28 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0.8431, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 75);
         } else if (g_settings.loot.stocksniper1 && ItemID == 267) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.stocksniper2 && ItemID == 268) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.stocksniper3 && ItemID == 269) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
           item.enableGlow(highlightFunctionBits, highlightParameter, 74);
         } else if (g_settings.loot.stockregular1 && ItemID == 264) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.stockregular2 && ItemID == 265) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.stockregular3 && ItemID == 266) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
           item.enableGlow(highlightFunctionBits, highlightParameter, 74);
         } else if (g_settings.loot.shielddown1 && ItemID == 215) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.shielddown2 && ItemID == 216) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.shielddown3 && ItemID == 217) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
@@ -1375,10 +1375,10 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0.8431, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 75);
         } else if (g_settings.loot.lightammomag1 && ItemID == 244) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.lightammomag2 && ItemID == 245) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.lightammomag3 && ItemID == 246) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
@@ -1387,10 +1387,10 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0.8431, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 75);
         } else if (g_settings.loot.heavyammomag1 && ItemID == 248) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.heavyammomag2 && ItemID == 249) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.heavyammomag3 && ItemID == 250) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
@@ -1399,13 +1399,13 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0.8431, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 75);
         } else if (g_settings.loot.optic2xhcog && ItemID == 228) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.opticholo1x && ItemID == 229) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.opticholo1x2x && ItemID == 230) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.opticthreat && ItemID == 231) {
           std::array<float, 3> highlightParameter = {1, 0.8431, 0};
@@ -1417,7 +1417,7 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
           item.enableGlow(highlightFunctionBits, highlightParameter, 74);
         } else if (g_settings.loot.opticsniper6x && ItemID == 234) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.opticsniper4x8x && ItemID == 235) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
@@ -1426,10 +1426,10 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0.8431, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 75);
         } else if (g_settings.loot.suppressor1 && ItemID == 237) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.suppressor2 && ItemID == 238) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.suppressor3 && ItemID == 239) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
@@ -1450,10 +1450,10 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0.8431, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 75);
         } else if (g_settings.loot.shotgunbolt1 && ItemID == 260) {
-          std::array<float, 3> highlightParameter = {0, 191, 255};
+          std::array<float, 3> highlightParameter = {1, 1, 1};
           item.enableGlow(highlightFunctionBits, highlightParameter, 72);
         } else if (g_settings.loot.shotgunbolt2 && ItemID == 261) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.shotgunbolt3 && ItemID == 262) {
           std::array<float, 3> highlightParameter = {0.2941, 0, 0.5098};
@@ -1470,7 +1470,7 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
         } else if (g_settings.loot.grenade_arc_star && ItemID == 226) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 70);
         }
         // Weapons
@@ -1517,10 +1517,10 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {0.2, 1, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 73);
         } else if (g_settings.loot.weapon_longbow && ItemID == 65) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.weapon_charge_rifle && ItemID == 70) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.weapon_spitfire && ItemID == 75) {
           std::array<float, 3> highlightParameter = {1, 0.5490, 0};
@@ -1538,7 +1538,7 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
         } else if (g_settings.loot.weapon_wingman && ItemID == 106) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.weapon_p2020 && ItemID == 111) {
           std::array<float, 3> highlightParameter = {1, 0.5490, 0};
@@ -1547,7 +1547,7 @@ static void item_glow_t() {
           std::array<float, 3> highlightParameter = {1, 0.5490, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 66);
         } else if (g_settings.loot.weapon_sentinel && ItemID == 122) {
-          std::array<float, 3> highlightParameter = {0, 0, 1};
+          std::array<float, 3> highlightParameter = {0, 191, 255};
           item.enableGlow(highlightFunctionBits, highlightParameter, 69);
         } else if (g_settings.loot.weapon_bow && ItemID == 127) {
           std::array<float, 3> highlightParameter = {1, 0, 0};
