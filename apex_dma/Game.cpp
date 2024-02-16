@@ -330,7 +330,7 @@ LoveStatus Entity::check_love_player() {
 
 int Entity::xp_level() {
   assert(this->is_player);
-  return this->player_xp_level;
+  return this->player_xp_level + 1;
 }
 
 int Entity::read_xp_level() {

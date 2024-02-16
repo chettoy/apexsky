@@ -942,7 +942,7 @@ static void EspLoop() {
           uintptr_t var_ptr;
           apex_mem.Read<uintptr_t>(entitylist + (var_ent_i & 0xffff) * 32,
                                    var_ptr);
-          apex_mem.Read<int>(var_ptr + (var_damage << 2) + 2936,
+          apex_mem.Read<int>(var_ptr + (var_damage << 2) + 2968,
                              data_buf.damage);
 
           Target.get_name(data_buf.name);
