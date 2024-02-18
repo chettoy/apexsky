@@ -220,7 +220,7 @@ void Entity::enableGlow(int setting_index, uint8_t inside_value,
   apex_mem.Write<HighlightSetting_t>(highlight_settings_ptr + 0x34 * context_id,
                                      highlight_settings);
 
-  apex_mem.Write<float>(ptr + offsets.entity_fade_dist, 8.0E+4);
+  apex_mem.Write<float>(ptr + 0x264, 8.0E+4);
 
   apex_mem.Write(g_Base + OFFSET_GLOW_FIX, 1);
 }
