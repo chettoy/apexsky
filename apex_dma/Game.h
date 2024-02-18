@@ -107,6 +107,7 @@ private:
   char name_str[200];
   int mod_bitfield;
   uint32_t weap_id;
+  int lastChargeLevel;
 };
 
 struct ClientClass {
