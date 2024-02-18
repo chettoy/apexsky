@@ -679,9 +679,13 @@ void WeaponXEntity::update(uint64_t LocalPlayer) {
                      mod_bitfield);
   weap_id = 0;
   apex_mem.Read<uint32_t>(wep_entity + offsets.weaponx_weapon_name, weap_id);
+  lastChargeLevel = 0;
+  apex_mem.Read<int>(wep_entity + m_lastChargeLevel,lastChargeLevel);
 }
 
-float WeaponXEntity::get_projectile_speed() { return projectile_speed; }
+float WeaponXEntity::get_projectile_speed() { 
+return ((weap_id == 2) ? projectile_speed + pow(lastChargeLevel, 5.4684388195808) : projectile_speed);
+}
 
 float WeaponXEntity::get_projectile_gravity() {
   return 750.0f * projectile_scale;

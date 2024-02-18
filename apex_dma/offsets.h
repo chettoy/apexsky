@@ -11,3 +11,5 @@
 #define OFFSET_GLOW_FIX 0x268 // updated 1/25/2024
 // Mode: HighlightSettings + 0x34 * Context + 0x0
 // Color: HighlightSettings + 0x34 * Context + 0x4
+
+#define m_lastChargeLevel 0x16c0 //m_lastChargeLevel
