@@ -158,10 +158,16 @@ pub async fn aimbot_loop(
             } else if let Some(target_entity) = state.get_entity(aim_entity_ptr).await {
                 target_pos = Some(target_entity.get_position());
 
+                // debug target entity
+                if !target_entity.is_player() {
+                    let is_visible = target_entity.is_visible();
+                    trace!(is_visible, ?target_entity, "{}", s!("711aac39-e83c-444b"));
+                }
+
                 if !(aimbot.is_aiming() || aimbot.is_triggerbot_ready()) {
                     AimAngles::default()
                 } else if aimbot.get_gun_safety() {
-                    trace!(?target_entity, "{}", s!("711aac39-e83c-4788 safety on"));
+                    trace!("{}", s!("711aac39-e83c-4788 safety on"));
                     AimAngles::default()
                 } else if local_entity.is_knocked()
                     || !target_entity.is_alive()

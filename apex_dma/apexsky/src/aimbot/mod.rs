@@ -762,9 +762,9 @@ impl Aimbot {
         ) > 0
         {
             let delay = if self.love_aimentity {
-                100..160
+                60..160
             } else {
-                10..60
+                20..40
             };
             rand::thread_rng().gen_range(delay)
         } else {
@@ -846,7 +846,7 @@ impl TriggerBot for Aimbot {
                     if self.get_weapon_id() == 2 && attack_pressed {
                         // Release the drawn bow.
                         self.triggerbot_release_time =
-                            now_ms + rand::thread_rng().gen_range(60..150);
+                            now_ms + rand::thread_rng().gen_range(10..60);
                         self.triggerbot_state = TriggerState::WaitRelease;
                     } else if !attack_pressed {
                         // Do not interrupt user attacks
@@ -861,7 +861,7 @@ impl TriggerBot for Aimbot {
                     if semi_auto {
                         // No continuous triggering for headshot weapons
                         self.triggerbot_release_time =
-                            now_ms + rand::thread_rng().gen_range(60..150);
+                            now_ms + rand::thread_rng().gen_range(10..100);
                         self.triggerbot_state = TriggerState::WaitRelease;
                     } else {
                         // Keep triggering the trigger.
@@ -884,7 +884,7 @@ impl TriggerBot for Aimbot {
                 }
                 TriggerState::Trigger => {
                     // It's time to release
-                    self.triggerbot_release_time = now_ms + rand::thread_rng().gen_range(0..150);
+                    self.triggerbot_release_time = now_ms + rand::thread_rng().gen_range(0..100);
                     self.triggerbot_state = TriggerState::WaitRelease;
                 }
                 TriggerState::WaitRelease => (),

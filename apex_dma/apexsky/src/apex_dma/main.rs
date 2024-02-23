@@ -204,62 +204,83 @@ impl TaskManager for State {
     }
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let (non_blocking, _guard) = tracing_appender::non_blocking(tracing_appender::rolling::daily(
         s!("log"),
         s!("rolling.log"),
     ));
     init_logger(non_blocking, true);
 
-    __load_settings();
-    let g_settings = global_settings();
-    let mut debug_mode = g_settings.debug_mode;
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Unable to create Runtime");
+
+    // Enter the runtime so that `tokio::spawn` is available immediately.
+    let _enter = rt.enter();
 
     let args: Vec<String> = std::env::args().collect();
 
-    if args.len() == 3 && args[2] == s!("debug") {
-        debug_mode = true;
-    }
-
     tracing::debug!(?args, "{}", s!("start c9OI8lMNlvrc"));
-
-    if args.len() == 2 {
-        if args[1] == s!("menu") {
-            let terminal_task = start_tui();
-            terminal_task.await.unwrap();
-            return;
-        } else if args[1] == s!("overlay") {
-            let overlay_task = start_overlay();
-            overlay_task.await.unwrap();
-            return;
-        }
-    }
+    __load_settings();
 
     let mut state = State::new();
 
-    state.start_tasks().await;
+    let shared_state = state.shared_state.clone();
+
+    if args.len() == 2 {
+        if args[1] == s!("menu") {
+            apexsky::menu::main().unwrap();
+            return;
+        }
+        if args[1] == s!("overlay") {
+            overlay::main(shared_state).unwrap();
+            return;
+        }
+    }
+
+    // Execute the runtime in its own thread.
+    std::thread::spawn(move || {
+        rt.block_on(async {
+            let g_settings = global_settings();
+            let mut debug_mode = g_settings.debug_mode;
+            if args.len() == 3 && args[2] == s!("debug") {
+                debug_mode = true;
+            }
+
+            state.start_tasks().await;
+
+            loop {
+                if !state.shared_state.lock().await.game_attached {
+                    // stop tasks
+                    if let Some(tui_task) = state.terminal_task.take() {
+                        quit_tui(tui_task).await;
+                    }
+                } else {
+                    if debug_mode {
+                        if let Some(tui_task) = state.terminal_task.take() {
+                            quit_tui(tui_task).await;
+                        }
+                    } else {
+                        if state.terminal_task.is_none() {
+                            let tui_task = start_tui();
+                            state.terminal_task = Some(tui_task);
+                        }
+                    }
+                }
+                state.check_tasks().await;
+                sleep(Duration::from_millis(10)).await;
+            }
+        })
+    });
 
     loop {
-        if !state.shared_state.lock().await.game_attached {
-            // stop tasks
-            if let Some(tui_task) = state.terminal_task.take() {
-                quit_tui(tui_task).await;
-            }
+        if G_STATE.lock().unwrap().config.settings.no_overlay {
+            std::thread::sleep(Duration::from_secs(1));
         } else {
-            if debug_mode {
-                if let Some(tui_task) = state.terminal_task.take() {
-                    quit_tui(tui_task).await;
-                }
-            } else {
-                if state.terminal_task.is_none() {
-                    let tui_task = start_tui();
-                    state.terminal_task = Some(tui_task);
-                }
-            }
+            overlay::main(shared_state.clone())
+                .unwrap_or_else(|e| tracing::error!(%e, ?e, "{}", s!("overlay::main()")));
         }
-        state.check_tasks().await;
-        sleep(Duration::from_millis(10)).await;
     }
 }
 
@@ -277,13 +298,6 @@ pub fn press_to_exit() {
 pub fn start_tui() -> JoinHandle<()> {
     task::spawn_blocking(|| {
         apexsky::menu::main().unwrap_or_else(|e| tracing::error!(%e, ?e, "{}", s!("menu::main()")))
-    })
-}
-
-#[instrument]
-pub fn start_overlay() -> JoinHandle<()> {
-    task::spawn_blocking(|| {
-        overlay::main().unwrap_or_else(|e| tracing::error!(%e, ?e, "{}", s!("overlay::main()")))
     })
 }
 

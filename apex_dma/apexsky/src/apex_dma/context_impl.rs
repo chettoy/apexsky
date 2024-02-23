@@ -137,7 +137,7 @@ impl ContextForAimbot for Arc<Mutex<SharedState>> {
                     GRENADE_THERMITE => false,
                     GRENADE_FRAG => false,
                     GRENADE_ARC_STAR => false,
-                    _ => false,
+                    _ => weapon.is_semi_auto,
                 }
             };
 

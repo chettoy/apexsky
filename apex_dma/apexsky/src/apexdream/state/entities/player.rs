@@ -602,7 +602,7 @@ impl Entity for PlayerEntity {
     fn post(&mut self, _api: &mut Api, ctx: &UpdateContext, state: &GameState) {
         // Check if player is visible
         let is_visible = self.last_visible_time > 0.0
-            && (self.last_visible_time - state.client.curtime).abs() < 0.1;
+            && (self.last_visible_time - state.client.curtime).abs() < 10.0;
         //tracing::trace!(is_visible, self.last_visible_time, state.client.curtime);
         // Take note when the player became visible
         if !self.is_visible && is_visible {

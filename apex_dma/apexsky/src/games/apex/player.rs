@@ -130,7 +130,7 @@ impl crate::aimbot::AimEntity for PlayerEntity {
         } else {
             id.try_into().unwrap()
         };
-        math::add(self.origin, self.bones.get_pos(id.try_into().unwrap()))
+        math::add(self.origin, self.bones.get_pos(id as usize))
     }
 
     fn get_position(&self) -> [f32; 3] {
@@ -243,6 +243,7 @@ impl crate::aimbot::AimEntity for BaseNPCEntity {
     }
 
     fn is_visible(&self) -> bool {
+        tracing::debug!(self.last_visible_time, self.tmp_last_lastviz);
         self.is_visible
     }
 }
