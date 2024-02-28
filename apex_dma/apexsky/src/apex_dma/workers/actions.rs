@@ -1,3 +1,4 @@
+use anyhow::Context;
 use apexsky::{
     aimbot::{calc_angle, calc_fov, normalize_angles, AimEntity},
     apexdream::{
@@ -51,7 +52,7 @@ pub trait MemAccess {
     ) -> anyhow::Result<()>;
 }
 
-const ENABLE_MEM_AIM: bool = true;
+const ENABLE_MEM_AIM: bool = false;
 
 #[instrument(skip_all)]
 pub async fn actions_loop(
@@ -439,6 +440,12 @@ pub async fn actions_loop(
             }
 
             // Inject highlight settings
+            if !shared_state.lock().await.highlight_injected {
+                let base = mem.apex_mem_baseaddr();
+                let glow_fix_i32 = mem.apex_mem_read::<i32>(base + OFFSET_GLOW_FIX)?;
+                let glow_fix_u8 = mem.apex_mem_read::<u8>(base + OFFSET_GLOW_FIX)?;
+                tracing::trace!(glow_fix_i32, glow_fix_u8);
+            }
             if (g_settings.player_glow || g_settings.item_glow) && world_ready {
                 match inject_highlight(apex_state.client.framecount, &g_settings, &mut mem) {
                     Ok(_) => {
@@ -448,10 +455,6 @@ pub async fn actions_loop(
                         tracing::debug!(%e, ?e, "{}", s!("Inject highlight settings"));
                     }
                 }
-            } else {
-                let base = mem.apex_mem_baseaddr();
-                let glow_fix = mem.apex_mem_read::<i32>(base + OFFSET_GLOW_FIX)?;
-                tracing::trace!(glow_fix);
             }
 
             // Targeting of all eligible
@@ -613,11 +616,16 @@ fn inject_highlight(
     let highlight_settings_ptr = mem.apex_mem_read::<u64>(base + OFFSET_HIGHLIGHT_SETTINGS)?;
     for (context_id, bits, color) in highlight_settings_inject {
         let context_offset = highlight_settings_ptr + 0x34 * context_id as u64;
-        mem.apex_mem_write::<HighlightBits>(context_offset, bits)?;
-        mem.apex_mem_write::<[f32; 3]>(context_offset + 4, &color)?;
+        mem.apex_mem_write::<HighlightBits>(context_offset, bits)
+            .context(format!("{:?}", context_id))?;
+        mem.apex_mem_write::<[f32; 3]>(context_offset + 4, &color)
+            .context(format!("{:?}", context_id))?;
     }
-    mem.apex_mem_write::<i32>(base + OFFSET_GLOW_FIX, &1)?;
     tracing::trace!(highlight_settings_ptr);
+    mem.apex_mem_write::<i32>(base + OFFSET_GLOW_FIX, &1)
+        .unwrap_or_else(|e| {
+            tracing::debug!(%e, "{}", s!("err write glow fix"));
+        });
 
     Ok(())
 }

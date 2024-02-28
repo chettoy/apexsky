@@ -216,8 +216,8 @@ impl Aimbot {
         Aimbot::default()
     }
 
-    pub fn get_settings(&self) -> AimbotSettings {
-        self.settings.clone()
+    pub fn get_settings(&self) -> &AimbotSettings {
+        &self.settings
     }
 
     pub fn settings(&mut self, settings: AimbotSettings) {

@@ -37,6 +37,7 @@ pub struct BaseNPCEntity {
     pub life_state: u8,
     pub last_visible_time: f32,
     pub tmp_last_lastviz: f32,
+    pub tmp_last_vischeck_time: f64,
     pub is_visible: bool,
     pub visible_time: f64,
 }
@@ -198,22 +199,21 @@ impl Entity for BaseNPCEntity {
         }
     }
     #[instrument(skip_all)]
-    fn post(&mut self, _api: &mut Api, ctx: &UpdateContext, state: &GameState) {
+    fn post(&mut self, _api: &mut Api, ctx: &UpdateContext, _state: &GameState) {
         // Check if npc is visible
-        let is_visible = self.last_visible_time > 0.0
-            && (self.last_visible_time - state.client.curtime).abs() < 10.0;
-        // let is_visible = if self.last_visible_time > self.tmp_last_lastviz {
-        //     self.tmp_last_lastviz = self.last_visible_time;
-        //     true
-        // }else{
-        //     false
-        // };
-        tracing::trace!(is_visible, self.last_visible_time, state.client.curtime);
-        // Take note when the npc became visible
-        if !self.is_visible && is_visible {
-            self.visible_time = ctx.time;
+        // let is_visible = self.last_visible_time > 0.0
+        //     && (self.last_visible_time - state.client.curtime).abs() < 0.1;
+        if ctx.time > self.tmp_last_vischeck_time + 0.050 {
+            let is_visible = self.last_visible_time > self.tmp_last_lastviz;
+            //tracing::trace!(is_visible, self.last_visible_time, self.tmp_last_lastviz);
+            // Take note when the npc became visible
+            if !self.is_visible && is_visible {
+                self.visible_time = ctx.time;
+            }
+            self.is_visible = is_visible;
+
+            self.tmp_last_lastviz = self.last_visible_time;
+            self.tmp_last_vischeck_time = ctx.time;
         }
-        self.is_visible = is_visible;
-        
     }
 }

@@ -1,254 +1,273 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-
 use std::sync::Arc;
 
-use eframe::egui::{self, pos2, Color32, Pos2, Rect, ViewportCommand};
+use apexsky::aimbot::AimEntity;
+use bevy::asset::embedded_asset;
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+use bevy::prelude::*;
+use bevy::window::{CompositeAlphaMode, WindowLevel, WindowMode};
+use bevy_egui::EguiPlugin;
 use obfstr::obfstr as s;
 use tokio::sync::Mutex;
 
 use crate::SharedState;
 
-pub(crate) fn main(shared_state: Arc<Mutex<SharedState>>) -> Result<(), eframe::Error> {
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_active(true)
-            .with_always_on_top()
-            .with_decorations(false) // Hide the OS-specific "chrome" around the window
-            .with_fullscreen(true)
-            .with_mouse_passthrough(true)
-            .with_transparent(true) // To have rounded corners we need transparency
-            .with_window_level(egui::WindowLevel::AlwaysOnTop),
+mod ui;
 
-        ..Default::default()
-    };
-    eframe::run_native(
-        s!("Absolutely Not Cheating.exe - Totally Legit Gameplay 😇"), // unused title
-        options,
-        Box::new(|_cc| Box::new(OverlayApp { shared_state })),
-    )
+pub(crate) fn main(shared_state: Arc<Mutex<SharedState>>) {
+    App::new()
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    mode: WindowMode::BorderlessFullscreen,
+                    // Setting `transparent` allows the `ClearColor`'s alpha value to take effect
+                    transparent: true,
+                    focused: true,
+                    window_level: WindowLevel::AlwaysOnTop,
+                    // Disabling window decorations to make it feel more like a widget than a window
+                    decorations: false,
+                    #[cfg(target_os = "macos")]
+                    composite_alpha_mode: CompositeAlphaMode::PostMultiplied,
+                    #[cfg(target_os = "linux")]
+                    composite_alpha_mode: CompositeAlphaMode::PreMultiplied,
+                    title: s!("Absolutely Not Cheating.exe - Totally Legit Gameplay 😇")
+                        .to_string(),
+                    ..default()
+                }),
+                ..default()
+            }),
+            EmbeddedAssetPlugin,
+            FrameTimeDiagnosticsPlugin,
+        ))
+        .add_plugins(EguiPlugin)
+        .insert_resource(MyOverlayState { shared_state })
+        // ClearColor must have 0 alpha, otherwise some color will bleed through
+        .insert_resource(ClearColor(Color::NONE))
+        .add_systems(Startup, setup)
+        .add_systems(Update, ui::toggle_mouse_passthrough)
+        .add_systems(Update, ui::ui_system)
+        .add_systems(Update, update_positions)
+        .add_systems(Update, update_listener)
+        .add_systems(Update, follow_game_state)
+        .run();
 }
 
-struct OverlayApp {
+struct EmbeddedAssetPlugin;
+
+impl Plugin for EmbeddedAssetPlugin {
+    fn build(&self, app: &mut App) {
+        // We get to choose some prefix relative to the workspace root which
+        // will be ignored in "embedded://" asset paths.
+        let omit_prefix = s!("src/apex_dma/").to_string();
+        // Path to asset must be relative to this file, because that's how
+        // include_bytes! works.
+        embedded_asset!(app, omit_prefix, "assets/fonts/LXGWNeoXiHei.ttf");
+        embedded_asset!(app, omit_prefix, "assets/sounds/Windless Slopes.ogg");
+    }
+}
+
+#[derive(Resource)]
+pub(crate) struct MyOverlayState {
     shared_state: Arc<Mutex<SharedState>>,
 }
 
-impl eframe::App for OverlayApp {
-    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        egui::Rgba::TRANSPARENT.to_array() // Make sure we don't paint anything behind the rounded corners
-    }
+#[derive(Component, Default)]
+struct AimTarget {
+    data: Option<Box<dyn AimEntity>>,
+}
 
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        custom_window_frame(ctx, "egui with custom frame", |ui| {
-            ui.label("This is just the contents of the window.");
-            ui.horizontal(|ui| {
-                ui.label("egui theme:");
-                egui::widgets::global_dark_light_mode_buttons(ui);
+#[derive(Component)]
+struct MyCameraMarker;
+
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    // Space between the two ears
+    let gap = 4.0;
+
+    // aim target
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Sphere::new(10.0).mesh().uv(32, 18)),
+            material: materials.add(Color::GREEN),
+            transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            ..default()
+        },
+        AimTarget::default(),
+        AudioBundle {
+            source: asset_server
+                .load(s!("embedded://apexsky_dma/assets/sounds/Windless Slopes.ogg").to_string()),
+            settings: PlaybackSettings::LOOP.with_spatial(true),
+        },
+    ));
+
+    // sound emitter
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Sphere::new(0.2).mesh().uv(32, 18)),
+            material: materials.add(Color::BLUE),
+            transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            ..default()
+        },
+        Emitter::default(),
+        AudioBundle {
+            source: asset_server
+                .load(s!("embedded://apexsky_dma/assets/sounds/Windless Slopes.ogg").to_string()),
+            settings: PlaybackSettings::LOOP.with_spatial(true),
+        },
+    ));
+
+    let listener = SpatialListener::new(gap);
+    commands
+        .spawn((SpatialBundle::default(), listener.clone()))
+        .with_children(|parent| {
+            // left ear indicator
+            parent.spawn(PbrBundle {
+                mesh: meshes.add(Cuboid::new(0.2, 0.2, 0.2)),
+                material: materials.add(Color::RED),
+                transform: Transform::from_translation(listener.left_ear_offset),
+                ..default()
+            });
+
+            // right ear indicator
+            parent.spawn(PbrBundle {
+                mesh: meshes.add(Cuboid::new(0.2, 0.2, 0.2)),
+                material: materials.add(Color::GREEN),
+                transform: Transform::from_translation(listener.right_ear_offset),
+                ..default()
             });
         });
+
+    // light
+    commands.spawn(DirectionalLightBundle {
+        transform: Transform::from_xyz(4.0, 8.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
+
+    // example instructions
+    commands.spawn(
+        TextBundle::from_section(
+            "Up/Down/Left/Right: Move Listener\nSpace: Toggle Emitter Movement",
+            TextStyle {
+                font_size: 20.0,
+                ..default()
+            },
+        )
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(12.0),
+            left: Val::Px(12.0),
+            ..default()
+        }),
+    );
+
+    // camera
+    commands.spawn((
+        Camera3dBundle {
+            projection: Projection::Perspective(PerspectiveProjection {
+                fov: 90.0f32.to_radians(),
+                far: 10000.0,
+                ..Default::default()
+            }),
+            transform: Transform::from_xyz(0.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            ..default()
+        },
+        MyCameraMarker,
+    ));
+}
+
+#[derive(Component, Default)]
+struct Emitter {
+    stopped: bool,
+}
+
+fn update_positions(
+    time: Res<Time>,
+    mut emitters: Query<(&mut Transform, &mut Emitter), With<Emitter>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    for (mut emitter_transform, mut emitter) in emitters.iter_mut() {
+        if keyboard.just_pressed(KeyCode::Space) {
+            emitter.stopped = !emitter.stopped;
+        }
+
+        if !emitter.stopped {
+            emitter_transform.translation.x = time.elapsed_seconds().sin() * 3.0;
+            emitter_transform.translation.z = time.elapsed_seconds().cos() * 3.0;
+        }
     }
 }
 
-fn custom_window_frame(ctx: &egui::Context, title: &str, add_contents: impl FnOnce(&mut egui::Ui)) {
-    use egui::*;
+fn update_listener(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    mut listeners: Query<&mut Transform, With<SpatialListener>>,
+) {
+    let mut transform = listeners.single_mut();
 
-    let panel_frame = egui::Frame {
-        fill: Color32::TRANSPARENT, //ctx.style().visuals.window_fill(),
-        rounding: 10.0.into(),
-        stroke: ctx.style().visuals.widgets.noninteractive.fg_stroke,
-        outer_margin: 0.5.into(), // so the stroke is within the bounds
-        ..Default::default()
+    let speed = 2.;
+
+    if keyboard.pressed(KeyCode::ArrowRight) {
+        transform.translation.x += speed * time.delta_seconds();
+    }
+    if keyboard.pressed(KeyCode::ArrowLeft) {
+        transform.translation.x -= speed * time.delta_seconds();
+    }
+    if keyboard.pressed(KeyCode::ArrowDown) {
+        transform.translation.z += speed * time.delta_seconds();
+    }
+    if keyboard.pressed(KeyCode::ArrowUp) {
+        transform.translation.z -= speed * time.delta_seconds();
+    }
+}
+
+fn follow_game_state(
+    overlay_state: Res<MyOverlayState>,
+    mut query_camera: Query<
+        (&mut Projection, &mut Transform),
+        (With<MyCameraMarker>, Without<AimTarget>),
+    >,
+    mut aim_targets: Query<
+        (&mut Transform, &mut AimTarget),
+        (With<AimTarget>, Without<MyCameraMarker>),
+    >,
+) {
+    let (cam_proj, cam_trans) = query_camera.single_mut();
+    // assume perspective. do nothing if orthographic.
+    let Projection::Perspective(persp) = cam_proj.into_inner() else {
+        return;
     };
+    persp.fov = 90.0f32.to_radians();
 
-    CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
-        //let app_rect = ui.max_rect();
+    let cam_transform = cam_trans.into_inner();
+    let state = overlay_state.shared_state.blocking_lock();
+    let Some(local_player) = state.local_player.as_ref() else {
+        return;
+    };
+    let cam_pos = local_player.get_entity().camera_origin;
+    let cam_angles = local_player.get_entity().camera_angles;
 
-        // let title_bar_height = 32.0;
-        // let title_bar_rect = {
-        //     let mut rect = app_rect;
-        //     rect.max.y = rect.min.y + title_bar_height;
-        //     rect
-        // };
-        // title_bar_ui(ui, title_bar_rect, title);
+    cam_transform.translation.x = -cam_pos[1];
+    cam_transform.translation.y = cam_pos[2];
+    cam_transform.translation.z = -cam_pos[0];
 
-        add_contents(ui);
-
-        info_bar_ui(ui);
-
-        // Add the contents:
-        // let content_rect = {
-        //     let mut rect = app_rect;
-        //     rect.min.y = title_bar_rect.max.y;
-        //     rect
-        // }
-        // .shrink(4.0);
-        // let mut content_ui = ui.child_ui(content_rect, *ui.layout());
-        // add_contents(&mut content_ui);
-    });
-}
-
-fn title_bar_ui(ui: &mut egui::Ui, title_bar_rect: eframe::epaint::Rect, title: &str) {
-    use egui::*;
-
-    let painter = ui.painter();
-
-    let title_bar_response = ui.interact(title_bar_rect, Id::new("title_bar"), Sense::click());
-
-    // Paint the title:
-    painter.text(
-        title_bar_rect.center(),
-        Align2::CENTER_CENTER,
-        title,
-        FontId::proportional(20.0),
-        ui.style().visuals.text_color(),
-    );
-
-    // Paint the line under the title:
-    painter.line_segment(
-        [
-            title_bar_rect.left_bottom() + vec2(1.0, 0.0),
-            title_bar_rect.right_bottom() + vec2(-1.0, 0.0),
-        ],
-        ui.visuals().widgets.noninteractive.bg_stroke,
-    );
-
-    // Interact with the title bar (drag to move window):
-    if title_bar_response.double_clicked() {
-        let is_maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
-        ui.ctx()
-            .send_viewport_cmd(ViewportCommand::Maximized(!is_maximized));
-    }
-
-    if title_bar_response.is_pointer_button_down_on() {
-        ui.ctx().send_viewport_cmd(ViewportCommand::StartDrag);
-    }
-
-    ui.allocate_ui_at_rect(title_bar_rect, |ui| {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.spacing_mut().item_spacing.x = 0.0;
-            ui.visuals_mut().button_frame = false;
-            ui.add_space(8.0);
-            close_maximize_minimize(ui);
-        });
-    });
-}
-
-/// Show some close/maximize/minimize buttons for the native window.
-fn close_maximize_minimize(ui: &mut egui::Ui) {
-    use egui::{Button, RichText};
-
-    let button_height = 12.0;
-
-    let close_response = ui
-        .add(Button::new(RichText::new("❌").size(button_height)))
-        .on_hover_text("Close the window");
-    if close_response.clicked() {
-        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-    }
-
-    let is_maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
-    if is_maximized {
-        let maximized_response = ui
-            .add(Button::new(RichText::new("🗗").size(button_height)))
-            .on_hover_text("Restore window");
-        if maximized_response.clicked() {
-            ui.ctx()
-                .send_viewport_cmd(ViewportCommand::Maximized(false));
-        }
-    } else {
-        let maximized_response = ui
-            .add(Button::new(RichText::new("🗗").size(button_height)))
-            .on_hover_text("Maximize window");
-        if maximized_response.clicked() {
-            ui.ctx().send_viewport_cmd(ViewportCommand::Maximized(true));
-        }
-    }
-
-    let minimized_response = ui
-        .add(Button::new(RichText::new("🗕").size(button_height)))
-        .on_hover_text("Minimize the window");
-    if minimized_response.clicked() {
-        ui.ctx().send_viewport_cmd(ViewportCommand::Minimized(true));
-    }
-}
-
-fn info_bar_ui(ui: &mut egui::Ui) {
-    // Draw rectangle
-    let info_bar_rect = Rect::from_min_max(Pos2::ZERO, pos2(280.0, 30.0));
-    ui.allocate_ui_at_rect(info_bar_rect, |ui| {
-        let background_color = Color32::from_black_alpha((0.6 * 255.0 as f32).round() as u8);
-        let rounding = 2.0;
-        ui.painter()
-            .rect_filled(info_bar_rect, rounding, background_color);
-
-        // Draw red lines
-        let line_color = Color32::from_rgb(255, 0, 0);
-        let line_width = 2.0;
-        ui.painter().line_segment(
-            [
-                pos2(info_bar_rect.min.x + rounding, info_bar_rect.min.y),
-                pos2(info_bar_rect.max.x - rounding, info_bar_rect.min.y),
-            ],
-            (line_width, line_color),
-        );
-        ui.painter().line_segment(
-            [
-                pos2(
-                    info_bar_rect.min.x + rounding,
-                    info_bar_rect.max.y - line_width,
-                ),
-                pos2(
-                    info_bar_rect.max.x - rounding,
-                    info_bar_rect.max.y - line_width,
-                ),
-            ],
-            (line_width, line_color),
-        );
-
-        // Draw text
-        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-            let aimbot_mode = 2;
-            let aimbot_fov = 50.0;
-            let aimbot_locked = false;
-            let aimbot_gun_safety = false;
-            let aimbot_grenade = false;
-            let spectators = 0;
-            let allied_spectators = 0;
-
-            ui.add_space(rounding * 2.0);
-            ui.colored_label(
-                if spectators == 0 {
-                    Color32::GREEN
-                } else {
-                    Color32::RED
-                },
-                format!("{}", spectators),
-            );
-            ui.label(s!("--"));
-            ui.colored_label(Color32::GREEN, format!("{}", allied_spectators));
-            ui.label(s!("--"));
-            ui.colored_label(Color32::WHITE, format!("{:.0}", aimbot_fov));
-            ui.label(s!("--"));
-
-            let (color, text) = if aimbot_locked {
-                (
-                    if aimbot_gun_safety {
-                        Color32::GREEN
-                    } else {
-                        Color32::from_rgb(255, 165, 0) // Orange
-                    },
-                    s!("[TARGET LOCK!]").to_string(),
-                )
-            } else if aimbot_grenade {
-                (Color32::BLUE, s!("Skynade On").to_string())
-            } else if aimbot_mode == 2 {
-                (Color32::GREEN, s!("Aim On").to_string())
-            } else if aimbot_mode == 0 {
-                (Color32::RED, s!("Aim Off").to_string())
+    let pitch_quat = Quat::from_rotation_x(
+        cam_angles[0].to_radians()
+            * if cam_angles[1].abs() < 90.0 {
+                -1.0
             } else {
-                (Color32::RED, format!("{}{}", s!("Aim On "), aimbot_mode))
-            };
-            ui.colored_label(color, text);
-            ui.add_space(rounding * 2.0);
-        });
-    });
+                1.0
+            },
+    );
+    let yaw_quat = Quat::from_rotation_y(cam_angles[1].to_radians());
+    cam_transform.rotation = pitch_quat * yaw_quat;
+
+    let aim_pos = state.aim_target;
+    for (mut target_transform, mut _aim_target) in aim_targets.iter_mut() {
+        target_transform.translation.x = -aim_pos[1];
+        target_transform.translation.y = aim_pos[2];
+        target_transform.translation.z = -aim_pos[0];
+    }
 }

@@ -31,10 +31,10 @@ unicode-width = "0.1.11"
 serde_json = { version = "1.0", features = ["indexmap", "preserve_order"] }
 entropy = "0.4.2"
 rand = "0.8.5"
-indexmap = { version = "2.2.2", features = ["serde"] }
-zbus = "3.15.0"
+indexmap = { version = "2.2.3", features = ["serde"] }
+zbus = { version = "4.1.0", default-features = false, features = ["tokio"] }
 tokio = { version = "1", features = ["full"] }
-chrono = "0.4.33"
+chrono = "0.4.34"
 chinese-lunisolar-calendar = "0.2.0"
 obfstr = "0.4.3"
 include-flate = "0.3.0"
@@ -54,14 +54,13 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }
 #console-subscriber = "0.1.5"
 ndarray = "0.15.6"
-owning_ref = "0.4.1"
 tracing-appender = "0.2.3"
 opentelemetry_sdk = { version = "0.21.2", features = ["tokio", "serde", "serde_json", "rt-tokio"] }
 opentelemetry = "0.21.0"
 tracing-opentelemetry = "0.22.0"
 opentelemetry-otlp = { version = "0.14.0", features = ["serde", "tls"] }
-winit = "0.29.10"
-eframe = { version = "0.26.2", features = ["wgpu"] }
+bevy = "0.13.0"
+bevy_egui = "0.25.0"
 
 [build-dependencies]
 prost-build = "0.12.3"

@@ -102,7 +102,7 @@ pub extern "C" fn aimbot_get_state() -> Aimbot {
 
 #[no_mangle]
 pub extern "C" fn aimbot_get_settings() -> AimbotSettings {
-    aimbot_read!().get_settings()
+    aimbot_read!().get_settings().clone()
 }
 
 #[no_mangle]

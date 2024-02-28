@@ -61,6 +61,8 @@ pub struct PlayerEntity {
     pub last_visible_time: f32,
     pub crosshair_target_start_time: f32,
     pub last_crosshair_target_time: f32,
+    pub tmp_last_lastviz: f32,
+    pub tmp_last_vischeck_time: f64,
     pub is_visible: bool,
     pub visible_time: f64,
 
@@ -582,7 +584,8 @@ impl Entity for PlayerEntity {
             self.script_net_data_exclusive = sdk::EHandle::from(fields.script[1]);
 
             if self.eadp_uid < 1 {
-                tracing::warn!(self.model_name.string, "{}", s!("invalid euid"));
+                // tracing::warn!(self.model_name.string, "{}", s!("invalid euid"));
+                tracing::trace!(self.model_name.string, "{}", s!("invalid euid"));
             }
         }
 
@@ -601,14 +604,20 @@ impl Entity for PlayerEntity {
     }
     fn post(&mut self, _api: &mut Api, ctx: &UpdateContext, state: &GameState) {
         // Check if player is visible
-        let is_visible = self.last_visible_time > 0.0
-            && (self.last_visible_time - state.client.curtime).abs() < 10.0;
-        //tracing::trace!(is_visible, self.last_visible_time, state.client.curtime);
-        // Take note when the player became visible
-        if !self.is_visible && is_visible {
-            self.visible_time = ctx.time;
+        // let is_visible = self.last_visible_time > 0.0
+        //     && (self.last_visible_time - state.client.curtime).abs() < 10.0;
+        if ctx.time > self.tmp_last_vischeck_time + 0.050 {
+            let is_visible = self.last_visible_time > self.tmp_last_lastviz;
+            //tracing::trace!(is_visible, self.last_visible_time, self.tmp_last_lastviz);
+            // Take note when the npc became visible
+            if !self.is_visible && is_visible {
+                self.visible_time = ctx.time;
+            }
+            self.is_visible = is_visible;
+
+            self.tmp_last_lastviz = self.last_visible_time;
+            self.tmp_last_vischeck_time = ctx.time;
         }
-        self.is_visible = is_visible;
     }
 }
 

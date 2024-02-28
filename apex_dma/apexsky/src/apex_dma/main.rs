@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use apexsky::__load_settings;
-use apexsky::aimbot::AimEntity;
+use apexsky::aimbot::{AimEntity, Aimbot};
 use apexsky::config::Settings;
 use apexsky::games::apex::player::GamePlayer;
 use apexsky::global_state::G_STATE;
@@ -18,8 +18,8 @@ use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::EnvFilter;
 
-mod context_impl;
 mod overlay;
+mod context_impl;
 mod workers;
 
 #[derive(Debug, Clone)]
@@ -47,6 +47,7 @@ struct SharedState {
     players: HashMap<u64, GamePlayer>,
     aim_entities: HashMap<u64, Arc<dyn AimEntity>>,
     local_player: Option<GamePlayer>,
+    aimbot_state: Option<Aimbot>,
 }
 
 #[derive(Debug)]
@@ -234,7 +235,8 @@ fn main() {
             return;
         }
         if args[1] == s!("overlay") {
-            overlay::main(shared_state).unwrap();
+            //overlay::main(shared_state).unwrap();
+            overlay::main(shared_state);
             return;
         }
     }
@@ -278,8 +280,7 @@ fn main() {
         if G_STATE.lock().unwrap().config.settings.no_overlay {
             std::thread::sleep(Duration::from_secs(1));
         } else {
-            overlay::main(shared_state.clone())
-                .unwrap_or_else(|e| tracing::error!(%e, ?e, "{}", s!("overlay::main()")));
+            overlay::main(shared_state.clone());
         }
     }
 }

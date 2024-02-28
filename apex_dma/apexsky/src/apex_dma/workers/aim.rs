@@ -277,6 +277,8 @@ pub async fn aimbot_loop(
                 },
             })
             .await?;
+
+        state.lock().await.aimbot_state = Some(aimbot.clone());
     }
     tracing::debug!("{}", s!("task end"));
 
