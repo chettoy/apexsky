@@ -45,8 +45,8 @@ pub(crate) fn main(shared_state: Arc<Mutex<SharedState>>) {
         .add_systems(Startup, setup)
         .add_systems(Update, ui::toggle_mouse_passthrough)
         .add_systems(Update, ui::ui_system)
-        .add_systems(Update, update_positions)
-        .add_systems(Update, update_listener)
+        // .add_systems(Update, update_positions)
+        // .add_systems(Update, update_listener)
         .add_systems(Update, follow_game_state)
         .run();
 }
@@ -103,21 +103,21 @@ fn setup(
         },
     ));
 
-    // sound emitter
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Sphere::new(0.2).mesh().uv(32, 18)),
-            material: materials.add(Color::BLUE),
-            transform: Transform::from_xyz(0.0, 0.0, 0.0),
-            ..default()
-        },
-        Emitter::default(),
-        AudioBundle {
-            source: asset_server
-                .load(s!("embedded://apexsky_dma/assets/sounds/Windless Slopes.ogg").to_string()),
-            settings: PlaybackSettings::LOOP.with_spatial(true),
-        },
-    ));
+    // // sound emitter
+    // commands.spawn((
+    //     PbrBundle {
+    //         mesh: meshes.add(Sphere::new(0.2).mesh().uv(32, 18)),
+    //         material: materials.add(Color::BLUE),
+    //         transform: Transform::from_xyz(0.0, 0.0, 0.0),
+    //         ..default()
+    //     },
+    //     Emitter::default(),
+    //     AudioBundle {
+    //         source: asset_server
+    //             .load(s!("embedded://apexsky_dma/assets/sounds/Windless Slopes.ogg").to_string()),
+    //         settings: PlaybackSettings::LOOP.with_spatial(true),
+    //     },
+    // ));
 
     let listener = SpatialListener::new(gap);
     commands
@@ -142,26 +142,26 @@ fn setup(
 
     // light
     commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_xyz(4.0, 8.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(0.0, 1000.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
     });
 
-    // example instructions
-    commands.spawn(
-        TextBundle::from_section(
-            "Up/Down/Left/Right: Move Listener\nSpace: Toggle Emitter Movement",
-            TextStyle {
-                font_size: 20.0,
-                ..default()
-            },
-        )
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(12.0),
-            left: Val::Px(12.0),
-            ..default()
-        }),
-    );
+    // // example instructions
+    // commands.spawn(
+    //     TextBundle::from_section(
+    //         "Up/Down/Left/Right: Move Listener\nSpace: Toggle Emitter Movement",
+    //         TextStyle {
+    //             font_size: 20.0,
+    //             ..default()
+    //         },
+    //     )
+    //     .with_style(Style {
+    //         position_type: PositionType::Absolute,
+    //         bottom: Val::Px(12.0),
+    //         left: Val::Px(12.0),
+    //         ..default()
+    //     }),
+    // );
 
     // camera
     commands.spawn((
@@ -183,87 +183,108 @@ struct Emitter {
     stopped: bool,
 }
 
-fn update_positions(
-    time: Res<Time>,
-    mut emitters: Query<(&mut Transform, &mut Emitter), With<Emitter>>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-) {
-    for (mut emitter_transform, mut emitter) in emitters.iter_mut() {
-        if keyboard.just_pressed(KeyCode::Space) {
-            emitter.stopped = !emitter.stopped;
-        }
+// fn update_positions(
+//     time: Res<Time>,
+//     mut emitters: Query<(&mut Transform, &mut Emitter), With<Emitter>>,
+//     keyboard: Res<ButtonInput<KeyCode>>,
+// ) {
+//     for (mut emitter_transform, mut emitter) in emitters.iter_mut() {
+//         if keyboard.just_pressed(KeyCode::Space) {
+//             emitter.stopped = !emitter.stopped;
+//         }
 
-        if !emitter.stopped {
-            emitter_transform.translation.x = time.elapsed_seconds().sin() * 3.0;
-            emitter_transform.translation.z = time.elapsed_seconds().cos() * 3.0;
-        }
-    }
-}
+//         if !emitter.stopped {
+//             emitter_transform.translation.x = time.elapsed_seconds().sin() * 3.0;
+//             emitter_transform.translation.z = time.elapsed_seconds().cos() * 3.0;
+//         }
+//     }
+// }
 
-fn update_listener(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    mut listeners: Query<&mut Transform, With<SpatialListener>>,
-) {
-    let mut transform = listeners.single_mut();
+// fn update_listener(
+//     keyboard: Res<ButtonInput<KeyCode>>,
+//     time: Res<Time>,
+//     mut listeners: Query<&mut Transform, With<SpatialListener>>,
+// ) {
+//     let mut transform = listeners.single_mut();
 
-    let speed = 2.;
+//     let speed = 2.;
 
-    if keyboard.pressed(KeyCode::ArrowRight) {
-        transform.translation.x += speed * time.delta_seconds();
-    }
-    if keyboard.pressed(KeyCode::ArrowLeft) {
-        transform.translation.x -= speed * time.delta_seconds();
-    }
-    if keyboard.pressed(KeyCode::ArrowDown) {
-        transform.translation.z += speed * time.delta_seconds();
-    }
-    if keyboard.pressed(KeyCode::ArrowUp) {
-        transform.translation.z -= speed * time.delta_seconds();
-    }
-}
+//     if keyboard.pressed(KeyCode::ArrowRight) {
+//         transform.translation.x += speed * time.delta_seconds();
+//     }
+//     if keyboard.pressed(KeyCode::ArrowLeft) {
+//         transform.translation.x -= speed * time.delta_seconds();
+//     }
+//     if keyboard.pressed(KeyCode::ArrowDown) {
+//         transform.translation.z += speed * time.delta_seconds();
+//     }
+//     if keyboard.pressed(KeyCode::ArrowUp) {
+//         transform.translation.z -= speed * time.delta_seconds();
+//     }
+// }
 
 fn follow_game_state(
     overlay_state: Res<MyOverlayState>,
     mut query_camera: Query<
         (&mut Projection, &mut Transform),
-        (With<MyCameraMarker>, Without<AimTarget>),
+        (
+            With<MyCameraMarker>,
+            Without<SpatialListener>,
+            Without<AimTarget>,
+        ),
+    >,
+    mut listeners: Query<
+        &mut Transform,
+        (
+            With<SpatialListener>,
+            Without<MyCameraMarker>,
+            Without<AimTarget>,
+        ),
     >,
     mut aim_targets: Query<
         (&mut Transform, &mut AimTarget),
-        (With<AimTarget>, Without<MyCameraMarker>),
+        (
+            With<AimTarget>,
+            Without<MyCameraMarker>,
+            Without<SpatialListener>,
+        ),
     >,
 ) {
     let (cam_proj, cam_trans) = query_camera.single_mut();
+    let mut listener_trans = listeners.single_mut();
     // assume perspective. do nothing if orthographic.
     let Projection::Perspective(persp) = cam_proj.into_inner() else {
         return;
     };
     persp.fov = 90.0f32.to_radians();
 
-    let cam_transform = cam_trans.into_inner();
     let state = overlay_state.shared_state.blocking_lock();
-    let Some(local_player) = state.local_player.as_ref() else {
-        return;
-    };
-    let cam_pos = local_player.get_entity().camera_origin;
-    let cam_angles = local_player.get_entity().camera_angles;
+    if let Some(local_player) = state.local_player.as_ref() {
+        let cam_origin = local_player.get_entity().camera_origin;
+        let cam_angles = local_player.get_entity().camera_angles;
 
-    cam_transform.translation.x = -cam_pos[1];
-    cam_transform.translation.y = cam_pos[2];
-    cam_transform.translation.z = -cam_pos[0];
+        let (cam_pitch, cam_yew) = (cam_angles[0].to_radians(), cam_angles[1].to_radians());
+        // pitch: top- bottom+, yew: left+ right-
 
-    let pitch_quat = Quat::from_rotation_x(
-        cam_angles[0].to_radians()
-            * if cam_angles[1].abs() < 90.0 {
-                -1.0
-            } else {
-                1.0
-            },
-    );
-    let yaw_quat = Quat::from_rotation_y(cam_angles[1].to_radians());
-    cam_transform.rotation = pitch_quat * yaw_quat;
+        // game: x: forward, y: left, z: top
+        // bevy: x: right, y: top, z: back
+        let cam_position = Vec3 {
+            x: -cam_origin[1],
+            y: cam_origin[2],
+            z: -cam_origin[0],
+        };
+        let cam_direction = Vec3 {
+            x: -cam_pitch.cos() * cam_yew.sin(),
+            y: -cam_pitch.sin(),
+            z: -cam_pitch.cos() * cam_yew.cos(),
+        };
+        let cam_transform =
+            Transform::from_translation(cam_position).looking_to(cam_direction, Vec3::Y);
+        *cam_trans.into_inner() = cam_transform.clone();
+        *listener_trans.into_inner() = cam_transform;
+    }
 
+    // update target entity
     let aim_pos = state.aim_target;
     for (mut target_transform, mut _aim_target) in aim_targets.iter_mut() {
         target_transform.translation.x = -aim_pos[1];
