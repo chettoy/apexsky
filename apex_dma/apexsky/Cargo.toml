@@ -55,10 +55,10 @@ tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-fi
 #console-subscriber = "0.1.5"
 ndarray = "0.15.6"
 tracing-appender = "0.2.3"
-opentelemetry_sdk = { version = "0.21.2", features = ["tokio", "serde", "serde_json", "rt-tokio"] }
-opentelemetry = "0.21.0"
+opentelemetry_sdk = { version = "0.22.1", features = ["tokio", "serde", "serde_json", "rt-tokio"] }
+opentelemetry = "0.22.0"
 tracing-opentelemetry = "0.22.0"
-opentelemetry-otlp = { version = "0.14.0", features = ["serde", "tls"] }
+opentelemetry-otlp = { version = "0.15.0", features = ["serde", "tls"] }
 bevy = { version = "0.13.0", features = ["wayland"] }
 bevy_egui = "0.25.0"
 

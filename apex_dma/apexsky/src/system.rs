@@ -22,9 +22,9 @@
 
 use std::time::Duration;
 
-use zbus::{dbus_proxy, Result};
+use zbus::Result;
 
-#[dbus_proxy(
+#[zbus::proxy(
     interface = "org.freedesktop.UPower.KbdBacklight",
     default_service = "org.freedesktop.UPower",
     default_path = "/org/freedesktop/UPower/KbdBacklight"

@@ -18,8 +18,8 @@ use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::EnvFilter;
 
-mod overlay;
 mod context_impl;
+mod overlay;
 mod workers;
 
 #[derive(Debug, Clone)]
@@ -60,7 +60,6 @@ struct State {
     control_t: Option<JoinHandle<anyhow::Result<()>>>,
     esp_t: Option<JoinHandle<anyhow::Result<()>>>,
     items_t: Option<JoinHandle<anyhow::Result<()>>>,
-    overlay_task: Option<JoinHandle<()>>,
     terminal_task: Option<JoinHandle<()>>,
 }
 
@@ -77,7 +76,6 @@ impl State {
             control_t: None,
             esp_t: None,
             items_t: None,
-            overlay_task: None,
             terminal_task: None,
         }
     }

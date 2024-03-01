@@ -9,7 +9,7 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-indexmap = "2.2"
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = "2.0"
+indexmap = "2.2.5"
+proc-macro2 = "1.0.78"
+quote = "1.0.35"
+syn = "2.0.52"
