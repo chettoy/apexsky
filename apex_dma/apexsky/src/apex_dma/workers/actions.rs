@@ -732,8 +732,8 @@ fn process_player<'a>(
         if g_settings.player_glow && state.highlight_injected && target_ptr > 0 {
             let highlight_context_id = player_glow(&selected_target, state.frame_count, g_settings);
             mem.apex_mem_write::<u8>(target_ptr + OFFSET_GLOW_CONTEXT_ID, &highlight_context_id)?;
-            mem.apex_mem_write::<i32>(target_ptr + GLOW_VISIBLE_TYPE, &2)?;
-            mem.apex_mem_write::<f32>(target_ptr + GLOW_DISTANCE, &8.0E+4)?;
+            mem.apex_mem_write::<i32>(target_ptr + OFFSET_GLOW_VISIBLE_TYPE, &2)?;
+            mem.apex_mem_write::<f32>(target_ptr + OFFSET_GLOW_DISTANCE, &8.0E+4)?;
         }
 
         // Targeting
