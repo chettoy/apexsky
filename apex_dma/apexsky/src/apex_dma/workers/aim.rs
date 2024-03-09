@@ -104,7 +104,10 @@ pub async fn aimbot_loop(
             tracing::trace!("{}", s!("active_weapon=None"));
         }
 
-        if aim_key_rx.has_changed().unwrap_or(false) {
+        if aim_key_rx.has_changed().unwrap_or_else(|e| {
+            tracing::error!(%e, ?aim_key_rx, "{}", s!("recv key status"));
+            false
+        }) {
             let key_status = aim_key_rx.borrow_and_update();
             if key_status.aimbot_hotkey_1 > 0 {
                 aimbot.update_aim_key_state(key_status.aimbot_hotkey_1);
@@ -118,7 +121,10 @@ pub async fn aimbot_loop(
             aimbot.update_triggerbot_key_state(key_status.triggerbot_hotkey);
         }
 
-        if aim_select_rx.has_changed().unwrap_or(false) {
+        if aim_select_rx.has_changed().unwrap_or_else(|e| {
+            tracing::error!(%e, ?aim_select_rx, "{}", s!("recv aim targets"));
+            false
+        }) {
             aimbot.start_select_target();
             aim_select_rx.borrow_and_update().iter().for_each(|t| {
                 aimbot.add_select_target(
@@ -145,9 +151,7 @@ pub async fn aimbot_loop(
         aimbot.update(state.get_player_ptr().await, state.get_game_fps().await);
 
         let aiming = aimbot.is_aiming();
-        if aiming {
-            tracing::debug!("711aac39-e83c-4788 aiming");
-        }
+        //tracing::trace!(?aiming, "711aac39-e83c-4788");
 
         let mut target_pos: Option<[f32; 3]> = None;
         let aim_result = {
@@ -158,11 +162,11 @@ pub async fn aimbot_loop(
             } else if let Some(target_entity) = state.get_entity(aim_entity_ptr).await {
                 target_pos = Some(target_entity.get_position());
 
-                // debug target entity
-                if !target_entity.is_player() {
-                    let is_visible = target_entity.is_visible();
-                    trace!(is_visible, ?target_entity, "{}", s!("711aac39-e83c-444b"));
-                }
+                // // debug target entity
+                // if !target_entity.is_player() {
+                //     let is_visible = target_entity.is_visible();
+                //     trace!(is_visible, ?target_entity, "{}", s!("711aac39-e83c-444b"));
+                // }
 
                 if !(aimbot.is_aiming() || aimbot.is_triggerbot_ready()) {
                     AimAngles::default()

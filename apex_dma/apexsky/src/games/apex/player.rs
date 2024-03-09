@@ -243,7 +243,6 @@ impl crate::aimbot::AimEntity for BaseNPCEntity {
     }
 
     fn is_visible(&self) -> bool {
-        tracing::debug!(self.last_visible_time, self.tmp_last_lastviz);
         self.is_visible
     }
 }

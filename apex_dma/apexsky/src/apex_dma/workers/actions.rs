@@ -318,6 +318,46 @@ pub async fn actions_loop(
                     tracing::error!(%e, ?aim_key_tx, "{}", s!("send key status"));
                 });
 
+            // Update entities
+            if world_ready {
+                let local_player: Option<GamePlayer> =
+                    apex_state.local_player().map(|local_player| {
+                        GamePlayer::new(
+                            local_player,
+                            apex_state,
+                            &mut G_STATE.lock().unwrap().config,
+                        )
+                    });
+
+                let mut players: HashMap<u64, GamePlayer> = HashMap::new();
+                let mut aim_entities: HashMap<u64, Arc<dyn AimEntity>> = HashMap::new();
+
+                apex_state.entities_as::<PlayerEntity>().for_each(|entity| {
+                    // FIXME: skip wrong entity
+                    if entity.eadp_uid == 0 {
+                        return;
+                    }
+                    let game_player =
+                        GamePlayer::new(entity, apex_state, &mut G_STATE.lock().unwrap().config);
+                    players.insert(entity.entity_ptr.into_raw(), game_player);
+                    aim_entities.insert(entity.entity_ptr.into_raw(), Arc::new(entity.clone()));
+                });
+                apex_state
+                    .entities_as::<BaseNPCEntity>()
+                    .for_each(|entity| {
+                        aim_entities.insert(entity.entity_ptr.into_raw(), Arc::new(entity.clone()));
+                    });
+
+                let player_count = players.len();
+                let entity_count = aim_entities.len();
+                tracing::trace!(player_count, entity_count, "{}", s!("AimEntities updated"));
+
+                let mut state_wlock = shared_state.lock().await;
+                state_wlock.local_player = local_player;
+                state_wlock.players = players;
+                state_wlock.aim_entities = aim_entities;
+            }
+
             /* Hot Variables Update End */
 
             if actions_tick % 15 == 0 {
@@ -349,42 +389,21 @@ pub async fn actions_loop(
                 continue;
             }
 
-            // Update entities
+            // Update loots
             if world_ready {
-                let local_player: Option<GamePlayer> =
-                    apex_state.local_player().map(|local_player| {
-                        GamePlayer::new(
-                            local_player,
-                            apex_state,
-                            &mut G_STATE.lock().unwrap().config,
-                        )
-                    });
-                let Some(local_position) = local_player.as_ref().map(|l| l.get_entity().origin)
+                let Some(local_position) = shared_state
+                    .lock()
+                    .await
+                    .local_player
+                    .as_ref()
+                    .map(|l| arr1(&l.get_entity().origin))
                 else {
-                    tracing::error!(?apex_state.client, ?local_player, "{}", s!("UNREACHABLE: localplayer=None"));
+                    tracing::error!(?apex_state.client, ?shared_state, "{}", s!("UNREACHABLE: localplayer=None"));
                     continue;
                 };
-                let local_position = arr1(&local_position);
 
-                let mut players: HashMap<u64, GamePlayer> = HashMap::new();
-                let mut aim_entities: HashMap<u64, Arc<dyn AimEntity>> = HashMap::new();
                 let mut loots: Vec<TreasureClue> = Vec::new();
 
-                apex_state.entities_as::<PlayerEntity>().for_each(|entity| {
-                    // FIXME: skip wrong entity
-                    if entity.eadp_uid == 0 {
-                        return;
-                    }
-                    let game_player =
-                        GamePlayer::new(entity, apex_state, &mut G_STATE.lock().unwrap().config);
-                    players.insert(entity.entity_ptr.into_raw(), game_player);
-                    aim_entities.insert(entity.entity_ptr.into_raw(), Arc::new(entity.clone()));
-                });
-                apex_state
-                    .entities_as::<BaseNPCEntity>()
-                    .for_each(|entity| {
-                        aim_entities.insert(entity.entity_ptr.into_raw(), Arc::new(entity.clone()));
-                    });
                 apex_state.entities_as::<LootEntity>().for_each(|entity| {
                     let distance = (arr1(&entity.origin) - &local_position)
                         .mapv(|x| x * x)
@@ -401,25 +420,14 @@ pub async fn actions_loop(
                     loots.push(clue);
                 });
 
-                let player_count = players.len();
-                let entity_count = aim_entities.len();
                 let loot_count = loots.len();
-                tracing::debug!(
-                    player_count,
-                    entity_count,
-                    loot_count,
-                    "{}",
-                    s!("entities updated")
-                );
+                tracing::trace!(loot_count, "{}", s!("loots updated"));
 
                 if verbose {
                     tracing::trace!(?apex_state.entity_list.entities, "{}", s!("entity_list"));
                 }
 
                 let mut state_wlock = shared_state.lock().await;
-                state_wlock.local_player = local_player;
-                state_wlock.players = players;
-                state_wlock.aim_entities = aim_entities;
                 state_wlock.treasure_clues = loots;
             }
 
