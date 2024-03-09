@@ -26,8 +26,11 @@ macro_rules! define_item_id {
     };
 }
 
+/*
+ * GameVersion=v3.0.59.33
+ */
 pub const OFFSET_YAW: u64 = 0x221c - 0x8;
-pub const OFFSET_HIGHLIGHT_SETTINGS: u64 = 0xb943cb0;
+pub const OFFSET_HIGHLIGHT_SETTINGS: u64 = 0xb944e30;
 pub const OFFSET_GLOW_CONTEXT_ID: u64 = 0x28c;
 pub const OFFSET_GLOW_VISIBLE_TYPE: u64 = 0x26c;
 pub const OFFSET_GLOW_DISTANCE: u64 = 0x264;
