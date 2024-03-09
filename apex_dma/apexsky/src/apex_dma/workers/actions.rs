@@ -52,7 +52,7 @@ pub trait MemAccess {
     ) -> anyhow::Result<()>;
 }
 
-const ENABLE_MEM_AIM: bool = false;
+const ENABLE_MEM_AIM: bool = true;
 
 #[instrument(skip_all)]
 pub async fn actions_loop(

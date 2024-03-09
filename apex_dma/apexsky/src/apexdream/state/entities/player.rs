@@ -427,6 +427,15 @@ impl Entity for PlayerEntity {
         };
 
         if let Ok(fields) = api.vm_gatherd(self.entity_ptr, self.entity_size, &mut indices) {
+            self.eadp_uid = fields.uid[2] as u64 | (fields.uid[3] as u64) << 32;
+            let model_name_ptr = fields.model_name[0] as u64 | (fields.model_name[1] as u64) << 32;
+            self.model_name.update(api, model_name_ptr.into());
+            if self.eadp_uid < 1 {
+                // tracing::warn!(self.model_name.string, "{}", s!("invalid euid"));
+                tracing::trace!(self.model_name.string, "{}", s!("invalid euid"));
+                return;
+            }
+
             self.origin = [
                 f32::from_bits(fields.origin[0]),
                 f32::from_bits(fields.origin[1]),
@@ -570,10 +579,7 @@ impl Entity for PlayerEntity {
             self.selected_slot = fields.selected[2].to_ne_bytes()[0];
 
             self.platform_uid = fields.uid[0] as u64 | (fields.uid[1] as u64) << 32;
-            self.eadp_uid = fields.uid[2] as u64 | (fields.uid[3] as u64) << 32;
 
-            let model_name_ptr = fields.model_name[0] as u64 | (fields.model_name[1] as u64) << 32;
-            self.model_name.update(api, model_name_ptr.into());
             let studio_ptr = fields.studio[0] as u64 | (fields.studio[1] as u64) << 32;
             self.studio.update(api, sdk::Ptr::from_raw(studio_ptr));
             let bone_ptr = fields.bone_array[0] as u64 | (fields.bone_array[1] as u64) << 32;
@@ -582,11 +588,6 @@ impl Entity for PlayerEntity {
 
             self.script_net_data_global = sdk::EHandle::from(fields.script[0]);
             self.script_net_data_exclusive = sdk::EHandle::from(fields.script[1]);
-
-            if self.eadp_uid < 1 {
-                // tracing::warn!(self.model_name.string, "{}", s!("invalid euid"));
-                tracing::trace!(self.model_name.string, "{}", s!("invalid euid"));
-            }
         }
 
         if let Ok(xp) = api.vm_read::<i32>(self.entity_ptr.field(data.player_xp)) {
