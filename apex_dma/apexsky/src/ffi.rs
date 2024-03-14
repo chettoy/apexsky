@@ -5,6 +5,7 @@ use crate::lock_mod;
 use crate::love_players;
 use crate::offsets;
 use obfstr::obfstr as s;
+use once_cell::sync::Lazy;
 use skyapex_sdk::module::Utils;
 
 use global_state::CGlobalState;
@@ -29,8 +30,10 @@ pub extern "C" fn __update_global_states(state: CGlobalState) {
 #[no_mangle]
 pub extern "C" fn __load_settings() {
     lock_config!() = crate::config::get_configuration().unwrap_or_else(|e| {
-        tracing::warn!(%e, "{}", s!("Fallback to defalut configuration."));
-        println!("{}", s!("Fallback to defalut configuration."));
+        static S_MSG: Lazy<String> =
+            Lazy::new(|| s!("Fallback to defalut configuration.").to_string());
+        tracing::warn!(%e, "{}", &*S_MSG);
+        println!("{}", &*S_MSG);
         crate::config::Config::default()
     });
 }

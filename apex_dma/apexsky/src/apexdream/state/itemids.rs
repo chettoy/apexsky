@@ -1,6 +1,3 @@
-use format_xml::xfmt;
-use obfstr::obfstr as s;
-
 use self::entities::EntityRef;
 
 use super::*;
@@ -21,22 +18,6 @@ impl LootItems {
         if ctx.connected {
             self.models.resize_with(MAX_ITEMS, String::new);
             self.table.resize(MAX_ITEMS, sdk::ItemId::None);
-        }
-
-        // Visualize the cache if successfully identified an item
-        if self.visualize {
-            self.visualize = false;
-            api.visualize(s!("Items"), xfmt! {
-				<pre>
-					for index in 0..MAX_ITEMS {
-						if let (Some(&known), Some(model)) = (self.table.get(index), self.models.get(index)) {
-							if known != sdk::ItemId::None {
-								{index}": "{model}"\n"
-							}
-						}
-					}
-				</pre>
-			});
         }
     }
 

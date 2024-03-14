@@ -1,7 +1,7 @@
+use crate::noobfstr as s;
 use anyhow::{anyhow, Context};
 use core::time;
 use memflow::prelude::v1::*;
-use obfstr::obfstr as s;
 use std::time::Instant;
 use tracing::instrument;
 

@@ -1,4 +1,5 @@
-use obfstr::obfstr as s;
+use crate::noobfstr as s;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -458,9 +459,12 @@ impl Default for Config {
 }
 
 pub fn get_config_path() -> PathBuf {
-    let base_path = std::env::current_dir().expect(s!("Failed to determine the current directory"));
+    static S_CONF_FILENAME: Lazy<String> = Lazy::new(|| s!("settings.toml").to_string());
+    static S_ERR_MSG: Lazy<String> =
+        Lazy::new(|| s!("Failed to determine the current directory").to_string());
+    let base_path = std::env::current_dir().expect(&*S_ERR_MSG);
     let configuration_directory = base_path;
-    configuration_directory.join(s!("settings.toml"))
+    configuration_directory.join(&*S_CONF_FILENAME)
 }
 
 pub fn get_configuration() -> Result<Config, config::ConfigError> {

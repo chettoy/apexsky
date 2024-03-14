@@ -30,7 +30,7 @@ pub fn from_utf8_buf(bytes: &[u8]) -> Option<&str> {
 
 #[allow(dead_code)]
 pub fn parse_u32(value: &str) -> u32 {
-    (if value.starts_with(obfstr::obfstr!("0x")) {
+    (if value.starts_with("0x") {
         let Some(src) = value.get(2..) else { return 0 };
         u32::from_str_radix(src, 16)
     } else {

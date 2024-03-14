@@ -1,7 +1,6 @@
 use super::*;
+use crate::noobfstr as s;
 use dataview::Pod;
-use format_xml::xfmt;
-use obfstr::obfstr as s;
 
 #[derive(Default, Debug, Pod)]
 #[repr(C)]
@@ -91,24 +90,11 @@ impl StringTables {
         // Read stringtable once on connect
         if ctx.connected {
             let data = &ctx.data;
-            load_string_table(&mut self.weapon_names, api, ctx, data.nst_weapon_names).unwrap_or_else(|e|{
-                tracing::warn!(?e);
-            });
+            load_string_table(&mut self.weapon_names, api, ctx, data.nst_weapon_names)
+                .unwrap_or_else(|e| {
+                    tracing::warn!(?e);
+                });
         }
-    }
-
-    pub fn debug(&self, api: &mut Api) {
-        api.visualize(
-            s!("StringTables"),
-            xfmt! {
-                <h2>"Weapon Names"</h2>
-                <pre>
-                    for (index, weapon_name) in (self.weapon_names.iter().enumerate()) {
-                        "pub const "{weapon_name}": u32 = "{index}";\n"
-                    }
-                </pre>
-            },
-        );
     }
 }
 

@@ -1,4 +1,5 @@
 use anyhow::Context;
+use apexsky::noobfstr as s;
 use apexsky::{
     aimbot::{calc_angle, calc_fov, normalize_angles, AimEntity},
     apexdream::{
@@ -18,19 +19,10 @@ use apexsky::{
     offsets::G_OFFSETS,
 };
 use ndarray::arr1;
-use obfstr::obfstr as s;
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-    time::Duration,
-};
-use tokio::{
-    sync::{
-        mpsc::{self, error::TryRecvError},
-        watch, Mutex,
-    },
-    time::{sleep, Instant},
-};
+use parking_lot::RwLock;
+use std::{collections::HashMap, sync::Arc, time::Duration};
+use tokio::sync::{mpsc, watch};
+use tokio::time::{sleep, Instant};
 use tracing::{instrument, trace};
 
 use crate::{press_to_exit, SharedState, TreasureClue};
@@ -52,15 +44,23 @@ pub trait MemAccess {
     ) -> anyhow::Result<()>;
 }
 
+pub struct SpectatorInfo {
+    pub ptr: u64,
+    pub name: String,
+    pub is_teammate: bool,
+    pub love_status: LoveStatus,
+}
+
 const ENABLE_MEM_AIM: bool = true;
 
 #[instrument(skip_all)]
 pub async fn actions_loop(
     mut active: watch::Receiver<bool>,
-    shared_state: Arc<Mutex<SharedState>>,
+    shared_state: Arc<RwLock<SharedState>>,
     aim_key_tx: watch::Sender<AimKeyStatus>,
     aim_select_tx: watch::Sender<Vec<PreSelectedTarget>>,
     mut aim_action_rx: mpsc::Receiver<AimbotAction>,
+    mut items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
 ) -> anyhow::Result<()> {
     let mut apexdream = apexsky::apexdream::Instance::new();
     let mut start_instant = Instant::now();
@@ -121,15 +121,15 @@ pub async fn actions_loop(
     while *active.borrow_and_update() {
         sleep(Duration::from_secs(2)).await;
         let Some(mut mem) = find_game_process(&mut mem_os) else {
-            shared_state.lock().await.game_attached = false;
+            shared_state.write().game_attached = false;
             continue;
         };
         if mem.check_proc_status() != ProcessStatus::FoundReady {
-            shared_state.lock().await.game_attached = false;
+            shared_state.write().game_attached = false;
             continue;
         }
 
-        if !shared_state.lock().await.game_attached {
+        if !shared_state.read().game_attached {
             println!("{}", s!("Apex process found"));
             println!("{}{:x}", s!("Base: 0x"), mem.get_proc_baseaddr());
 
@@ -139,7 +139,7 @@ pub async fn actions_loop(
             tracing::debug!("{}", s!("press to continue"));
             let _ = std::io::stdin().read_line(&mut String::new());
 
-            shared_state.lock().await.game_attached = true;
+            shared_state.write().game_attached = true;
         }
 
         while *active.borrow_and_update() {
@@ -149,7 +149,7 @@ pub async fn actions_loop(
             start_instant = Instant::now();
 
             if mem.check_proc_status() != ProcessStatus::FoundReady {
-                shared_state.lock().await.game_attached = false;
+                shared_state.write().game_attached = false;
                 break;
             }
 
@@ -200,7 +200,7 @@ pub async fn actions_loop(
             {
                 world_ready = apex_state.is_in_game() && apex_state.local_player().is_some();
 
-                let mut wlock = shared_state.lock().await;
+                let mut wlock = shared_state.write();
 
                 wlock.world_ready = world_ready;
 
@@ -208,8 +208,8 @@ pub async fn actions_loop(
                 wlock.view_matrix = apex_state.client.view_matrix;
 
                 if !world_ready {
-                    wlock.spectator_count = 0;
-                    wlock.allied_spectator_count = 0;
+                    wlock.spectator_name.clear();
+                    wlock.allied_spectator_name.clear();
                 }
 
                 if let Some(fps_update) = game_fps_update {
@@ -224,23 +224,9 @@ pub async fn actions_loop(
                 }
             }
 
-            // Log WeaponId and ItemId
+            // Log WeaponId
             if apexdream.is_newly_connected() {
                 tracing::debug!(?apex_state.string_tables.weapon_names);
-            }
-            if apex_state.is_firing_range() && world_ready {
-                let mut item_list = Vec::new();
-                apex_state.entities_as::<LootEntity>().for_each(|entity| {
-                    item_list.push((entity.custom_script_int, entity.model_name.string.clone()));
-                });
-                if item_list.is_empty() {
-                    tracing::debug!("{}", s!("wait items"));
-                } else if item_list.len() > log_items {
-                    tracing::debug!(?item_list);
-                    item_list.sort_by(|(a, _), (b, _)| a.cmp(b));
-                    tracing::debug!(?item_list, "{}", s!("items sorted"));
-                    log_items = item_list.len();
-                }
             }
 
             // Perform aimbot actions
@@ -285,6 +271,7 @@ pub async fn actions_loop(
                     }
                 }
                 Err(e) => {
+                    use tokio::sync::mpsc::error::TryRecvError;
                     if e != TryRecvError::Empty {
                         tracing::error!(%e, ?aim_action_rx, "{}", s!("perform aimbot actions"));
                     }
@@ -352,7 +339,7 @@ pub async fn actions_loop(
                 let entity_count = aim_entities.len();
                 tracing::trace!(player_count, entity_count, "{}", s!("AimEntities updated"));
 
-                let mut state_wlock = shared_state.lock().await;
+                let mut state_wlock = shared_state.write();
                 state_wlock.local_player = local_player;
                 state_wlock.players = players;
                 state_wlock.aim_entities = aim_entities;
@@ -370,7 +357,7 @@ pub async fn actions_loop(
 
             /* Cold Variables Update Start */
 
-            // Update global settings
+            // Update state in global settings
             {
                 let firing_range_mode = apex_state.is_firing_range();
                 let g_state = &mut G_STATE.lock().unwrap();
@@ -392,8 +379,7 @@ pub async fn actions_loop(
             // Update loots
             if world_ready {
                 let Some(local_position) = shared_state
-                    .lock()
-                    .await
+                    .read()
                     .local_player
                     .as_ref()
                     .map(|l| arr1(&l.get_entity().origin))
@@ -427,103 +413,320 @@ pub async fn actions_loop(
                     tracing::trace!(?apex_state.entity_list.entities, "{}", s!("entity_list"));
                 }
 
-                let mut state_wlock = shared_state.lock().await;
-                state_wlock.treasure_clues = loots;
-            }
-
-            // Init spectator checker
-            if let Some(local_player) = &shared_state.lock().await.local_player {
-                let local_entity = local_player.get_entity();
-                let lplayer_ptr = local_entity.entity_ptr.into_raw();
-                if prev_lplayer_ptr != lplayer_ptr {
-                    init_spec_checker(lplayer_ptr);
-                    prev_lplayer_ptr = lplayer_ptr;
+                // Log ItemId
+                if apex_state.is_firing_range() {
+                    if loot_count == 0 {
+                        tracing::debug!("{}", s!("wait items"));
+                    } else if loot_count > log_items {
+                        let mut item_namelist = Vec::new();
+                        apex_state.entities_as::<LootEntity>().for_each(|entity| {
+                            item_namelist
+                                .push((entity.custom_script_int, entity.model_name.string.clone()));
+                        });
+                        tracing::debug!(?item_namelist);
+                        item_namelist.sort_by(|(a, _), (b, _)| a.cmp(b));
+                        tracing::debug!(?item_namelist, "{}", s!("items sorted"));
+                        log_items = item_namelist.len();
+                    }
                 }
-                // Update local entity yew
-                let yew = mem.apex_mem_read::<f32>(lplayer_ptr + OFFSET_YAW)?;
-                trace!(lplayer_ptr, ?yew);
-                apexsky::tick_yew(lplayer_ptr, yew);
-            } else {
-                continue;
+
+                shared_state.write().treasure_clues = loots;
             }
 
             // Inject highlight settings
-            if !shared_state.lock().await.highlight_injected {
-                let base = mem.apex_mem_baseaddr();
-                let glow_fix_i32 = mem.apex_mem_read::<i32>(base + OFFSET_GLOW_FIX)?;
-                let glow_fix_u8 = mem.apex_mem_read::<u8>(base + OFFSET_GLOW_FIX)?;
-                tracing::trace!(glow_fix_i32, glow_fix_u8);
-            }
-            if (g_settings.player_glow || g_settings.item_glow) && world_ready {
-                match inject_highlight(apex_state.client.framecount, &g_settings, &mut mem) {
-                    Ok(_) => {
-                        shared_state.lock().await.highlight_injected = true;
-                    }
-                    Err(e) => {
-                        tracing::debug!(%e, ?e, "{}", s!("Inject highlight settings"));
+            {
+                if !shared_state.read().highlight_injected {
+                    let base = mem.apex_mem_baseaddr();
+                    let glow_fix_i32 = mem.apex_mem_read::<i32>(base + OFFSET_GLOW_FIX)?;
+                    let glow_fix_u8 = mem.apex_mem_read::<u8>(base + OFFSET_GLOW_FIX)?;
+                    tracing::trace!(glow_fix_i32, glow_fix_u8);
+                }
+                if (g_settings.player_glow || g_settings.item_glow) && world_ready {
+                    match inject_highlight(apex_state.client.framecount, &g_settings, &mut mem) {
+                        Ok(_) => {
+                            shared_state.write().highlight_injected = true;
+                        }
+                        Err(e) => {
+                            tracing::debug!(%e, ?e, "{}", s!("Inject highlight settings"));
+                        }
                     }
                 }
             }
 
-            // Targeting of all eligible
-            let mut aim_targets: Vec<PreSelectedTarget> = Vec::new();
-
-            // Map(entity_ptr, is_teammate)
-            let mut tmp_specs: HashSet<(u64, bool)> = HashSet::new();
-
-            // Iterate over all targetable entities
+            // Spectator check
             {
-                let state = shared_state.lock().await;
-                if let Some(lplayer) = state.local_player.as_ref() {
-                    for entity in state.aim_entities.values() {
-                        process_player(
+                let Some((lplayer_ptr, lplayer_alive, lplayer_team)) =
+                    shared_state.read().local_player.as_ref().map(|p| {
+                        (
+                            p.get_entity().entity_ptr.into_raw(),
+                            p.get_buf().is_alive,
+                            p.get_buf().team_num,
+                        )
+                    })
+                else {
+                    continue;
+                };
+
+                let tdm_toggle = g_settings.tdm_toggle;
+                let shared_state = shared_state.clone();
+                tokio::spawn(async move {
+                    let players = shared_state.read().players.clone();
+                    let alter_local_team = shared_state.read().map_testing_local_team;
+
+                    let is_teammate = |team_num| {
+                        teammate_check(team_num, lplayer_team, alter_local_team, tdm_toggle)
+                    };
+
+                    // Init spectator checker
+                    if prev_lplayer_ptr != lplayer_ptr {
+                        init_spec_checker(lplayer_ptr);
+                        prev_lplayer_ptr = lplayer_ptr;
+                    }
+                    // Update local entity yew
+                    // let yew = mem.apex_mem_read::<f32>(lplayer_ptr + OFFSET_YAW)?;
+                    // trace!(lplayer_ptr, ?yew);
+                    // apexsky::tick_yew(lplayer_ptr, yew);
+
+                    // Update spectator checker
+                    let tmp_specs: Vec<SpectatorInfo> = players
+                        .iter()
+                        .filter_map(|(&target_ptr, target_entity)| {
+                            let player_buf = target_entity.get_buf();
+                            if player_buf.is_alive && lplayer_alive {
+                                None
+                            } else {
+                                // Update yew to spec checker
+                                apexsky::tick_yew(target_ptr, player_buf.yew);
+
+                                // Exclude self from list when watching others
+                                if target_ptr != lplayer_ptr && is_spec(target_ptr) {
+                                    Some(SpectatorInfo {
+                                        ptr: target_ptr,
+                                        name: player_buf.player_name.clone(),
+                                        is_teammate: is_teammate(player_buf.team_num),
+                                        love_status: player_buf
+                                            .love_state
+                                            .try_into()
+                                            .unwrap_or_else(|_| {
+                                                tracing::error!(
+                                                    love_state = player_buf.love_state,
+                                                    ?player_buf
+                                                );
+                                                LoveStatus::Normal
+                                            }),
+                                    })
+                                } else {
+                                    None
+                                }
+                            }
+                        })
+                        .collect();
+
+                    // Update spectator namelist
+                    let (allied_spectators, spectators): (Vec<_>, Vec<_>) =
+                        tmp_specs.into_iter().partition(|info| info.is_teammate);
+                    let allied_spectator_name = allied_spectators
+                        .into_iter()
+                        .map(|info| info.name)
+                        .collect();
+                    let spectator_name = spectators.into_iter().map(|info| info.name).collect();
+                    shared_state.write().allied_spectator_name = allied_spectator_name;
+                    shared_state.write().spectator_name = spectator_name;
+                });
+            }
+
+            // Targeting
+            {
+                // Iterate over all targetable entities
+                let aim_targets: Vec<PreSelectedTarget> = {
+                    let state = shared_state.read();
+                    if let Some(lplayer) = state.local_player.as_ref() {
+                        state
+                            .aim_entities
+                            .values()
+                            .filter_map(|entity| {
+                                process_player(
                             lplayer,
                             entity.as_ref(),
                             &state,
-                            &mut tmp_specs,
-                            &mut aim_targets,
                             &g_settings,
-                            &mut mem,
-                        )?;
+                        ).unwrap_or_else(|e|{
+                            tracing::error!(%e, ?e, ?entity, "{}", s!("error process player"));
+                            None
+                        })
+                            })
+                            .collect()
+                    } else {
+                        tracing::error!("{}", s!("UNREACHABLE: invalid localplayer"));
+                        vec![]
                     }
-                } else {
-                    tracing::error!("{}", s!("UNREACHABLE: invalid localplayer"));
+                };
+
+                // Player Glow
+                let (highlight_injected, frame_count) = {
+                    let state = shared_state.read();
+                    (state.highlight_injected, state.frame_count)
+                };
+
+                if g_settings.player_glow && highlight_injected {
+                    for target in aim_targets.iter() {
+                        let target_ptr = target.entity_ptr;
+                        let highlight_context_id = player_glow(target, frame_count, &g_settings);
+                        mem.apex_mem_write::<u8>(
+                            target_ptr + OFFSET_GLOW_CONTEXT_ID,
+                            &highlight_context_id,
+                        )?;
+                        mem.apex_mem_write::<i32>(target_ptr + OFFSET_GLOW_VISIBLE_TYPE, &2)?;
+                        mem.apex_mem_write::<f32>(target_ptr + OFFSET_GLOW_DISTANCE, &8.0E+4)?;
+                    }
                 }
-            }
 
-            // Send aim targets
-            aim_select_tx.send(aim_targets).unwrap_or_else(|e| {
-                tracing::error!(%e, ?aim_select_tx, "{}", s!("send aim targets"));
-            });
-
-            // Update spectators count
-            {
-                let allied_spectator_count = tmp_specs
-                    .iter()
-                    .filter(|(_, is_teammate)| *is_teammate)
-                    .count();
-                let spectator_count = tmp_specs.len() - allied_spectator_count;
-
-                let mut state = shared_state.lock().await;
-                state.allied_spectator_count = allied_spectator_count;
-                state.spectator_count = spectator_count;
+                // Send aim targets
+                aim_select_tx.send(aim_targets).unwrap_or_else(|e| {
+                    tracing::error!(%e, ?aim_select_tx, "{}", s!("send aim targets"));
+                });
             }
 
             // Weapon model glow
             // Not planned
 
             // Items glow
-            // Iterate over all loots
-            {
-                let state = shared_state.lock().await;
-                for clue in &state.treasure_clues {
-                    process_loot(clue, &state, &g_settings, &mut mem)?;
+            if items_glow_rx.has_changed().unwrap_or_else(|e| {
+                tracing::error!(%e, ?items_glow_rx, "{}", s!("perform items glow"));
+                false
+            }) {
+                if world_ready && shared_state.read().highlight_injected {
+                    for &(ptr, ctx_id) in items_glow_rx.borrow_and_update().iter() {
+                        mem.apex_mem_write::<u8>(ptr + OFFSET_GLOW_CONTEXT_ID, &ctx_id)?;
+                    }
                 }
             }
         }
     }
     tracing::debug!("{}", s!("task end"));
     Ok(())
+}
+
+#[instrument(skip_all)]
+fn process_player<'a>(
+    local_player: &GamePlayer,
+    target_entity: &dyn AimEntity,
+    state: &SharedState,
+    g_settings: &Settings,
+    //mem: &mut MemProcImpl<'a>,
+) -> anyhow::Result<Option<PreSelectedTarget>> {
+    let lplayer_ptr = local_player.get_entity().get_entity_ptr();
+    let target_ptr = target_entity.get_entity_ptr();
+
+    let entity_team = target_entity.get_team_num();
+    let local_team = local_player.get_buf().team_num;
+    let is_teammate = teammate_check(
+        entity_team,
+        local_team,
+        state.map_testing_local_team,
+        g_settings.tdm_toggle,
+    );
+    // trace!(target_ptr, entity_team, is_teammate);
+
+    // Teammate and 1v1 check
+    if !g_settings.onevone {
+        if g_settings.firing_range {
+            if target_entity.is_player() {
+                return Ok(None);
+            }
+        } else {
+            if is_teammate {
+                return Ok(None);
+            }
+        }
+    }
+
+    if target_ptr == lplayer_ptr {
+        Ok(None)
+    } else {
+        Ok(Some(PreSelectedTarget {
+            fov: calculate_target_fov(local_player.get_entity(), target_entity),
+            distance: {
+                let target_pos = target_entity.get_position();
+                let local_pos = local_player.get_entity().get_position();
+                math::dist(target_pos, local_pos)
+            },
+            is_visible: target_entity.is_visible(),
+            is_knocked: target_entity.is_knocked(),
+            health_points: { target_entity.get_shield_health() + target_entity.get_health() },
+            love_status: {
+                if !target_entity.is_player() {
+                    if g_settings.yuan_p {
+                        LoveStatus::Love
+                    } else {
+                        LoveStatus::Normal
+                    }
+                } else {
+                    let Some(target_player) = state.players.get(&target_ptr) else {
+                        tracing::error!(?target_ptr, "{}", s!("UNREACHABLE"));
+                        return Ok(None);
+                    };
+                    target_player
+                        .get_buf()
+                        .love_state
+                        .try_into()
+                        .unwrap_or_else(|_| {
+                            tracing::error!(love_state = target_player.get_buf().love_state, player_buf = ?target_player.get_buf());
+                            LoveStatus::Normal
+                        })
+                }
+            },
+            entity_ptr: target_ptr,
+        }))
+    }
+}
+
+#[instrument(skip_all)]
+fn player_glow(target: &PreSelectedTarget, frame_count: i32, g_settings: &Settings) -> u8 {
+    let mut setting_index = {
+        if target.is_knocked {
+            HIGHLIGHT_PLAYER_KNOCKED
+        } else if target.is_visible {
+            HIGHLIGHT_PLAYER_VISIBLE
+        } else {
+            if g_settings.player_glow_armor_color {
+                let hp = target.health_points;
+                if hp <= 100 {
+                    HIGHLIGHT_PLAYER_ORANGE
+                } else if hp <= 150 {
+                    HIGHLIGHT_PLAYER_WHITE
+                } else if hp <= 175 {
+                    HIGHLIGHT_PLAYER_BLUE
+                } else if hp <= 200 {
+                    HIGHLIGHT_PLAYER_PURPLE
+                } else if hp <= 225 {
+                    HIGHLIGHT_PLAYER_RED
+                } else {
+                    HIGHLIGHT_PLAYER_BLACK
+                }
+            } else {
+                HIGHLIGHT_PLAYER_NOTVIZ
+            }
+        }
+    };
+
+    // love player glow
+    if g_settings.player_glow_love_user {
+        let frame_frag = frame_count / g_settings.game_fps as i32;
+        if target.is_visible || frame_frag % 2 == 0 {
+            match target.love_status {
+                LoveStatus::Love => {
+                    setting_index = HIGHLIGHT_PLAYER_RAINBOW;
+                }
+                LoveStatus::Hate => {
+                    setting_index = HIGHLIGHT_PLAYER_BLACK;
+                }
+                _ => (),
+            }
+        }
+    }
+
+    setting_index
 }
 
 #[instrument(skip_all)]
@@ -639,344 +842,6 @@ fn inject_highlight(
 }
 
 #[instrument(skip_all)]
-fn process_player<'a>(
-    local_player: &GamePlayer,
-    target_entity: &dyn AimEntity,
-    state: &SharedState,
-    tmp_specs: &mut HashSet<(u64, bool)>,
-    aim_targets: &mut Vec<PreSelectedTarget>,
-    g_settings: &Settings,
-    mem: &mut MemProcImpl<'a>,
-) -> anyhow::Result<()> {
-    let lplayer_ptr = local_player.get_entity().get_entity_ptr();
-    let target_ptr = target_entity.get_entity_ptr();
-
-    let entity_team = target_entity.get_team_num();
-    let local_team = local_player.get_buf().team_num;
-    let is_teammate = if g_settings.tdm_toggle {
-        let ent_team = if entity_team % 2 == 1 { 1 } else { 2 };
-        let loc_team = if local_team % 2 == 1 { 1 } else { 2 };
-        trace!(
-            target_team = ent_team,
-            local_team = loc_team,
-            "{}",
-            s!("TDM check")
-        );
-        ent_team == loc_team
-    } else {
-        entity_team == local_team
-            || (state.map_testing_local_team != 0 && entity_team == state.map_testing_local_team)
-    };
-    // trace!(target_ptr, entity_team, is_teammate);
-
-    if target_entity.is_player() && (!target_entity.is_alive() || !local_player.get_buf().is_alive)
-    {
-        // Update yew to spec checker
-        let yew = mem.apex_mem_read::<f32>(target_ptr + OFFSET_YAW)?;
-        apexsky::tick_yew(target_ptr, yew);
-        // Exclude self from list when watching others
-        if target_ptr != lplayer_ptr && is_spec(target_ptr) {
-            tmp_specs.insert((target_ptr, is_teammate));
-        }
-        return Ok(());
-    }
-
-    // Teammate and 1v1 check
-    if !g_settings.onevone {
-        if g_settings.firing_range {
-            if target_entity.is_player() {
-                return Ok(());
-            }
-        } else {
-            if is_teammate {
-                return Ok(());
-            }
-        }
-    }
-
-    if target_ptr != lplayer_ptr {
-        let selected_target = PreSelectedTarget {
-            fov: calculate_target_fov(local_player.get_entity(), target_entity),
-            distance: {
-                let target_pos = target_entity.get_position();
-                let local_pos = local_player.get_entity().get_position();
-                math::dist(target_pos, local_pos)
-            },
-            is_visible: target_entity.is_visible(),
-            is_knocked: target_entity.is_knocked(),
-            health_points: { target_entity.get_shield_health() + target_entity.get_health() },
-            love_status: {
-                if !target_entity.is_player() {
-                    if g_settings.yuan_p {
-                        LoveStatus::Love
-                    } else {
-                        LoveStatus::Normal
-                    }
-                } else {
-                    let Some(target_player) = state.players.get(&target_ptr) else {
-                        tracing::error!(?target_ptr, "{}", s!("UNREACHABLE"));
-                        return Ok(());
-                    };
-                    const LOVESTATUS_AMBIVALENT: i32 = LoveStatus::Ambivalent as i32;
-                    const LOVESTATUS_HATE: i32 = LoveStatus::Hate as i32;
-                    const LOVESTATUS_LOVE: i32 = LoveStatus::Love as i32;
-                    const LOVESTATUS_NORMAL: i32 = LoveStatus::Normal as i32;
-                    match target_player.get_buf().love_state {
-                        LOVESTATUS_AMBIVALENT => LoveStatus::Ambivalent,
-                        LOVESTATUS_HATE => LoveStatus::Hate,
-                        LOVESTATUS_LOVE => LoveStatus::Love,
-                        LOVESTATUS_NORMAL => LoveStatus::Normal,
-                        v => {
-                            tracing::error!(love_state = v, player_buf = ?target_player.get_buf());
-                            LoveStatus::Normal
-                        }
-                    }
-                }
-            },
-            entity_ptr: target_ptr,
-        };
-
-        // Player Glow
-        if g_settings.player_glow && state.highlight_injected && target_ptr > 0 {
-            let highlight_context_id = player_glow(&selected_target, state.frame_count, g_settings);
-            mem.apex_mem_write::<u8>(target_ptr + OFFSET_GLOW_CONTEXT_ID, &highlight_context_id)?;
-            mem.apex_mem_write::<i32>(target_ptr + OFFSET_GLOW_VISIBLE_TYPE, &2)?;
-            mem.apex_mem_write::<f32>(target_ptr + OFFSET_GLOW_DISTANCE, &8.0E+4)?;
-        }
-
-        // Targeting
-        aim_targets.push(selected_target);
-    }
-
-    Ok(())
-}
-
-#[instrument(skip_all, fields(clue))]
-fn process_loot<'a>(
-    clue: &TreasureClue,
-    state: &SharedState,
-    g_settings: &Settings,
-    mem: &mut MemProcImpl<'a>,
-) -> anyhow::Result<()> {
-    let ptr = clue.entity_ptr;
-    if ptr <= 0 {
-        tracing::error!(?clue);
-        return Ok(());
-    }
-    let mut w = |ctx_id: u8| -> anyhow::Result<()> {
-        mem.apex_mem_write::<u8>(ptr + OFFSET_GLOW_CONTEXT_ID, &ctx_id)
-    };
-
-    let item_id = ItemId::try_from(clue.custom_item_id).unwrap_or_else(|_e| {
-        //tracing::warn!(?clue, "{}", s!("unknown item id"));
-        ItemId::Unknown
-    });
-
-    if !(g_settings.item_glow && state.highlight_injected) {
-        return Ok(());
-    }
-
-    let select = &g_settings.loot;
-
-    match item_id {
-        // Backpacks
-        ItemId::LightBackpack if select.lightbackpack => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::MedBackpack if select.medbackpack => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::HeavyBackpack if select.heavybackpack => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::GoldBackpack if select.goldbackpack => w(HIGHLIGHT_LOOT_GOLD)?,
-
-        // Shields
-        ItemId::ShieldUpgrade1_0 | ItemId::ShieldUpgrade1_1 if select.shieldupgrade1 => {
-            w(HIGHLIGHT_LOOT_WHITE)?
-        }
-        ItemId::ShieldUpgrade2_0 | ItemId::ShieldUpgrade2_1 | ItemId::ArmorCore1
-            if select.shieldupgrade2 =>
-        {
-            w(HIGHLIGHT_LOOT_BLUE)?
-        }
-        ItemId::ShieldUpgrade3_0 | ItemId::ShieldUpgrade3_1 | ItemId::ArmorCore2
-            if select.shieldupgrade3 =>
-        {
-            w(HIGHLIGHT_LOOT_PURPLE)?
-        }
-        ItemId::ShieldUpgrade4 | ItemId::ArmorCore3 if select.shieldupgrade4 => {
-            w(HIGHLIGHT_LOOT_GOLD)?
-        }
-        ItemId::ShieldUpgrade5 | ItemId::ArmorCore4 if select.shieldupgrade5 => {
-            w(HIGHLIGHT_LOOT_RED)?
-        }
-        ItemId::ShieldUpgradeHead1 if select.shieldupgradehead1 => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::ShieldUpgradeHead2 if select.shieldupgradehead2 => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::ShieldUpgradeHead3 if select.shieldupgradehead3 => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::ShieldUpgradeHead4 if select.shieldupgradehead4 => w(HIGHLIGHT_LOOT_GOLD)?,
-
-        // Heals
-        ItemId::Accelerant if select.accelerant => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::Phoenix if select.phoenix => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::HealthLarge if select.healthlarge => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::HealthSmall if select.healthsmall => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::ShieldBatterySmall if select.shieldbattsmall => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::ShieldBatteryLarge if select.shieldbattlarge => w(HIGHLIGHT_LOOT_BLUE)?,
-
-        // Ammos
-        ItemId::LightAmmo if select.lightammo => w(HIGHLIGHT_LOOT_LIGHT)?,
-        ItemId::HeavyAmmo if select.heavyammo => w(HIGHLIGHT_LOOT_HEAVY)?,
-        ItemId::EnergyAmmo if select.energyammo => w(HIGHLIGHT_LOOT_ENERGY)?,
-        ItemId::SniperAmmo if select.sniperammo => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::ShotgunAmmo if select.shotgunammo => w(HIGHLIGHT_LOOT_RED)?,
-
-        // Mags
-        ItemId::LightAmmoMag1 if select.lightammomag1 => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::LightAmmoMag2 if select.lightammomag2 => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::LightAmmoMag3 if select.lightammomag3 => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::LightAmmoMag4 if select.lightammomag4 => w(HIGHLIGHT_LOOT_GOLD)?,
-        ItemId::HeavyAmmoMag1 if select.heavyammomag1 => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::HeavyAmmoMag2 if select.heavyammomag2 => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::HeavyAmmoMag3 if select.heavyammomag3 => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::HeavyAmmoMag4 if select.heavyammomag4 => w(HIGHLIGHT_LOOT_GOLD)?,
-        ItemId::SniperAmmoMag1 if select.sniperammomag1 => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::SniperAmmoMag2 if select.sniperammomag2 => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::SniperAmmoMag3 if select.sniperammomag3 => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::SniperAmmoMag4 if select.sniperammomag4 => w(HIGHLIGHT_LOOT_GOLD)?,
-        ItemId::EnergyAmmoMag1 if select.energyammomag1 => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::EnergyAmmoMag2 if select.energyammomag2 => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::EnergyAmmoMag3 if select.energyammomag3 => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::EnergyAmmoMag4 if select.energyammomag4 => w(HIGHLIGHT_LOOT_GOLD)?,
-
-        // Stocks
-        ItemId::StockSniper1 if select.stocksniper1 => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::StockSniper2 if select.stocksniper2 => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::StockSniper3 if select.stocksniper3 => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::StockRegular1 if select.stockregular1 => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::StockRegular2 if select.stockregular2 => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::StockRegular3 if select.stockregular3 => w(HIGHLIGHT_LOOT_PURPLE)?,
-
-        // Down Shields
-        ItemId::ShieldDown1 if select.shielddown1 => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::ShieldDown2 if select.shielddown2 => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::ShieldDown3 if select.shielddown3 => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::ShieldDown4 if select.shielddown4 => w(HIGHLIGHT_LOOT_GOLD)?,
-
-        // Optics
-        ItemId::Optic1xHCOG if select.optic1xhcog => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::Optic2xHCOG if select.optic2xhcog => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::OpticHolo1x if select.opticholo1x => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::OpticHolo1x2x if select.opticholo1x2x => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::OpticThreat if select.opticthreat => w(HIGHLIGHT_LOOT_GOLD)?,
-        ItemId::Optic3xHCOG if select.optic3xhcog => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::Optic2x4x if select.optic2x4x => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::OpticSniper6x if select.opticsniper6x => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::OpticSniper4x8x if select.opticsniper4x8x => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::OpticSniperThreat if select.opticsniperthreat => w(HIGHLIGHT_LOOT_GOLD)?,
-
-        // Hop-ups
-        ItemId::LaserSight1 if select.lasersight1 => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::LaserSight2 if select.lasersight2 => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::LaserSight3 if select.lasersight3 => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::Suppressor1 if select.suppressor1 => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::Suppressor2 if select.suppressor2 => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::Suppressor3 if select.suppressor3 => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::TurboCharger if select.turbo_charger => w(HIGHLIGHT_LOOT_GOLD)?,
-        ItemId::SkullPiecer if select.skull_piecer => w(HIGHLIGHT_LOOT_GOLD)?,
-        ItemId::HammerPoint if select.hammer_point => w(HIGHLIGHT_LOOT_GOLD)?,
-        ItemId::DisruptorRounds if select.disruptor_rounds => w(HIGHLIGHT_LOOT_GOLD)?,
-        ItemId::BoostedLoader if select.boosted_loader => w(HIGHLIGHT_LOOT_GOLD)?,
-        ItemId::ShotgunBolt1 if select.shotgunbolt1 => w(HIGHLIGHT_LOOT_WHITE)?,
-        ItemId::ShotgunBolt2 if select.shotgunbolt2 => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::ShotgunBolt3 if select.shotgunbolt3 => w(HIGHLIGHT_LOOT_PURPLE)?,
-        ItemId::ShotgunBolt4 if select.shotgunbolt4 => w(HIGHLIGHT_LOOT_GOLD)?,
-
-        // Nades
-        ItemId::GrenadeFrag if select.grenade_frag => w(HIGHLIGHT_LOOT_RED)?,
-        ItemId::GrenadeThermite if select.grenade_thermite => w(HIGHLIGHT_LOOT_RED)?,
-        ItemId::GrenadeArcStar if select.grenade_arc_star => w(HIGHLIGHT_LOOT_GREY)?,
-
-        // Weapons
-        ItemId::WeaponKraber if select.weapon_kraber => w(HIGHLIGHT_LOOT_RED)?,
-        ItemId::WeaponMastiff if select.weapon_mastiff => w(HIGHLIGHT_LOOT_RED)?,
-        ItemId::WeaponLStar if select.weapon_lstar => w(HIGHLIGHT_LOOT_ENERGY)?,
-        ItemId::WeaponNemesis if select.weapon_nemesis => w(HIGHLIGHT_LOOT_ENERGY)?,
-        ItemId::WeaponHavoc if select.weapon_havoc => w(HIGHLIGHT_LOOT_ENERGY)?,
-        ItemId::WeaponDevotion if select.weapon_devotion => w(HIGHLIGHT_LOOT_ENERGY)?,
-        ItemId::WeaponTripleTake if select.weapon_triple_take => w(HIGHLIGHT_LOOT_ENERGY)?,
-        ItemId::WeaponFlatline if select.weapon_flatline => w(HIGHLIGHT_LOOT_HEAVY)?,
-        ItemId::WeaponHemlock if select.weapon_hemlock => w(HIGHLIGHT_LOOT_HEAVY)?,
-        ItemId::WeaponG7Scout if select.weapon_g7_scout => w(HIGHLIGHT_LOOT_LIGHT)?,
-        ItemId::WeaponAlternator if select.weapon_alternator => w(HIGHLIGHT_LOOT_LIGHT)?,
-        ItemId::WeaponR99 if select.weapon_r99 => w(HIGHLIGHT_LOOT_LIGHT)?,
-        ItemId::WeaponProwler if select.weapon_prowler => w(HIGHLIGHT_LOOT_HEAVY)?,
-        ItemId::WeaponVolt if select.weapon_volt => w(HIGHLIGHT_LOOT_ENERGY)?,
-        ItemId::WeaponLongbow if select.weapon_longbow => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::WeaponChargeRifle if select.weapon_charge_rifle => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::WeaponSpitfire if select.weapon_spitfire => w(HIGHLIGHT_LOOT_LIGHT)?,
-        ItemId::WeaponR301 if select.weapon_r301 => w(HIGHLIGHT_LOOT_LIGHT)?,
-        ItemId::WeaponEva8 if select.weapon_eva8 => w(HIGHLIGHT_LOOT_RED)?,
-        ItemId::WeaponPeacekeeper if select.weapon_peacekeeper => w(HIGHLIGHT_LOOT_RED)?,
-        ItemId::WeaponMozambique if select.weapon_mozambique => w(HIGHLIGHT_LOOT_RED)?,
-        ItemId::WeaponWingman if select.weapon_wingman => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::WeaponP2020 if select.weapon_p2020 => w(HIGHLIGHT_LOOT_LIGHT)?,
-        ItemId::WeaponRE45 if select.weapon_re45 => w(HIGHLIGHT_LOOT_LIGHT)?,
-        ItemId::WeaponSentinel if select.weapon_sentinel => w(HIGHLIGHT_LOOT_BLUE)?,
-        ItemId::WeaponBow if select.weapon_bow => w(HIGHLIGHT_LOOT_RED)?,
-        ItemId::Weapon3030Repeater if select.weapon_3030_repeater => w(HIGHLIGHT_LOOT_HEAVY)?,
-        ItemId::WeaponRampage if select.weapon_rampage => w(HIGHLIGHT_LOOT_HEAVY)?,
-        ItemId::WeaponCARSMG if select.weapon_car_smg => w(HIGHLIGHT_LOOT_HEAVY)?,
-
-        _ => (),
-    }
-
-    Ok(())
-}
-
-#[instrument(skip_all)]
-fn player_glow(target: &PreSelectedTarget, frame_count: i32, g_settings: &Settings) -> u8 {
-    let mut setting_index = {
-        if target.is_knocked {
-            HIGHLIGHT_PLAYER_KNOCKED
-        } else if target.is_visible {
-            HIGHLIGHT_PLAYER_VISIBLE
-        } else {
-            if g_settings.player_glow_armor_color {
-                let hp = target.health_points;
-                if hp <= 100 {
-                    HIGHLIGHT_PLAYER_ORANGE
-                } else if hp <= 150 {
-                    HIGHLIGHT_PLAYER_WHITE
-                } else if hp <= 175 {
-                    HIGHLIGHT_PLAYER_BLUE
-                } else if hp <= 200 {
-                    HIGHLIGHT_PLAYER_PURPLE
-                } else if hp <= 225 {
-                    HIGHLIGHT_PLAYER_RED
-                } else {
-                    HIGHLIGHT_PLAYER_BLACK
-                }
-            } else {
-                HIGHLIGHT_PLAYER_NOTVIZ
-            }
-        }
-    };
-
-    // love player glow
-    if g_settings.player_glow_love_user {
-        let frame_frag = frame_count / g_settings.game_fps as i32;
-        if target.is_visible || frame_frag % 2 == 0 {
-            match target.love_status {
-                LoveStatus::Love => {
-                    setting_index = HIGHLIGHT_PLAYER_RAINBOW;
-                }
-                LoveStatus::Hate => {
-                    setting_index = HIGHLIGHT_PLAYER_BLACK;
-                }
-                _ => (),
-            }
-        }
-    }
-
-    setting_index
-}
-
-#[instrument(skip_all)]
 fn calculate_target_fov(from: &dyn AimEntity, target: &dyn AimEntity) -> f32 {
     let view_angles = from.get_sway_angles();
     let local_camera = from.get_cam_pos();
@@ -1001,4 +866,26 @@ fn rainbow_color(frame_count: i32) -> [f32; 3] {
         g.min(1.0).max(0.0),
         b.min(1.0).max(0.0),
     ]
+}
+
+fn teammate_check(
+    entity_team: i32,
+    local_team: i32,
+    map_testing_local_team: i32,
+    tdm_toggle: bool,
+) -> bool {
+    if tdm_toggle {
+        let ent_team = if entity_team % 2 == 1 { 1 } else { 2 };
+        let loc_team = if local_team % 2 == 1 { 1 } else { 2 };
+        trace!(
+            target_team = ent_team,
+            local_team = loc_team,
+            "{}",
+            s!("TDM check")
+        );
+        ent_team == loc_team
+    } else {
+        entity_team == local_team
+            || (map_testing_local_team != 0 && entity_team == map_testing_local_team)
+    }
 }

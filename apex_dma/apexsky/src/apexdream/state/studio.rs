@@ -1,5 +1,3 @@
-use format_xml::xfmt;
-
 use super::*;
 
 #[derive(Default, Debug, Clone)]
@@ -137,64 +135,5 @@ impl StudioModel {
 	/// Starting from the head hitbox, iterate over parent bones returning the hitbox until the origin.
 	pub fn spine<'a>(&'a self) -> impl 'a + Clone + Iterator<Item = &'a sdk::mstudiobbox_t> {
 		self.hitboxes.iter().take_while(|hb| matches!(hb.group, sdk::HITGROUP_GENERIC | sdk::HITGROUP_HEAD | sdk::HITGROUP_UPPER_BODY | sdk::HITGROUP_LOWER_BODY))
-	}
-	pub fn visualize(&self, api: &mut Api, scope: &str) {
-		api.visualize(scope, xfmt! {
-			(<h1>"StudioModel"</h1>)
-			(<pre>
-				"CStudioHdr:  "{self.ptr}"\n"
-				"studiohdr_t: "{self.studiohdr_ptr}"\n"
-				"\n"
-				"numhitboxsets: "{self.studiohdr.numhitboxsets}"\n"
-				"hitboxsetindex: "{self.studiohdr.hitboxsetindex}"\n"
-				"numbones:      "{self.studiohdr.numbones}"\n"
-				"boneindex:      "{self.studiohdr.boneindex}"\n"
-				"\n"
-				{self.hitboxset:#?}"\n"
-				"\n"
-				"bone_start: "{self.bone_start}"\n"
-				"bone_end1:  "{self.bone_end1}"\n"
-				"bone_end2:  "{self.bone_end2}"\n"
-				"bone_head:  "{self.bone_head}"\n"
-				"bone_body:  "{self.bone_body}"\n"
-				"\n"
-				"spine: "{fmtools::join(" -> ", self.spine().map(|bbox| bbox.bone))}
-			</pre>)
-			(<h2>"Bones"</h2>)
-			(<pre><table>
-			<tr>
-				<th>"index"</th>
-				<th>"parent"</th>
-				<th>"unk"</th>
-			</tr>)
-			for (index, bone) in (self.bones.iter().enumerate()) {
-				<tr>
-					(<td>"Bone "{index}</td>)
-					(<td>"-> "{bone.parent}</td>)
-					(<td>{bone.unk1}" "{bone.unk2}" "{bone.unk3}</td>)
-				</tr>
-			}
-			</table></pre>
-
-			(<h2>"Hitboxes"</h2>)
-			(<pre><table>
-			<tr>
-				<th>"index"</th>
-				<th>"bone"</th>
-				<th>"group"</th>
-				<th>"bbmin"</th>
-				<th>"bbmax"</th>
-			</tr>)
-			for (index, hbox) in (self.hitboxes.iter().enumerate()) {
-				<tr>
-					(<td>"HB "{index}</td>)
-					(<td>{hbox.bone}</td>)
-					(<td>{hbox.group}</td>)
-					(<td>{hbox.bbmin:?}</td>)
-					(<td>{hbox.bbmax:?}</td>)
-				</tr>
-			}
-			</table></pre>
-		});
 	}
 }

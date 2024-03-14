@@ -7,9 +7,10 @@ use apexsky::aimbot::{AimEntity, Aimbot};
 use apexsky::config::Settings;
 use apexsky::games::apex::player::GamePlayer;
 use apexsky::global_state::G_STATE;
-use obfstr::obfstr as s;
+use apexsky::noobfstr as s;
 
-use tokio::sync::{mpsc, watch, Mutex};
+use parking_lot::RwLock;
+use tokio::sync::{mpsc, watch};
 use tokio::task::{self, JoinHandle};
 use tokio::time::sleep;
 use tracing::{instrument, Level};
@@ -38,8 +39,9 @@ struct SharedState {
     view_matrix: [f32; 16],
     highlight_injected: bool,
     treasure_clues: Vec<TreasureClue>,
-    spectator_count: usize,
-    allied_spectator_count: usize,
+    teammates_damage: Vec<(String, u32)>,
+    spectator_name: Vec<String>,
+    allied_spectator_name: Vec<String>,
     map_testing_local_team: i32,
     world_ready: bool,
     frame_count: i32,
@@ -54,7 +56,7 @@ struct SharedState {
 struct State {
     active: bool,
     active_tx: watch::Sender<bool>,
-    shared_state: Arc<Mutex<SharedState>>,
+    shared_state: Arc<RwLock<SharedState>>,
     actions_t: Option<JoinHandle<anyhow::Result<()>>>,
     aim_t: Option<JoinHandle<anyhow::Result<()>>>,
     control_t: Option<JoinHandle<anyhow::Result<()>>>,
@@ -70,7 +72,7 @@ impl State {
         Self {
             active,
             active_tx,
-            shared_state: Arc::new(Mutex::new(SharedState::default())),
+            shared_state: Arc::new(RwLock::new(SharedState::default())),
             actions_t: None,
             aim_t: None,
             control_t: None,
@@ -113,6 +115,7 @@ impl TaskManager for State {
         let (aim_key_tx, aim_key_rx) = watch::channel(workers::aim::AimKeyStatus::default());
         let (aim_select_tx, aim_select_rx) = watch::channel(vec![]);
         let (aim_action_tx, aim_action_rx) = mpsc::channel(5);
+        let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
 
         self.actions_t = Some(task::spawn(actions_loop(
             self.active_tx.subscribe(),
@@ -120,6 +123,7 @@ impl TaskManager for State {
             aim_key_tx,
             aim_select_tx,
             aim_action_rx,
+            items_glow_rx,
         )));
         self.aim_t = Some(task::spawn(aimbot_loop(
             self.active_tx.subscribe(),
@@ -139,6 +143,7 @@ impl TaskManager for State {
         self.items_t = Some(task::spawn(items_loop(
             self.active_tx.subscribe(),
             self.shared_state.clone(),
+            items_glow_tx,
         )));
     }
 
@@ -251,7 +256,7 @@ fn main() {
             state.start_tasks().await;
 
             loop {
-                if !state.shared_state.lock().await.game_attached {
+                if !state.shared_state.read().game_attached {
                     // stop tasks
                     if let Some(tui_task) = state.terminal_task.take() {
                         quit_tui(tui_task).await;

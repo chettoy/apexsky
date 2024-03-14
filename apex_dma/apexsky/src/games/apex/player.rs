@@ -1,7 +1,6 @@
 use crate::aimbot::AimEntity;
 use crate::apexdream::*;
 use crate::pb::apexlegends::{PlayerState, Vec3};
-use obfstr::obfstr as s;
 
 use self::base::math;
 use self::state::entities::{BaseNPCEntity, Entity, PlayerEntity, WeaponXEntity};
@@ -80,6 +79,7 @@ impl GamePlayer {
             damage_dealt: 0,
             kill_leader: false,
             winning_team: false,
+            yew: state.yew,
         };
         Self {
             buf,

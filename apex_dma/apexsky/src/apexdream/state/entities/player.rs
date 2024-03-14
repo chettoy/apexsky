@@ -1,5 +1,6 @@
 use tracing::warn;
 
+use crate::games::apex::data::OFFSET_YAW;
 use crate::offsets::G_OFFSETS;
 
 use super::*;
@@ -103,6 +104,7 @@ pub struct PlayerEntity {
 
     pub xp: i32,
     pub controller_active: i32,
+    pub yew: f32,
 }
 impl PlayerEntity {
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
@@ -601,6 +603,11 @@ impl Entity for PlayerEntity {
             self.controller_active = controller_active;
         } else {
             warn!("{}", s!("Err read player controller_active"));
+        }
+        if let Ok(yew) = api.vm_read::<f32>(self.entity_ptr.field(OFFSET_YAW.try_into().unwrap())) {
+            self.yew = yew;
+        } else {
+            warn!(?self.entity_ptr, "{}", s!("error read yew"));
         }
     }
     fn post(&mut self, _api: &mut Api, ctx: &UpdateContext, state: &GameState) {

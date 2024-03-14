@@ -1,5 +1,4 @@
 use super::*;
-use fmtools::fmt as f;
 
 const SIZE: usize = 32;
 
@@ -111,8 +110,13 @@ impl ScriptNetDataEntity {
             return false;
         }
 
-        let indices = fmtools::join(", ", self.offsets.iter().map(|idx| f!(move {idx:#x})));
-        api.log(f!("ScriptNetData indices=["{indices}"]"));
+        let indices = fmtools::join(", ", self.offsets.iter().map(|idx| format!("{idx:#x}")));
+        api.log(format!(
+            "{}{}{}",
+            s!("ScriptNetData indices=["),
+            indices,
+            s!("]")
+        ));
         self.initialized = 1;
         return true;
     }

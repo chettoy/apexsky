@@ -1,7 +1,7 @@
 pub mod ffi;
 mod skynade;
 
-use obfstr::obfstr as s;
+use crate::noobfstr as s;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use skyapex_sdk::module::AimbotUtils;
@@ -417,11 +417,11 @@ impl Aimbot {
     #[tracing::instrument]
     pub fn update(&mut self, local_entity: u64, game_fps: f32) {
         if local_entity == 0 {
-            tracing::error!("{}", s!("invalid local_entity"));
+            tracing::error!("invalid local_entity");
             return;
         }
         if game_fps < f32::EPSILON {
-            tracing::error!("{}", s!("invalid game_fps"));
+            tracing::error!("invalid game_fps");
             return;
         }
         self.local_entity = local_entity;
@@ -506,7 +506,7 @@ impl Aimbot {
                     target_bone_position_min = target_bone_position_max;
                     nearest_bone_dist = dist_from_crosshair;
                 }
-                tracing::trace!(i, ?current_bone_position, "{}", s!("711aac39-e83c-4788"));
+                tracing::trace!(i, ?current_bone_position);
             }
         } else if self.settings.bone_auto {
             target_bone_position_max = target.get_position();
@@ -624,12 +624,7 @@ impl Aimbot {
 
             let target_fov = calc_fov(&[0.0, 0.0, 0.0], &delta);
             if target_fov > max_fov {
-                trace!(
-                    target_fov,
-                    ?delta,
-                    "{}",
-                    s!("711aac39-e83c-4788 ExceededFOVThreshold")
-                );
+                trace!(target_fov, ?delta, "ExceededFOVThreshold");
                 (AimAngles::default(), aim_target)
             } else {
                 (
@@ -659,7 +654,7 @@ impl Aimbot {
 
             let target_angle = calc_angle(&view_origin, &target_origin);
             if target_angle[0].abs() > 80.0 {
-                trace!("{}", s!("711aac39-e83c-4788 ExceededPitchThreshold"));
+                trace!("ExceededPitchThreshold");
                 return (AimAngles::default(), aim_target);
             }
 
@@ -676,12 +671,7 @@ impl Aimbot {
                 target_origin[2],
             );
 
-            trace!(
-                ?view_angles,
-                ?skynade_angles,
-                "{}",
-                s!("711aac39-e83c-4788")
-            );
+            trace!(?view_angles, ?skynade_angles);
             if !skynade_angles.w.is_normal() {
                 return (AimAngles::default(), aim_target);
             }
@@ -691,7 +681,7 @@ impl Aimbot {
                 skynade_angles.y.to_degrees(),
                 0.0,
             ];
-            trace!(weapon = ?self.weapon_info, ?target_aim_angles, "{}", s!("711aac39-e83c-4788"));
+            trace!(weapon = ?self.weapon_info, ?target_aim_angles);
 
             let mut delta = math::sub(target_aim_angles, view_angles);
             normalize_delta_angles(&mut delta);
@@ -761,11 +751,7 @@ impl Aimbot {
             self.weapon_info.weapon_zoom_fov,
         ) > 0
         {
-            let delay = if self.love_aimentity {
-                60..160
-            } else {
-                20..40
-            };
+            let delay = if self.love_aimentity { 60..160 } else { 20..40 };
             rand::thread_rng().gen_range(delay)
         } else {
             0
@@ -812,7 +798,7 @@ impl TriggerBot for Aimbot {
             TriggerState::WaitTrigger => {
                 if now_ms > self.triggerbot_trigger_time {
                     self.triggerbot_state = TriggerState::Trigger;
-                    trace!("{}", s!("trigger"));
+                    trace!("trigger");
                     5
                 } else {
                     0
@@ -821,7 +807,7 @@ impl TriggerBot for Aimbot {
             TriggerState::WaitRelease => {
                 if now_ms > self.triggerbot_release_time {
                     self.triggerbot_state = TriggerState::Idle;
-                    trace!("{}", s!("release"));
+                    trace!("release");
                     4
                 } else {
                     0

@@ -10,6 +10,6 @@ proc-macro = true
 
 [dependencies]
 indexmap = "2.2.5"
-proc-macro2 = "1.0.78"
+proc-macro2 = "1.0.79"
 quote = "1.0.35"
 syn = "2.0.52"

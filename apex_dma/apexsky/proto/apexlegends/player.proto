@@ -41,6 +41,7 @@ message PlayerState {
   int32 damageDealt = 26;
   bool kill_leader = 27;
   bool winning_team = 28;
+  float yew = 29;
 }
 
 message Players {

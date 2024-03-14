@@ -1,8 +1,8 @@
+use apexsky::noobfstr as s;
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use obfstr::obfstr as s;
 
 use super::MyOverlayState;
 
@@ -20,7 +20,7 @@ pub fn ui_system(
     overlay_state: Res<MyOverlayState>,
     diagnostics: Res<DiagnosticsStore>,
 ) {
-    use egui::{pos2, CentralPanel, Color32};
+    use egui::{pos2, CentralPanel, Color32, ScrollArea};
     let ctx = contexts.ctx_mut();
 
     struct DialogEsp {
@@ -29,10 +29,13 @@ pub fn ui_system(
         local_position: String,
         local_angles: String,
         aim_position: String,
+        spectator_name: Vec<String>,
+        allied_spectator_name: Vec<String>,
+        teammate_damage: Vec<(String, u32)>,
     }
 
     let dialog_esp = {
-        let state = overlay_state.shared_state.blocking_lock();
+        let state = overlay_state.shared_state.read();
         DialogEsp {
             overlay_fps: {
                 // try to get a "smoothed" FPS value from Bevy
@@ -88,6 +91,9 @@ pub fn ui_system(
                 state.aim_target[2],
                 s!("]")
             ),
+            spectator_name: state.spectator_name.clone(),
+            allied_spectator_name: state.allied_spectator_name.clone(),
+            teammate_damage: state.teammates_damage.clone(),
         }
     };
 
@@ -103,9 +109,38 @@ pub fn ui_system(
                 dialog_esp.game_fps,
                 s!(" FPS)")
             ));
+            ui.add_space(5.0);
             ui.label(dialog_esp.local_position);
             ui.label(dialog_esp.local_angles);
             ui.label(dialog_esp.aim_position);
+
+            ui.add_space(10.0);
+
+            ScrollArea::vertical().show(ui, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.heading(s!("Teammates"));
+                });
+
+                for (name, damage) in dialog_esp.teammate_damage.iter() {
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        ui.label(egui::RichText::new(name).strong());
+                        ui.add_space(5.0);
+                        ui.label(damage.to_string());
+                    });
+                }
+            });
+
+            ui.add_space(5.0);
+
+            ScrollArea::vertical().show(ui, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.heading(s!("Spectators"));
+                });
+
+                for name in dialog_esp.spectator_name.iter() {
+                    ui.label(name);
+                }
+            });
         });
 
     let panel_frame = egui::Frame {
@@ -134,7 +169,7 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
     }
 
     let info = {
-        let state = overlay_state.shared_state.blocking_lock();
+        let state = overlay_state.shared_state.read();
         if let Some(aimbot) = state.aimbot_state.as_ref() {
             let aimbot_mode = aimbot.get_settings().aim_mode;
             let (aimbot_status_color, aimbot_status_text) = if aimbot.is_locked() {
@@ -159,16 +194,16 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
                 aimbot_fov: aimbot.get_max_fov(),
                 aimbot_status_text,
                 aimbot_status_color,
-                spectators: state.spectator_count,
-                allied_spectators: state.allied_spectator_count,
+                spectators: state.spectator_name.len(),
+                allied_spectators: state.allied_spectator_name.len(),
             }
         } else {
             EspInfo {
                 aimbot_fov: 0.0,
                 aimbot_status_text: s!("[Aimbot Offline]").to_string(),
                 aimbot_status_color: Color32::GRAY,
-                spectators: state.spectator_count,
-                allied_spectators: state.allied_spectator_count,
+                spectators: state.spectator_name.len(),
+                allied_spectators: state.allied_spectator_name.len(),
             }
         }
     };

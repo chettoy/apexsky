@@ -42,3 +42,10 @@ impl From<(f32, f32)> for Vec4 {
         }
     }
 }
+
+#[macro_export]
+macro_rules! noobfstr {
+    ($str:expr) => {
+        $str
+    };
+}

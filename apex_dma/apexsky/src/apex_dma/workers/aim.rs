@@ -8,7 +8,8 @@ use apexsky::apexdream::base::math;
 use apexsky::love_players::LoveStatus;
 use obfstr::obfstr as s;
 
-use tokio::sync::{mpsc, watch, Mutex};
+use parking_lot::RwLock;
+use tokio::sync::{mpsc, watch};
 use tokio::time::{sleep, sleep_until, Instant};
 use tracing::{instrument, trace};
 
@@ -56,7 +57,7 @@ pub struct AimbotAction {
 #[instrument(skip_all)]
 pub async fn aimbot_loop(
     mut active: watch::Receiver<bool>,
-    mut state: Arc<Mutex<SharedState>>,
+    mut state: Arc<RwLock<SharedState>>,
     mut aim_key_rx: watch::Receiver<AimKeyStatus>,
     mut aim_select_rx: watch::Receiver<Vec<PreSelectedTarget>>,
     aim_action_tx: mpsc::Sender<AimbotAction>,
@@ -73,7 +74,7 @@ pub async fn aimbot_loop(
         let loop_duration = start_instant.elapsed();
         start_instant = Instant::now();
 
-        if !state.lock().await.game_attached
+        if !state.read().game_attached
             || !state.is_world_ready().await
             || state.get_player_ptr().await == 0
         {
@@ -282,7 +283,7 @@ pub async fn aimbot_loop(
             })
             .await?;
 
-        state.lock().await.aimbot_state = Some(aimbot.clone());
+        state.write().aimbot_state = Some(aimbot.clone());
     }
     tracing::debug!("{}", s!("task end"));
 

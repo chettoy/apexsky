@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use crate::noobfstr as s;
 use fluent::{FluentBundle, FluentResource};
-use obfstr::obfstr as s;
 use strum::{EnumString, VariantNames};
 use strum_macros::EnumIter;
 use sys_locale::get_locale;
@@ -280,12 +280,11 @@ fn get_bundle<'a>(accept_locale: &'a str) -> FluentBundle<FluentResource> {
 macro_rules! i18n_msg {
     ( $bundle:expr, $message_id:ident) => {{
         use crate::i18n::MessageId;
-        use obfstr::obfstr as s;
         let msg = $bundle
             .get_message(&MessageId::$message_id.to_string())
-            .expect(s!("Message doesn't exist."));
+            .expect("Message doesn't exist.");
         let mut errors = vec![];
-        let pattern = msg.value().expect(s!("Message has no value."));
+        let pattern = msg.value().expect("Message has no value.");
         let value = $bundle.format_pattern(&pattern, None, &mut errors);
         value
     }};
@@ -295,12 +294,11 @@ macro_rules! i18n_msg {
 macro_rules! i18n_msg_format {
     ( $bundle:expr, $message_id:ident, $args:expr) => {{
         use crate::i18n::MessageId;
-        use obfstr::obfstr as s;
         let msg = $bundle
             .get_message(&MessageId::$message_id.to_string())
-            .expect(s!("Message doesn't exist."));
+            .expect("Message doesn't exist.");
         let mut errors = vec![];
-        let pattern = msg.value().expect(s!("Message has no value."));
+        let pattern = msg.value().expect("Message has no value.");
         let value = $bundle.format_pattern(&pattern, Some(&$args), &mut errors);
         value
     }};

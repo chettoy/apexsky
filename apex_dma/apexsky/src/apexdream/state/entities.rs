@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use super::*;
-use obfstr::obfstr as s;
+use crate::noobfstr as s;
 use std::any::Any;
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -37,20 +37,20 @@ pub enum EntityRef<'a> {
     ScriptNetData(&'a ScriptNetDataEntity),
 }
 impl EntityRef<'_> {
-    pub fn get_type_name(self, buf: &mut [u8; 32]) -> &str {
+    pub fn get_type_name(self) -> String {
         match self {
-            EntityRef::BaseEntity(_) => s!(buf <- "BaseEntity"),
-            EntityRef::BaseNPC(_) => s!(buf <- "BaseNPC"),
-            EntityRef::World(_) => s!(buf <- "World"),
-            EntityRef::Player(_) => s!(buf <- "Player"),
-            EntityRef::WeaponX(_) => s!(buf <- "WeaponX"),
-            EntityRef::Loot(_) => s!(buf <- "Loot"),
-            EntityRef::Waypoint(_) => s!(buf <- "Waypoint"),
-            EntityRef::Vehicle(_) => s!(buf <- "Vehicle"),
-            EntityRef::Deathbox(_) => s!(buf <- "Deathbox"),
-            EntityRef::Animating(_) => s!(buf <- "Animating"),
-            EntityRef::Projectile(_) => s!(buf <- "Projectile"),
-            EntityRef::ScriptNetData(_) => s!(buf <- "ScriptNetData"),
+            EntityRef::BaseEntity(_) => s!("BaseEntity").to_string(),
+            EntityRef::BaseNPC(_) => s!("BaseNPC").to_string(),
+            EntityRef::World(_) => s!("World").to_string(),
+            EntityRef::Player(_) => s!("Player").to_string(),
+            EntityRef::WeaponX(_) => s!("WeaponX").to_string(),
+            EntityRef::Loot(_) => s!("Loot").to_string(),
+            EntityRef::Waypoint(_) => s!("Waypoint").to_string(),
+            EntityRef::Vehicle(_) => s!("Vehicle").to_string(),
+            EntityRef::Deathbox(_) => s!("Deathbox").to_string(),
+            EntityRef::Animating(_) => s!("Animating").to_string(),
+            EntityRef::Projectile(_) => s!("Projectile").to_string(),
+            EntityRef::ScriptNetData(_) => s!("ScriptNetData").to_string(),
         }
     }
 }

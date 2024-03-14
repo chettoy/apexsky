@@ -4,8 +4,9 @@ use anyhow::Context;
 use entropy::shannon_entropy;
 use indexmap::IndexMap;
 use obfstr::obfstr as s;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use tracing::{trace};
+use tracing::trace;
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct LovePlayer {
@@ -41,6 +42,24 @@ pub enum LoveStatus {
     Ambivalent = 3,
 }
 
+impl TryFrom<i32> for LoveStatus {
+    type Error = ();
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        const LOVESTATUS_AMBIVALENT: i32 = LoveStatus::Ambivalent as i32;
+        const LOVESTATUS_HATE: i32 = LoveStatus::Hate as i32;
+        const LOVESTATUS_LOVE: i32 = LoveStatus::Love as i32;
+        const LOVESTATUS_NORMAL: i32 = LoveStatus::Normal as i32;
+        match value {
+            LOVESTATUS_AMBIVALENT => Ok(LoveStatus::Ambivalent),
+            LOVESTATUS_HATE => Ok(LoveStatus::Hate),
+            LOVESTATUS_LOVE => Ok(LoveStatus::Love),
+            LOVESTATUS_NORMAL => Ok(LoveStatus::Normal),
+            _ => Err(()),
+        }
+    }
+}
+
 lazy_static! {
     static ref DEFAULT_LOVE_PLAYER: Vec<LovePlayer> = default_love();
     static ref PLAYERS: Mutex<HashMap<u64, CPlayerInfo>> = Mutex::new(HashMap::new());
@@ -48,14 +67,11 @@ lazy_static! {
 
 #[tracing::instrument]
 fn default_love() -> Vec<LovePlayer> {
+    static S_ERR_MSG: Lazy<String> = Lazy::new(|| s!("Parse error: list.json").to_string());
     let data1 = include_str!("../resource/default/list.json");
     let data2 = include_str!("../resource/default/love.json");
-    let list1: DefaultLoveList = serde_json::from_str(data1)
-        .context(String::from(s!("Parse error: list.json")))
-        .unwrap();
-    let list2: Vec<LovePlayer> = serde_json::from_str(data2)
-        .context(String::from(s!("Parse error: love.json")))
-        .unwrap();
+    let list1: DefaultLoveList = serde_json::from_str(data1).context(&*S_ERR_MSG).unwrap();
+    let list2: Vec<LovePlayer> = serde_json::from_str(data2).context(&*S_ERR_MSG).unwrap();
     [list1.list, list2].concat()
 }
 

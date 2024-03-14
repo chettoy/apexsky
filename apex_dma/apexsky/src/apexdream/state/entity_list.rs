@@ -5,7 +5,7 @@ use self::entities::{
 use std::{collections::HashMap, mem};
 
 use super::*;
-use fmtools::fmt as f;
+use crate::noobfstr as s;
 
 pub struct EntityList {
     pub entities: Box<[Option<Box<dyn Entity>>]>,
@@ -152,11 +152,11 @@ impl GetClientEntity {
         match data.name_hash {
             sdk::CPlayer => {
                 if let Some(name) = crate::apexdream::base::from_utf8_buf(&data.name_buf) {
-                    if name != obfstr::obfstr!("CPlayer") {
-                        tracing::warn!(?name, "{}", obfstr::obfstr!("invalid player class"));
+                    if name != s!("CPlayer") {
+                        tracing::warn!(?name, "{}", s!("invalid player class"));
                     }
                 } else {
-                    tracing::warn!("{}", obfstr::obfstr!("invalid player class"));
+                    tracing::warn!("{}", s!("invalid player class"));
                 }
                 Some(PlayerEntity::new(entity_ptr, index, &data.client_class))
             }
@@ -191,7 +191,12 @@ impl GetClientEntity {
             _ => {
                 if log_uninteresting {
                     let name = base::from_utf8_buf(&data.name_buf);
-                    api.log(f!("Uninteresting["{index}"]: "{name:?}));
+                    api.log(format!(
+                        "{}{}{}{name:?}",
+                        s!("Uninteresting["),
+                        index,
+                        s!("]: ")
+                    ));
                 }
                 None
             }
@@ -209,7 +214,12 @@ impl GetClientEntity {
             Ok(p) => p,
             Err(_) => {
                 if self.config.log_errors {
-                    api.log(f!("get_client_class("{entity_ptr}"): IClientNetworkable"));
+                    api.log(format!(
+                        "{}{}{}",
+                        s!("get_client_class("),
+                        entity_ptr,
+                        s!("): IClientNetworkable")
+                    ));
                 }
                 return None;
             }
@@ -227,7 +237,14 @@ impl GetClientEntity {
                 Ok(pgce) => pgce,
                 Err(_) => {
                     if self.config.log_errors {
-                        api.log(f!("get_client_class("{entity_ptr}"): GetClientEntity {client_networkable="{client_networkable}"}"));
+                        api.log(format!(
+                            "{}{}{}{}{}",
+                            s!("get_client_class("),
+                            entity_ptr,
+                            s!("): GetClientEntity {client_networkable="),
+                            client_networkable,
+                            s!("}")
+                        ));
                     }
                     return None;
                 }
@@ -238,7 +255,14 @@ impl GetClientEntity {
                 Ok(offset) => offset,
                 Err(_) => {
                     if self.config.log_errors {
-                        api.log(f!("get_client_class("{entity_ptr}"): lea rax, offset {get_client_entity="{get_client_entity}"}"));
+                        api.log(format!(
+                            "{}{}{}{}{}",
+                            s!("get_client_class("),
+                            entity_ptr,
+                            s!("): lea rax, offset {get_client_entity="),
+                            get_client_entity,
+                            s!("}")
+                        ));
                     }
                     return None;
                 }
@@ -252,7 +276,14 @@ impl GetClientEntity {
                 Ok(cc) => cc,
                 Err(_) => {
                     if self.config.log_errors {
-                        api.log(f!("get_client_class("{entity_ptr}"): ClientClass {get_client_entity="{get_client_entity}"}"));
+                        api.log(format!(
+                            "{}{}{}{}{}",
+                            s!("get_client_class("),
+                            entity_ptr,
+                            s!("): ClientClass {get_client_entity="),
+                            get_client_entity,
+                            s!("}")
+                        ));
                     }
                     return None;
                 }
@@ -269,7 +300,16 @@ impl GetClientEntity {
                 Ok(name) => name,
                 Err(_) => {
                     if self.config.log_errors {
-                        api.log(f!("get_client_class("{entity_ptr}"): pNetworkName {get_client_entity="{get_client_entity}", ClassID="{client_class.ClassID}"}"));
+                        api.log(format!(
+                            "{}{}{}{}{}{}{}",
+                            s!("get_client_class("),
+                            entity_ptr,
+                            s!("): pNetworkName {get_client_entity="),
+                            get_client_entity,
+                            s!(", ClassID="),
+                            client_class.ClassID,
+                            s!("}")
+                        ));
                     }
                     return None;
                 }

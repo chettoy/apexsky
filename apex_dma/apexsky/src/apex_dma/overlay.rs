@@ -2,18 +2,22 @@ use std::sync::Arc;
 
 use apexsky::aimbot::AimEntity;
 use bevy::asset::embedded_asset;
+use bevy::audio::SpatialScale;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy::window::{CompositeAlphaMode, WindowLevel, WindowMode};
 use bevy_egui::EguiPlugin;
 use obfstr::obfstr as s;
-use tokio::sync::Mutex;
+use once_cell::sync::Lazy;
+use parking_lot::RwLock;
 
 use crate::SharedState;
 
 mod ui;
 
-pub(crate) fn main(shared_state: Arc<Mutex<SharedState>>) {
+pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>) {
+    static S_TITLE: Lazy<String> =
+        Lazy::new(|| s!("Absolutely Not Cheating.exe - Totally Legit Gameplay 😇").to_string());
     App::new()
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
@@ -29,8 +33,7 @@ pub(crate) fn main(shared_state: Arc<Mutex<SharedState>>) {
                     composite_alpha_mode: CompositeAlphaMode::PostMultiplied,
                     #[cfg(target_os = "linux")]
                     composite_alpha_mode: CompositeAlphaMode::PreMultiplied,
-                    title: s!("Absolutely Not Cheating.exe - Totally Legit Gameplay 😇")
-                        .to_string(),
+                    title: S_TITLE.to_owned(),
                     ..default()
                 }),
                 ..default()
@@ -57,17 +60,17 @@ impl Plugin for EmbeddedAssetPlugin {
     fn build(&self, app: &mut App) {
         // We get to choose some prefix relative to the workspace root which
         // will be ignored in "embedded://" asset paths.
-        let omit_prefix = s!("src/apex_dma/").to_string();
+        static S_OMIT_PREFIX: Lazy<String> = Lazy::new(|| s!("src/apex_dma/").to_string());
         // Path to asset must be relative to this file, because that's how
         // include_bytes! works.
-        embedded_asset!(app, omit_prefix, "assets/fonts/LXGWNeoXiHei.ttf");
-        embedded_asset!(app, omit_prefix, "assets/sounds/Windless Slopes.ogg");
+        embedded_asset!(app, &*S_OMIT_PREFIX, "assets/fonts/LXGWNeoXiHei.ttf");
+        embedded_asset!(app, &*S_OMIT_PREFIX, "assets/sounds/Windless Slopes.ogg");
     }
 }
 
 #[derive(Resource)]
 pub(crate) struct MyOverlayState {
-    shared_state: Arc<Mutex<SharedState>>,
+    shared_state: Arc<RwLock<SharedState>>,
 }
 
 #[derive(Component, Default)]
@@ -87,6 +90,9 @@ fn setup(
     // Space between the two ears
     let gap = 4.0;
 
+    static S_SOUND_PATH: Lazy<String> =
+        Lazy::new(|| s!("embedded://apexsky_dma/assets/sounds/Windless Slopes.ogg").to_string());
+
     // aim target
     commands.spawn((
         PbrBundle {
@@ -97,9 +103,10 @@ fn setup(
         },
         AimTarget::default(),
         AudioBundle {
-            source: asset_server
-                .load(s!("embedded://apexsky_dma/assets/sounds/Windless Slopes.ogg").to_string()),
-            settings: PlaybackSettings::LOOP.with_spatial(true),
+            source: asset_server.load(&*S_SOUND_PATH),
+            settings: PlaybackSettings::LOOP
+                .with_spatial(true)
+                .with_spatial_scale(SpatialScale::new(1.0 / 40.0)),
         },
     ));
 
@@ -168,7 +175,7 @@ fn setup(
         Camera3dBundle {
             projection: Projection::Perspective(PerspectiveProjection {
                 fov: 90.0f32.to_radians(),
-                far: 10000.0,
+                far: 8000.0,
                 ..Default::default()
             }),
             transform: Transform::from_xyz(0.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -251,14 +258,14 @@ fn follow_game_state(
     >,
 ) {
     let (cam_proj, cam_trans) = query_camera.single_mut();
-    let mut listener_trans = listeners.single_mut();
+    let listener_trans = listeners.single_mut();
     // assume perspective. do nothing if orthographic.
     let Projection::Perspective(persp) = cam_proj.into_inner() else {
         return;
     };
     persp.fov = 90.0f32.to_radians();
 
-    let state = overlay_state.shared_state.blocking_lock();
+    let state = overlay_state.shared_state.read();
     if let Some(local_player) = state.local_player.as_ref() {
         let cam_origin = local_player.get_entity().camera_origin;
         let cam_angles = local_player.get_entity().camera_angles;

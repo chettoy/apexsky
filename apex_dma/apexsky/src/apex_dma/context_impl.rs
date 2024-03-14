@@ -5,8 +5,8 @@ use apexsky::{
     global_state::G_STATE,
     mem::{MemProc, MemProcImpl},
 };
+use parking_lot::RwLock;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tracing::instrument;
 
 use crate::{
@@ -43,7 +43,7 @@ impl<'a> MemAccess for MemProcImpl<'a> {
     }
 }
 
-impl ContextForAimbot for Arc<Mutex<SharedState>> {
+impl ContextForAimbot for Arc<RwLock<SharedState>> {
     #[instrument]
     async fn get_aimbot_settings(&self) -> Option<apexsky::aimbot::AimbotSettings> {
         G_STATE
@@ -57,12 +57,12 @@ impl ContextForAimbot for Arc<Mutex<SharedState>> {
 
     #[instrument]
     async fn get_entity(&self, target_ptr: u64) -> Option<Arc<dyn AimEntity>> {
-        self.lock().await.aim_entities.get(&target_ptr).cloned()
+        self.read().aim_entities.get(&target_ptr).cloned()
     }
 
     #[instrument]
     async fn get_frame_count(&self) -> u32 {
-        let frame_count = self.lock().await.frame_count;
+        let frame_count = self.read().frame_count;
         frame_count.try_into().unwrap_or_else(|e| {
             tracing::error!(%e, ?e, frame_count);
             0
@@ -71,13 +71,12 @@ impl ContextForAimbot for Arc<Mutex<SharedState>> {
 
     #[instrument]
     async fn get_game_fps(&self) -> f32 {
-        self.lock().await.game_fps
+        self.read().game_fps
     }
 
     #[instrument]
     async fn get_held_id(&self) -> Option<i32> {
-        self.lock()
-            .await
+        self.read()
             .local_player
             .as_ref()
             .map(|p| p.get_entity().selected_slot as i32)
@@ -85,8 +84,7 @@ impl ContextForAimbot for Arc<Mutex<SharedState>> {
 
     #[instrument]
     async fn get_player_ptr(&self) -> u64 {
-        self.lock()
-            .await
+        self.read()
             .local_player
             .as_ref()
             .map(|e| e.get_entity().entity_ptr.into_raw())
@@ -95,7 +93,7 @@ impl ContextForAimbot for Arc<Mutex<SharedState>> {
 
     #[instrument]
     async fn get_weapon_info(&self) -> Option<apexsky::aimbot::CurrentWeaponInfo> {
-        let state = self.lock().await;
+        let state = self.read();
         let player = state.local_player.as_ref()?;
         player.get_active_weapon().map(|weapon| {
             let mut weapon_info = apexsky::aimbot::CurrentWeaponInfo::default();
@@ -151,12 +149,12 @@ impl ContextForAimbot for Arc<Mutex<SharedState>> {
 
     #[instrument]
     async fn is_world_ready(&self) -> bool {
-        self.lock().await.world_ready
+        self.read().world_ready
     }
 
     #[instrument]
     async fn update_aim_target_for_esp(&mut self, position: [f32; 3]) {
-        self.lock().await.aim_target = position;
+        self.write().aim_target = position;
     }
 }
 

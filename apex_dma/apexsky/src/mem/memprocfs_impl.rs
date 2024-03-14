@@ -1,6 +1,7 @@
+use crate::noobfstr as s;
 use anyhow::{anyhow, Context};
 use memprocfs::{Vmm, VmmProcess, FLAG_NOCACHE};
-use obfstr::obfstr as s;
+use once_cell::sync::Lazy;
 use std::{env, sync::Arc, time::Instant};
 
 use super::{MemProc, ProcessStatus};
@@ -107,7 +108,8 @@ impl<'a> MemProc for MemProcFSProc<'a> {
     fn speed_test(&mut self) {
         tracing::debug!("{}", s!("029194cf-ce9a-42aa-91c7-e35108e9ddb0"));
         if self.status != ProcessStatus::FoundReady {
-            let err = anyhow!(s!("proc instance is None").to_string());
+            static ERR_MSG: Lazy<String> = Lazy::new(|| s!("proc instance is None").to_string());
+            let err = anyhow!(&*ERR_MSG);
             tracing::error!(%err);
             return;
         }
