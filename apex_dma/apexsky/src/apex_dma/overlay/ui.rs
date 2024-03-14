@@ -116,7 +116,7 @@ pub fn ui_system(
 
             ui.add_space(10.0);
 
-            ScrollArea::vertical().show(ui, |ui| {
+            ScrollArea::vertical().max_width(320.0).show(ui, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.heading(s!("Teammates"));
                 });
@@ -132,7 +132,7 @@ pub fn ui_system(
 
             ui.add_space(5.0);
 
-            ScrollArea::vertical().show(ui, |ui| {
+            ScrollArea::vertical().max_width(320.0).show(ui, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.heading(s!("Spectators"));
                 });

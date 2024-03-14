@@ -15,19 +15,20 @@ pub async fn items_loop(
     shared_state: Arc<RwLock<SharedState>>,
     items_glow_tx: watch::Sender<Vec<(u64, u8)>>,
 ) -> anyhow::Result<()> {
-    let mut start_instant;
+    let mut start_instant = Instant::now();
 
     tracing::debug!("{}", s!("task start"));
 
     while *active.borrow_and_update() {
-        sleep(Duration::from_millis(50)).await;
+        start_instant += Duration::from_millis(50);
+        sleep_until(start_instant).await;
         start_instant = Instant::now();
+
         {
             let state = shared_state.read();
             if !state.game_attached || !state.world_ready {
                 tracing::trace!("{}", s!("waiting for world ready"));
                 start_instant += Duration::from_millis(500);
-                sleep_until(start_instant).await;
                 continue;
             }
         }
