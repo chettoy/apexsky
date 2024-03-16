@@ -1,4 +1,5 @@
 use crate::aimbot::AimEntity;
+use crate::apexdream::sdk::ScriptNetVarName;
 use crate::apexdream::*;
 use crate::pb::apexlegends::{PlayerState, Vec3};
 
@@ -75,11 +76,18 @@ impl GamePlayer {
             controller_active: state.controller_active == 1,
             character_index: 0,
             badges: vec![],
-            kills: 0,
-            damage_dealt: 0,
+            kills: game_state
+                .read_script_value(ScriptNetVarName::kills, value.script_net_data_global)
+                .to_word()
+                .unwrap_or(-1) as i32,
+            damage_dealt: game_state
+                .read_script_value(ScriptNetVarName::damageDealt, value.script_net_data_global)
+                .to_int()
+                .unwrap_or(-1),
             kill_leader: false,
             winning_team: false,
             yew: state.yew,
+            team_member_index: state.team_member_index,
         };
         Self {
             buf,

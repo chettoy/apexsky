@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use apexsky::aimbot::AimEntity;
 use bevy::asset::embedded_asset;
-use bevy::audio::SpatialScale;
+use bevy::audio::{SpatialScale, Volume};
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy::window::{CompositeAlphaMode, WindowLevel, WindowMode};
@@ -11,8 +11,10 @@ use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 
+use crate::overlay::asset::{Blob, BlobAssetLoader};
 use crate::SharedState;
 
+mod asset;
 mod ui;
 
 pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>) {
@@ -42,7 +44,14 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>) {
             FrameTimeDiagnosticsPlugin,
         ))
         .add_plugins(EguiPlugin)
-        .insert_resource(MyOverlayState { shared_state })
+        .init_asset::<Blob>()
+        .init_asset_loader::<BlobAssetLoader>()
+        .insert_resource(MyOverlayState {
+            shared_state,
+            sound_handle: Default::default(),
+            font_blob: Default::default(),
+            font_loaded: false,
+        })
         // ClearColor must have 0 alpha, otherwise some color will bleed through
         .insert_resource(ClearColor(Color::NONE))
         .add_systems(Startup, setup)
@@ -71,10 +80,14 @@ impl Plugin for EmbeddedAssetPlugin {
 #[derive(Resource)]
 pub(crate) struct MyOverlayState {
     shared_state: Arc<RwLock<SharedState>>,
+    sound_handle: Handle<AudioSource>,
+    font_blob: Handle<Blob>,
+    font_loaded: bool,
 }
 
 #[derive(Component, Default)]
 struct AimTarget {
+    ptr: u64,
     data: Option<Box<dyn AimEntity>>,
 }
 
@@ -86,12 +99,18 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut overlay_state: ResMut<MyOverlayState>,
 ) {
-    // Space between the two ears
-    let gap = 4.0;
-
+    static S_FONT_PATH: Lazy<String> =
+        Lazy::new(|| s!("embedded://apexsky_dma/assets/fonts/LXGWNeoXiHei.ttf").to_string());
     static S_SOUND_PATH: Lazy<String> =
         Lazy::new(|| s!("embedded://apexsky_dma/assets/sounds/Windless Slopes.ogg").to_string());
+
+    overlay_state.font_blob = asset_server.load(&*S_FONT_PATH);
+    overlay_state.sound_handle = asset_server.load(&*S_SOUND_PATH);
+
+    // Space between the two ears
+    let gap = 4.0;
 
     // aim target
     commands.spawn((
@@ -103,10 +122,11 @@ fn setup(
         },
         AimTarget::default(),
         AudioBundle {
-            source: asset_server.load(&*S_SOUND_PATH),
+            source: overlay_state.sound_handle.to_owned(),
             settings: PlaybackSettings::LOOP
                 .with_spatial(true)
-                .with_spatial_scale(SpatialScale::new(1.0 / 40.0)),
+                .with_spatial_scale(SpatialScale::new(1.0 / 200.0))
+                .with_volume(Volume::new(2.0)),
         },
     ));
 
@@ -250,9 +270,9 @@ fn follow_game_state(
     persp.fov = 90.0f32.to_radians();
 
     let state = overlay_state.shared_state.read();
-    if let Some(local_player) = state.local_player.as_ref() {
-        let cam_origin = local_player.get_entity().camera_origin;
-        let cam_angles = local_player.get_entity().camera_angles;
+    if let Some(view_player) = state.view_player.as_ref() {
+        let cam_origin = view_player.get_entity().camera_origin;
+        let cam_angles = view_player.get_entity().camera_angles;
 
         let (cam_pitch, cam_yew) = (cam_angles[0].to_radians(), cam_angles[1].to_radians());
         // pitch: top- bottom+, yew: left+ right-

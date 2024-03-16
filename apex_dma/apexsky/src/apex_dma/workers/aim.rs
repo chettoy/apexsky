@@ -84,7 +84,7 @@ pub async fn aimbot_loop(
             continue;
         }
         let Some(local_entity) = state.get_entity(state.get_player_ptr().await).await else {
-            tracing::trace!("{}", s!("waiting for local entity ready"));
+            tracing::trace!("{}", s!("waiting for local player ready"));
             start_instant += Duration::from_millis(500);
             sleep_until(start_instant).await;
             continue;

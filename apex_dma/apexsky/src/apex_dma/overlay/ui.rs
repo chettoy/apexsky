@@ -1,9 +1,11 @@
 use apexsky::noobfstr as s;
+use apexsky::pb::apexlegends::PlayerState;
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
+use super::asset::Blob;
 use super::MyOverlayState;
 
 // A simple system to handle some keyboard input and toggle on/off the hittest.
@@ -17,11 +19,35 @@ pub fn toggle_mouse_passthrough(
 
 pub fn ui_system(
     mut contexts: EguiContexts,
-    overlay_state: Res<MyOverlayState>,
+    mut overlay_state: ResMut<MyOverlayState>,
     diagnostics: Res<DiagnosticsStore>,
+    blobs: Res<Assets<Blob>>,
 ) {
     use egui::{pos2, CentralPanel, Color32, ScrollArea};
     let ctx = contexts.ctx_mut();
+
+    if !overlay_state.font_loaded {
+        if let Some(font_blob) = blobs.get(&overlay_state.font_blob) {
+            let mut egui_fonts = egui::FontDefinitions::default();
+            egui_fonts.font_data.insert(
+                "my_font".to_owned(),
+                egui::FontData::from_owned(font_blob.bytes.to_owned()),
+            );
+            egui_fonts
+                .families
+                .entry(egui::FontFamily::Proportional)
+                .or_default()
+                .insert(0, "my_font".to_owned());
+            egui_fonts
+                .families
+                .entry(egui::FontFamily::Monospace)
+                .or_default()
+                .push("my_font".to_owned());
+            ctx.set_fonts(egui_fonts);
+
+            overlay_state.font_loaded = true;
+        }
+    }
 
     struct DialogEsp {
         overlay_fps: String,
@@ -31,7 +57,7 @@ pub fn ui_system(
         aim_position: String,
         spectator_name: Vec<String>,
         allied_spectator_name: Vec<String>,
-        teammate_damage: Vec<(String, u32)>,
+        teammates_info: Vec<PlayerState>,
     }
 
     let dialog_esp = {
@@ -55,7 +81,7 @@ pub fn ui_system(
                 .and_then(|p| p.get_buf().origin.clone())
                 .map(|pos| {
                     format!(
-                        "{}{}{}{}{}{}",
+                        "{}{:.0}{}{:.0}{}{:.0}",
                         s!("x="),
                         pos.x,
                         s!(",y="),
@@ -71,7 +97,7 @@ pub fn ui_system(
                 .and_then(|p| p.get_buf().view_angles.clone())
                 .map(|angle| {
                     format!(
-                        "{}{}{}{}{}{}",
+                        "{}{:.2}{}{:.2}{}{:.2}",
                         s!("pitch="),
                         angle.x,
                         s!(",yew="),
@@ -82,7 +108,7 @@ pub fn ui_system(
                 })
                 .unwrap_or_default(),
             aim_position: format!(
-                "{}{}{}{}{}{}{}",
+                "{}{:.2}{}{:.2}{}{:.2}{}",
                 s!("aim["),
                 state.aim_target[0],
                 s!(","),
@@ -93,7 +119,7 @@ pub fn ui_system(
             ),
             spectator_name: state.spectator_name.clone(),
             allied_spectator_name: state.allied_spectator_name.clone(),
-            teammate_damage: state.teammates_damage.clone(),
+            teammates_info: state.teammates.clone(),
         }
     };
 
@@ -116,35 +142,53 @@ pub fn ui_system(
 
             ui.add_space(10.0);
 
-            ScrollArea::vertical().max_width(320.0).show(ui, |ui| {
-                ui.vertical_centered(|ui| {
-                    ui.heading(s!("Teammates"));
-                });
-
-                for (name, damage) in dialog_esp.teammate_damage.iter() {
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                        ui.label(if dialog_esp.allied_spectator_name.contains(name) {
-                            egui::RichText::new(name).strong().color(Color32::GREEN)
-                        } else {
-                            egui::RichText::new(name).strong()
-                        });
-                        ui.add_space(5.0);
-                        ui.label(damage.to_string());
+            ScrollArea::vertical()
+                .max_width(320.0)
+                .max_height(480.0)
+                .show(ui, |ui| {
+                    ui.vertical_centered(|ui| {
+                        ui.heading(s!("Teammates"));
                     });
-                }
-            });
 
-            ui.add_space(5.0);
+                    if dialog_esp.teammates_info.is_empty() {
+                        ui.label(s!("no teammates"));
+                    }
 
-            ScrollArea::vertical().max_width(320.0).show(ui, |ui| {
-                ui.vertical_centered(|ui| {
-                    ui.heading(s!("Spectators"));
+                    for teammate in dialog_esp.teammates_info.iter() {
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                            let name = teammate.player_name.to_owned();
+                            ui.label(format!("{} - ", teammate.team_member_index));
+                            ui.label(if dialog_esp.allied_spectator_name.contains(&name) {
+                                egui::RichText::new(name).strong().color(Color32::GREEN)
+                            } else {
+                                egui::RichText::new(name).strong()
+                            });
+                            ui.add_space(5.0);
+                            ui.label(teammate.damage_dealt.to_string());
+                            ui.add_space(5.0);
+                            ui.label(teammate.kills.to_string());
+                        });
+                    }
                 });
 
-                for name in dialog_esp.spectator_name.iter() {
-                    ui.label(name);
-                }
-            });
+            ui.add_space(10.0);
+
+            ScrollArea::vertical()
+                .max_width(320.0)
+                .max_height(480.0)
+                .show(ui, |ui| {
+                    ui.vertical_centered(|ui| {
+                        ui.heading(s!("Spectators"));
+                    });
+
+                    if dialog_esp.spectator_name.is_empty() {
+                        ui.label(s!("no spectators"));
+                    }
+
+                    for name in dialog_esp.spectator_name.iter() {
+                        ui.label(name);
+                    }
+                });
         });
 
     let panel_frame = egui::Frame {

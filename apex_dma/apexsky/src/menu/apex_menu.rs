@@ -719,12 +719,12 @@ fn build_aimbot_menu(
         format_item(
             &i18n_bundle,
             format!("11 - {}", i18n_msg!(i18n_bundle, MenuItemSmoothValue)),
-            if settings.aimbot_settings.smooth < 120.0 {
+            if settings.aimbot_settings.smooth < 150.0 {
                 Span::styled(
                     format!("{}", settings.aimbot_settings.smooth),
                     Style::default().fg(Color::Red),
                 )
-            } else if settings.aimbot_settings.smooth >= 160.0 {
+            } else if settings.aimbot_settings.smooth >= 200.0 {
                 Span::styled(
                     format!("{}", settings.aimbot_settings.smooth),
                     Style::default().fg(Color::Green),
@@ -736,7 +736,7 @@ fn build_aimbot_menu(
         &i18n_msg!(i18n_bundle, InputPromptSmoothValue),
         |val| {
             if let Some(new_val) = val.parse::<u16>().ok() {
-                if new_val >= 50 && new_val <= 500 {
+                if new_val >= 50 && new_val <= 1000 {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.smooth = new_val.into();
                     // settings.aimbot_settings.skynade_smooth =
@@ -752,12 +752,12 @@ fn build_aimbot_menu(
         format_item(
             &i18n_bundle,
             format!("12 - {}", i18n_msg!(i18n_bundle, MenuItemSkynadeSmooth)),
-            if settings.aimbot_settings.skynade_smooth < 90.0 * 0.6667 {
+            if settings.aimbot_settings.skynade_smooth < 120.0 * 0.6667 {
                 Span::styled(
                     format!("{}", settings.aimbot_settings.skynade_smooth),
                     Style::default().fg(Color::Red),
                 )
-            } else if settings.aimbot_settings.skynade_smooth > 120.0 * 0.6667 {
+            } else if settings.aimbot_settings.skynade_smooth > 200.0 * 0.6667 {
                 Span::styled(
                     format!("{}", settings.aimbot_settings.skynade_smooth),
                     Style::default().fg(Color::Green),
@@ -769,7 +769,7 @@ fn build_aimbot_menu(
         &i18n_msg!(i18n_bundle, InputPromptSmoothValue),
         |val| {
             if let Some(new_val) = val.parse::<u16>().ok() {
-                if new_val >= 50 && new_val <= 500 {
+                if new_val >= 50 && new_val <= 1000 {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.skynade_smooth = new_val.into();
                     return None;

@@ -9,6 +9,7 @@ use apexsky::games::apex::player::GamePlayer;
 use apexsky::global_state::G_STATE;
 use apexsky::noobfstr as s;
 
+use apexsky::pb::apexlegends::PlayerState;
 use parking_lot::RwLock;
 use tokio::sync::{mpsc, watch};
 use tokio::task::{self, JoinHandle};
@@ -39,7 +40,7 @@ struct SharedState {
     view_matrix: [f32; 16],
     highlight_injected: bool,
     treasure_clues: Vec<TreasureClue>,
-    teammates_damage: Vec<(String, u32)>,
+    teammates: Vec<PlayerState>,
     spectator_name: Vec<String>,
     allied_spectator_name: Vec<String>,
     map_testing_local_team: i32,
@@ -49,6 +50,7 @@ struct SharedState {
     players: HashMap<u64, GamePlayer>,
     aim_entities: HashMap<u64, Arc<dyn AimEntity>>,
     local_player: Option<GamePlayer>,
+    view_player: Option<GamePlayer>,
     aimbot_state: Option<Aimbot>,
 }
 

@@ -42,6 +42,7 @@ message PlayerState {
   bool kill_leader = 27;
   bool winning_team = 28;
   float yew = 29;
+  int32 team_member_index = 30;
 }
 
 message Players {

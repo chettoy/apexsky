@@ -1,3 +1,5 @@
+use crate::offsets::G_OFFSETS;
+
 use super::*;
 
 #[derive(Default, Debug)]
@@ -7,6 +9,7 @@ pub struct ClientState {
     pub level_name: String,
 
     pub local_entity: sdk::EHandle,
+    pub local_player_ptr: u64,
     pub framecount: i32,
     pub curtime: f32, // Time used for comparison against last_visible_time
     pub interval_per_tick: f32,
@@ -51,6 +54,10 @@ impl ClientState {
             let _ = api.vm_read_into(
                 base_addr.field(data.local_entity_handle),
                 &mut self.local_entity,
+            );
+            let _ = api.vm_read_into(
+                base_addr.field(G_OFFSETS.local_ent.try_into().unwrap()),
+                &mut self.local_player_ptr,
             );
         }
         ctx.local_entity = self.local_entity;

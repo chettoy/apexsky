@@ -70,6 +70,7 @@ pub async fn actions_loop(
     let mut actions_tick: i64 = -1;
     let mut log_items: usize = 0;
     let mut world_ready: bool;
+    let mut player_ready: bool;
 
     tracing::debug!("{}", s!("task start"));
 
@@ -203,11 +204,12 @@ pub async fn actions_loop(
                 let mut wlock = shared_state.write();
 
                 wlock.world_ready = world_ready;
+                player_ready = world_ready && wlock.local_player.is_some();
 
                 wlock.frame_count = apex_state.client.framecount;
                 wlock.view_matrix = apex_state.client.view_matrix;
 
-                if !world_ready {
+                if !player_ready {
                     wlock.spectator_name.clear();
                     wlock.allied_spectator_name.clear();
                 }
@@ -232,9 +234,10 @@ pub async fn actions_loop(
             // Perform aimbot actions
             match aim_action_rx.try_recv() {
                 Ok(action) => {
-                    if world_ready && ENABLE_MEM_AIM {
+                    if player_ready && ENABLE_MEM_AIM {
                         if let Some(delta) = action.shift_angles {
-                            if let Some(lplayer) = apex_state.local_player() {
+                            if let Some(lplayer) = &shared_state.read().local_player {
+                                let lplayer = lplayer.get_entity();
                                 let ptr = lplayer.entity_ptr.into_raw();
                                 let view_angles = mem
                                     .apex_mem_read::<[f32; 3]>(ptr + G_OFFSETS.player_viewangles)?;
@@ -307,14 +310,9 @@ pub async fn actions_loop(
 
             // Update entities
             if world_ready {
-                let local_player: Option<GamePlayer> =
-                    apex_state.local_player().map(|local_player| {
-                        GamePlayer::new(
-                            local_player,
-                            apex_state,
-                            &mut G_STATE.lock().unwrap().config,
-                        )
-                    });
+                let view_player: Option<GamePlayer> = apex_state.local_player().map(|entity| {
+                    GamePlayer::new(entity, apex_state, &mut G_STATE.lock().unwrap().config)
+                });
 
                 let mut players: HashMap<u64, GamePlayer> = HashMap::new();
                 let mut aim_entities: HashMap<u64, Arc<dyn AimEntity>> = HashMap::new();
@@ -339,8 +337,12 @@ pub async fn actions_loop(
                 let entity_count = aim_entities.len();
                 tracing::trace!(player_count, entity_count, "{}", s!("AimEntities updated"));
 
+                let local_player: Option<GamePlayer> =
+                    players.get(&apex_state.client.local_player_ptr).cloned();
+
                 let mut state_wlock = shared_state.write();
                 state_wlock.local_player = local_player;
+                state_wlock.view_player = view_player;
                 state_wlock.players = players;
                 state_wlock.aim_entities = aim_entities;
             }
@@ -377,7 +379,7 @@ pub async fn actions_loop(
             }
 
             // Update loots
-            if world_ready {
+            if player_ready {
                 let Some(local_position) = shared_state
                     .read()
                     .local_player
@@ -441,7 +443,7 @@ pub async fn actions_loop(
                     let glow_fix_u8 = mem.apex_mem_read::<u8>(base + OFFSET_GLOW_FIX)?;
                     tracing::trace!(glow_fix_i32, glow_fix_u8);
                 }
-                if (g_settings.player_glow || g_settings.item_glow) && world_ready {
+                if (g_settings.player_glow || g_settings.item_glow) && player_ready {
                     match inject_highlight(apex_state.client.framecount, &g_settings, &mut mem) {
                         Ok(_) => {
                             shared_state.write().highlight_injected = true;
@@ -488,6 +490,19 @@ pub async fn actions_loop(
                     // trace!(lplayer_ptr, ?yew);
                     // apexsky::tick_yew(lplayer_ptr, yew);
 
+                    let mut teammates: Vec<_> = players
+                        .iter()
+                        .filter_map(|(_, target_entity)| {
+                            let player_buf = target_entity.get_buf();
+                            if is_teammate(player_buf.team_num) {
+                                Some(player_buf.to_owned())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    teammates.sort_by(|a, b| a.team_member_index.cmp(&b.team_member_index));
+
                     // Update spectator checker
                     let tmp_specs: Vec<SpectatorInfo> = players
                         .iter()
@@ -531,8 +546,13 @@ pub async fn actions_loop(
                         .map(|info| info.name)
                         .collect();
                     let spectator_name = spectators.into_iter().map(|info| info.name).collect();
-                    shared_state.write().allied_spectator_name = allied_spectator_name;
-                    shared_state.write().spectator_name = spectator_name;
+
+                    {
+                        let mut wlock = shared_state.write();
+                        wlock.allied_spectator_name = allied_spectator_name;
+                        wlock.spectator_name = spectator_name;
+                        wlock.teammates = teammates;
+                    }
                 })
                 .await?;
             }
@@ -597,7 +617,7 @@ pub async fn actions_loop(
                 tracing::error!(%e, ?items_glow_rx, "{}", s!("perform items glow"));
                 false
             }) {
-                if world_ready && shared_state.read().highlight_injected {
+                if player_ready && shared_state.read().highlight_injected {
                     for &(ptr, ctx_id) in items_glow_rx.borrow_and_update().iter() {
                         mem.apex_mem_write::<u8>(ptr + OFFSET_GLOW_CONTEXT_ID, &ctx_id)?;
                     }
