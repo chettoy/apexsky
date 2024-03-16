@@ -196,6 +196,9 @@ impl TaskManager for State {
                 }
                 Err(e) => {
                     tracing::error!(%e, ?e, "{}", tag);
+                    if let Ok(reason) = e.try_into_panic() {
+                        tracing::error!(?reason, "{}", tag);
+                    }
                     false
                 }
             }

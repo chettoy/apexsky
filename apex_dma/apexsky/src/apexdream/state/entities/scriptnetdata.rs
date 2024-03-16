@@ -110,7 +110,10 @@ impl ScriptNetDataEntity {
             return false;
         }
 
-        let indices = fmtools::join(", ", self.offsets.iter().map(|idx| format!("{idx:#x}")));
+        let indices = {
+            let list: Vec<String> = self.offsets.iter().map(|idx| format!("{idx:#x}")).collect();
+            list.join(", ")
+        };
         api.log(format!(
             "{}{}{}",
             s!("ScriptNetData indices=["),

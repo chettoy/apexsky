@@ -110,22 +110,6 @@ fn setup(
         },
     ));
 
-    // // sound emitter
-    // commands.spawn((
-    //     PbrBundle {
-    //         mesh: meshes.add(Sphere::new(0.2).mesh().uv(32, 18)),
-    //         material: materials.add(Color::BLUE),
-    //         transform: Transform::from_xyz(0.0, 0.0, 0.0),
-    //         ..default()
-    //     },
-    //     Emitter::default(),
-    //     AudioBundle {
-    //         source: asset_server
-    //             .load(s!("embedded://apexsky_dma/assets/sounds/Windless Slopes.ogg").to_string()),
-    //         settings: PlaybackSettings::LOOP.with_spatial(true),
-    //     },
-    // ));
-
     let listener = SpatialListener::new(gap);
     commands
         .spawn((SpatialBundle::default(), listener.clone()))

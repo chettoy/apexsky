@@ -159,14 +159,14 @@ impl<'a, 'b> ApexMem<'a, 'b> {
     pub fn read_memory<T: dataview::Pod + ?Sized>(&mut self, addr: u64, dest: &mut T) -> i32 {
         match self.mem.read_into(addr.into(), dest) {
             Ok(_) => 0,
-            Err(_) => 1,
+            Err(_) => -1,
         }
     }
 
     pub fn write_memory<T: dataview::Pod + ?Sized>(&mut self, addr: u64, data: &T) -> i32 {
         match self.mem.write(addr.into(), data) {
             Ok(_) => 0,
-            Err(_) => 1,
+            Err(_) => -1,
         }
     }
 }

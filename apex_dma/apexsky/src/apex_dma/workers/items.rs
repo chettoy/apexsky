@@ -20,7 +20,7 @@ pub async fn items_loop(
     tracing::debug!("{}", s!("task start"));
 
     while *active.borrow_and_update() {
-        start_instant += Duration::from_millis(50);
+        start_instant += Duration::from_millis(500);
         sleep_until(start_instant).await;
         start_instant = Instant::now();
 
@@ -28,7 +28,6 @@ pub async fn items_loop(
             let state = shared_state.read();
             if !state.game_attached || !state.world_ready {
                 tracing::trace!("{}", s!("waiting for world ready"));
-                start_instant += Duration::from_millis(500);
                 continue;
             }
         }

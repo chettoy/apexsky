@@ -467,6 +467,12 @@ pub async fn actions_loop(
                     continue;
                 };
 
+                // Init spectator checker
+                if prev_lplayer_ptr != lplayer_ptr {
+                    init_spec_checker(lplayer_ptr);
+                    prev_lplayer_ptr = lplayer_ptr;
+                }
+
                 let tdm_toggle = g_settings.tdm_toggle;
                 let shared_state = shared_state.clone();
                 tokio::spawn(async move {
@@ -477,11 +483,6 @@ pub async fn actions_loop(
                         teammate_check(team_num, lplayer_team, alter_local_team, tdm_toggle)
                     };
 
-                    // Init spectator checker
-                    if prev_lplayer_ptr != lplayer_ptr {
-                        init_spec_checker(lplayer_ptr);
-                        prev_lplayer_ptr = lplayer_ptr;
-                    }
                     // Update local entity yew
                     // let yew = mem.apex_mem_read::<f32>(lplayer_ptr + OFFSET_YAW)?;
                     // trace!(lplayer_ptr, ?yew);
@@ -532,7 +533,8 @@ pub async fn actions_loop(
                     let spectator_name = spectators.into_iter().map(|info| info.name).collect();
                     shared_state.write().allied_spectator_name = allied_spectator_name;
                     shared_state.write().spectator_name = spectator_name;
-                });
+                })
+                .await?;
             }
 
             // Targeting

@@ -132,7 +132,6 @@ impl Entity for BaseNPCEntity {
                 data.entity_flags,
                 data.entity_life_state,
                 data.bcc_last_visible_time,
-                //G_OFFSETS.player_last_visible_time.try_into().unwrap(),
             ],
         };
 

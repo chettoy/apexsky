@@ -15,12 +15,10 @@ use crate::{
 };
 
 impl<'a> MemAccess for MemProcImpl<'a> {
-    #[inline]
     fn apex_mem_baseaddr(&mut self) -> u64 {
         self.get_proc_baseaddr()
     }
 
-    #[inline]
     #[instrument(skip_all)]
     fn apex_mem_read<T: dataview::Pod + Sized + Default>(
         &mut self,
@@ -31,7 +29,6 @@ impl<'a> MemAccess for MemProcImpl<'a> {
         Ok(v)
     }
 
-    #[inline]
     #[instrument(skip_all)]
     fn apex_mem_write<T: dataview::Pod + ?Sized>(
         &mut self,

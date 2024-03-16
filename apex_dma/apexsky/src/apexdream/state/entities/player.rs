@@ -294,6 +294,9 @@ impl Entity for PlayerEntity {
             bone_array: [u32; 2],
             studio: [u32; 2],
             script: [u32; 2],
+            xp: u32,
+            controller_active: u32,
+            yew: u32,
         }
 
         let data = &ctx.data;
@@ -426,6 +429,9 @@ impl Entity for PlayerEntity {
                 data.player_script_net_data + 0,
                 data.player_script_net_data + 4,
             ],
+            xp: data.player_xp,
+            controller_active: data.player_controller_active,
+            yew: OFFSET_YAW.try_into().unwrap(),
         };
 
         if let Ok(fields) = api.vm_gatherd(self.entity_ptr, self.entity_size, &mut indices) {
@@ -590,25 +596,29 @@ impl Entity for PlayerEntity {
 
             self.script_net_data_global = sdk::EHandle::from(fields.script[0]);
             self.script_net_data_exclusive = sdk::EHandle::from(fields.script[1]);
+
+            self.xp = fields.xp as i32;
+            self.controller_active = fields.controller_active as i32;
+            self.yew = f32::from_bits(fields.yew);
         }
 
-        if let Ok(xp) = api.vm_read::<i32>(self.entity_ptr.field(data.player_xp)) {
-            self.xp = xp;
-        } else {
-            warn!("{}", s!("Err read player xp"));
-        }
-        if let Ok(controller_active) =
-            api.vm_read::<i32>(self.entity_ptr.field(data.player_controller_active))
-        {
-            self.controller_active = controller_active;
-        } else {
-            warn!("{}", s!("Err read player controller_active"));
-        }
-        if let Ok(yew) = api.vm_read::<f32>(self.entity_ptr.field(OFFSET_YAW.try_into().unwrap())) {
-            self.yew = yew;
-        } else {
-            warn!(?self.entity_ptr, "{}", s!("error read yew"));
-        }
+        // if let Ok(xp) = api.vm_read::<i32>(self.entity_ptr.field(data.player_xp)) {
+        //     self.xp = xp;
+        // } else {
+        //     warn!("{}", s!("Err read player xp"));
+        // }
+        // if let Ok(controller_active) =
+        //     api.vm_read::<i32>(self.entity_ptr.field(data.player_controller_active))
+        // {
+        //     self.controller_active = controller_active;
+        // } else {
+        //     warn!("{}", s!("Err read player controller_active"));
+        // }
+        // if let Ok(yew) = api.vm_read::<f32>(self.entity_ptr.field(OFFSET_YAW.try_into().unwrap())) {
+        //     self.yew = yew;
+        // } else {
+        //     warn!(?self.entity_ptr, "{}", s!("error read yew"));
+        // }
     }
     fn post(&mut self, _api: &mut Api, ctx: &UpdateContext, state: &GameState) {
         // Check if player is visible

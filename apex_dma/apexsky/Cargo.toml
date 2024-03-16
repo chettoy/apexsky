@@ -44,12 +44,10 @@ memflow = "0.2.1"
 memprocfs = "5.9.0"
 dataview = "1.0.1"
 once_cell = "1.19.0"
-fmtools = { version = "0.1.2", features = ["obfstr"] }
 bitset = "0.1.2"
 named_constants = "0.2.0"
 bitset-core = "0.1.1"
 intptr = { version = "0.1.6", features = ["dataview_1", "serde"] }
-format_xml = { version = "0.3.0", features = ["obfstr"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }
 #console-subscriber = "0.1.5"

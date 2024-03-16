@@ -123,7 +123,11 @@ pub fn ui_system(
 
                 for (name, damage) in dialog_esp.teammate_damage.iter() {
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                        ui.label(egui::RichText::new(name).strong());
+                        ui.label(if dialog_esp.allied_spectator_name.contains(name) {
+                            egui::RichText::new(name).strong().color(Color32::GREEN)
+                        } else {
+                            egui::RichText::new(name).strong()
+                        });
                         ui.add_space(5.0);
                         ui.label(damage.to_string());
                     });
