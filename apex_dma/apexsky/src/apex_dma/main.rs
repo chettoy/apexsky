@@ -19,6 +19,7 @@ use tracing_appender::non_blocking::NonBlocking;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::EnvFilter;
+use workers::aim::{AimKeyStatus, PreSelectedTarget};
 
 mod context_impl;
 mod overlay;
@@ -95,16 +96,42 @@ impl State {
         });
         self.active = active;
     }
+
+    async fn toggle_tui_active(&mut self, active: bool) {
+        if active {
+            if self.terminal_task.is_none() {
+                let tui_task = task::spawn_blocking(|| {
+                    apexsky::menu::main()
+                        .unwrap_or_else(|e| tracing::error!(%e, ?e, "{}", s!("menu::main()")))
+                });
+                self.terminal_task = Some(tui_task);
+            }
+        } else {
+            if let Some(tui_task) = self.terminal_task.take() {
+                G_STATE.lock().unwrap().terminal_t = false;
+                tui_task.await.unwrap_or_else(|e| {
+                    tracing::error!(%e, ?e);
+                });
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct TaskChannels {
+    pub(crate) aim_key_rx: watch::Receiver<AimKeyStatus>,
+    pub(crate) aim_select_rx: watch::Receiver<Vec<PreSelectedTarget>>,
+    pub(crate) items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
 }
 
 trait TaskManager {
-    async fn start_tasks(&mut self);
+    async fn start_tasks(&mut self) -> TaskChannels;
     async fn stop_tasks(&mut self);
     async fn check_tasks(&mut self);
 }
 
 impl TaskManager for State {
-    async fn start_tasks(&mut self) {
+    async fn start_tasks(&mut self) -> TaskChannels {
         use workers::{
             actions::actions_loop, aim::aimbot_loop, control::control_loop, esp::esp_loop,
             items::items_loop,
@@ -125,13 +152,14 @@ impl TaskManager for State {
             aim_key_tx,
             aim_select_tx,
             aim_action_rx,
-            items_glow_rx,
+            aim_select_rx.clone(),
+            items_glow_rx.clone(),
         )));
         self.aim_t = Some(task::spawn(aimbot_loop(
             self.active_tx.subscribe(),
             self.shared_state.clone(),
-            aim_key_rx,
-            aim_select_rx,
+            aim_key_rx.clone(),
+            aim_select_rx.clone(),
             aim_action_tx,
         )));
         self.control_t = Some(task::spawn(control_loop(
@@ -147,6 +175,12 @@ impl TaskManager for State {
             self.shared_state.clone(),
             items_glow_tx,
         )));
+
+        TaskChannels {
+            aim_key_rx,
+            aim_select_rx,
+            items_glow_rx,
+        }
     }
 
     async fn stop_tasks(&mut self) {
@@ -243,52 +277,45 @@ fn main() {
             return;
         }
         if args[1] == s!("overlay") {
-            //overlay::main(shared_state).unwrap();
-            overlay::main(shared_state);
+            overlay::main(shared_state, None);
             return;
         }
     }
 
+    let g_settings = global_settings();
+
+    let mut debug_mode = g_settings.debug_mode;
+    if args.len() == 3 && args[2] == s!("debug") {
+        debug_mode = true;
+    }
+
+    let channels = rt.block_on(state.start_tasks());
+
     // Execute the runtime in its own thread.
     std::thread::spawn(move || {
         rt.block_on(async {
-            let g_settings = global_settings();
-            let mut debug_mode = g_settings.debug_mode;
-            if args.len() == 3 && args[2] == s!("debug") {
-                debug_mode = true;
-            }
-
-            state.start_tasks().await;
-
             loop {
-                if !state.shared_state.read().game_attached {
-                    // stop tasks
-                    if let Some(tui_task) = state.terminal_task.take() {
-                        quit_tui(tui_task).await;
-                    }
-                } else {
-                    if debug_mode {
-                        if let Some(tui_task) = state.terminal_task.take() {
-                            quit_tui(tui_task).await;
-                        }
+                state
+                    .toggle_tui_active(if state.shared_state.read().game_attached {
+                        !debug_mode
                     } else {
-                        if state.terminal_task.is_none() {
-                            let tui_task = start_tui();
-                            state.terminal_task = Some(tui_task);
-                        }
-                    }
-                }
+                        false
+                    })
+                    .await;
+
                 state.check_tasks().await;
+
                 sleep(Duration::from_millis(10)).await;
             }
         })
     });
 
+    // Run overlay on main thread
     loop {
         if G_STATE.lock().unwrap().config.settings.no_overlay {
             std::thread::sleep(Duration::from_secs(1));
         } else {
-            overlay::main(shared_state.clone());
+            overlay::main(shared_state.clone(), Some(channels.clone()));
         }
     }
 }
@@ -301,21 +328,6 @@ pub fn press_to_exit() {
     println!("{}", s!("Press enter to exit.."));
     let _ = std::io::stdin().read_line(&mut String::new());
     std::process::exit(0);
-}
-
-#[instrument]
-pub fn start_tui() -> JoinHandle<()> {
-    task::spawn_blocking(|| {
-        apexsky::menu::main().unwrap_or_else(|e| tracing::error!(%e, ?e, "{}", s!("menu::main()")))
-    })
-}
-
-#[instrument]
-pub async fn quit_tui(tui_task: JoinHandle<()>) {
-    G_STATE.lock().unwrap().terminal_t = false;
-    tui_task.await.unwrap_or_else(|e| {
-        tracing::error!(%e, ?e);
-    });
 }
 
 fn init_logger(non_blocking: NonBlocking, print: bool) {

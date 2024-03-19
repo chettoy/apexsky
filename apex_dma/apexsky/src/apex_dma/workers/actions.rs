@@ -60,6 +60,7 @@ pub async fn actions_loop(
     aim_key_tx: watch::Sender<AimKeyStatus>,
     aim_select_tx: watch::Sender<Vec<PreSelectedTarget>>,
     mut aim_action_rx: mpsc::Receiver<AimbotAction>,
+    mut aim_select_rx: watch::Receiver<Vec<PreSelectedTarget>>,
     mut items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
 ) -> anyhow::Result<()> {
     let mut apexdream = apexsky::apexdream::Instance::new();
@@ -435,26 +436,6 @@ pub async fn actions_loop(
                 shared_state.write().treasure_clues = loots;
             }
 
-            // Inject highlight settings
-            {
-                if !shared_state.read().highlight_injected {
-                    let base = mem.apex_mem_baseaddr();
-                    let glow_fix_i32 = mem.apex_mem_read::<i32>(base + OFFSET_GLOW_FIX)?;
-                    let glow_fix_u8 = mem.apex_mem_read::<u8>(base + OFFSET_GLOW_FIX)?;
-                    tracing::trace!(glow_fix_i32, glow_fix_u8);
-                }
-                if (g_settings.player_glow || g_settings.item_glow) && player_ready {
-                    match inject_highlight(apex_state.client.framecount, &g_settings, &mut mem) {
-                        Ok(_) => {
-                            shared_state.write().highlight_injected = true;
-                        }
-                        Err(e) => {
-                            tracing::debug!(%e, ?e, "{}", s!("Inject highlight settings"));
-                        }
-                    }
-                }
-            }
-
             // Spectator check
             {
                 let Some((lplayer_ptr, lplayer_alive, lplayer_team)) =
@@ -563,45 +544,29 @@ pub async fn actions_loop(
                 let aim_targets: Vec<PreSelectedTarget> = {
                     let state = shared_state.read();
                     if let Some(lplayer) = state.local_player.as_ref() {
-                        state
+                        let mut selected: Vec<PreSelectedTarget> = state
                             .aim_entities
                             .values()
                             .filter_map(|entity| {
-                                process_player(
-                            lplayer,
-                            entity.as_ref(),
-                            &state,
-                            &g_settings,
-                        ).unwrap_or_else(|e|{
-                            tracing::error!(%e, ?e, ?entity, "{}", s!("error process player"));
-                            None
-                        })
+                                process_player(lplayer, entity.as_ref(), &state, &g_settings)
+                                // .unwrap_or_else(|e|{
+                                //     tracing::error!(%e, ?e, ?entity, "{}", s!("error process player"));
+                                //     None
+                                // })
                             })
-                            .collect()
+                            .collect();
+                        selected.sort_by(|a, b| {
+                            a.distance.partial_cmp(&b.distance).unwrap_or_else(|| {
+                                tracing::error!(?a, ?b, "{}", s!("sort"));
+                                panic!()
+                            })
+                        });
+                        selected
                     } else {
                         tracing::error!("{}", s!("UNREACHABLE: invalid localplayer"));
                         vec![]
                     }
                 };
-
-                // Player Glow
-                let (highlight_injected, frame_count) = {
-                    let state = shared_state.read();
-                    (state.highlight_injected, state.frame_count)
-                };
-
-                if g_settings.player_glow && highlight_injected {
-                    for target in aim_targets.iter() {
-                        let target_ptr = target.entity_ptr;
-                        let highlight_context_id = player_glow(target, frame_count, &g_settings);
-                        mem.apex_mem_write::<u8>(
-                            target_ptr + OFFSET_GLOW_CONTEXT_ID,
-                            &highlight_context_id,
-                        )?;
-                        mem.apex_mem_write::<i32>(target_ptr + OFFSET_GLOW_VISIBLE_TYPE, &2)?;
-                        mem.apex_mem_write::<f32>(target_ptr + OFFSET_GLOW_DISTANCE, &8.0E+4)?;
-                    }
-                }
 
                 // Send aim targets
                 aim_select_tx.send(aim_targets).unwrap_or_else(|e| {
@@ -609,20 +574,65 @@ pub async fn actions_loop(
                 });
             }
 
-            // Weapon model glow
-            // Not planned
-
-            // Items glow
-            if items_glow_rx.has_changed().unwrap_or_else(|e| {
-                tracing::error!(%e, ?items_glow_rx, "{}", s!("perform items glow"));
-                false
-            }) {
-                if player_ready && shared_state.read().highlight_injected {
-                    for &(ptr, ctx_id) in items_glow_rx.borrow_and_update().iter() {
-                        mem.apex_mem_write::<u8>(ptr + OFFSET_GLOW_CONTEXT_ID, &ctx_id)?;
+            // Inject highlight settings
+            let highlight_injected = {
+                let mut injected = shared_state.read().highlight_injected;
+                if !injected {
+                    let base = mem.apex_mem_baseaddr();
+                    let glow_fix_i32 = mem.apex_mem_read::<i32>(base + OFFSET_GLOW_FIX)?;
+                    let glow_fix_u8 = mem.apex_mem_read::<u8>(base + OFFSET_GLOW_FIX)?;
+                    tracing::trace!(glow_fix_i32, glow_fix_u8);
+                }
+                if (g_settings.player_glow || g_settings.item_glow) && player_ready {
+                    match inject_highlight(apex_state.client.framecount, &g_settings, &mut mem) {
+                        Ok(_) => {
+                            shared_state.write().highlight_injected = true;
+                            injected = true;
+                        }
+                        Err(e) => {
+                            tracing::debug!(%e, ?e, "{}", s!("Inject highlight settings"));
+                        }
                     }
                 }
+                injected
+            };
+
+            // Player Glow
+            if g_settings.player_glow
+                && highlight_injected
+                && aim_select_rx.has_changed().unwrap_or_else(|e| {
+                    tracing::error!(%e, ?aim_select_rx, "{}", s!("perform player glow"));
+                    false
+                })
+            {
+                for target in aim_select_rx.borrow_and_update().iter() {
+                    let target_ptr = target.entity_ptr;
+                    let highlight_context_id =
+                        player_glow(target, apex_state.client.framecount, &g_settings);
+                    mem.apex_mem_write::<u8>(
+                        target_ptr + OFFSET_GLOW_CONTEXT_ID,
+                        &highlight_context_id,
+                    )?;
+                    mem.apex_mem_write::<i32>(target_ptr + OFFSET_GLOW_VISIBLE_TYPE, &2)?;
+                    mem.apex_mem_write::<f32>(target_ptr + OFFSET_GLOW_DISTANCE, &8.0E+4)?;
+                }
             }
+
+            // Items glow
+            if g_settings.item_glow
+                && highlight_injected
+                && items_glow_rx.has_changed().unwrap_or_else(|e| {
+                    tracing::error!(%e, ?items_glow_rx, "{}", s!("perform items glow"));
+                    false
+                })
+            {
+                for &(ptr, ctx_id) in items_glow_rx.borrow_and_update().iter() {
+                    mem.apex_mem_write::<u8>(ptr + OFFSET_GLOW_CONTEXT_ID, &ctx_id)?;
+                }
+            }
+
+            // Weapon model glow
+            // Not planned
         }
     }
     tracing::debug!("{}", s!("task end"));
@@ -636,12 +646,13 @@ fn process_player<'a>(
     state: &SharedState,
     g_settings: &Settings,
     //mem: &mut MemProcImpl<'a>,
-) -> anyhow::Result<Option<PreSelectedTarget>> {
+) -> Option<PreSelectedTarget> {
     let lplayer_ptr = local_player.get_entity().get_entity_ptr();
     let target_ptr = target_entity.get_entity_ptr();
 
     let entity_team = target_entity.get_team_num();
     let local_team = local_player.get_buf().team_num;
+
     let is_teammate = teammate_check(
         entity_team,
         local_team,
@@ -650,57 +661,77 @@ fn process_player<'a>(
     );
     // trace!(target_ptr, entity_team, is_teammate);
 
+    // Exclude eliminated players
+    if !target_entity.is_alive() {
+        return None;
+    }
+
     // Teammate and 1v1 check
     if !g_settings.onevone {
         if g_settings.firing_range {
             if target_entity.is_player() {
-                return Ok(None);
+                return None;
             }
         } else {
             if is_teammate {
-                return Ok(None);
+                return None;
             }
         }
     }
 
+    // Exclude self
     if target_ptr == lplayer_ptr {
-        Ok(None)
-    } else {
-        Ok(Some(PreSelectedTarget {
-            fov: calculate_target_fov(local_player.get_entity(), target_entity),
-            distance: {
-                let target_pos = target_entity.get_position();
-                let local_pos = local_player.get_entity().get_position();
-                math::dist(target_pos, local_pos)
-            },
-            is_visible: target_entity.is_visible(),
-            is_knocked: target_entity.is_knocked(),
-            health_points: { target_entity.get_shield_health() + target_entity.get_health() },
-            love_status: {
-                if !target_entity.is_player() {
-                    if g_settings.yuan_p {
-                        LoveStatus::Love
-                    } else {
-                        LoveStatus::Normal
-                    }
-                } else {
-                    let Some(target_player) = state.players.get(&target_ptr) else {
-                        tracing::error!(?target_ptr, "{}", s!("UNREACHABLE"));
-                        return Ok(None);
-                    };
-                    target_player
-                        .get_buf()
-                        .love_state
-                        .try_into()
-                        .unwrap_or_else(|_| {
-                            tracing::error!(love_state = target_player.get_buf().love_state, player_buf = ?target_player.get_buf());
-                            LoveStatus::Normal
-                        })
-                }
-            },
-            entity_ptr: target_ptr,
-        }))
+        return None;
     }
+
+    // Exclude players in invalid team
+    if entity_team < 0 || entity_team > 50 {
+        tracing::warn!(?entity_team, ?target_entity, "{}", s!("invalid team"));
+        return None;
+    }
+
+    // Calc distance
+    let distance = {
+        let target_pos = target_entity.get_position();
+        let local_pos = local_player.get_entity().get_position();
+        math::dist(target_pos, local_pos)
+    };
+
+    // Excluding targets that are too far or too close
+    if distance > g_settings.max_dist || distance < 20.0 {
+        return None;
+    }
+
+    Some(PreSelectedTarget {
+        fov: calculate_target_fov(local_player.get_entity(), target_entity),
+        distance,
+        is_visible: target_entity.is_visible(),
+        is_knocked: target_entity.is_knocked(),
+        health_points: { target_entity.get_shield_health() + target_entity.get_health() },
+        love_status: {
+            if !target_entity.is_player() {
+                if g_settings.yuan_p {
+                    LoveStatus::Love
+                } else {
+                    LoveStatus::Normal
+                }
+            } else {
+                let Some(target_player) = state.players.get(&target_ptr) else {
+                    tracing::error!(?target_ptr, "{}", s!("UNREACHABLE"));
+                    return None;
+                };
+                target_player
+                    .get_buf()
+                    .love_state
+                    .try_into()
+                    .unwrap_or_else(|_| {
+                        tracing::error!(love_state = target_player.get_buf().love_state, player_buf = ?target_player.get_buf());
+                        LoveStatus::Normal
+                    })
+            }
+        },
+        entity_ptr: target_ptr,
+    })
 }
 
 #[instrument(skip_all)]

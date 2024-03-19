@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use apexsky::aimbot::AimEntity;
@@ -12,12 +13,12 @@ use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 
 use crate::overlay::asset::{Blob, BlobAssetLoader};
-use crate::SharedState;
+use crate::{SharedState, TaskChannels};
 
 mod asset;
 mod ui;
 
-pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>) {
+pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option<TaskChannels>) {
     static S_TITLE: Lazy<String> =
         Lazy::new(|| s!("Absolutely Not Cheating.exe - Totally Legit Gameplay 😇").to_string());
     App::new()
@@ -48,6 +49,7 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>) {
         .init_asset_loader::<BlobAssetLoader>()
         .insert_resource(MyOverlayState {
             shared_state,
+            task_channels,
             sound_handle: Default::default(),
             font_blob: Default::default(),
             font_loaded: false,
@@ -80,6 +82,7 @@ impl Plugin for EmbeddedAssetPlugin {
 #[derive(Resource)]
 pub(crate) struct MyOverlayState {
     shared_state: Arc<RwLock<SharedState>>,
+    task_channels: Option<TaskChannels>,
     sound_handle: Handle<AudioSource>,
     font_blob: Handle<Blob>,
     font_loaded: bool,
@@ -88,7 +91,7 @@ pub(crate) struct MyOverlayState {
 #[derive(Component, Default)]
 struct AimTarget {
     ptr: u64,
-    data: Option<Box<dyn AimEntity>>,
+    data: Option<Arc<dyn AimEntity>>,
 }
 
 #[derive(Component)]
@@ -111,24 +114,6 @@ fn setup(
 
     // Space between the two ears
     let gap = 4.0;
-
-    // aim target
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Sphere::new(10.0).mesh().uv(32, 18)),
-            material: materials.add(Color::GREEN),
-            transform: Transform::from_xyz(0.0, 0.0, 0.0),
-            ..default()
-        },
-        AimTarget::default(),
-        AudioBundle {
-            source: overlay_state.sound_handle.to_owned(),
-            settings: PlaybackSettings::LOOP
-                .with_spatial(true)
-                .with_spatial_scale(SpatialScale::new(1.0 / 200.0))
-                .with_volume(Volume::new(2.0)),
-        },
-    ));
 
     let listener = SpatialListener::new(gap);
     commands
@@ -234,8 +219,12 @@ struct Emitter {
 //     }
 // }
 
+#[tracing::instrument(skip_all)]
 fn follow_game_state(
-    overlay_state: Res<MyOverlayState>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut overlay_state: ResMut<MyOverlayState>,
     mut query_camera: Query<
         (&mut Projection, &mut Transform),
         (
@@ -253,7 +242,7 @@ fn follow_game_state(
         ),
     >,
     mut aim_targets: Query<
-        (&mut Transform, &mut AimTarget),
+        (Entity, &mut Transform, &mut AimTarget),
         (
             With<AimTarget>,
             Without<MyCameraMarker>,
@@ -269,8 +258,7 @@ fn follow_game_state(
     };
     persp.fov = 90.0f32.to_radians();
 
-    let state = overlay_state.shared_state.read();
-    if let Some(view_player) = state.view_player.as_ref() {
+    if let Some(view_player) = overlay_state.shared_state.read().view_player.as_ref() {
         let cam_origin = view_player.get_entity().camera_origin;
         let cam_angles = view_player.get_entity().camera_angles;
 
@@ -295,11 +283,71 @@ fn follow_game_state(
         *listener_trans.into_inner() = cam_transform;
     }
 
-    // update target entity
-    let aim_pos = state.aim_target;
-    for (mut target_transform, mut _aim_target) in aim_targets.iter_mut() {
-        target_transform.translation.x = -aim_pos[1];
-        target_transform.translation.y = aim_pos[2];
-        target_transform.translation.z = -aim_pos[0];
+    // Get updated target entities or return
+    let mut targets: HashMap<u64, Option<Arc<dyn AimEntity>>> = {
+        let Some(channels) = &mut overlay_state.task_channels else {
+            return;
+        };
+        let targets_rx = &mut channels.aim_select_rx;
+        if !targets_rx.has_changed().unwrap_or_else(|e| {
+            tracing::error!(%e, ?targets_rx, "{}", s!("overlay"));
+            false
+        }) {
+            return;
+        }
+        targets_rx
+            .borrow_and_update()
+            .iter()
+            .map(|target| (target.entity_ptr, None))
+            .collect()
+    };
+    {
+        let state = overlay_state.shared_state.read();
+        targets.iter_mut().for_each(|(ptr, value)| {
+            *value = state.aim_entities.get(ptr).cloned();
+        });
     }
+
+    // Update or despawn existing entities
+    for (entity, mut target_transform, mut aim_target) in aim_targets.iter_mut() {
+        if let Some(target) = targets.remove(&aim_target.ptr) {
+            if let Some(target_data) = &target {
+                let target_pos = target_data.get_bone_position_by_hitbox(0);
+                target_transform.translation.x = -target_pos[1];
+                target_transform.translation.y = target_pos[2];
+                target_transform.translation.z = -target_pos[0];
+            } else {
+                tracing::warn!(?aim_target.ptr, ?target, "{}", s!("AimEntities[ptr]=None"));
+            }
+            aim_target.data = target;
+        } else {
+            commands.entity(entity).despawn();
+        }
+    }
+
+    // Create entities that do not yet exist
+    targets.into_iter().for_each(|(ptr, target)| {
+        let Some(target_data) = &target else {
+            tracing::warn!(?ptr, ?target, "{}", s!("AimEntities[ptr]=None"));
+            return;
+        };
+        let target_pos = target_data.get_bone_position_by_hitbox(0);
+
+        commands.spawn((
+            PbrBundle {
+                mesh: meshes.add(Sphere::new(10.0).mesh().uv(32, 18)),
+                material: materials.add(Color::ORANGE_RED),
+                transform: Transform::from_xyz(-target_pos[1], target_pos[2], -target_pos[0]),
+                ..default()
+            },
+            AimTarget { ptr, data: target },
+            AudioBundle {
+                source: overlay_state.sound_handle.to_owned(),
+                settings: PlaybackSettings::LOOP
+                    .with_spatial(true)
+                    .with_spatial_scale(SpatialScale::new(1.0 / 200.0))
+                    .with_volume(Volume::new(1.4)),
+            },
+        ));
+    });
 }

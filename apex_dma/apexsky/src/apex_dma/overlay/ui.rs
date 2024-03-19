@@ -5,6 +5,8 @@ use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
+use crate::global_settings;
+
 use super::asset::Blob;
 use super::MyOverlayState;
 
@@ -54,6 +56,7 @@ pub fn ui_system(
         game_fps: String,
         local_position: String,
         local_angles: String,
+        local_held: String,
         aim_position: String,
         spectator_name: Vec<String>,
         allied_spectator_name: Vec<String>,
@@ -84,9 +87,9 @@ pub fn ui_system(
                         "{}{:.0}{}{:.0}{}{:.0}",
                         s!("x="),
                         pos.x,
-                        s!(",y="),
+                        s!(", y="),
                         pos.y,
-                        s!(",z="),
+                        s!(", z="),
                         pos.z
                     )
                 })
@@ -100,10 +103,23 @@ pub fn ui_system(
                         "{}{:.2}{}{:.2}{}{:.2}",
                         s!("pitch="),
                         angle.x,
-                        s!(",yew="),
+                        s!(", yew="),
                         angle.y,
-                        s!(",roll="),
+                        s!(", roll="),
                         angle.z
+                    )
+                })
+                .unwrap_or_default(),
+            local_held: state
+                .aimbot_state
+                .as_ref()
+                .map(|aimbot| {
+                    format!(
+                        "{}{}{}{}",
+                        s!("held="),
+                        aimbot.get_held_id(),
+                        s!(", weapon="),
+                        aimbot.get_weapon_id()
                     )
                 })
                 .unwrap_or_default(),
@@ -127,6 +143,14 @@ pub fn ui_system(
         .auto_sized()
         .default_pos(pos2(1600.0, 320.0))
         .show(ctx, |ui| {
+            let window_fill = ui.visuals().window_fill();
+            ui.visuals_mut().window_fill = Color32::from_rgba_premultiplied(
+                window_fill.r(),
+                window_fill.g(),
+                window_fill.b(),
+                102,
+            );
+
             ui.label(format!(
                 "{}{}{}{}{}",
                 s!("Overlay("),
@@ -138,6 +162,7 @@ pub fn ui_system(
             ui.add_space(5.0);
             ui.label(dialog_esp.local_position);
             ui.label(dialog_esp.local_angles);
+            ui.label(dialog_esp.local_held);
             ui.label(dialog_esp.aim_position);
 
             ui.add_space(10.0);
@@ -200,6 +225,7 @@ pub fn ui_system(
     };
 
     CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
+        esp_2d_ui(ui, &overlay_state);
         info_bar_ui(ui, &overlay_state);
     });
 }
@@ -322,6 +348,115 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
             ui.add_space(rounding * 2.0);
         });
     });
+}
+
+fn esp_2d_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
+    use egui::{pos2, Color32, Pos2, Rect, RichText};
+
+    struct Esp2dData {
+        aim_target: [f32; 3],
+        view_matrix: [f32; 16],
+        aimbot_locked: bool,
+    }
+
+    let g_settings = global_settings();
+
+    let esp2d_data = {
+        let state = overlay_state.shared_state.read();
+        Esp2dData {
+            aim_target: state.aim_target,
+            view_matrix: state.view_matrix,
+            aimbot_locked: state
+                .aimbot_state
+                .as_ref()
+                .map(|aimbot| aimbot.is_locked())
+                .unwrap_or(false),
+        }
+    };
+
+    if g_settings.show_aim_target
+        && !(esp2d_data.aim_target[0] == 0.0
+            && esp2d_data.aim_target[1] == 0.0
+            && esp2d_data.aim_target[2] == 0.0)
+    {
+        let screen_width = g_settings.screen_width as f32;
+        let screen_height = g_settings.screen_height as f32;
+        let bs = world_to_screen(
+            &esp2d_data.aim_target,
+            &esp2d_data.view_matrix,
+            screen_width,
+            screen_height,
+        )
+        .unwrap_or(Vec2 {
+            x: screen_width / 2.0,
+            y: screen_height / 2.0,
+        });
+
+        const INDICATOR_RADIUS: f32 = 10.0;
+
+        let indicator_color = if esp2d_data.aimbot_locked {
+            Color32::from_rgba_premultiplied(255, 165, 0, 158)
+        } else {
+            Color32::from_rgba_premultiplied(255, 255, 255, 158)
+        };
+        let p1 = pos2(bs.x + INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
+        let p2 = pos2(bs.x - INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
+        let p3 = pos2(bs.x - INDICATOR_RADIUS, bs.y + INDICATOR_RADIUS);
+        let p4 = pos2(bs.x + INDICATOR_RADIUS, bs.y + INDICATOR_RADIUS);
+        ui.painter().rect_stroke(
+            Rect { min: p2, max: p4 },
+            INDICATOR_RADIUS,
+            (1.6726, indicator_color),
+        );
+        if esp2d_data.aimbot_locked {
+            let stroke = (2.718, Color32::RED);
+            ui.painter().line_segment([p1, p3], stroke);
+            ui.painter().line_segment([p2, p4], stroke);
+        }
+    }
+}
+
+fn world_to_screen(
+    from: &[f32; 3],
+    view_matrix: &[f32; 16],
+    screen_width: f32,
+    screen_height: f32,
+) -> Option<Vec2> {
+    let from = Vec3::new(from[0], from[1], from[2]);
+
+    let w = view_matrix[12] * from.x
+        + view_matrix[13] * from.y
+        + view_matrix[14] * from.z
+        + view_matrix[15];
+
+    if w < 0.01 {
+        return None;
+    }
+
+    let mut to = Vec2::new(0.0, 0.0);
+    to.x = view_matrix[0] * from.x
+        + view_matrix[1] * from.y
+        + view_matrix[2] * from.z
+        + view_matrix[3];
+    to.y = view_matrix[4] * from.x
+        + view_matrix[5] * from.y
+        + view_matrix[6] * from.z
+        + view_matrix[7];
+
+    let invw = 1.0 / w;
+    to.x *= invw;
+    to.y *= invw;
+
+    let mut x = screen_width / 2.0;
+    let mut y = screen_height / 2.0;
+
+    x += 0.5 * to.x * screen_width + 0.5;
+    y -= 0.5 * to.y * screen_height + 0.5;
+
+    to.x = x;
+    to.y = y;
+
+    Some(to)
 }
 
 // // info ui
