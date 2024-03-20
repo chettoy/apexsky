@@ -86,7 +86,7 @@ impl GamePlayer {
                 .unwrap_or(-1),
             kill_leader: false,
             winning_team: false,
-            yew: state.yew,
+            yaw: state.yaw,
             team_member_index: state.team_member_index,
         };
         Self {

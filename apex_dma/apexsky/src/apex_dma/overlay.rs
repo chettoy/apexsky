@@ -317,7 +317,7 @@ fn follow_game_state(
                 target_transform.translation.y = target_pos[2];
                 target_transform.translation.z = -target_pos[0];
             } else {
-                tracing::warn!(?aim_target.ptr, ?target, "{}", s!("AimEntities[ptr]=None"));
+                tracing::debug!(?aim_target.ptr, ?target, "{}", s!("AimEntities[ptr]=None"));
             }
             aim_target.data = target;
         } else {
@@ -345,8 +345,8 @@ fn follow_game_state(
                 source: overlay_state.sound_handle.to_owned(),
                 settings: PlaybackSettings::LOOP
                     .with_spatial(true)
-                    .with_spatial_scale(SpatialScale::new(1.0 / 200.0))
-                    .with_volume(Volume::new(1.4)),
+                    .with_spatial_scale(SpatialScale::new(1.0 / 400.0))
+                    .with_volume(Volume::new(1.0)),
             },
         ));
     });

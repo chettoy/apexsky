@@ -492,8 +492,8 @@ pub async fn actions_loop(
                             if player_buf.is_alive && lplayer_alive {
                                 None
                             } else {
-                                // Update yew to spec checker
-                                apexsky::tick_yew(target_ptr, player_buf.yew);
+                                // Update yaw to spec checker
+                                apexsky::tick_yaw(target_ptr, player_buf.yaw);
 
                                 // Exclude self from list when watching others
                                 if target_ptr != lplayer_ptr && is_spec(target_ptr) {
@@ -541,10 +541,10 @@ pub async fn actions_loop(
             // Targeting
             {
                 // Iterate over all targetable entities
-                let aim_targets: Vec<PreSelectedTarget> = {
+                let mut aim_targets: Vec<PreSelectedTarget> = {
                     let state = shared_state.read();
                     if let Some(lplayer) = state.local_player.as_ref() {
-                        let mut selected: Vec<PreSelectedTarget> = state
+                        state
                             .aim_entities
                             .values()
                             .filter_map(|entity| {
@@ -554,19 +554,18 @@ pub async fn actions_loop(
                                 //     None
                                 // })
                             })
-                            .collect();
-                        selected.sort_by(|a, b| {
-                            a.distance.partial_cmp(&b.distance).unwrap_or_else(|| {
-                                tracing::error!(?a, ?b, "{}", s!("sort"));
-                                panic!()
-                            })
-                        });
-                        selected
+                            .collect()
                     } else {
                         tracing::error!("{}", s!("UNREACHABLE: invalid localplayer"));
                         vec![]
                     }
                 };
+                aim_targets.sort_by(|a, b| {
+                    a.distance.partial_cmp(&b.distance).unwrap_or_else(|| {
+                        tracing::error!(?a, ?b, "{}", s!("sort"));
+                        panic!()
+                    })
+                });
 
                 // Send aim targets
                 aim_select_tx.send(aim_targets).unwrap_or_else(|e| {
@@ -685,7 +684,7 @@ fn process_player<'a>(
     }
 
     // Exclude players in invalid team
-    if entity_team < 0 || entity_team > 50 {
+    if target_entity.is_player() && (entity_team < 0 || entity_team > 50) {
         tracing::warn!(?entity_team, ?target_entity, "{}", s!("invalid team"));
         return None;
     }

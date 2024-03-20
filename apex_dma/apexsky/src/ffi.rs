@@ -69,9 +69,9 @@ pub extern "C" fn init_spec_checker(local_player_ptr: u64) {
 }
 
 #[no_mangle]
-pub extern "C" fn tick_yew(target_ptr: u64, yew: f32) {
+pub extern "C" fn tick_yaw(target_ptr: u64, yew: f32) {
     use skyapex_sdk::module::SpecCheck;
-    lock_mod!().tick_yew(target_ptr, yew);
+    lock_mod!().tick_yaw(target_ptr, yew);
 }
 
 #[no_mangle]

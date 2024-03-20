@@ -10,7 +10,7 @@ trait SpecCheckImpl {
 
 pub trait SpecCheck {
     fn init_spec_checker(&mut self, local_ptr: u64);
-    fn tick_yew(&mut self, target_ptr: u64, yew: f32);
+    fn tick_yaw(&mut self, target_ptr: u64, yew: f32);
     fn is_spec(&mut self, target_ptr: u64) -> bool;
 }
 
@@ -19,7 +19,7 @@ impl SpecCheck for Skyapex {
         self._init_spec_checker(local_ptr as i64)
     }
 
-    fn tick_yew(&mut self, target_ptr: u64, yew: f32) {
+    fn tick_yaw(&mut self, target_ptr: u64, yew: f32) {
         self._tick_yew(target_ptr as i64, yew)
     }
 

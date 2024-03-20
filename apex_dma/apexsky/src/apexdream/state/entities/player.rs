@@ -104,7 +104,7 @@ pub struct PlayerEntity {
 
     pub xp: i32,
     pub controller_active: i32,
-    pub yew: f32,
+    pub yaw: f32,
 }
 impl PlayerEntity {
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
@@ -296,7 +296,7 @@ impl Entity for PlayerEntity {
             script: [u32; 2],
             xp: u32,
             controller_active: u32,
-            yew: u32,
+            yaw: u32,
         }
 
         let data = &ctx.data;
@@ -431,7 +431,7 @@ impl Entity for PlayerEntity {
             ],
             xp: data.player_xp,
             controller_active: data.player_controller_active,
-            yew: OFFSET_YAW.try_into().unwrap(),
+            yaw: OFFSET_YAW.try_into().unwrap(),
         };
 
         if let Ok(fields) = api.vm_gatherd(self.entity_ptr, self.entity_size, &mut indices) {
@@ -599,7 +599,7 @@ impl Entity for PlayerEntity {
 
             self.xp = fields.xp as i32;
             self.controller_active = fields.controller_active as i32;
-            self.yew = f32::from_bits(fields.yew);
+            self.yaw = f32::from_bits(fields.yaw);
         }
 
         // if let Ok(xp) = api.vm_read::<i32>(self.entity_ptr.field(data.player_xp)) {

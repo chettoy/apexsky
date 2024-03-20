@@ -1,14 +1,22 @@
+use apexsky::love_players::LoveStatus;
 use apexsky::noobfstr as s;
 use apexsky::pb::apexlegends::PlayerState;
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
+use bevy_egui::egui::pos2;
+use bevy_egui::egui::Align2;
 use bevy_egui::{egui, EguiContexts};
 
 use crate::global_settings;
+use crate::overlay::ui::mini_map::mini_map_radar;
+use crate::overlay::ui::mini_map::RadarTarget;
+use crate::workers::aim::PreSelectedTarget;
 
 use super::asset::Blob;
 use super::MyOverlayState;
+
+mod mini_map;
 
 // A simple system to handle some keyboard input and toggle on/off the hittest.
 pub fn toggle_mouse_passthrough(
@@ -19,15 +27,26 @@ pub fn toggle_mouse_passthrough(
     window.cursor.hit_test = keyboard_input.pressed(KeyCode::Insert);
 }
 
+struct Esp2dData {
+    local_pos: [f32; 3],
+    local_yaw: f32,
+    aim_target: [f32; 3],
+    view_matrix: [f32; 16],
+    aimbot_locked: bool,
+    players: Vec<(PreSelectedTarget, PlayerState)>,
+    g_settings: apexsky::config::Settings,
+}
+
 pub fn ui_system(
     mut contexts: EguiContexts,
     mut overlay_state: ResMut<MyOverlayState>,
     diagnostics: Res<DiagnosticsStore>,
     blobs: Res<Assets<Blob>>,
 ) {
-    use egui::{pos2, CentralPanel, Color32, ScrollArea};
+    use egui::{CentralPanel, Color32, ScrollArea};
     let ctx = contexts.ctx_mut();
 
+    // Set default font
     if !overlay_state.font_loaded {
         if let Some(font_blob) = blobs.get(&overlay_state.font_blob) {
             let mut egui_fonts = egui::FontDefinitions::default();
@@ -50,6 +69,48 @@ pub fn ui_system(
             overlay_state.font_loaded = true;
         }
     }
+
+    let esp2d_data = {
+        let state = overlay_state.shared_state.read();
+        let selected_players = {
+            if let Some(channels) = &overlay_state.task_channels {
+                channels
+                    .aim_select_rx
+                    .borrow()
+                    .iter()
+                    .filter_map(|target| {
+                        state
+                            .players
+                            .get(&target.entity_ptr)
+                            .map(|pl| (target.clone(), pl.get_buf().clone()))
+                    })
+                    .collect()
+            } else {
+                vec![]
+            }
+        };
+        let (local_pos, local_yaw) = state
+            .local_player
+            .as_ref()
+            .map(|p| {
+                let buf = p.get_buf();
+                (buf.origin.clone().unwrap().into(), buf.yaw)
+            })
+            .unwrap_or_default();
+        Esp2dData {
+            local_pos,
+            local_yaw,
+            aim_target: state.aim_target,
+            view_matrix: state.view_matrix,
+            aimbot_locked: state
+                .aimbot_state
+                .as_ref()
+                .map(|aimbot| aimbot.is_locked())
+                .unwrap_or(false),
+            players: selected_players,
+            g_settings: global_settings(),
+        }
+    };
 
     struct DialogEsp {
         overlay_fps: String,
@@ -142,14 +203,25 @@ pub fn ui_system(
     egui::Window::new(s!("Hello, world!"))
         .auto_sized()
         .default_pos(pos2(1600.0, 320.0))
+        .frame(egui::Frame {
+            inner_margin: egui::Margin::same(8.0),
+            outer_margin: egui::Margin::ZERO,
+            rounding: egui::Rounding::same(6.0),
+            shadow: egui::epaint::Shadow {
+                extrusion: 3.0,
+                color: Color32::from_black_alpha(61),
+            },
+            fill: Color32::from_rgba_premultiplied(13, 13, 13, 138),
+            stroke: egui::Stroke::new(1.0, Color32::from_rgba_premultiplied(48, 48, 48, 74)),
+        })
         .show(ctx, |ui| {
-            let window_fill = ui.visuals().window_fill();
-            ui.visuals_mut().window_fill = Color32::from_rgba_premultiplied(
-                window_fill.r(),
-                window_fill.g(),
-                window_fill.b(),
-                102,
-            );
+            {
+                let visuals = ui.visuals_mut();
+                visuals.override_text_color =
+                    Some(Color32::from_rgba_premultiplied(255, 255, 255, 222));
+                visuals.window_fill = Color32::from_rgba_premultiplied(26, 26, 26, 153);
+                visuals.window_rounding = egui::Rounding::same(7.0);
+            }
 
             ui.label(format!(
                 "{}{}{}{}{}",
@@ -225,9 +297,31 @@ pub fn ui_system(
     };
 
     CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
-        esp_2d_ui(ui, &overlay_state);
+        esp_2d_ui(ui, &esp2d_data);
         info_bar_ui(ui, &overlay_state);
     });
+
+    // Radar Stuff
+    if esp2d_data.g_settings.mini_map_radar {
+        let radar_targets = esp2d_data
+            .players
+            .iter()
+            .map(|(player_info, player_buf)| RadarTarget {
+                pos: player_buf.origin.clone().unwrap().into(),
+                yaw: player_buf.yaw,
+                distance: player_info.distance / 39.62,
+                team_id: player_buf.team_num,
+            })
+            .collect();
+        mini_map_radar(
+            ctx,
+            esp2d_data.local_pos,
+            esp2d_data.local_yaw,
+            radar_targets,
+            esp2d_data.g_settings.mini_map_radar_dot_size1 as f32,
+            esp2d_data.g_settings.mini_map_radar_dot_size2 as f32,
+        );
+    }
 }
 
 fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
@@ -285,7 +379,7 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
     // Draw rectangle
     let info_bar_rect = Rect::from_min_max(Pos2::ZERO, pos2(280.0, 30.0));
     ui.allocate_ui_at_rect(info_bar_rect, |ui| {
-        let background_color = Color32::from_black_alpha((0.6 * 255.0 as f32).round() as u8);
+        let background_color = Color32::from_black_alpha((0.4 * 255.0 as f32).round() as u8);
         let rounding = 2.0;
         ui.painter()
             .rect_filled(info_bar_rect, rounding, background_color);
@@ -350,37 +444,18 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
     });
 }
 
-fn esp_2d_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
-    use egui::{pos2, Color32, Pos2, Rect, RichText};
+fn esp_2d_ui(ui: &mut egui::Ui, esp2d_data: &Esp2dData) {
+    use egui::{Color32, Rect};
 
-    struct Esp2dData {
-        aim_target: [f32; 3],
-        view_matrix: [f32; 16],
-        aimbot_locked: bool,
-    }
-
-    let g_settings = global_settings();
-
-    let esp2d_data = {
-        let state = overlay_state.shared_state.read();
-        Esp2dData {
-            aim_target: state.aim_target,
-            view_matrix: state.view_matrix,
-            aimbot_locked: state
-                .aimbot_state
-                .as_ref()
-                .map(|aimbot| aimbot.is_locked())
-                .unwrap_or(false),
-        }
-    };
+    let g_settings = &esp2d_data.g_settings;
+    let screen_width = g_settings.screen_width as f32;
+    let screen_height = g_settings.screen_height as f32;
 
     if g_settings.show_aim_target
         && !(esp2d_data.aim_target[0] == 0.0
             && esp2d_data.aim_target[1] == 0.0
             && esp2d_data.aim_target[2] == 0.0)
     {
-        let screen_width = g_settings.screen_width as f32;
-        let screen_height = g_settings.screen_height as f32;
         let bs = world_to_screen(
             &esp2d_data.aim_target,
             &esp2d_data.view_matrix,
@@ -414,9 +489,158 @@ fn esp_2d_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
             ui.painter().line_segment([p2, p4], stroke);
         }
     }
+
+    esp2d_data
+        .players
+        .iter()
+        .for_each(|(player_info, player_buf)| {
+            let head_position = player_buf.head_position.clone().unwrap();
+            let bottom_position = player_buf.origin.clone().unwrap();
+            let Some(head_screen_pos) = world_to_screen(
+                &head_position.into(),
+                &esp2d_data.view_matrix,
+                screen_width,
+                screen_height,
+            ) else {
+                return;
+            };
+            let Some(bottom_screen_pos) = world_to_screen(
+                &bottom_position.into(),
+                &esp2d_data.view_matrix,
+                screen_width,
+                screen_height,
+            ) else {
+                return;
+            };
+            let box_height = (head_screen_pos.y - bottom_screen_pos.y).abs();
+            let box_width = box_height / 2.0;
+            let box_middle_x = bottom_screen_pos.x - box_width / 2.0;
+
+            let font_id = egui::FontId {
+                size: 16.0,
+                family: egui::FontFamily::Proportional,
+            };
+            let box_color_viz = (
+                (g_settings.glow_r_viz * 255.0).round() as u8,
+                (g_settings.glow_g_viz * 255.0).round() as u8,
+                (g_settings.glow_b_viz * 255.0).round() as u8,
+            );
+            let box_color_not_viz = (
+                (g_settings.glow_r_not * 255.0).round() as u8,
+                (g_settings.glow_g_not * 255.0).round() as u8,
+                (g_settings.glow_b_not * 255.0).round() as u8,
+            );
+
+            let aim_distance = g_settings.aimbot_settings.aim_dist;
+
+            if g_settings.esp_visuals.damage && player_info.distance < aim_distance {
+                let color = Color32::from_rgb(188, 18, 20);
+                let draw_pos = pos2(box_middle_x, head_screen_pos.y - 32.0);
+                let damage_text = player_buf.damage_dealt.to_string();
+                ui.painter().text(
+                    draw_pos,
+                    Align2::CENTER_CENTER,
+                    damage_text,
+                    font_id.clone(),
+                    color,
+                );
+            }
+
+            let alpha = if player_info.distance < aim_distance {
+                1.0
+            } else if player_info.distance > 16000.0 {
+                0.4
+            } else {
+                1.0 - (player_info.distance - aim_distance) / (16000.0 - aim_distance) * 0.6
+            };
+            let alpha = (255.0 * alpha.max(0.0).min(1.0)).round() as u8;
+            let radar_distance = (player_info.distance / 39.62).round() as i32;
+
+            if g_settings.esp_visuals.distance {
+                let distance_text = format!(
+                    "{}{}{}{}",
+                    radar_distance,
+                    s!("m("),
+                    player_buf.team_num,
+                    s!(")")
+                );
+                let color = if player_buf.is_knocked {
+                    Color32::RED
+                } else {
+                    Color32::from_rgba_premultiplied(0, 255, 0, alpha)
+                };
+                let pos = pos2(box_middle_x, bottom_screen_pos.y + 1.0);
+                ui.painter().text(
+                    pos,
+                    Align2::CENTER_CENTER,
+                    distance_text,
+                    font_id.clone(),
+                    color,
+                );
+            }
+
+            if player_info.distance < aim_distance {
+                if g_settings.esp_visuals.r#box {
+                    let (r, g, b) = if player_info.is_visible {
+                        box_color_viz
+                    } else {
+                        box_color_not_viz
+                    };
+                    let box_color = Color32::from_rgba_premultiplied(r, g, b, alpha);
+                    let min_pos = pos2(box_middle_x - box_width / 2.0, head_screen_pos.y);
+                    let max_pos = pos2(min_pos.x + box_width, min_pos.y + box_height);
+                    let stroke = (1.0, box_color);
+                    ui.painter().rect_stroke(
+                        Rect {
+                            min: min_pos,
+                            max: max_pos,
+                        },
+                        0.0,
+                        stroke,
+                    );
+                }
+                if g_settings.esp_visuals.name {
+                    let is_love: LoveStatus = player_buf
+                        .love_state
+                        .try_into()
+                        .unwrap_or(LoveStatus::Normal);
+
+                    let name_color = if is_love == LoveStatus::Love {
+                        Color32::from_rgb(231, 27, 100)
+                    } else if is_love == LoveStatus::Hate {
+                        Color32::RED
+                    } else if is_love == LoveStatus::Ambivalent {
+                        Color32::BLACK
+                    } else {
+                        Color32::from_rgba_premultiplied(255, 255, 255, alpha)
+                    };
+
+                    let draw_pos = pos2(box_middle_x, head_screen_pos.y - 15.0);
+                    let nick_pos = pos2(draw_pos.x + 50.0, draw_pos.y);
+
+                    let level_text = format!("{}{}", s!("Lv."), xp_level(player_buf.xp));
+                    let level_color = Color32::from_rgba_premultiplied(0, 255, 0, alpha);
+
+                    ui.painter().text(
+                        draw_pos,
+                        Align2::CENTER_CENTER,
+                        level_text,
+                        font_id.clone(),
+                        level_color,
+                    );
+                    ui.painter().text(
+                        nick_pos,
+                        Align2::CENTER_CENTER,
+                        player_buf.player_name.to_owned(),
+                        font_id.clone(),
+                        name_color,
+                    );
+                }
+            }
+        })
 }
 
-fn world_to_screen(
+pub fn world_to_screen(
     from: &[f32; 3],
     view_matrix: &[f32; 16],
     screen_width: f32,
@@ -459,6 +683,31 @@ fn world_to_screen(
     Some(to)
 }
 
+fn xp_level(xp: i32) -> i32 {
+    /* MIT License
+     * Copyright (c) 2023 Xnieno */
+    const LEVELS: [i32; 56] = [
+        100, 2750, 6650, 11400, 17000, 23350, 30450, 38300, 46450, 55050, 64100, 73600, 83550,
+        93950, 104800, 116100, 127850, 140050, 152400, 164900, 177550, 190350, 203300, 216400,
+        229650, 243050, 256600, 270300, 284150, 298150, 312300, 326600, 341050, 355650, 370400,
+        385300, 400350, 415550, 430900, 446400, 462050, 477850, 493800, 509900, 526150, 542550,
+        559100, 575800, 592650, 609650, 626800, 644100, 661550, 679150, 696900, 714800,
+    ];
+
+    if xp < 0 {
+        return 0;
+    }
+
+    let array_size = LEVELS.len();
+
+    for i in 0..array_size {
+        if xp < LEVELS[i] {
+            return i as i32 + 1;
+        }
+    }
+
+    1 + array_size as i32 + ((xp - LEVELS[array_size - 1]) / 18000)
+}
 // // info ui
 // commands
 //     .spawn(NodeBundle {

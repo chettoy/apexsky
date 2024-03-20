@@ -7,6 +7,10 @@ use tracing::instrument;
 
 use crate::SharedState;
 
+pub struct PlayerVisual {
+    
+}
+
 #[instrument(skip_all)]
 pub async fn esp_loop(
     mut active: watch::Receiver<bool>,
