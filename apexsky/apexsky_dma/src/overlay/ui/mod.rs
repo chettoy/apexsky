@@ -1,3 +1,4 @@
+use apexsky::aimbot::get_unix_timestamp_in_millis;
 use apexsky::love_players::LoveStatus;
 use apexsky::noobfstr as s;
 use apexsky::pb::apexlegends::PlayerState;
@@ -115,6 +116,7 @@ pub fn ui_system(
     struct DialogEsp {
         overlay_fps: String,
         game_fps: String,
+        latency: String,
         local_position: String,
         local_angles: String,
         local_held: String,
@@ -125,6 +127,7 @@ pub fn ui_system(
     }
 
     let dialog_esp = {
+        let now = get_unix_timestamp_in_millis() as f64;
         let state = overlay_state.shared_state.read();
         DialogEsp {
             overlay_fps: {
@@ -139,6 +142,7 @@ pub fn ui_system(
                 }
             },
             game_fps: format!("{:.1}", state.game_fps),
+            latency: format!("{:.0}{}", now - state.update_time * 1000.0, s!("ms")),
             local_position: state
                 .local_player
                 .as_ref()
@@ -231,6 +235,7 @@ pub fn ui_system(
                 dialog_esp.game_fps,
                 s!(" FPS)")
             ));
+            ui.label(format!("{}{}", s!("latency "), dialog_esp.latency));
             ui.add_space(5.0);
             ui.label(dialog_esp.local_position);
             ui.label(dialog_esp.local_angles);

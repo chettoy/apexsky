@@ -289,12 +289,12 @@ fn follow_game_state(
             return;
         };
         let targets_rx = &mut channels.aim_select_rx;
-        if !targets_rx.has_changed().unwrap_or_else(|e| {
-            tracing::error!(%e, ?targets_rx, "{}", s!("overlay"));
-            false
-        }) {
-            return;
-        }
+        // if !targets_rx.has_changed().unwrap_or_else(|e| {
+        //     tracing::error!(%e, ?targets_rx, "{}", s!("overlay"));
+        //     false
+        // }) {
+        //     return;
+        // }
         targets_rx
             .borrow_and_update()
             .iter()
@@ -345,7 +345,7 @@ fn follow_game_state(
                 source: overlay_state.sound_handle.to_owned(),
                 settings: PlaybackSettings::LOOP
                     .with_spatial(true)
-                    .with_spatial_scale(SpatialScale::new(1.0 / 400.0))
+                    .with_spatial_scale(SpatialScale::new(1.0 / 40.0))
                     .with_volume(Volume::new(1.0)),
             },
         ));

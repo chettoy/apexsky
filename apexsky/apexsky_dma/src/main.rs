@@ -43,6 +43,7 @@ struct TreasureClue {
 #[derive(Debug, Default, Clone)]
 struct SharedState {
     game_attached: bool,
+    update_time: f64,
     aim_target: [f32; 3],
     view_matrix: [f32; 16],
     highlight_injected: bool,
