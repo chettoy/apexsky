@@ -1,4 +1,4 @@
-use crate::apexdream::base::solver::{Trajectory, Collection};
+use crate::apexdream::base::solver::{Collection, Trajectory};
 
 mod sentinel;
 pub use self::sentinel::COLLECTION as SENTINEL;

@@ -7,8 +7,8 @@ use tokio::sync::watch;
 use tokio::time::{sleep, sleep_until, Instant};
 use tracing::instrument;
 
-use crate::{SharedState, TreasureClue};
 use crate::game::data::*;
+use crate::{SharedState, TreasureClue};
 
 #[instrument]
 pub async fn items_loop(

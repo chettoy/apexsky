@@ -38,7 +38,6 @@ impl From<(f32, f32)> for Vec4 {
     }
 }
 
-
 impl From<[f32; 3]> for pb::apexlegends::Vec3 {
     fn from(value: [f32; 3]) -> Self {
         Self {

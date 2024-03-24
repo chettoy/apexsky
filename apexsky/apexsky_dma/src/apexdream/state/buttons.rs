@@ -54,9 +54,11 @@ impl Buttons {
             data.in_moveright + 8,
         ];
 
-        if let Ok(fields) =
-            api.vm_gatherd(api.apex_mem.base, /*process.size_of_image*/ 0, &mut indices)
-        {
+        if let Ok(fields) = api.vm_gatherd(
+            api.apex_mem.base,
+            /*process.size_of_image*/ 0,
+            &mut indices,
+        ) {
             let fields = dataview::DataView::from(fields).read::<[sdk::kbutton_t; 10]>(0);
             self.in_attack = fields[0];
             self.in_jump = fields[1];

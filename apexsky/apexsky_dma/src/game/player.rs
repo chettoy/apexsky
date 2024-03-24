@@ -17,12 +17,12 @@ pub struct GamePlayer {
 
 impl GamePlayer {
     pub fn new(
-        value: &PlayerEntity,
+        value: PlayerEntity,
         game_state: &GameState,
         config: &mut apexsky::config::Config,
     ) -> Self {
-        let state = value.clone();
-        let active_weapon = value.active_weapon(game_state).map(|v| v.clone());
+        let state = value;
+        let active_weapon = state.active_weapon(game_state).map(|v| v.clone());
         let player_name = game_state
             .get_player_name(state.get_info().handle)
             .unwrap()
@@ -62,11 +62,11 @@ impl GamePlayer {
             character_index: 0,
             badges: vec![],
             kills: game_state
-                .read_script_value(ScriptNetVarName::kills, value.script_net_data_global)
+                .read_script_value(ScriptNetVarName::kills, state.script_net_data_global)
                 .to_word()
                 .unwrap_or(-1) as i32,
             damage_dealt: game_state
-                .read_script_value(ScriptNetVarName::damageDealt, value.script_net_data_global)
+                .read_script_value(ScriptNetVarName::damageDealt, state.script_net_data_global)
                 .to_int()
                 .unwrap_or(-1),
             kill_leader: false,
@@ -79,6 +79,24 @@ impl GamePlayer {
             state,
             active_weapon,
         }
+    }
+
+    pub fn update_buf_hotdata(&mut self, value: &PlayerEntity) {
+        let state = value;
+
+        let buf = &mut self.buf;
+        buf.origin = Some(state.origin.into());
+        buf.view_angles = Some(state.view_angles.into());
+        buf.velocity = Some(state.velocity.into());
+        buf.yaw = state.yaw;
+        buf.health = state.health;
+        buf.shield = state.shields;
+        buf.flags = state.flags as i32;
+        buf.is_alive = state.is_alive();
+        buf.is_knocked = state.is_knocked();
+        buf.head_position = Some(state.get_bone_position_by_hitbox(0).into());
+
+        self.state = state.clone();
     }
 
     pub fn get_buf(&self) -> &PlayerState {

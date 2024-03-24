@@ -15,6 +15,7 @@ use tokio::task::{self, JoinHandle};
 use tokio::time::sleep;
 use tracing::{instrument, Level};
 use tracing_appender::non_blocking::NonBlocking;
+use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::EnvFilter;
@@ -24,11 +25,11 @@ use crate::game::player::GamePlayer;
 
 pub use apexsky::noobfstr;
 
-mod context_impl;
-mod overlay;
 mod apexdream;
-mod mem;
+mod context_impl;
 mod game;
+mod mem;
+mod overlay;
 mod workers;
 
 #[derive(Debug, Clone)]
@@ -341,13 +342,14 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| {
             EnvFilter::try_new(s!(
-                "apexsky_dma=trace,apexsky=trace,apexsky::love_players=info,apexsky_dma::workers::aim=debug"
+                "apexsky_dma=warn,apexsky=warn,apexsky::love_players=info,apexsky_dma::workers::aim=debug,apexsky_dma::workers::actions=info"
             ))
         })
         .unwrap();
 
     let formatting_layer = tracing_subscriber::fmt::layer()
-        .with_writer(std::io::stderr.with_max_level(Level::INFO))
+        .with_writer(std::io::stderr.with_max_level(Level::WARN))
+        .with_span_events(FmtSpan::ACTIVE)
         .pretty();
 
     let file_layer = tracing_subscriber::fmt::layer()
