@@ -4,26 +4,20 @@
 #include "lib/xorstr/xorstr.hpp"
 #include "vector.h"
 #include <array>
-#include <cassert>
-#include <cfloat>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib> // For the system() function
-#include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <map>
 #include <mutex>
 #include <ostream>
 #include <set>
-#include <shared_mutex>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <thread>
-#include <unordered_map> // Include the unordered_map header
 #include <vector>
 
 #ifdef _WIN32

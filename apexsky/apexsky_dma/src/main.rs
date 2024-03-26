@@ -19,6 +19,7 @@ use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::EnvFilter;
+use workers::actions::SpectatorInfo;
 use workers::aim::{AimKeyStatus, PreSelectedTarget};
 
 use crate::game::player::GamePlayer;
@@ -50,7 +51,7 @@ struct SharedState {
     highlight_injected: bool,
     treasure_clues: Vec<TreasureClue>,
     teammates: Vec<PlayerState>,
-    spectator_name: Vec<String>,
+    spectator_list: Vec<SpectatorInfo>,
     allied_spectator_name: Vec<String>,
     map_testing_local_team: i32,
     world_ready: bool,

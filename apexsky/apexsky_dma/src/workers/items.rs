@@ -4,7 +4,7 @@ use apexsky::{config::Settings, global_state::G_STATE};
 use obfstr::obfstr as s;
 use parking_lot::RwLock;
 use tokio::sync::watch;
-use tokio::time::{sleep, sleep_until, Instant};
+use tokio::time::{sleep_until, Instant};
 use tracing::instrument;
 
 use crate::game::data::*;

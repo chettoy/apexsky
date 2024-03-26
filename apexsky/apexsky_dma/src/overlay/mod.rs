@@ -53,6 +53,7 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option
             sound_handle: Default::default(),
             font_blob: Default::default(),
             font_loaded: false,
+            data_latency: 0.0,
         })
         // ClearColor must have 0 alpha, otherwise some color will bleed through
         .insert_resource(ClearColor(Color::NONE))
@@ -86,6 +87,7 @@ pub(crate) struct MyOverlayState {
     sound_handle: Handle<AudioSource>,
     font_blob: Handle<Blob>,
     font_loaded: bool,
+    data_latency: f64,
 }
 
 #[derive(Component, Default)]

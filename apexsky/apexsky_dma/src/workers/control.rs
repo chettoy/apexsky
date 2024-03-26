@@ -16,7 +16,7 @@ pub async fn control_loop(
     tracing::debug!("{}", s!("task start"));
     while *active.borrow_and_update() {
         sleep(Duration::from_millis(100)).await;
-        let spectator_count = { shared_state.read().spectator_name.len() };
+        let spectator_count = { shared_state.read().spectator_list.len() };
         if spectator_count > 0 {
             kbd_backlight_blink(spectator_count.try_into().unwrap());
             sleep(Duration::from_secs(10) - Duration::from_millis(100)).await;

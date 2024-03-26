@@ -10,6 +10,7 @@ use apexsky::{
 };
 use ndarray::arr1;
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::{mpsc, watch};
 use tokio::time::{sleep, sleep_until, Instant};
@@ -18,7 +19,7 @@ use tracing::{instrument, trace, trace_span, Instrument};
 use crate::apexdream::{
     base::math,
     sdk::HighlightBits,
-    state::entities::{BaseNPCEntity, LootEntity, PlayerEntity},
+    state::entities::{BaseNPCEntity, LootEntity},
 };
 use crate::game::{data::*, player::GamePlayer};
 use crate::mem::{
@@ -28,8 +29,6 @@ use crate::mem::{
 use crate::{press_to_exit, SharedState, TreasureClue};
 
 use super::aim::{AimKeyStatus, AimbotAction, PreSelectedTarget};
-
-pub trait ContextForActions {}
 
 pub trait MemAccess {
     fn apex_mem_baseaddr(&mut self) -> u64;
@@ -44,6 +43,7 @@ pub trait MemAccess {
     ) -> anyhow::Result<()>;
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpectatorInfo {
     pub ptr: u64,
     pub name: String,
@@ -172,6 +172,23 @@ pub async fn actions_loop(
                 trace!(loop_duration, tick_duration, ?apex_state.client, "{}", s!("game state update"));
             }
 
+            // Update spectator checker realtime
+            if actions_tick % 2 == 0 && player_ready {
+                let lplayer_ptr = apex_state.client.local_player_ptr;
+                // Init spectator checker
+                if prev_lplayer_ptr != lplayer_ptr {
+                    init_spec_checker(lplayer_ptr);
+                    prev_lplayer_ptr = lplayer_ptr;
+                }
+                // Update yaw to spec checker
+                apex_state.players().for_each(|pl| {
+                    if pl.eadp_uid == 0 {
+                        return;
+                    }
+                    apexsky::tick_yaw(pl.entity_ptr.into_raw(), pl.yaw);
+                });
+            }
+
             // Calc game FPS
             let game_fps_update = {
                 let delta_frame = apex_state.client.framecount - last_checkpoint_frame;
@@ -211,7 +228,7 @@ pub async fn actions_loop(
                 wlock.update_time = apex_state.time;
 
                 if !player_ready {
-                    wlock.spectator_name.clear();
+                    wlock.spectator_list.clear();
                     wlock.allied_spectator_name.clear();
                 }
 
@@ -408,7 +425,7 @@ pub async fn actions_loop(
             }
 
             trace_span!("Update entities").in_scope(|| {
-                if world_ready{
+                if world_ready {
                     let view_player: Option<GamePlayer> = apex_state.local_player().map(|entity| {
                         GamePlayer::new(
                             entity.clone(),
@@ -436,7 +453,8 @@ pub async fn actions_loop(
                     apex_state
                         .entities_as::<BaseNPCEntity>()
                         .for_each(|entity| {
-                            aim_entities.insert(entity.entity_ptr.into_raw(), Arc::new(entity.clone()));
+                            aim_entities
+                                .insert(entity.entity_ptr.into_raw(), Arc::new(entity.clone()));
                         });
 
                     let player_count = players.len();
@@ -451,7 +469,7 @@ pub async fn actions_loop(
                     state_wlock.view_player = view_player;
                     state_wlock.players = players;
                     state_wlock.aim_entities = aim_entities;
-                }else{
+                } else {
                     let mut state_wlock = shared_state.write();
                     state_wlock.local_player = None;
                     state_wlock.view_player = None;
@@ -460,7 +478,6 @@ pub async fn actions_loop(
                 }
             });
 
-            
             trace_span!("Update loots").in_scope(||{
                 if player_ready {
                     let Some(local_position) = shared_state
@@ -521,7 +538,7 @@ pub async fn actions_loop(
                 }
             });
 
-            if player_ready{
+            if player_ready {
                 trace_span!("Spectator check").in_scope(|| {
                     let Some((lplayer_ptr, lplayer_alive, lplayer_team)) =
                         shared_state.read().local_player.as_ref().map(|p| {
@@ -534,12 +551,6 @@ pub async fn actions_loop(
                     else {
                         return;
                     };
-
-                    // Init spectator checker
-                    if prev_lplayer_ptr != lplayer_ptr {
-                        init_spec_checker(lplayer_ptr);
-                        prev_lplayer_ptr = lplayer_ptr;
-                    }
 
                     let tdm_toggle = g_settings.tdm_toggle;
                     let shared_state = shared_state.clone();
@@ -578,7 +589,7 @@ pub async fn actions_loop(
                                     None
                                 } else {
                                     // Update yaw to spec checker
-                                    apexsky::tick_yaw(target_ptr, player_buf.yaw);
+                                    //apexsky::tick_yaw(target_ptr, player_buf.yaw);
 
                                     // Exclude self from list when watching others
                                     if target_ptr != lplayer_ptr && is_spec(target_ptr) {
@@ -611,12 +622,11 @@ pub async fn actions_loop(
                             .into_iter()
                             .map(|info| info.name)
                             .collect();
-                        let spectator_name = spectators.into_iter().map(|info| info.name).collect();
 
                         {
                             let mut wlock = shared_state.write();
                             wlock.allied_spectator_name = allied_spectator_name;
-                            wlock.spectator_name = spectator_name;
+                            wlock.spectator_list = spectators;
                             wlock.teammates = teammates;
                         }
                     };

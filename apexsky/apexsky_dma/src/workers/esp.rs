@@ -21,7 +21,7 @@ pub async fn esp_loop(
         let (spec, spec_all) = {
             let state = shared_state.read();
             (
-                state.spectator_name.len(),
+                state.spectator_list.len(),
                 state.allied_spectator_name.len(),
             )
         };

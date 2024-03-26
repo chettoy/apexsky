@@ -12,6 +12,7 @@ use bevy_egui::{egui, EguiContexts};
 use crate::global_settings;
 use crate::overlay::ui::mini_map::mini_map_radar;
 use crate::overlay::ui::mini_map::RadarTarget;
+use crate::workers::actions::SpectatorInfo;
 use crate::workers::aim::PreSelectedTarget;
 
 use super::asset::Blob;
@@ -36,6 +37,7 @@ struct Esp2dData {
     aimbot_locked: bool,
     players: Vec<(PreSelectedTarget, PlayerState)>,
     g_settings: apexsky::config::Settings,
+    data_timestamp: f64,
 }
 
 pub fn ui_system(
@@ -110,6 +112,7 @@ pub fn ui_system(
                 .unwrap_or(false),
             players: selected_players,
             g_settings: global_settings(),
+            data_timestamp: state.update_time,
         }
     };
 
@@ -121,13 +124,12 @@ pub fn ui_system(
         local_angles: String,
         local_held: String,
         aim_position: String,
-        spectator_name: Vec<String>,
+        spectator_list: Vec<SpectatorInfo>,
         allied_spectator_name: Vec<String>,
         teammates_info: Vec<PlayerState>,
     }
 
     let dialog_esp = {
-        let now = get_unix_timestamp_in_millis() as f64;
         let state = overlay_state.shared_state.read();
         DialogEsp {
             overlay_fps: {
@@ -142,7 +144,7 @@ pub fn ui_system(
                 }
             },
             game_fps: format!("{:.1}", state.game_fps),
-            latency: format!("{:.0}{}", now - state.update_time * 1000.0, s!("ms")),
+            latency: format!("{:.0}{}", overlay_state.data_latency, s!("ms")),
             local_position: state
                 .local_player
                 .as_ref()
@@ -198,7 +200,7 @@ pub fn ui_system(
                 state.aim_target[2],
                 s!("]")
             ),
-            spectator_name: state.spectator_name.clone(),
+            spectator_list: state.spectator_list.clone(),
             allied_spectator_name: state.allied_spectator_name.clone(),
             teammates_info: state.teammates.clone(),
         }
@@ -283,12 +285,26 @@ pub fn ui_system(
                         ui.heading(s!("Spectators"));
                     });
 
-                    if dialog_esp.spectator_name.is_empty() {
+                    if dialog_esp.spectator_list.is_empty() {
                         ui.label(s!("no spectators"));
                     }
 
-                    for name in dialog_esp.spectator_name.iter() {
-                        ui.label(name);
+                    for spectator_info in dialog_esp.spectator_list.iter() {
+                        let name = &spectator_info.name;
+                        match spectator_info.love_status {
+                            LoveStatus::Normal => ui.label(name),
+                            LoveStatus::Love => ui.label(
+                                egui::RichText::new(name)
+                                    .strong()
+                                    .color(Color32::from_rgb(231, 27, 100)),
+                            ),
+                            LoveStatus::Hate => {
+                                ui.label(egui::RichText::new(name).strong().color(Color32::RED))
+                            }
+                            LoveStatus::Ambivalent => {
+                                ui.label(egui::RichText::new(name).strong().color(Color32::BLACK))
+                            }
+                        };
                     }
                 });
         });
@@ -327,10 +343,13 @@ pub fn ui_system(
             esp2d_data.g_settings.mini_map_radar_dot_size2 as f32,
         );
     }
+
+    let now = get_unix_timestamp_in_millis() as f64;
+    overlay_state.data_latency = now - esp2d_data.data_timestamp * 1000.0;
 }
 
 fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
-    use egui::{pos2, Color32, Pos2, Rect, RichText};
+    use egui::{Color32, Pos2, Rect, RichText};
 
     #[derive(Debug, Clone)]
     struct EspInfo {
@@ -367,7 +386,7 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
                 aimbot_fov: aimbot.get_max_fov(),
                 aimbot_status_text,
                 aimbot_status_color,
-                spectators: state.spectator_name.len(),
+                spectators: state.spectator_list.len(),
                 allied_spectators: state.allied_spectator_name.len(),
             }
         } else {
@@ -375,7 +394,7 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
                 aimbot_fov: 0.0,
                 aimbot_status_text: s!("[Aimbot Offline]").to_string(),
                 aimbot_status_color: Color32::GRAY,
-                spectators: state.spectator_name.len(),
+                spectators: state.spectator_list.len(),
                 allied_spectators: state.allied_spectator_name.len(),
             }
         }
