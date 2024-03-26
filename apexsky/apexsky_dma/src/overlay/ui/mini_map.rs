@@ -62,7 +62,7 @@ pub(super) fn mini_map_radar(
         .title_bar(true)
         .movable(true)
         .frame(egui::Frame::none())
-        .default_pos((1200.0, 60.0))
+        .default_pos((45.0, 45.0))
         .fixed_size((250.0, 250.0))
         .show(ctx, |ui| {
             let draw_rect = ui.clip_rect();

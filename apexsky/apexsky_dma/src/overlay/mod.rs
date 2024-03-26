@@ -113,7 +113,7 @@ fn setup(
     overlay_state.sound_handle = asset_server.load(&*S_SOUND_PATH);
 
     // Space between the two ears
-    let gap = 4.0;
+    let gap = 12.0;
 
     let listener = SpatialListener::new(gap);
     commands
@@ -335,7 +335,7 @@ fn follow_game_state(
 
         commands.spawn((
             PbrBundle {
-                mesh: meshes.add(Sphere::new(10.0).mesh().uv(32, 18)),
+                mesh: meshes.add(Sphere::new(6.0).mesh().uv(32, 18)),
                 material: materials.add(Color::ORANGE_RED),
                 transform: Transform::from_xyz(-target_pos[1], target_pos[2], -target_pos[0]),
                 ..default()

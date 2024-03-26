@@ -63,8 +63,9 @@ impl GamePlayer {
             badges: vec![],
             kills: game_state
                 .read_script_value(ScriptNetVarName::kills, state.script_net_data_global)
-                .to_word()
-                .unwrap_or(-1) as i32,
+                .to_byte()
+                .map(|x| x as i32)
+                .unwrap_or(-1),
             damage_dealt: game_state
                 .read_script_value(ScriptNetVarName::damageDealt, state.script_net_data_global)
                 .to_int()

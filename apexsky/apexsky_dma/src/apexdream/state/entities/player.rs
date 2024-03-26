@@ -599,21 +599,19 @@ impl Entity for PlayerEntity {
 
             self.xp = fields.xp as i32;
             self.controller_active = fields.controller_active as i32;
-            self.yaw = f32::from_bits(fields.yaw);
+            self.yaw = {
+                let mut yaw = f32::from_bits(fields.yaw);
+                if yaw < 0.0 {
+                    yaw += 360.0;
+                }
+                yaw += 90.0;
+                if yaw > 360.0 {
+                    yaw -= 360.0;
+                }
+                yaw
+            };
         }
 
-        // if let Ok(xp) = api.vm_read::<i32>(self.entity_ptr.field(data.player_xp)) {
-        //     self.xp = xp;
-        // } else {
-        //     warn!("{}", s!("Err read player xp"));
-        // }
-        // if let Ok(controller_active) =
-        //     api.vm_read::<i32>(self.entity_ptr.field(data.player_controller_active))
-        // {
-        //     self.controller_active = controller_active;
-        // } else {
-        //     warn!("{}", s!("Err read player controller_active"));
-        // }
         // if let Ok(yew) = api.vm_read::<f32>(self.entity_ptr.field(OFFSET_YAW.try_into().unwrap())) {
         //     self.yew = yew;
         // } else {
