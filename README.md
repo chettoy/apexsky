@@ -28,20 +28,17 @@
 
 <br />
 
-
-
 ## About The Project
+
 Apex Legends QEMU/KVM/DMA/Linux hack
 
-UnknownCheats thread: https://www.unknowncheats.me/forum/apex-legends/406426-kvm-vmread-apex-esp-aimbot.html
+UnknownCheats thread: <https://www.unknowncheats.me/forum/apex-legends/406426-kvm-vmread-apex-esp-aimbot.html>
 
-Bone IDs reference: https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes
+Bone IDs reference: <https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes>
 
-Game version (Steam Only right now): v3.0.57.21
+Game version (Steam Only right now): v3.0.62.29
 
 **Please delete the old offsets.ini after updating.**
-
-
 
  **Features**
 
@@ -105,12 +102,8 @@ Game version (Steam Only right now): v3.0.57.21
     * **Auto-Loading Offsets:** Automatically loads offsets, making it convenient to keep up with game version updates.
     * **Real-time Team Damage Display:** Shows the total damage dealt by teammates in real-time.
 
-
-
 Please star if you like it.
 Look forward to your testing and feedback.
-
-
 
 ## Getting Started
 
@@ -120,27 +113,21 @@ There are really only two steps:
 
 1. Run the game on a windows guest in a kvm virtual machine.
 2. Run the compiled apex_dma program on the Linux host.
+
     ```shell
     sudo ./apex_dma
     ```
 
-
-
 Additional information:
-
 
 1. Please put the overlay window on the top of the VM screen after start. For example, on top of the looking-glass window.
 2. For a better experience, please passthrough your keyboard, mouse or controller into the VM.
 3. Press Insert to open the Overlay menu. Press and hold the Insert key to temporarily interact with the overlay.
 4. If you are using a resolution other than 1080p, save the configuration and then modify the `screen_width` and `screen_height` in *settings.toml* and reload the configuration.
 
-
-
 Click on *[Actions](https://github.com/chettoy/apexsky/actions)* to download the auto-built artifacts.
 
 Or compile it yourself.
-
-
 
 ## Build from source
 
@@ -173,8 +160,6 @@ cd apex_dma
 ./build.sh
 ```
 
-
-
 ## FAQ
 
 1. Many people are using a single GPU
@@ -188,15 +173,12 @@ cd apex_dma
     > First of all, everything related to game state is realized by *access on those specific memory locations*. So we need to use DMA or VM techniques to access memory covertly.
     > AC detects the overlay client, so we re-implement the overlay outside the VM and remove the client.
 
-3.  I feel the aimbot seem not good as KrackerCo's one
+3. I feel the aimbot seem not good as KrackerCo's one
 
     > We added a few new parameters to aimbot, if you turn auto bone off, turn no-recoil on (it's off by default now) and set the aimbot predict fps to 75, aimbot will run the same as it did before with the same smoothing values.
     > If you want a natural game feel and normal behavior as if you don't use auto-aiming but dramatically increase the hit rate, instead of wanting to lock bullets at a single point, use auto bone and maybe turn off no-recoil.
 
-
-
 ## Acknowledgments
-
 
 * [memflow](https://github.com/memflow/memflow)
 * [ratatui](https://ratatui.rs)
@@ -210,7 +192,6 @@ cd apex_dma
 * [Nexilist/xap-client](https://github.com/Nexilist/xap-client)
 * [Xnieno/ApexDreamForYou](https://github.com/Xnieno/ApexDreamForYou)
 
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
@@ -218,9 +199,5 @@ cd apex_dma
 [contributors-url]: https://github.com/chettoy/apex_dma_kvm_pub/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/chettoy/apex_dma_kvm_pub.svg?style=for-the-badge
 [forks-url]: https://github.com/chettoy/apex_dma_kvm_pub/network/members
-[stars-shield]: https://img.shields.io/github/starschettoy/apex_dma_kvm_pub.svg?style=for-the-badge
-[stars-url]: https://github.com/chettoy/apex_dma_kvm_pub/stargazers
 [issues-shield]: https://img.shields.io/github/issues/chettoy/apex_dma_kvm_pub.svg?style=for-the-badge
 [issues-url]: https://github.com/chettoy/apex_dma_kvm_pub/issues
-[license-shield]: https://img.shields.io/github/license/chettoy/apex_dma_kvm_pub.svg?style=for-the-badge
-[license-url]: https://github.com/chettoy/apex_dma_kvm_pub/blob/main/LICENSE.txt
