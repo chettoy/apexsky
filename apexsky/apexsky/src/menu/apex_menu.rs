@@ -752,12 +752,12 @@ fn build_aimbot_menu(
         format_item(
             &i18n_bundle,
             format!("12 - {}", i18n_msg!(i18n_bundle, MenuItemSkynadeSmooth)),
-            if settings.aimbot_settings.skynade_smooth < 120.0 * 0.6667 {
+            if settings.aimbot_settings.skynade_smooth < 150.0 * 0.6667 {
                 Span::styled(
                     format!("{}", settings.aimbot_settings.skynade_smooth),
                     Style::default().fg(Color::Red),
                 )
-            } else if settings.aimbot_settings.skynade_smooth > 200.0 * 0.6667 {
+            } else if settings.aimbot_settings.skynade_smooth > 250.0 * 0.6667 {
                 Span::styled(
                     format!("{}", settings.aimbot_settings.skynade_smooth),
                     Style::default().fg(Color::Green),

@@ -56,7 +56,7 @@ impl Default for AimbotSettings {
             aim_dist: 500.0 * 40.0,
             headshot_dist: 15.0 * 40.0,
             skynade_dist: 150.0 * 40.0,
-            smooth: 250.0,
+            smooth: 200.0,
             skynade_smooth: 250.0 * 0.6667,
             recoil_smooth_x: 30.0,
             recoil_smooth_y: 30.0,

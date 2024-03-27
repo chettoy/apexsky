@@ -122,6 +122,7 @@ pub fn ui_system(
         latency: String,
         local_position: String,
         local_angles: String,
+        local_yaw: String,
         local_held: String,
         aim_position: String,
         spectator_list: Vec<SpectatorInfo>,
@@ -131,6 +132,7 @@ pub fn ui_system(
 
     let dialog_esp = {
         let state = overlay_state.shared_state.read();
+        let lplayer_buf = state.local_player.as_ref().map(|p| p.get_buf());
         DialogEsp {
             overlay_fps: {
                 // try to get a "smoothed" FPS value from Bevy
@@ -145,10 +147,8 @@ pub fn ui_system(
             },
             game_fps: format!("{:.1}", state.game_fps),
             latency: format!("{:.0}{}", overlay_state.data_latency, s!("ms")),
-            local_position: state
-                .local_player
-                .as_ref()
-                .and_then(|p| p.get_buf().origin.clone())
+            local_position: lplayer_buf
+                .and_then(|p| p.origin.clone())
                 .map(|pos| {
                     format!(
                         "{}{:.0}{}{:.0}{}{:.0}",
@@ -161,21 +161,23 @@ pub fn ui_system(
                     )
                 })
                 .unwrap_or_default(),
-            local_angles: state
-                .local_player
-                .as_ref()
-                .and_then(|p| p.get_buf().view_angles.clone())
+            local_angles: lplayer_buf
+                .and_then(|p| p.view_angles.clone())
                 .map(|angle| {
                     format!(
                         "{}{:.2}{}{:.2}{}{:.2}",
-                        s!("pitch="),
+                        s!("view angles= "),
                         angle.x,
-                        s!(", yew="),
+                        s!(", "),
                         angle.y,
-                        s!(", roll="),
+                        s!(", "),
                         angle.z
                     )
                 })
+                .unwrap_or_default(),
+            local_yaw: lplayer_buf
+                .map(|p| p.yaw)
+                .map(|yaw| format!("{}{:.2}", s!("yaw="), yaw))
                 .unwrap_or_default(),
             local_held: state
                 .aimbot_state
@@ -241,6 +243,7 @@ pub fn ui_system(
             ui.add_space(5.0);
             ui.label(dialog_esp.local_position);
             ui.label(dialog_esp.local_angles);
+            ui.label(dialog_esp.local_yaw);
             ui.label(dialog_esp.local_held);
             ui.label(dialog_esp.aim_position);
 
@@ -647,7 +650,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp2d_data: &Esp2dData) {
 
                     ui.painter().text(
                         draw_pos,
-                        Align2::CENTER_CENTER,
+                        Align2::RIGHT_CENTER,
                         level_text,
                         font_id.clone(),
                         level_color,

@@ -348,7 +348,7 @@ fn follow_game_state(
                 settings: PlaybackSettings::LOOP
                     .with_spatial(true)
                     .with_spatial_scale(SpatialScale::new(1.0 / 40.0))
-                    .with_volume(Volume::new(1.0)),
+                    .with_volume(Volume::new(0.6)),
             },
         ));
     });

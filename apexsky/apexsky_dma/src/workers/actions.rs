@@ -11,9 +11,10 @@ use apexsky::{
 use ndarray::arr1;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::{mpsc, watch};
-use tokio::time::{sleep, sleep_until, Instant};
+use tokio::time::{sleep, Instant};
 use tracing::{instrument, trace, trace_span, Instrument};
 
 use crate::apexdream::{
@@ -145,7 +146,7 @@ pub async fn actions_loop(
         }
 
         while *active.borrow_and_update() {
-            sleep_until(start_instant + Duration::from_millis(16)).await; // don't change xD
+            sleep(Duration::from_millis(2)).await; // don't change xD
 
             let loop_duration = start_instant.elapsed().as_millis();
             start_instant = Instant::now();
@@ -173,7 +174,7 @@ pub async fn actions_loop(
             }
 
             // Update spectator checker realtime
-            if actions_tick % 2 == 0 && player_ready {
+            if actions_tick % 15 == 0 && player_ready {
                 let lplayer_ptr = apex_state.client.local_player_ptr;
                 // Init spectator checker
                 if prev_lplayer_ptr != lplayer_ptr {
@@ -246,7 +247,7 @@ pub async fn actions_loop(
 
             // Log WeaponId
             if apexdream.is_newly_connected() {
-                tracing::debug!(?apex_state.string_tables.weapon_names);
+                tracing::info!(?apex_state.string_tables.weapon_names);
             }
 
             trace_span!("Perform aimbot actions").in_scope(|| match aim_action_rx.try_recv() {
@@ -396,8 +397,8 @@ pub async fn actions_loop(
 
             /* Hot Variables Update End */
 
-            if actions_tick % 2 == 0 {
-                // at least 32ms // don't change xD
+            if actions_tick % 15 == 0 {
+                // at least 30ms // don't change xD
             } else if actions_tick % 30_000 == 0 {
                 actions_tick = 0;
             } else {
@@ -520,15 +521,14 @@ pub async fn actions_loop(
                         if loot_count == 0 {
                             tracing::debug!("{}", s!("wait items"));
                         } else if loot_count > log_items {
-                            let mut item_namelist = Vec::new();
-                            apex_state.entities_as::<LootEntity>().for_each(|entity| {
-                                item_namelist
-                                    .push((entity.custom_script_int, entity.model_name.string.clone()));
-                            });
-                            tracing::debug!(?item_namelist);
+                            let item_namelist = 
+                            apex_state.entities_as::<LootEntity>().map(|entity| {
+                                (entity.custom_script_int, entity.model_name.string.clone())
+                            }).collect::<HashSet<(i32, String)>>();
+                            let mut item_namelist: Vec<_> = item_namelist.into_iter().collect();
                             item_namelist.sort_by(|(a, _), (b, _)| a.cmp(b));
-                            tracing::debug!(?item_namelist, "{}", s!("items sorted"));
-                            log_items = item_namelist.len();
+                            tracing::info!(?item_namelist, "{}", s!("items sorted"));
+                            log_items = loot_count;
                         }
                     }
 
@@ -538,6 +538,45 @@ pub async fn actions_loop(
                 }
             });
 
+            trace_span!("Targeting").in_scope(|| {
+                // Send aim targets
+                aim_select_tx.send(
+                    if player_ready {
+                        // Iterate over all targetable entities
+                        let mut aim_targets: Vec<PreSelectedTarget> = {
+                            let state = shared_state.read();
+                            if let Some(lplayer) = state.local_player.as_ref() {
+                                state
+                                    .aim_entities
+                                    .values()
+                                    .filter_map(|entity| {
+                                        process_player(lplayer, entity.as_ref(), &state, &g_settings)
+                                        // .unwrap_or_else(|e|{
+                                        //     tracing::error!(%e, ?e, ?entity, "{}", s!("error process player"));
+                                        //     None
+                                        // })
+                                    })
+                                    .collect()
+                            } else {
+                                tracing::error!("{}", s!("UNREACHABLE: invalid localplayer"));
+                                vec![]
+                            }
+                        };
+                        aim_targets.sort_by(|a, b| {
+                            a.distance.partial_cmp(&b.distance).unwrap_or_else(|| {
+                                tracing::error!(?a, ?b, "{}", s!("sort"));
+                                panic!()
+                            })
+                        });
+                        aim_targets
+                    } else {
+                        vec![]
+                    }).unwrap_or_else(|e| {
+                        tracing::error!(%e, ?aim_select_tx, "{}", s!("send aim targets"));
+                    }
+                );
+            });
+        
             if player_ready {
                 trace_span!("Spectator check").in_scope(|| {
                     let Some((lplayer_ptr, lplayer_alive, lplayer_team)) =
@@ -630,40 +669,6 @@ pub async fn actions_loop(
                             wlock.teammates = teammates;
                         }
                     };
-                });
-
-                trace_span!("Targeting").in_scope(|| {
-                    // Iterate over all targetable entities
-                    let mut aim_targets: Vec<PreSelectedTarget> = {
-                        let state = shared_state.read();
-                        if let Some(lplayer) = state.local_player.as_ref() {
-                            state
-                                .aim_entities
-                                .values()
-                                .filter_map(|entity| {
-                                    process_player(lplayer, entity.as_ref(), &state, &g_settings)
-                                    // .unwrap_or_else(|e|{
-                                    //     tracing::error!(%e, ?e, ?entity, "{}", s!("error process player"));
-                                    //     None
-                                    // })
-                                })
-                                .collect()
-                        } else {
-                            tracing::error!("{}", s!("UNREACHABLE: invalid localplayer"));
-                            vec![]
-                        }
-                    };
-                    aim_targets.sort_by(|a, b| {
-                        a.distance.partial_cmp(&b.distance).unwrap_or_else(|| {
-                            tracing::error!(?a, ?b, "{}", s!("sort"));
-                            panic!()
-                        })
-                    });
-
-                    // Send aim targets
-                    aim_select_tx.send(aim_targets).unwrap_or_else(|e| {
-                        tracing::error!(%e, ?aim_select_tx, "{}", s!("send aim targets"));
-                    });
                 });
 
                 // Inject highlight settings

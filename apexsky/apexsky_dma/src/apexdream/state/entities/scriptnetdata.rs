@@ -145,9 +145,9 @@ impl Entity for ScriptNetDataEntity {
     }
     #[instrument(skip_all)]
     fn update(&mut self, api: &mut Api, _ctx: &UpdateContext) {
-        if !self.local_player {
-            return;
-        }
+        // if !self.local_player {
+        //     return;
+        // }
 
         if !self.init(api) {
             return;

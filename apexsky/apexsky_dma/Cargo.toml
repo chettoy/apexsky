@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+ambisonic = "0.4.1"
 anyhow = "1.0.81"
 apexsky = { path = "../apexsky" }
 bevy = { version = "0.13.1", features = ["wayland"] }
@@ -15,7 +16,7 @@ chrono = "0.4.35"
 dataview = "1.0.1"
 rand = "0.8.5"
 include-flate = "0.3.0"
-indexmap = { version = "2.2.5", features = ["serde"] }
+indexmap = { version = "2.2.6", features = ["serde"] }
 intptr = { version = "0.1.6", features = ["dataview_1", "serde"] }
 memflow = "0.2.1"
 memprocfs = "5.9.5"
