@@ -4,9 +4,9 @@ name: CI
 
 on:
   push:
-    branches: [ "dma", "dma-next" ]
+    branches: [ "dma-next" ]
   pull_request:
-    branches: [ "dma" ]
+    branches: [ "dma-next" ]
 
 jobs:
   build:
@@ -36,22 +36,20 @@ jobs:
             bin-ext: .exe
             lib-prefix:
             lib-ext: .dll
-          # - os: ubuntu-latest
-          #   c_compiler: clang
-          #   cpp_compiler: clang++
-          #   arch-name: x86_64-unknown-linux-gnu
-          #   target: x86_64-unknown-linux-gnu
-          #   bin-prefix:
-          #   bin-ext:
-          #   lib-prefix: lib
-          #   lib-ext: .so
+          - os: ubuntu-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+            arch-name: x86_64-unknown-linux-gnu
+            target: x86_64-unknown-linux-gnu
+            bin-prefix:
+            bin-ext:
+            lib-prefix: lib
+            lib-ext: .so
         exclude:
           - os: windows-latest
             c_compiler: clang
           - os: ubuntu-latest
             c_compiler: cl
-          - os: ubuntu-latest
-            c_compiler: clang
 
     steps:
     - uses: actions/checkout@v4
@@ -84,26 +82,14 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
         echo "sha_short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-
-    - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -S ${{ github.workspace }}/apex_dma
-
     - name: Build
-      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+      run: cd apexsky && cargo build --release --target ${{ matrix.target }}
 
-    - name: Test
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest --build-config ${{ matrix.build_type }}
+    # - name: Test
+    #   working-directory: ${{ steps.strings.outputs.build-output-dir }}
+    #   # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+    #   # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+    #   run: ctest --build-config ${{ matrix.build_type }}
     
     - name: Archive output artifacts
       uses: actions/upload-artifact@v4
@@ -111,7 +97,7 @@ jobs:
       with:
         name: output-${{ matrix.arch-name }}
         path: |
-          build
+          apexsky/target/${{ matrix.target }}/release
         retention-days: 2
     
     - name: Archive production artifacts
@@ -119,7 +105,7 @@ jobs:
       with:
         name: apexsky_dma_${{ steps.strings.outputs.sha_short }}_b${{ github.run_number }}-${{ matrix.arch-name }}
         path: |
-          build/${{ matrix.bin-prefix }}apex_dma${{ matrix.bin-ext }}
+          apexsky/target/${{ matrix.target }}/release/${{ matrix.bin-prefix }}apexsky_dma${{ matrix.bin-ext }}
           README.md
-        retention-days: 5
+        retention-days: 3
 

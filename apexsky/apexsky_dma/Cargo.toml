@@ -7,7 +7,7 @@ edition = "2021"
 ambisonic = "0.4.1"
 anyhow = "1.0.81"
 apexsky = { path = "../apexsky" }
-bevy = { version = "0.13.1", features = ["wayland"] }
+bevy = { version = "0.13.1", features = ["wayland", "x11"] }
 bevy_egui = "0.26.0"
 bitset = "0.1.2"
 bitset-core = "0.1.1"
