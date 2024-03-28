@@ -60,7 +60,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt update
-        sudo apt install libusb-1.0-0-dev libzstd-dev libglfw3-dev libfreetype6-dev libvulkan-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev wayland-protocols libwayland-dev libxkbcommon-dev
+        sudo apt install libusb-1.0-0-dev libzstd-dev pkg-config libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0 libwayland-dev libxkbcommon-dev
 
     - name: Install dependencies (Windows)
       if: matrix.os == 'windows-latest'
@@ -72,7 +72,7 @@ jobs:
         .\vcpkg install zstd:x64-windows
 
     - name: Install Protoc
-      uses: arduino/setup-protoc@v2
+      uses: arduino/setup-protoc@v3
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
@@ -106,6 +106,5 @@ jobs:
         name: apexsky_dma_${{ steps.strings.outputs.sha_short }}_b${{ github.run_number }}-${{ matrix.arch-name }}
         path: |
           apexsky/target/${{ matrix.target }}/release/${{ matrix.bin-prefix }}apexsky_dma${{ matrix.bin-ext }}
-          README.md
         retention-days: 3
 
