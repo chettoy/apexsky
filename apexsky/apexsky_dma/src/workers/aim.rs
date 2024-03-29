@@ -226,7 +226,10 @@ pub async fn aimbot_loop(
         let mut shift_angles: Option<[f32; 3]> = if aimbot.is_aiming() && aim_result.valid {
             let smoothed_angles = aimbot.smooth_aim_angles(&aim_result, smooth_factor);
             let smoothed_angles = [smoothed_angles.0, smoothed_angles.1, 0.0];
-            Some(math::sub(smoothed_angles, local_entity.get_view_angles()))
+            Some(math::sub(
+                smoothed_angles,
+                [aim_result.view_pitch, aim_result.view_yew, 0.0],
+            ))
         } else {
             None
         };

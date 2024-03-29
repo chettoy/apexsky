@@ -135,12 +135,15 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     }
 
     fn get_bone_position_by_hitbox(&self, id: u32) -> [f32; 3] {
-        let id = if id == 0 {
-            self.studio.bone_head
-        } else if id == 2 {
-            self.studio.bone_body
-        } else {
-            id.try_into().unwrap()
+        let id = match id {
+            0 => self.studio.bone_head,
+            1 => self.studio.bone_upper_body,
+            2 => self.studio.bone_lower_body,
+            3 => self.studio.bone_left_hand,
+            4 => self.studio.bone_right_hand,
+            5 => self.studio.bone_left_leg,
+            6 => self.studio.bone_right_leg,
+            _ => id.try_into().unwrap(),
         };
         math::add(self.origin, self.bones.get_pos(id as usize))
     }
@@ -208,12 +211,15 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
     }
 
     fn get_bone_position_by_hitbox(&self, id: u32) -> [f32; 3] {
-        let id = if id == 0 {
-            self.studio.bone_head
-        } else if id == 2 {
-            self.studio.bone_body
-        } else {
-            id.try_into().unwrap()
+        let id = match id {
+            0 => self.studio.bone_head,
+            1 => self.studio.bone_upper_body,
+            2 => self.studio.bone_lower_body,
+            3 => self.studio.bone_left_hand,
+            4 => self.studio.bone_right_hand,
+            5 => self.studio.bone_left_leg,
+            6 => self.studio.bone_right_leg,
+            _ => id.try_into().unwrap(),
         };
         self.get_bone_pos(id as usize)
     }

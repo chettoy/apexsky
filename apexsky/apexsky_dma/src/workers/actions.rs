@@ -479,15 +479,14 @@ pub async fn actions_loop(
                 }
             });
 
-            trace_span!("Update loots").in_scope(||{
-                if player_ready {
+            trace_span!("Update loots").in_scope(|| {
+                if world_ready {
                     let Some(local_position) = shared_state
                         .read()
                         .local_player
                         .as_ref()
                         .map(|l| arr1(&l.get_entity().origin))
                     else {
-                        tracing::error!(?apex_state.client, ?shared_state, "{}", s!("UNREACHABLE: localplayer=None"));
                         return;
                     };
 
@@ -521,10 +520,12 @@ pub async fn actions_loop(
                         if loot_count == 0 {
                             tracing::debug!("{}", s!("wait items"));
                         } else if loot_count > log_items {
-                            let item_namelist = 
-                            apex_state.entities_as::<LootEntity>().map(|entity| {
-                                (entity.custom_script_int, entity.model_name.string.clone())
-                            }).collect::<HashSet<(i32, String)>>();
+                            let item_namelist = apex_state
+                                .entities_as::<LootEntity>()
+                                .map(|entity| {
+                                    (entity.custom_script_int, entity.model_name.string.clone())
+                                })
+                                .collect::<HashSet<(i32, String)>>();
                             let mut item_namelist: Vec<_> = item_namelist.into_iter().collect();
                             item_namelist.sort_by(|(a, _), (b, _)| a.cmp(b));
                             tracing::info!(?item_namelist, "{}", s!("items sorted"));
@@ -540,8 +541,8 @@ pub async fn actions_loop(
 
             trace_span!("Targeting").in_scope(|| {
                 // Send aim targets
-                aim_select_tx.send(
-                    if player_ready {
+                aim_select_tx
+                    .send(if player_ready {
                         // Iterate over all targetable entities
                         let mut aim_targets: Vec<PreSelectedTarget> = {
                             let state = shared_state.read();
@@ -550,7 +551,12 @@ pub async fn actions_loop(
                                     .aim_entities
                                     .values()
                                     .filter_map(|entity| {
-                                        process_player(lplayer, entity.as_ref(), &state, &g_settings)
+                                        process_player(
+                                            lplayer,
+                                            entity.as_ref(),
+                                            &state,
+                                            &g_settings,
+                                        )
                                         // .unwrap_or_else(|e|{
                                         //     tracing::error!(%e, ?e, ?entity, "{}", s!("error process player"));
                                         //     None
@@ -571,12 +577,12 @@ pub async fn actions_loop(
                         aim_targets
                     } else {
                         vec![]
-                    }).unwrap_or_else(|e| {
+                    })
+                    .unwrap_or_else(|e| {
                         tracing::error!(%e, ?aim_select_tx, "{}", s!("send aim targets"));
-                    }
-                );
+                    });
             });
-        
+
             if player_ready {
                 trace_span!("Spectator check").in_scope(|| {
                     let Some((lplayer_ptr, lplayer_alive, lplayer_team)) =

@@ -501,7 +501,7 @@ impl Aimbot {
             target_bone_position_max = target.get_position();
             target_bone_position_min = target.get_bone_position_by_hitbox(0);
             let mut nearest_bone_dist = self.settings.max_dist;
-            for i in 0..5 {
+            for i in 0..7 {
                 let current_bone_position = target.get_bone_position_by_hitbox(i);
                 let dist_from_crosshair = math::dist(current_bone_position, local_camera);
                 if dist_from_crosshair < nearest_bone_dist {

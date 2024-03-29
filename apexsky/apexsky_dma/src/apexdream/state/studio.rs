@@ -20,6 +20,13 @@ pub struct StudioModel {
 
     pub bone_head: i32,
     pub bone_body: i32,
+
+    pub bone_upper_body: i32,
+    pub bone_lower_body: i32,
+    pub bone_left_hand: i32,
+    pub bone_right_hand: i32,
+    pub bone_left_leg: i32,
+    pub bone_right_leg: i32,
 }
 
 impl StudioModel {
@@ -107,6 +114,27 @@ impl StudioModel {
                 if hb.group == sdk::HITGROUP_HEAD {
                     self.bone_head = hb.bone as i32;
                 }
+            }
+            match hb.group {
+                sdk::HITGROUP_LEFT_HAND => {
+                    self.bone_left_hand = hb.bone as i32;
+                }
+                sdk::HITGROUP_LEFT_LEG => {
+                    self.bone_left_leg = hb.bone as i32;
+                }
+                sdk::HITGROUP_LOWER_BODY => {
+                    self.bone_lower_body = hb.bone as i32;
+                }
+                sdk::HITGROUP_RIGHT_HAND => {
+                    self.bone_right_hand = hb.bone as i32;
+                }
+                sdk::HITGROUP_RIGHT_LEG => {
+                    self.bone_right_leg = hb.bone as i32;
+                }
+                sdk::HITGROUP_UPPER_BODY => {
+                    self.bone_upper_body = hb.bone as i32;
+                }
+                _ => (),
             }
             if let Some(lookup) = self.hb_lookup.get_mut(hb.bone as usize) {
                 *lookup = i as i32;
