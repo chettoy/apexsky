@@ -360,39 +360,32 @@ pub async fn actions_loop(
                     }
                 });
 
-                let span = trace_span!("Update entities hot data");
+                trace_span!("Update entities hot data").in_scope(|| {
+                    let player_entities = apex_state.players();
+                    let local_player_ptr = apex_state.client.local_player_ptr;
 
-                let shared_state = shared_state.clone();
-                let player_entities: Vec<_> = apex_state.players().cloned().collect();
-                let local_player_ptr = apex_state.client.local_player_ptr;
+                    let mut players: HashMap<u64, GamePlayer> = shared_state.read().players.clone();
+                    let mut aim_entities = shared_state.read().aim_entities.clone();
 
-                tokio::spawn(
-                    async move {
-                        let mut players: HashMap<u64, GamePlayer> =
-                            shared_state.read().players.clone();
-                        let mut aim_entities = shared_state.read().aim_entities.clone();
+                    player_entities.for_each(|entity| {
+                        if entity.eadp_uid == 0 {
+                            return;
+                        }
+                        let entity_ptr = entity.entity_ptr.into_raw();
+                        aim_entities.insert(entity_ptr, Arc::new(entity.clone()));
+                        if let Some(player) = players.get_mut(&entity_ptr) {
+                            player.update_buf_hotdata(&entity);
+                        }
+                    });
 
-                        player_entities.iter().for_each(|entity| {
-                            if entity.eadp_uid == 0 {
-                                return;
-                            }
-                            let entity_ptr = entity.entity_ptr.into_raw();
-                            aim_entities.insert(entity_ptr, Arc::new(entity.clone()));
-                            if let Some(player) = players.get_mut(&entity_ptr) {
-                                player.update_buf_hotdata(&entity);
-                            }
-                        });
+                    let local_player: Option<GamePlayer> = players.get(&local_player_ptr).cloned();
 
-                        let local_player: Option<GamePlayer> =
-                            players.get(&local_player_ptr).cloned();
-
-                        let mut state_wlock = shared_state.write();
-                        state_wlock.local_player = local_player;
-                        state_wlock.players = players;
-                        state_wlock.aim_entities = aim_entities;
-                    }
-                    .instrument(span),
-                );
+                    let mut state_wlock = shared_state.write();
+                    
+                    state_wlock.local_player = local_player;
+                    state_wlock.players = players;
+                    state_wlock.aim_entities = aim_entities;
+                });
             }
 
             /* Hot Variables Update End */

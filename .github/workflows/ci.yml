@@ -32,7 +32,7 @@ jobs:
             cpp_compiler: cl
             arch-name: x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
-            bin-prefix: Release/
+            bin-prefix:
             bin-ext: .exe
             lib-prefix:
             lib-ext: .dll

@@ -609,12 +609,13 @@ impl Aimbot {
             normalize_delta_angles(&mut delta_max);
 
             let mut delta = [0.0, 0.0, 0.0];
-            if (delta_min[0] * delta_min[0]).is_sign_positive() {
+            if (delta_min[0] * delta_max[0]).is_sign_positive() {
                 delta[0] = (delta_min[0] + delta_max[0]) * 0.5;
             }
             if (delta_min[1] * delta_max[1]).is_sign_positive() {
                 delta[1] = (delta_min[1] + delta_max[1]) * 0.5;
             }
+            //println!("{:.2},{:.2}  {:.2},{:.2}", delta_min[0], delta_min[1], delta_max[0], delta_max[1]);
 
             let max_fov = {
                 let zoom_fov = self.weapon_info.weapon_zoom_fov;
