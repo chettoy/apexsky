@@ -381,7 +381,7 @@ pub async fn actions_loop(
                     let local_player: Option<GamePlayer> = players.get(&local_player_ptr).cloned();
 
                     let mut state_wlock = shared_state.write();
-                    
+
                     state_wlock.local_player = local_player;
                     state_wlock.players = players;
                     state_wlock.aim_entities = aim_entities;
@@ -413,10 +413,6 @@ pub async fn actions_loop(
                     }
                 }
             });
-
-            if !world_ready {
-                continue;
-            }
 
             trace_span!("Update entities").in_scope(|| {
                 if world_ready {
