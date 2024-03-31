@@ -15,7 +15,7 @@ use std::collections::HashSet;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::{mpsc, watch};
 use tokio::time::{sleep, Instant};
-use tracing::{instrument, trace, trace_span, Instrument};
+use tracing::{instrument, trace, trace_span};
 
 use crate::apexdream::{
     base::math,
@@ -256,6 +256,8 @@ pub async fn actions_loop(
                         if let Some(delta) = action.shift_angles {
                             if let Some(lplayer) = &shared_state.read().local_player {
                                 let lplayer = lplayer.get_entity();
+
+                                // read view_angles
                                 let ptr = lplayer.entity_ptr.into_raw();
                                 let view_angles = match mem
                                     .apex_mem_read::<[f32; 3]>(ptr + G_OFFSETS.player_viewangles)
@@ -266,14 +268,31 @@ pub async fn actions_loop(
                                         return;
                                     }
                                 };
+                                if view_angles[2].abs() > 1.0 {
+                                    tracing::warn!(
+                                        ?view_angles,
+                                        "{}",
+                                        s!("got invalid view_angles")
+                                    );
+                                    return;
+                                }
+
+                                // calc and check target view angles
                                 let mut update_angles = math::add(view_angles, delta);
                                 if update_angles[0].abs() > 360.0
                                     || update_angles[1].abs() > 360.0
                                     || update_angles[2].abs() > 1.0
                                 {
-                                    tracing::warn!(?update_angles, "{}", s!("got invalid angles"));
+                                    tracing::warn!(
+                                        ?update_angles,
+                                        "{}",
+                                        s!("got invalid target view_angles")
+                                    );
+                                    return;
                                 }
                                 normalize_angles(&mut update_angles);
+
+                                // write target view angles
                                 mem.apex_mem_write::<[f32; 3]>(
                                     ptr + G_OFFSETS.player_viewangles,
                                     &update_angles,
