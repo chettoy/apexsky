@@ -183,7 +183,7 @@ pub async fn actions_loop(
                 }
                 // Update yaw to spec checker
                 apex_state.players().for_each(|pl| {
-                    if pl.eadp_uid == 0 || pl.model_name.ptr.is_null() {
+                    if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 50 {
                         return;
                     }
                     apexsky::tick_yaw(pl.entity_ptr.into_raw(), pl.yaw);
@@ -386,15 +386,15 @@ pub async fn actions_loop(
                     let mut players: HashMap<u64, GamePlayer> = shared_state.read().players.clone();
                     let mut aim_entities = shared_state.read().aim_entities.clone();
 
-                    player_entities.for_each(|entity| {
-                        let entity_ptr = entity.entity_ptr.into_raw();
-                        if entity.eadp_uid == 0 || entity.model_name.ptr.is_null() {
+                    player_entities.for_each(|pl| {
+                        let entity_ptr = pl.entity_ptr.into_raw();
+                        if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 50 {
                             players.remove(&entity_ptr);
                             return;
                         }
-                        aim_entities.insert(entity_ptr, Arc::new(entity.clone()));
+                        aim_entities.insert(entity_ptr, Arc::new(pl.clone()));
                         if let Some(player) = players.get_mut(&entity_ptr) {
-                            player.update_buf_hotdata(&entity);
+                            player.update_buf_hotdata(&pl);
                         }
                     });
 
@@ -447,18 +447,18 @@ pub async fn actions_loop(
                     let mut players: HashMap<u64, GamePlayer> = HashMap::new();
                     let mut aim_entities: HashMap<u64, Arc<dyn AimEntity>> = HashMap::new();
 
-                    apex_state.players().for_each(|entity| {
+                    apex_state.players().for_each(|pl| {
                         // FIXME: skip wrong entity
-                        if entity.eadp_uid == 0 || entity.model_name.ptr.is_null() {
+                        if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 50 {
                             return;
                         }
                         let game_player = GamePlayer::new(
-                            entity.clone(),
+                            pl.clone(),
                             apex_state,
                             &mut G_STATE.lock().unwrap().config,
                         );
-                        players.insert(entity.entity_ptr.into_raw(), game_player);
-                        aim_entities.insert(entity.entity_ptr.into_raw(), Arc::new(entity.clone()));
+                        players.insert(pl.entity_ptr.into_raw(), game_player);
+                        aim_entities.insert(pl.entity_ptr.into_raw(), Arc::new(pl.clone()));
                     });
                     apex_state
                         .entities_as::<BaseNPCEntity>()
