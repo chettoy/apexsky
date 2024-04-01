@@ -183,7 +183,7 @@ pub async fn actions_loop(
                 }
                 // Update yaw to spec checker
                 apex_state.players().for_each(|pl| {
-                    if pl.eadp_uid == 0 {
+                    if pl.eadp_uid == 0 || pl.model_name.ptr.is_null() {
                         return;
                     }
                     apexsky::tick_yaw(pl.entity_ptr.into_raw(), pl.yaw);
@@ -387,10 +387,11 @@ pub async fn actions_loop(
                     let mut aim_entities = shared_state.read().aim_entities.clone();
 
                     player_entities.for_each(|entity| {
-                        if entity.eadp_uid == 0 {
+                        let entity_ptr = entity.entity_ptr.into_raw();
+                        if entity.eadp_uid == 0 || entity.model_name.ptr.is_null() {
+                            players.remove(&entity_ptr);
                             return;
                         }
-                        let entity_ptr = entity.entity_ptr.into_raw();
                         aim_entities.insert(entity_ptr, Arc::new(entity.clone()));
                         if let Some(player) = players.get_mut(&entity_ptr) {
                             player.update_buf_hotdata(&entity);
@@ -448,7 +449,7 @@ pub async fn actions_loop(
 
                     apex_state.players().for_each(|entity| {
                         // FIXME: skip wrong entity
-                        if entity.eadp_uid == 0 {
+                        if entity.eadp_uid == 0 || entity.model_name.ptr.is_null() {
                             return;
                         }
                         let game_player = GamePlayer::new(
