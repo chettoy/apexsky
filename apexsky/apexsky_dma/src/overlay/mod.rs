@@ -13,7 +13,7 @@ use bevy::window::{CompositeAlphaMode, WindowLevel, WindowMode};
 use bevy_egui::EguiPlugin;
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use tokio::sync::watch;
 
 use crate::overlay::asset::{Blob, BlobAssetLoader};
@@ -26,49 +26,61 @@ mod ui;
 pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option<TaskChannels>) {
     let (sound_ent_tx, mut sound_ent_rx) = watch::channel(Vec::<SoundEntity>::new());
     let (sound_src_tx, mut sound_src_rx) = watch::channel::<Option<AudioSource>>(None);
-    let sonic_t = std::thread::spawn(move || {
-        let ambisonic_scene = AmbisonicBuilder::default().build();
-        let mut sound_entities = HashMap::<u64, SoundController>::new();
-        tracing::debug!("{}", s!("sonic task start"));
-        loop {
-            std::thread::sleep(Duration::from_millis(15));
-            //let audio_src = ambisonic::rodio::source::SineWave::new(440);
+    let (sonic_active, sonic_t) = {
+        let active = Arc::new(Mutex::new(true));
+        (
+            active.clone(),
+            std::thread::spawn(move || {
+                let ambisonic_scene = AmbisonicBuilder::default().build();
+                let mut sound_entities = HashMap::<u64, SoundController>::new();
+                tracing::debug!("{}", s!("sonic task start"));
+                loop {
+                    std::thread::sleep(Duration::from_millis(15));
+                    //let audio_src = ambisonic::rodio::source::SineWave::new(440);
 
-            if !sound_ent_rx.has_changed().unwrap_or_else(|e| {
-                tracing::error!(%e, "{}", s!("sound_ent_rx if changed"));
-                false
-            }) {
-                continue;
-            }
-            let ents = sound_ent_rx.borrow_and_update();
-            let mut data: HashMap<u64, _> = ents
-                .iter()
-                .map(|obj| (obj.target.entity_ptr, obj))
-                .collect();
-            sound_entities = sound_entities
-                .into_iter()
-                .filter_map(|(ptr, mut sound)| {
-                    if let Some(ent) = data.remove(&ptr) {
-                        sound.adjust_position(ent.relative);
-                        Some((ptr, sound))
+                    if *active.lock() {
+                        if !sound_ent_rx.has_changed().unwrap_or_else(|e| {
+                            tracing::error!(%e, "{}", s!("sound_ent_rx if changed"));
+                            false
+                        }) {
+                            continue;
+                        }
                     } else {
-                        sound.stop();
-                        None
+                        break;
                     }
-                })
-                .collect();
-            data.into_iter().for_each(|(ptr, ent)| {
-                if let Some(src) = sound_src_rx.borrow_and_update().as_ref().cloned() {
-                    let src =
-                        ambisonic::rodio::Decoder::new(std::io::Cursor::new(src.clone())).unwrap();
-                    let sound = ambisonic_scene
-                        .play_at(src.convert_samples().repeat_infinite(), ent.relative);
-                    sound_entities.insert(ptr, sound);
+
+                    let ents = sound_ent_rx.borrow_and_update();
+                    let mut data: HashMap<u64, _> = ents
+                        .iter()
+                        .map(|obj| (obj.target.entity_ptr, obj))
+                        .collect();
+                    sound_entities = sound_entities
+                        .into_iter()
+                        .filter_map(|(ptr, mut sound)| {
+                            if let Some(ent) = data.remove(&ptr) {
+                                sound.adjust_position(ent.relative);
+                                Some((ptr, sound))
+                            } else {
+                                sound.stop();
+                                None
+                            }
+                        })
+                        .collect();
+                    data.into_iter().for_each(|(ptr, ent)| {
+                        if let Some(src) = sound_src_rx.borrow_and_update().as_ref().cloned() {
+                            let src =
+                                ambisonic::rodio::Decoder::new(std::io::Cursor::new(src.clone()))
+                                    .unwrap();
+                            let sound = ambisonic_scene
+                                .play_at(src.convert_samples().repeat_infinite(), ent.relative);
+                            sound_entities.insert(ptr, sound);
+                        }
+                    });
                 }
-            });
-        }
-        //tracing::debug!("{}", s!("sonic task end"));
-    });
+                //tracing::debug!("{}", s!("sonic task end"));
+            }),
+        )
+    };
 
     static S_TITLE: Lazy<String> =
         Lazy::new(|| s!("Absolutely Not Cheating.exe - Totally Legit Gameplay 😇").to_string());
@@ -104,6 +116,7 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option
             sound_handle: Default::default(),
             font_blob: Default::default(),
             font_loaded: false,
+            sound_loaded: false,
             data_latency: 0.0,
             sound_ent_tx,
             sound_src_tx,
@@ -113,10 +126,14 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option
         .add_systems(Startup, setup)
         .add_systems(Update, ui::toggle_mouse_passthrough)
         .add_systems(Update, ui::ui_system)
+        .add_systems(Update, load_sound)
         // .add_systems(Update, update_positions)
         // .add_systems(Update, update_listener)
         .add_systems(Update, follow_game_state)
         .run();
+
+    *sonic_active.lock() = false;
+    sonic_t.join().unwrap();
 }
 
 struct EmbeddedAssetPlugin;
@@ -145,6 +162,7 @@ pub(crate) struct MyOverlayState {
     sound_handle: Handle<AudioSource>,
     font_blob: Handle<Blob>,
     font_loaded: bool,
+    sound_loaded: bool,
     data_latency: f64,
     sound_ent_tx: watch::Sender<Vec<SoundEntity>>,
     sound_src_tx: watch::Sender<Option<AudioSource>>,
@@ -164,7 +182,6 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    sounds: Res<Assets<AudioSource>>,
     mut overlay_state: ResMut<MyOverlayState>,
 ) {
     static S_FONT_PATH: Lazy<String> =
@@ -174,15 +191,6 @@ fn setup(
 
     overlay_state.font_blob = asset_server.load(&*S_FONT_PATH);
     overlay_state.sound_handle = asset_server.load(&*S_SOUND_PATH);
-
-    let sound_src = sounds.get(&overlay_state.sound_handle).unwrap();
-
-    overlay_state
-        .sound_src_tx
-        .send(Some(sound_src.clone()))
-        .unwrap_or_else(|e| {
-            tracing::error!(%e, ?e);
-        });
 
     // Space between the two ears
     let gap = 12.0;
@@ -244,6 +252,21 @@ fn setup(
         },
         MyCameraMarker,
     ));
+}
+
+#[tracing::instrument(skip_all)]
+pub fn load_sound(mut overlay_state: ResMut<MyOverlayState>, sounds: Res<Assets<AudioSource>>) {
+    if !overlay_state.sound_loaded {
+        if let Some(audio_src) = sounds.get(&overlay_state.sound_handle) {
+            overlay_state
+                .sound_src_tx
+                .send(Some(audio_src.clone()))
+                .unwrap_or_else(|e| {
+                    tracing::error!(%e, ?e);
+                });
+            overlay_state.sound_loaded = true;
+        }
+    }
 }
 
 #[derive(Component, Default)]

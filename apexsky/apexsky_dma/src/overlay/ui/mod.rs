@@ -40,6 +40,7 @@ struct Esp2dData {
     data_timestamp: f64,
 }
 
+#[tracing::instrument(skip_all)]
 pub fn ui_system(
     mut contexts: EguiContexts,
     mut overlay_state: ResMut<MyOverlayState>,
