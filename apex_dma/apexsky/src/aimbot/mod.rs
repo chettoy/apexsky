@@ -16,41 +16,41 @@ enum WeaponId {
     Sentinel = 1,
     Bow = 2,
     R2R5 = 3,
-    SheilaStationary = 10,
-    Rampage = 21,
-    Sheila = 56,
+    SheilaStationary = 14,
+    Rampage = 6,
+    Sheila = 58,
     Melee,
-    SnipersMark = 76,
-    Alternator = 80,
-    Re45 = 81,
-    ChargeRifle = 83,
-    Devotion = 84,
-    Longbow = 85,
-    Havoc = 86,
-    Eva8 = 88,
-    Flatline = 89,
-    G7Scout = 90,
-    Hemlock = 91,
-    Kraber = 93,
-    Lstar = 94,
-    Mastiff = 96,
-    Mozambique = 97,
-    Prowler = 102,
-    Peacekeeper = 104,
-    R99 = 105,
-    P2020 = 106,
-    Spitfire = 107,
-    TripleTake = 108,
-    Wingman = 109,
-    Volt = 111,
-    _3030Repeater = 112,
-    CarSmg = 113,
-    Nemesis = 114,
-    Hands = 115,
-    ThrowingKnife = 158,
-    GrenadeThermite = 167,
-    GrenadeFrag = 168,
-    GrenadeArcStar = 169,
+    SnipersMark = 77,
+    Alternator = 81,
+    Re45 = 82,
+    ChargeRifle = 84,
+    Devotion = 85,
+    Longbow = 86,
+    Havoc = 87,
+    Eva8 = 89,
+    Flatline = 90,
+    G7Scout = 91,
+    Hemlock = 92,
+    Kraber = 94,
+    Lstar = 95,
+    Mastiff = 97,
+    Mozambique = 98,
+    Prowler = 103,
+    Peacekeeper = 105,
+    R99 = 106,
+    P2020 = 107,
+    Spitfire = 108,
+    TripleTake = 109,
+    Wingman = 111,
+    Volt = 112,
+    _3030Repeater = 113,
+    CarSmg = 114,
+    Nemesis = 115,
+    Hands = 116,
+    ThrowingKnife = 169,
+    GrenadeThermite = 170,
+    GrenadeFrag = 171,
+    GrenadeArcStar = 172,
     Max,
 }
 
@@ -65,6 +65,9 @@ const IDWEAPON_P2020: i32 = WeaponId::P2020 as i32;
 const IDWEAPON_TRIPLE_TAKE: i32 = WeaponId::TripleTake as i32;
 const IDWEAPON_WINGMAN: i32 = WeaponId::Wingman as i32;
 const IDWEAPON_3030_REPEATER: i32 = WeaponId::_3030Repeater as i32;
+const IDWEAPON_PEACEKEEPER: i32 = WeaponId::Peacekeeper as i32;
+const IDWEAPON_MASTIFF: i32 = WeaponId::Mastiff as i32;
+const IDWEAPON_PROWLER: i32 = WeaponId::Prowler as i32;
 
 #[repr(C)]
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -294,6 +297,9 @@ impl Aimbot {
                     IDWEAPON_P2020 => false,
                     IDWEAPON_TRIPLE_TAKE => true,
                     IDWEAPON_WINGMAN => true,
+                    IDWEAPON_PEACKEEPER =>true,
+                    IDWEAPON_MASTIFF =>true,
+                    IDWEAPON_PROWLER =>true,
                     _ => false,
                 }
             };
@@ -310,6 +316,9 @@ impl Aimbot {
                     IDWEAPON_P2020 => true,
                     IDWEAPON_TRIPLE_TAKE => true,
                     IDWEAPON_WINGMAN => true,
+                    IDWEAPON_PEACKEEPER =>true,
+                    IDWEAPON_MASTIFF =>true,
+                    IDWEAPON_PROWLER =>true,
                     _ => false,
                 }
             };
@@ -529,7 +538,7 @@ impl Aimbot {
             self.weapon_zoom_fov,
         ) > 0
         {
-            rand::thread_rng().gen_range(5..20)
+            rand::thread_rng().gen_range(40..100)
         } else {
             0
         }
@@ -600,6 +609,7 @@ impl TriggerBot for Aimbot {
         let semi_auto = self.is_semi_auto();
 
         if trigger_delay > 0 {
+           
             let attack_pressed = force_attack_state == 5;
 
             match self.triggerbot_state {
