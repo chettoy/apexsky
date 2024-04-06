@@ -1471,6 +1471,7 @@ static void item_glow_t() {
           item.enableGlow(highlightFunctionBits, highlightParameter, 70);
         }
         // Weapons
+        else if (g_settings.loot.weapon_kraber && ItemID == 1) {
           std::array<float, 3> highlightParameter = {1, 0, 0};
           item.enableGlow(highlightFunctionBits, highlightParameter, 67);
         } else if (g_settings.loot.weapon_mastiff && ItemID == 2) {
