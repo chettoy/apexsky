@@ -377,8 +377,8 @@ impl Default for Settings {
             // Enable Loading of setting file automaticly.
             load_settings: true,
             no_overlay: true,
-            screen_width: 1920,
-            screen_height: 1080,
+            screen_width: 2560,
+            screen_height: 1440,
             yuan_p: false,
             debug_mode: false, //Used to close menu,show debug info
             super_key: true,
@@ -399,7 +399,7 @@ impl Default for Settings {
             onevone: false,
             tdm_toggle: false,
             item_glow: false,
-            player_glow: false,
+            player_glow: true,
             player_glow_armor_color: true,
             player_glow_love_user: true,
             weapon_model_glow: false,
@@ -418,7 +418,7 @@ impl Default for Settings {
             map_radar_testing: false,
             show_aim_target: true,
             game_fps: 75.0,       // Game FPS for aim prediction
-            calc_game_fps: false, // Automatic calculation of game fps
+            calc_game_fps: true, // Automatic calculation of game fps
             firing_range: false,
             // Player Glow Color and Brightness.
             // inside fill
