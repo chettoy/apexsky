@@ -546,10 +546,10 @@ pub async fn actions_loop(
 
                             match serde_json::to_string(&item_namelist) {
                                 Ok(items_json) => {
-                                    tracing::info!(items_json, "{}", s!("items sorted"))
+                                    tracing::info!(items_json, "{loot_count}{}", s!(" items sorted"))
                                 }
                                 Err(e) => {
-                                    tracing::warn!(%e, ?item_namelist, "{}", s!("items sorted"))
+                                    tracing::warn!(%e, ?item_namelist, "{loot_count}{}", s!(" items sorted"))
                                 }
                             }
 
@@ -738,11 +738,12 @@ pub async fn actions_loop(
                         let highlight_context_id =
                             player_glow(target, apex_state.client.framecount, &g_settings);
                         mem.apex_mem_write::<u8>(
-                            target_ptr + G_OFFSETS.entity_highlight_generic_context,
+                            target_ptr + G_OFFSETS.entity_highlight_generic_context - 1,
                             &highlight_context_id,
                         )?;
                         mem.apex_mem_write::<i32>(target_ptr + OFFSET_GLOW_VISIBLE_TYPE, &2)?;
                         mem.apex_mem_write::<f32>(target_ptr + OFFSET_GLOW_DISTANCE, &8.0E+4)?;
+                        mem.apex_mem_write::<i32>(target_ptr + OFFSET_GLOW_FIX, &0)?;
                     }
                 }
 
@@ -756,7 +757,7 @@ pub async fn actions_loop(
                 {
                     for &(ptr, ctx_id) in items_glow_rx.borrow_and_update().iter() {
                         mem.apex_mem_write::<u8>(
-                            ptr + G_OFFSETS.entity_highlight_generic_context,
+                            ptr + G_OFFSETS.entity_highlight_generic_context - 1,
                             &ctx_id,
                         )?;
                     }
