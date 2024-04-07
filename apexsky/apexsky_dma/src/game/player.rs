@@ -141,23 +141,17 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     }
 
     fn get_bone_position_by_hitbox(&self, hitbox_id: u32) -> [f32; 3] {
-        // let id = match id {
-        //     0 => self.studio.bone_head,
-        //     1 => self.studio.bone_upper_body,
-        //     2 => self.studio.bone_lower_body,
-        //     3 => self.studio.bone_left_hand,
-        //     4 => self.studio.bone_right_hand,
-        //     5 => self.studio.bone_left_leg,
-        //     6 => self.studio.bone_right_leg,
-        //     _ => id.try_into().unwrap(),
-        // };
+        if self.studio.hitboxes.is_empty() {
+            return self.origin;
+        }
+
         let bone = self
             .studio
-            .bone_lookup
+            .hitboxes
             .get(hitbox_id as usize)
-            .map(|&i| i as usize)
+            .map(|hitbox| hitbox.bone as usize)
             .unwrap_or_else(|| {
-                tracing::error!(?hitbox_id, "{}", s!("invalid hitbox"));
+                tracing::error!(?hitbox_id, bone_head=self.studio.bone_head, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));
                 hitbox_id as usize
             });
         math::add(self.origin, self.bones.get_pos(bone))
@@ -226,13 +220,17 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
     }
 
     fn get_bone_position_by_hitbox(&self, hitbox_id: u32) -> [f32; 3] {
+        if self.studio.hitboxes.is_empty() {
+            return self.origin;
+        }
+
         let bone = self
             .studio
-            .bone_lookup
+            .hitboxes
             .get(hitbox_id as usize)
-            .map(|&i| i as usize)
+            .map(|hitbox| hitbox.bone as usize)
             .unwrap_or_else(|| {
-                tracing::error!(?hitbox_id, "{}", s!("invalid hitbox"));
+                tracing::error!(?hitbox_id, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));
                 hitbox_id as usize
             });
         self.get_bone_pos(bone)

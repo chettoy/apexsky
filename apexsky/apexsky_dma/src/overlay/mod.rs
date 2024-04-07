@@ -352,7 +352,7 @@ fn follow_game_state(
     };
     persp.fov = 90.0f32.to_radians();
 
-    let cam_direction = overlay_state
+    let cam_matrix = overlay_state
         .shared_state
         .read()
         .view_player
@@ -381,93 +381,63 @@ fn follow_game_state(
             *cam_trans.into_inner() = cam_transform.clone();
             *listener_trans.into_inner() = cam_transform;
 
-            cam_direction
+            cam_transform.compute_matrix()
         });
 
     // Get updated target entities or return
-    let mut targets: HashMap<u64, Option<Arc<dyn AimEntity>>> = {
+    #[derive(Debug)]
+    struct UpdateTarget {
+        info: PreSelectedTarget,
+        data: Option<Arc<dyn AimEntity>>,
+        point_pos: Vec3,
+    }
+    let mut targets: HashMap<u64, UpdateTarget> = {
         let Some(channels) = &mut overlay_state.task_channels else {
             return;
         };
         let targets_rx = &mut channels.aim_select_rx;
-        // if !targets_rx.has_changed().unwrap_or_else(|e| {
-        //     tracing::error!(%e, ?targets_rx, "{}", s!("overlay"));
-        //     false
-        // }) {
-        //     return;
-        // }
         targets_rx
             .borrow_and_update()
             .iter()
-            .map(|target| (target.entity_ptr, None))
+            .map(|target| {
+                (
+                    target.entity_ptr,
+                    UpdateTarget {
+                        info: target.clone(),
+                        data: None,
+                        point_pos: Vec3::default(),
+                    },
+                )
+            })
             .collect()
     };
     {
         let state = overlay_state.shared_state.read();
-        targets.iter_mut().for_each(|(ptr, value)| {
-            *value = state.aim_entities.get(ptr).cloned();
+        targets.iter_mut().for_each(|(ptr, target)| {
+            target.data = state.aim_entities.get(ptr).cloned();
+            if let Some(target_data) = &target.data {
+                let target_pos = target_data.get_bone_position_by_hitbox(0);
+                target.point_pos = Vec3 {
+                    x: -target_pos[1],
+                    y: target_pos[2],
+                    z: -target_pos[0],
+                };
+            } else {
+                tracing::debug!(?target, "{}", s!("AimEntities[ptr]=None"));
+            }
         });
     }
 
-    // Update or despawn existing entities
-    for (entity, mut target_transform, mut aim_target) in aim_targets.iter_mut() {
-        if let Some(target) = targets.remove(&aim_target.ptr) {
-            if let Some(target_data) = &target {
-                let target_pos = target_data.get_bone_position_by_hitbox(0);
-                target_transform.translation.x = -target_pos[1];
-                target_transform.translation.y = target_pos[2];
-                target_transform.translation.z = -target_pos[0];
-            } else {
-                tracing::debug!(?aim_target.ptr, ?target, "{}", s!("AimEntities[ptr]=None"));
-            }
-            aim_target.data = target;
-        } else {
-            commands.entity(entity).despawn();
-        }
-    }
-
-    // Create entities that do not yet exist
-    targets.into_iter().for_each(|(ptr, target)| {
-        let Some(target_data) = &target else {
-            tracing::warn!(?ptr, ?target, "{}", s!("AimEntities[ptr]=None"));
-            return;
-        };
-        let target_pos = target_data.get_bone_position_by_hitbox(0);
-
-        commands.spawn((
-            PbrBundle {
-                mesh: meshes.add(Sphere::new(6.0).mesh().uv(32, 18)),
-                material: materials.add(Color::ORANGE_RED),
-                transform: Transform::from_xyz(-target_pos[1], target_pos[2], -target_pos[0]),
-                ..default()
-            },
-            AimTarget { ptr, data: target },
-            // AudioBundle {
-            //     source: overlay_state.sound_handle.to_owned(),
-            //     settings: PlaybackSettings::LOOP
-            //         .with_spatial(true)
-            //         .with_spatial_scale(SpatialScale::new(1.0 / 40.0))
-            //         .with_volume(Volume::new(0.6)),
-            // },
-        ));
-    });
-
     // Update ambisonic
-    if let Some(cam_direction) = cam_direction {
-        let Some(channels) = &mut overlay_state.task_channels else {
-            return;
-        };
-        let sound_entities: Vec<_> = channels
-            .aim_select_rx
-            .borrow()
-            .iter()
-            .map(|target| SoundEntity {
-                target: target.clone(),
-                relative: [
-                    cam_direction.x * target.distance / 39.62,
-                    cam_direction.y * target.distance / 39.62,
-                    cam_direction.z * target.distance / 39.62,
-                ],
+    if let Some(cam_matrix) = cam_matrix {
+        let sound_entities: Vec<_> = targets
+            .values()
+            .map(|target| {
+                let relative = cam_matrix.transform_point(target.point_pos);
+                SoundEntity {
+                    target: target.info.clone(),
+                    relative: [relative.x / 39.62, relative.y / 39.62, relative.z / 39.62],
+                }
             })
             .collect();
         overlay_state
@@ -477,4 +447,42 @@ fn follow_game_state(
                 tracing::error!(%e, "{}", s!("send sound_entity"));
             });
     }
+
+    // Update or despawn existing entities
+    for (entity, mut target_transform, mut aim_target) in aim_targets.iter_mut() {
+        if let Some(target) = targets.remove(&aim_target.ptr) {
+            target_transform.translation = target.point_pos;
+            aim_target.data = target.data;
+        } else {
+            commands.entity(entity).despawn();
+        }
+    }
+
+    // Create entities that do not yet exist
+    targets.into_iter().for_each(|(ptr, target)| {
+        if target.data.is_none() {
+            tracing::warn!(?ptr, ?target, "{}", s!("AimEntities[ptr]=None"));
+            return;
+        };
+
+        commands.spawn((
+            PbrBundle {
+                mesh: meshes.add(Sphere::new(6.0).mesh().uv(32, 18)),
+                material: materials.add(Color::ORANGE_RED),
+                transform: Transform::from_translation(target.point_pos),
+                ..default()
+            },
+            AimTarget {
+                ptr,
+                data: target.data,
+            },
+            // AudioBundle {
+            //     source: overlay_state.sound_handle.to_owned(),
+            //     settings: PlaybackSettings::LOOP
+            //         .with_spatial(true)
+            //         .with_spatial_scale(SpatialScale::new(1.0 / 40.0))
+            //         .with_volume(Volume::new(0.6)),
+            // },
+        ));
+    });
 }

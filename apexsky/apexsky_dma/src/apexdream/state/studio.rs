@@ -13,7 +13,6 @@ pub struct StudioModel {
     pub hitboxes: Vec<sdk::mstudiobbox_t>,
 
     pub hb_lookup: Vec<i32>,
-    pub bone_lookup: Vec<i32>,
 
     pub bone_start: i32,
     pub bone_end1: i32,
@@ -94,8 +93,6 @@ impl StudioModel {
         }
         if self.hitboxes.len() != numhitboxes {
             self.hitboxes.resize_with(numhitboxes, Default::default);
-            self.bone_lookup.clear();
-            self.bone_lookup.resize(numbones, -1);
         }
         if self.hitboxset.numhitboxes > 0 {
             let Ok(()) = api.vm_read_into(
@@ -141,9 +138,6 @@ impl StudioModel {
             }
             if let Some(lookup) = self.hb_lookup.get_mut(hb.bone as usize) {
                 *lookup = i as i32;
-            }
-            if let Some(lookup) = self.bone_lookup.get_mut(i) {
-                *lookup = hb.bone as i32;
             }
         }
         self.bone_end2 = bone_end2;
