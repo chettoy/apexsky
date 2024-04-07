@@ -58,7 +58,7 @@ pub struct CNetStringTable {
 pub fn load_string_table(
     st: &mut Box<[String]>,
     api: &mut Api,
-    ctx: &UpdateContext,
+    _ctx: &UpdateContext,
     offset: u32,
 ) -> Result<(), api::Error> {
     let mut ptr = sdk::Ptr::<CNetStringTable>::NULL;

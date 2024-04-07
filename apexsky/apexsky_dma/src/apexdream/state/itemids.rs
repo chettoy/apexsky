@@ -13,7 +13,7 @@ pub struct LootItems {
 
 impl LootItems {
     #[instrument(skip_all)]
-    pub fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    pub fn update(&mut self, _api: &mut Api, ctx: &UpdateContext) {
         // Reload the itemids on new connection
         if ctx.connected {
             self.models.resize_with(MAX_ITEMS, String::new);

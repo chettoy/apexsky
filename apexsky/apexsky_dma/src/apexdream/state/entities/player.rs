@@ -618,7 +618,7 @@ impl Entity for PlayerEntity {
         //     warn!(?self.entity_ptr, "{}", s!("error read yew"));
         // }
     }
-    fn post(&mut self, _api: &mut Api, ctx: &UpdateContext, state: &GameState) {
+    fn post(&mut self, _api: &mut Api, ctx: &UpdateContext, _state: &GameState) {
         // Check if player is visible
         // let is_visible = self.last_visible_time > 0.0
         //     && (self.last_visible_time - state.client.curtime).abs() < 10.0;

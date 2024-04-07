@@ -723,7 +723,7 @@ pub async fn actions_loop(
                         let highlight_context_id =
                             player_glow(target, apex_state.client.framecount, &g_settings);
                         mem.apex_mem_write::<u8>(
-                            target_ptr + OFFSET_GLOW_CONTEXT_ID,
+                            target_ptr + G_OFFSETS.entity_highlight_generic_context,
                             &highlight_context_id,
                         )?;
                         mem.apex_mem_write::<i32>(target_ptr + OFFSET_GLOW_VISIBLE_TYPE, &2)?;
@@ -740,7 +740,10 @@ pub async fn actions_loop(
                     })
                 {
                     for &(ptr, ctx_id) in items_glow_rx.borrow_and_update().iter() {
-                        mem.apex_mem_write::<u8>(ptr + OFFSET_GLOW_CONTEXT_ID, &ctx_id)?;
+                        mem.apex_mem_write::<u8>(
+                            ptr + G_OFFSETS.entity_highlight_generic_context,
+                            &ctx_id,
+                        )?;
                     }
                 }
 
@@ -816,6 +819,18 @@ fn process_player<'a>(
         return None;
     }
 
+    let target_player = if target_entity.is_player() {
+        match state.players.get(&target_ptr) {
+            Some(p) => Some(p),
+            None => {
+                tracing::error!(?target_ptr, "{}", s!("UNREACHABLE"));
+                return None;
+            }
+        }
+    } else {
+        None
+    };
+
     Some(PreSelectedTarget {
         fov: calculate_target_fov(local_player.get_entity(), target_entity),
         distance,
@@ -823,17 +838,7 @@ fn process_player<'a>(
         is_knocked: target_entity.is_knocked(),
         health_points: { target_entity.get_shield_health() + target_entity.get_health() },
         love_status: {
-            if !target_entity.is_player() {
-                if g_settings.yuan_p {
-                    LoveStatus::Love
-                } else {
-                    LoveStatus::Normal
-                }
-            } else {
-                let Some(target_player) = state.players.get(&target_ptr) else {
-                    tracing::error!(?target_ptr, "{}", s!("UNREACHABLE"));
-                    return None;
-                };
+            if let Some(target_player) = target_player {
                 target_player
                     .get_buf()
                     .love_state
@@ -842,6 +847,20 @@ fn process_player<'a>(
                         tracing::error!(love_state = target_player.get_buf().love_state, player_buf = ?target_player.get_buf());
                         LoveStatus::Normal
                     })
+            } else {
+                // not player (dummy)
+                if g_settings.yuan_p {
+                    LoveStatus::Love
+                } else {
+                    LoveStatus::Normal
+                }
+            }
+        },
+        is_kill_leader: {
+            if let Some(target_player) = target_player {
+                GamePlayer::is_kill_leader(target_player.get_buf())
+            } else {
+                false
             }
         },
         entity_ptr: target_ptr,
@@ -893,6 +912,14 @@ fn player_glow(target: &PreSelectedTarget, frame_count: i32, g_settings: &Settin
         }
     }
 
+    // kill leader glow
+    if target.is_kill_leader {
+        let frame_frag = frame_count / g_settings.game_fps as i32;
+        if target.is_visible || frame_frag % 3 == 0 {
+            setting_index = HIGHLIGHT_PLAYER_ORANGE;
+        }
+    }
+
     setting_index
 }
 
@@ -906,14 +933,14 @@ fn inject_highlight(
     let bits_box = HighlightBits::new(0, 125, 64, 7, true, false);
     let bits_player_fill = HighlightBits::new(
         g_settings.player_glow_inside_value,
-        169,
+        6,
         g_settings.player_glow_outline_size,
         7,
         true,
         false,
     );
     let bits_player_outline =
-        HighlightBits::new(0, 169, g_settings.player_glow_outline_size, 7, true, false);
+        HighlightBits::new(0, 6, g_settings.player_glow_outline_size, 7, true, false);
 
     let highlight_settings_inject: [(u8, &HighlightBits, [f32; 3]); 20] = [
         (HIGHLIGHT_LOOT_HEAVY, &bits_loot, [0.0, 1.0, 1.0]),

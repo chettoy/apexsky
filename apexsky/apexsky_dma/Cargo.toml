@@ -7,11 +7,11 @@ edition = "2021"
 ambisonic = "0.4.1"
 anyhow = "1.0.81"
 apexsky = { path = "../apexsky" }
-bevy = { version = "0.13.1", features = ["wayland", "x11"] }
+bevy = { version = "0.13.2", features = ["wayland", "x11"] }
 bevy_egui = "0.26.0"
 bitset = "0.1.2"
 bitset-core = "0.1.1"
-chrono = "0.4.35"
+chrono = "0.4.37"
 #console-subscriber = "0.1.5"
 dataview = "1.0.1"
 rand = "0.8.5"
@@ -26,7 +26,7 @@ obfstr = "0.4.3"
 once_cell = "1.19.0"
 parking_lot = { version = "0.12.1", features = ["arc_lock", "nightly", "owning_ref", "serde"] }
 serde = { version = "1.0.197", features = ["derive"] }
-tokio = { version = "1.36.0", features = ["full"] }
+tokio = { version = "1.37.0", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }
 tracing-appender = "0.2.3"

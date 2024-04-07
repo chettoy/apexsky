@@ -45,6 +45,7 @@ pub struct PreSelectedTarget {
     pub is_knocked: bool,
     pub health_points: i32,
     pub love_status: LoveStatus,
+    pub is_kill_leader: bool,
     pub entity_ptr: u64,
 }
 

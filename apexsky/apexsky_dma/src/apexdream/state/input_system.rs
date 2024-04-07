@@ -1,7 +1,5 @@
 use super::*;
 
-use bitset_core::BitSet;
-
 #[derive(Default)]
 pub struct InputSystem {
     pub button_state: [u32; 4],

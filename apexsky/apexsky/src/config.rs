@@ -423,8 +423,8 @@ impl Default for Settings {
             firing_range: false,
             // Player Glow Color and Brightness.
             // inside fill
-            player_glow_inside_value: 12, // 0 = no fill, 14 = full fill
-            player_glow_outline_size: 32, // 0-255
+            player_glow_inside_value: 101, //12, // 0 = no fill, 14 = full fill
+            player_glow_outline_size: 32,  // 0-255
             // Not Visable
             glow_r_not: 1.0, // Red 0-1, higher is brighter color.
             glow_g_not: 0.0,

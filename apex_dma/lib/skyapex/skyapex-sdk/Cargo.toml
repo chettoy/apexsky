@@ -12,7 +12,7 @@ anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["indexmap", "preserve_order"] }
 tokio = { version = "1", features = ["full"] }
-chrono = "0.4.35"
+chrono = "0.4"
 wat = "1"
 wasmedge-sdk = { version = "0.13.2", features = ["static", "standalone", "wasi_nn"], optional = true }
 wasmer = { version = "4.2.6", optional = true }
@@ -25,6 +25,6 @@ include-flate = "0.3.0"
 
 
 [features]
-default = ["wasmer"]
+default = ["wasmedge"]
 wasmedge = ["dep:wasmedge-sdk"]
 wasmer = ["dep:wasmer", "dep:wasmer-wasix"]

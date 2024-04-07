@@ -83,9 +83,9 @@ impl Skyapex {
                 .collect();
             let preopens = vec![
                 s!("/").to_string(),
-                s!("/tmp").to_string(),
-                s!("/mnt").to_string(),
-                s!("/mnt/host:.").to_string(),
+                S_PATH_TMP.to_owned(),
+                S_PATH_MNT.to_owned(),
+                format!("{}{}", &*S_PATH_HOST, s!(":.")),
             ];
             let wasi_module = vm.wasi_module_mut().expect(s!("Not found wasi module"));
             wasi_module.initialize(

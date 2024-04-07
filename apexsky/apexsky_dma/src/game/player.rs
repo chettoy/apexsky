@@ -1,5 +1,6 @@
 use apexsky::aimbot::AimEntity;
-use apexsky::pb::apexlegends::PlayerState;
+use apexsky::pb::apexlegends::{GradeFlag, PlayerState};
+use obfstr::obfstr as s;
 
 use crate::apexdream::sdk::ScriptNetVarName;
 use crate::apexdream::*;
@@ -70,7 +71,7 @@ impl GamePlayer {
                 .read_script_value(ScriptNetVarName::damageDealt, state.script_net_data_global)
                 .to_int()
                 .unwrap_or(-1),
-            kill_leader: false,
+            grade_flags: state.grade,
             winning_team: false,
             yaw: state.yaw,
             team_member_index: state.team_member_index,
@@ -111,6 +112,11 @@ impl GamePlayer {
     pub fn get_active_weapon(&self) -> Option<&WeaponXEntity> {
         self.active_weapon.as_ref()
     }
+
+    pub fn is_kill_leader(buf: &PlayerState) -> bool {
+        buf.grade_flags & GradeFlag::Killleader as i32 != 0
+            || buf.grade_flags & GradeFlag::ChampKillleader as i32 != 0
+    }
 }
 
 impl apexsky::aimbot::AimEntity for PlayerEntity {
@@ -134,18 +140,27 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
         self.velocity
     }
 
-    fn get_bone_position_by_hitbox(&self, id: u32) -> [f32; 3] {
-        let id = match id {
-            0 => self.studio.bone_head,
-            1 => self.studio.bone_upper_body,
-            2 => self.studio.bone_lower_body,
-            3 => self.studio.bone_left_hand,
-            4 => self.studio.bone_right_hand,
-            5 => self.studio.bone_left_leg,
-            6 => self.studio.bone_right_leg,
-            _ => id.try_into().unwrap(),
-        };
-        math::add(self.origin, self.bones.get_pos(id as usize))
+    fn get_bone_position_by_hitbox(&self, hitbox_id: u32) -> [f32; 3] {
+        // let id = match id {
+        //     0 => self.studio.bone_head,
+        //     1 => self.studio.bone_upper_body,
+        //     2 => self.studio.bone_lower_body,
+        //     3 => self.studio.bone_left_hand,
+        //     4 => self.studio.bone_right_hand,
+        //     5 => self.studio.bone_left_leg,
+        //     6 => self.studio.bone_right_leg,
+        //     _ => id.try_into().unwrap(),
+        // };
+        let bone = self
+            .studio
+            .bone_lookup
+            .get(hitbox_id as usize)
+            .map(|&i| i as usize)
+            .unwrap_or_else(|| {
+                tracing::error!(?hitbox_id, "{}", s!("invalid hitbox"));
+                hitbox_id as usize
+            });
+        math::add(self.origin, self.bones.get_pos(bone))
     }
 
     fn get_position(&self) -> [f32; 3] {
@@ -210,18 +225,17 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
         self.velocity
     }
 
-    fn get_bone_position_by_hitbox(&self, id: u32) -> [f32; 3] {
-        let id = match id {
-            0 => self.studio.bone_head,
-            1 => self.studio.bone_upper_body,
-            2 => self.studio.bone_lower_body,
-            3 => self.studio.bone_left_hand,
-            4 => self.studio.bone_right_hand,
-            5 => self.studio.bone_left_leg,
-            6 => self.studio.bone_right_leg,
-            _ => id.try_into().unwrap(),
-        };
-        self.get_bone_pos(id as usize)
+    fn get_bone_position_by_hitbox(&self, hitbox_id: u32) -> [f32; 3] {
+        let bone = self
+            .studio
+            .bone_lookup
+            .get(hitbox_id as usize)
+            .map(|&i| i as usize)
+            .unwrap_or_else(|| {
+                tracing::error!(?hitbox_id, "{}", s!("invalid hitbox"));
+                hitbox_id as usize
+            });
+        self.get_bone_pos(bone)
     }
 
     fn get_position(&self) -> [f32; 3] {

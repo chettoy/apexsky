@@ -34,19 +34,18 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option
                 let ambisonic_scene = AmbisonicBuilder::default().build();
                 let mut sound_entities = HashMap::<u64, SoundController>::new();
                 tracing::debug!("{}", s!("sonic task start"));
-                loop {
+                while *active.lock() {
                     std::thread::sleep(Duration::from_millis(15));
                     //let audio_src = ambisonic::rodio::source::SineWave::new(440);
 
-                    if *active.lock() {
-                        if !sound_ent_rx.has_changed().unwrap_or_else(|e| {
+                    if !sound_ent_rx.has_changed().unwrap_or_else(|e| {
+                        // If it is not because of a normal exit, an error is displayed
+                        if *active.lock() {
                             tracing::error!(%e, "{}", s!("sound_ent_rx if changed"));
-                            false
-                        }) {
-                            continue;
                         }
-                    } else {
-                        break;
+                        false
+                    }) {
+                        continue;
                     }
 
                     let ents = sound_ent_rx.borrow_and_update();
