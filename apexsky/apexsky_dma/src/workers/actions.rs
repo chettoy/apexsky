@@ -529,15 +529,30 @@ pub async fn actions_loop(
                         if loot_count == 0 {
                             tracing::debug!("{}", s!("wait items"));
                         } else if loot_count > log_items {
+                            #[derive(Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+                            struct LootInt {
+                                int: i32,
+                                model: String,
+                            }
                             let item_namelist = apex_state
                                 .entities_as::<LootEntity>()
-                                .map(|entity| {
-                                    (entity.custom_script_int, entity.model_name.string.clone())
+                                .map(|entity| LootInt {
+                                    int: entity.custom_script_int,
+                                    model: entity.model_name.string.clone(),
                                 })
-                                .collect::<HashSet<(i32, String)>>();
+                                .collect::<HashSet<LootInt>>();
                             let mut item_namelist: Vec<_> = item_namelist.into_iter().collect();
-                            item_namelist.sort_by(|(a, _), (b, _)| a.cmp(b));
-                            tracing::info!(?item_namelist, "{}", s!("items sorted"));
+                            item_namelist.sort_by(|a, b| a.int.cmp(&b.int));
+
+                            match serde_json::to_string(&item_namelist) {
+                                Ok(items_json) => {
+                                    tracing::info!(items_json, "{}", s!("items sorted"))
+                                }
+                                Err(e) => {
+                                    tracing::warn!(%e, ?item_namelist, "{}", s!("items sorted"))
+                                }
+                            }
+
                             log_items = loot_count;
                         }
                     }
