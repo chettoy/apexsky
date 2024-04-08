@@ -16,7 +16,8 @@ chrono = "0.4"
 wat = "1"
 wasmedge-sdk = { version = "0.13.2", features = ["static", "standalone", "wasi_nn"], optional = true }
 wasmer = { version = "4.2.6", optional = true }
-wasmer-wasix = { version = "0.18.1", optional = true}
+virtual-fs = { version = "=0.11.1", optional = true }
+wasmer-wasix = { version = "0.18.1", optional = true }
 skyapex-derive = { path = "../skyapex-derive" }
 ctrlc = "3.4.4"
 obfstr = "0.4.3"
@@ -25,6 +26,6 @@ include-flate = "0.3.0"
 
 
 [features]
-default = ["wasmedge"]
+default = ["wasmer"]
 wasmedge = ["dep:wasmedge-sdk"]
-wasmer = ["dep:wasmer", "dep:wasmer-wasix"]
+wasmer = ["dep:wasmer", "dep:virtual-fs", "dep:wasmer-wasix"]

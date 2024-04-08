@@ -19,7 +19,7 @@ include-flate = "0.3.0"
 indexmap = { version = "2.2.6", features = ["serde"] }
 intptr = { version = "0.1.6", features = ["dataview_1", "serde"] }
 memflow = "0.2.1"
-memprocfs = "5.9.5"
+memprocfs = "5.9.6"
 named_constants = "0.2.0"
 ndarray = "0.15.6"
 obfstr = "0.4.3"

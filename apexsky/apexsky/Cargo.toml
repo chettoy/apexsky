@@ -12,8 +12,8 @@ crate-type = ["rlib", "staticlib"]
 [dependencies]
 libc = "0.2.153"
 lazy_static = "1.4.0"
-config = { version = "0.14.0", default-features = false, features = ["toml", "yaml"] }
-serde = { version = "1.0.197", features = ["derive"] }
+config = { version = "0.14.0", default-features = false, features = ["toml"] }
+serde = { version = "1.0", features = ["derive"] }
 toml = "0.8.12"
 ratatui = { version = "0.25.0", features = ["all-widgets", "serde"] }
 crossterm = "0.27.0"
