@@ -1,4 +1,5 @@
-#![allow(dead_code)]
+use obfstr::obfstr as s;
+
 use self::entities::ScriptNetDataEntity;
 
 use super::*;
@@ -146,6 +147,24 @@ impl GameState {
                 return ScriptValue::default();
             };
             if entry.name_hash == name.0 {
+                // if name.0 == sdk::ScriptNetVarName::kills.0 {
+                //     tracing::info!(
+                //         netvar_query=?name.0,
+                //         ?name_index,
+                //         data=?entry,
+                //         "{}",
+                //         s!("debug kills 7976b7c2-57e7-457c-baaa-f9e0ede2ee91")
+                //     );
+                // }
+                // if name.0 == sdk::ScriptNetVarName::damageDealt.0 {
+                //     tracing::info!(
+                //         netvar_query=?name.0,
+                //         ?name_index,
+                //         data=?entry,
+                //         "{}",
+                //         s!("debug damage 7976b7c2-57e7-457c-baaa-f9e0ede2ee91")
+                //     );
+                // }
                 break entry;
             }
             name_index += 1;
@@ -163,12 +182,12 @@ impl GameState {
                 .get(entry.value_index as usize)
                 .map(|&value| ScriptValue::Bool(value != 0))
                 .unwrap_or(ScriptValue::Invalid),
+            // 1 => script_net_data
+            //     .bools
+            //     .get(entry.value_index as usize)
+            //     .map(|&value| ScriptValue::Byte(value))
+            //     .unwrap_or(ScriptValue::Invalid),
             1 => script_net_data
-                .bools
-                .get(entry.value_index as usize)
-                .map(|&value| ScriptValue::Byte(value))
-                .unwrap_or(ScriptValue::Invalid),
-            2 => script_net_data
                 .ranges
                 .get(entry.value_index as usize)
                 .map(|&value| ScriptValue::Word(value))
