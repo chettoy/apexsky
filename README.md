@@ -36,7 +36,7 @@ UnknownCheats thread: <https://www.unknowncheats.me/forum/apex-legends/406426-kv
 
 Bone IDs reference: <https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes>
 
-Game version (Steam Only right now): v3.0.62.29
+Game version (Steam Only right now): v3.0.63.32
 
 **Please delete the old offsets.ini after updating.**
 
