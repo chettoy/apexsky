@@ -153,11 +153,11 @@ sudo apt install cmake clang protobuf-compiler libusb-1.0-0-dev libzstd-dev libg
 **Build:**
 
 ```shell
-git clone --recurse https://github.com/chettoy/apexsky
+sudo git clone --recurse https://github.com/chettoy/apexsky
 cd apexsky
-git submodule update --init --recursive
+sudo git submodule update --init --recursive
 cd apex_dma
-./build.sh
+sudo ./build.sh
 ```
 
 ## FAQ
