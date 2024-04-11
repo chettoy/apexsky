@@ -187,7 +187,7 @@ impl GameState {
             //     .get(entry.value_index as usize)
             //     .map(|&value| ScriptValue::Byte(value))
             //     .unwrap_or(ScriptValue::Invalid),
-            1 => script_net_data
+            1 | 2 => script_net_data
                 .ranges
                 .get(entry.value_index as usize)
                 .map(|&value| ScriptValue::Word(value))
@@ -197,7 +197,7 @@ impl GameState {
                 .get(entry.value_index as usize)
                 .map(|&value| ScriptValue::Int(value))
                 .unwrap_or(ScriptValue::Invalid),
-            5 => script_net_data
+            4 | 5 => script_net_data
                 .times
                 .get(entry.value_index as usize)
                 .map(|&value| ScriptValue::Float(value))

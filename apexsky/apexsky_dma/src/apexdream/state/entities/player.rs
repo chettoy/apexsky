@@ -604,19 +604,13 @@ impl Entity for PlayerEntity {
                 if yaw < 0.0 {
                     yaw += 360.0;
                 }
-                yaw += 90.0;
+                //yaw += 90.0;
                 if yaw > 360.0 {
                     yaw -= 360.0;
                 }
                 yaw
             };
         }
-
-        // if let Ok(yew) = api.vm_read::<f32>(self.entity_ptr.field(OFFSET_YAW.try_into().unwrap())) {
-        //     self.yew = yew;
-        // } else {
-        //     warn!(?self.entity_ptr, "{}", s!("error read yew"));
-        // }
     }
     fn post(&mut self, _api: &mut Api, ctx: &UpdateContext, _state: &GameState) {
         // Check if player is visible

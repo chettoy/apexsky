@@ -1,5 +1,5 @@
 use apexsky::aimbot::AimEntity;
-use apexsky::pb::apexlegends::{GradeFlag, PlayerState};
+use apexsky::pb::apexlegends::{Badge, GradeFlag, PlayerState};
 use obfstr::obfstr as s;
 
 use crate::apexdream::sdk::ScriptNetVarName;
@@ -60,8 +60,39 @@ impl GamePlayer {
             eadp_uid: state.eadp_uid,
             head_position: Some(state.get_bone_position_by_hitbox(0).into()),
             controller_active: state.controller_active == 1,
-            character_index: 0,
-            badges: vec![],
+            character_index: game_state
+                .read_script_value(
+                    ScriptNetVarName::characterIndex,
+                    state.script_net_data_global,
+                )
+                .to_int()
+                .unwrap_or(-1),
+            badges: [
+                (
+                    ScriptNetVarName::firstBadgeIndex,
+                    ScriptNetVarName::firstBadgeDataInt,
+                ),
+                (
+                    ScriptNetVarName::secondBadgeIndex,
+                    ScriptNetVarName::secondBadgeDataInt,
+                ),
+                (
+                    ScriptNetVarName::thirdBadgeIndex,
+                    ScriptNetVarName::thirdBadgeDataInt,
+                ),
+            ]
+            .into_iter()
+            .map(|(netvar_badge_index, netvar_badge_data)| Badge {
+                badge_index: game_state
+                    .read_script_value(netvar_badge_index, state.script_net_data_global)
+                    .to_int()
+                    .unwrap_or(-1),
+                badge_data: game_state
+                    .read_script_value(netvar_badge_data, state.script_net_data_global)
+                    .to_int()
+                    .unwrap_or(-1),
+            })
+            .collect(),
             kills: game_state
                 .read_script_value(ScriptNetVarName::kills, state.script_net_data_global)
                 .to_word()
