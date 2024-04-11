@@ -212,6 +212,14 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
         self.shields
     }
 
+    fn get_max_health(&self) -> i32 {
+        self.max_health
+    }
+
+    fn get_max_shield_health(&self) -> i32 {
+        self.max_shields
+    }
+
     fn is_alive(&self) -> bool {
         self.is_alive()
     }
@@ -289,6 +297,14 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
 
     fn get_shield_health(&self) -> i32 {
         self.shields
+    }
+
+    fn get_max_health(&self) -> i32 {
+        self.max_health
+    }
+
+    fn get_max_shield_health(&self) -> i32 {
+        self.max_shields
     }
 
     fn is_alive(&self) -> bool {

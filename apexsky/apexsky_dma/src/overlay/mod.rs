@@ -11,6 +11,7 @@ use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy::window::{CompositeAlphaMode, WindowLevel, WindowMode};
 use bevy_egui::EguiPlugin;
+use bevy_health_bar3d::prelude as hpbar;
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
 use parking_lot::{Mutex, RwLock};
@@ -109,6 +110,19 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option
         .add_plugins(EguiPlugin)
         .init_asset::<Blob>()
         .init_asset_loader::<BlobAssetLoader>()
+        .add_plugins((
+            hpbar::HealthBarPlugin::<Health>::default(),
+            hpbar::HealthBarPlugin::<Mana>::default(),
+        ))
+        .insert_resource(
+            hpbar::ColorScheme::<Health>::new()
+                .foreground_color(hpbar::ForegroundColor::Static(Color::GREEN))
+                .background_color(Color::RED),
+        )
+        .insert_resource(
+            hpbar::ColorScheme::<Mana>::new()
+                .foreground_color(hpbar::ForegroundColor::Static(Color::BISQUE)),
+        )
         .insert_resource(MyOverlayState {
             shared_state,
             task_channels,
@@ -175,6 +189,30 @@ struct AimTarget {
 
 #[derive(Component)]
 struct MyCameraMarker;
+
+#[derive(Component, Reflect)]
+struct Health {
+    max: f32,
+    current: f32,
+}
+
+impl hpbar::Percentage for Health {
+    fn value(&self) -> f32 {
+        self.current / self.max
+    }
+}
+
+#[derive(Component, Reflect)]
+struct Mana {
+    max: f32,
+    current: f32,
+}
+
+impl hpbar::Percentage for Mana {
+    fn value(&self) -> f32 {
+        self.current / self.max
+    }
+}
 
 fn setup(
     mut commands: Commands,
@@ -384,34 +422,71 @@ fn follow_game_state(
             cam_transform.compute_matrix()
         });
 
-    // Get updated target entities or return
     #[derive(Debug)]
     struct UpdateTarget {
         info: PreSelectedTarget,
         data: Option<Arc<dyn AimEntity>>,
         point_pos: Vec3,
+        health: f32,
+        max_health: f32,
+        shield: f32,
+        max_shield: f32,
     }
-    let mut targets: HashMap<u64, UpdateTarget> = {
-        let Some(channels) = &mut overlay_state.task_channels else {
-            return;
-        };
-        let targets_rx = &mut channels.aim_select_rx;
-        targets_rx
-            .borrow_and_update()
-            .iter()
-            .map(|target| {
-                (
-                    target.entity_ptr,
-                    UpdateTarget {
-                        info: target.clone(),
-                        data: None,
-                        point_pos: Vec3::default(),
+
+    // Get target entities
+    let mut targets: HashMap<u64, UpdateTarget> =
+        if let Some(channels) = &mut overlay_state.task_channels {
+            let targets_rx = &mut channels.aim_select_rx;
+            targets_rx
+                .borrow_and_update()
+                .iter()
+                .map(|target| {
+                    (
+                        target.entity_ptr,
+                        UpdateTarget {
+                            info: target.clone(),
+                            data: None,
+                            point_pos: Vec3::default(),
+                            health: 0.0,
+                            max_health: 0.0,
+                            shield: 0.0,
+                            max_shield: 0.0,
+                        },
+                    )
+                })
+                .collect()
+        } else {
+            // test data
+            [(
+                0,
+                UpdateTarget {
+                    info: PreSelectedTarget {
+                        fov: 1.0,
+                        distance: 40.0,
+                        is_visible: true,
+                        is_knocked: false,
+                        health_points: 150,
+                        love_status: apexsky::love_players::LoveStatus::Normal,
+                        is_kill_leader: false,
+                        entity_ptr: 0,
                     },
-                )
-            })
-            .collect()
-    };
-    {
+                    data: None,
+                    point_pos: Vec3 {
+                        x: 0.,
+                        y: -40.,
+                        z: -40.,
+                    },
+                    health: 100.,
+                    max_health: 100.,
+                    shield: 50.,
+                    max_shield: 150.,
+                },
+            )]
+            .into()
+        };
+
+    // Get updated target data
+    if overlay_state.task_channels.is_some() {
         let state = overlay_state.shared_state.read();
         targets.iter_mut().for_each(|(ptr, target)| {
             target.data = state.aim_entities.get(ptr).cloned();
@@ -422,8 +497,12 @@ fn follow_game_state(
                     y: target_pos[2],
                     z: -target_pos[0],
                 };
+                target.health = target_data.get_health() as f32;
+                target.max_health = target_data.get_max_health() as f32;
+                target.shield = target_data.get_shield_health() as f32;
+                target.max_shield = target_data.get_max_shield_health() as f32;
             } else {
-                tracing::debug!(?target, "{}", s!("AimEntities[ptr]=None"));
+                tracing::warn!(?target, "{}", s!("AimEntities[ptr]=None"));
             }
         });
     }
@@ -460,11 +539,6 @@ fn follow_game_state(
 
     // Create entities that do not yet exist
     targets.into_iter().for_each(|(ptr, target)| {
-        if target.data.is_none() {
-            tracing::warn!(?ptr, ?target, "{}", s!("AimEntities[ptr]=None"));
-            return;
-        };
-
         commands.spawn((
             PbrBundle {
                 mesh: meshes.add(Sphere::new(6.0).mesh().uv(32, 18)),
@@ -475,6 +549,26 @@ fn follow_game_state(
             AimTarget {
                 ptr,
                 data: target.data,
+            },
+            Health {
+                max: target.max_health,
+                current: target.health,
+            },
+            hpbar::BarSettings::<Health> {
+                width: 5.,
+                offset: 9.,
+                orientation: hpbar::BarOrientation::Vertical,
+                ..default()
+            },
+            Mana {
+                max: target.max_shield,
+                current: target.shield,
+            },
+            hpbar::BarSettings::<Mana> {
+                width: 5.,
+                offset: 11.,
+                orientation: hpbar::BarOrientation::Vertical,
+                ..default()
             },
             // AudioBundle {
             //     source: overlay_state.sound_handle.to_owned(),

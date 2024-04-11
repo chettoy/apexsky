@@ -208,6 +208,8 @@ pub trait AimEntity: Debug + Send + Sync {
     fn get_team_num(&self) -> i32;
     fn get_health(&self) -> i32;
     fn get_shield_health(&self) -> i32;
+    fn get_max_health(&self) -> i32;
+    fn get_max_shield_health(&self) -> i32;
     fn is_alive(&self) -> bool;
     fn is_knocked(&self) -> bool;
     fn is_player(&self) -> bool;
