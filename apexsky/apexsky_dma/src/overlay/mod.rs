@@ -555,7 +555,7 @@ fn follow_game_state(
                 current: target.health,
             },
             hpbar::BarSettings::<Health> {
-                width: 5.,
+                width: 12.,
                 offset: 9.,
                 orientation: hpbar::BarOrientation::Vertical,
                 ..default()
@@ -565,8 +565,8 @@ fn follow_game_state(
                 current: target.shield,
             },
             hpbar::BarSettings::<Mana> {
-                width: 5.,
-                offset: 11.,
+                width: 12.,
+                offset: 12.,
                 orientation: hpbar::BarOrientation::Vertical,
                 ..default()
             },

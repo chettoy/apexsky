@@ -1,8 +1,6 @@
-#[macro_use]
-extern crate lazy_static;
-
 pub mod aimbot;
 pub mod config;
+pub mod extension;
 pub mod ffi;
 pub mod global_state;
 pub mod i18n;

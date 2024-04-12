@@ -1,11 +1,11 @@
 use std::sync::RwLock;
 
+use once_cell::sync::Lazy;
+
 use super::{AimAngles, Aimbot, AimbotSettings, CurrentWeaponInfo, TriggerBot};
 use crate::Vec4;
 
-lazy_static! {
-    pub static ref G_AIMBOT: RwLock<Aimbot> = RwLock::new(Aimbot::new());
-}
+pub static G_AIMBOT: Lazy<RwLock<Aimbot>> = Lazy::new(|| RwLock::new(Aimbot::new()));
 
 macro_rules! aimbot_read {
     () => {

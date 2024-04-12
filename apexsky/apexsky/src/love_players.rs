@@ -60,10 +60,8 @@ impl TryFrom<i32> for LoveStatus {
     }
 }
 
-lazy_static! {
-    static ref DEFAULT_LOVE_PLAYER: Vec<LovePlayer> = default_love();
-    static ref PLAYERS: Mutex<HashMap<u64, CPlayerInfo>> = Mutex::new(HashMap::new());
-}
+static DEFAULT_LOVE_PLAYER: Lazy<Vec<LovePlayer>> = Lazy::new(default_love);
+static PLAYERS: Lazy<Mutex<HashMap<u64, CPlayerInfo>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 #[tracing::instrument]
 fn default_love() -> Vec<LovePlayer> {

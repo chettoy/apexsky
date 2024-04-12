@@ -1,19 +1,21 @@
 use anyhow::Context;
 use obfstr::obfstr as s;
+use once_cell::sync::Lazy;
 use skyapex_sdk::Skyapex;
 use std::sync::Mutex;
 
 use crate::system::SysContext;
 
-lazy_static! {
-    pub static ref G_STATE: Mutex<GlobalState> = Mutex::new(GlobalState::default());
-    pub static ref G_CONTEXT: Mutex<SysContext> = Mutex::new(SysContext::new().unwrap());
-    pub static ref G_MOD: Mutex<Skyapex> = Mutex::new(
+pub static G_STATE: Lazy<Mutex<GlobalState>> = Lazy::new(|| Mutex::new(GlobalState::default()));
+pub static G_CONTEXT: Lazy<Mutex<SysContext>> =
+    Lazy::new(|| Mutex::new(SysContext::new().unwrap()));
+pub static G_MOD: Lazy<Mutex<Skyapex>> = Lazy::new(|| {
+    Mutex::new(
         Skyapex::load()
             .context(String::from(s!("Failed to load skyapex mod!")))
             .unwrap(),
-    );
-}
+    )
+});
 
 #[derive(Debug, Clone, Default)]
 pub struct GlobalState {
