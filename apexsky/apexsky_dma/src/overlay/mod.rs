@@ -374,7 +374,7 @@ fn follow_game_state(
         ),
     >,
     mut aim_targets: Query<
-        (Entity, &mut Transform, &mut AimTarget),
+        (Entity, &mut Transform, &mut AimTarget, &mut Health, &mut Mana),
         (
             With<AimTarget>,
             Without<MyCameraMarker>,
@@ -528,10 +528,14 @@ fn follow_game_state(
     }
 
     // Update or despawn existing entities
-    for (entity, mut target_transform, mut aim_target) in aim_targets.iter_mut() {
+    for (entity, mut target_transform, mut aim_target, mut health, mut mana) in aim_targets.iter_mut() {
         if let Some(target) = targets.remove(&aim_target.ptr) {
             target_transform.translation = target.point_pos;
             aim_target.data = target.data;
+            health.max = target.max_health;
+            health.current = target.health;
+            mana.max = target.max_shield;
+            mana.current = target.shield;
         } else {
             commands.entity(entity).despawn();
         }
