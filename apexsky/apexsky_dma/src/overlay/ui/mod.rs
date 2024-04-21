@@ -121,6 +121,7 @@ pub fn ui_system(
         overlay_fps: String,
         game_fps: String,
         latency: String,
+        target_count: String,
         local_position: String,
         local_angles: String,
         local_yaw: String,
@@ -148,6 +149,7 @@ pub fn ui_system(
             },
             game_fps: format!("{:.1}", state.game_fps),
             latency: format!("{:.0}{}", overlay_state.data_latency, s!("ms")),
+            target_count: overlay_state.target_count.to_string(),
             local_position: lplayer_buf
                 .and_then(|p| p.origin.clone())
                 .map(|pos| {
@@ -241,6 +243,7 @@ pub fn ui_system(
                 s!(" FPS)")
             ));
             ui.label(format!("{}{}", s!("latency "), dialog_esp.latency));
+            ui.label(format!("{}{}", s!("target "), dialog_esp.target_count));
             ui.add_space(5.0);
             ui.label(dialog_esp.local_position);
             ui.label(dialog_esp.local_angles);

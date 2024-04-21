@@ -131,6 +131,7 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option
             font_loaded: false,
             sound_loaded: false,
             data_latency: 0.0,
+            target_count: 0,
             sound_ent_tx,
             sound_src_tx,
         })
@@ -177,6 +178,7 @@ pub(crate) struct MyOverlayState {
     font_loaded: bool,
     sound_loaded: bool,
     data_latency: f64,
+    target_count: usize,
     sound_ent_tx: watch::Sender<Vec<SoundEntity>>,
     sound_src_tx: watch::Sender<Option<AudioSource>>,
 }
@@ -374,7 +376,13 @@ fn follow_game_state(
         ),
     >,
     mut aim_targets: Query<
-        (Entity, &mut Transform, &mut AimTarget, &mut Health, &mut Mana),
+        (
+            Entity,
+            &mut Transform,
+            &mut AimTarget,
+            &mut Health,
+            &mut Mana,
+        ),
         (
             With<AimTarget>,
             Without<MyCameraMarker>,
@@ -506,6 +514,7 @@ fn follow_game_state(
             }
         });
     }
+    overlay_state.target_count = targets.len();
 
     // Update ambisonic
     if let Some(cam_matrix) = cam_matrix {
@@ -528,7 +537,9 @@ fn follow_game_state(
     }
 
     // Update or despawn existing entities
-    for (entity, mut target_transform, mut aim_target, mut health, mut mana) in aim_targets.iter_mut() {
+    for (entity, mut target_transform, mut aim_target, mut health, mut mana) in
+        aim_targets.iter_mut()
+    {
         if let Some(target) = targets.remove(&aim_target.ptr) {
             target_transform.translation = target.point_pos;
             aim_target.data = target.data;
@@ -537,6 +548,7 @@ fn follow_game_state(
             mana.max = target.max_shield;
             mana.current = target.shield;
         } else {
+            commands.entity(entity).remove::<(Health, Mana)>();
             commands.entity(entity).despawn();
         }
     }
