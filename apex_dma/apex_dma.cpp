@@ -1021,7 +1021,7 @@ static void AimbotLoop() {
       const auto weapon_id = aimbot_get_weapon_id();
       const bool aiming = aimbot_is_aiming();
       const bool trigger_bot_ready = aimbot_is_triggerbot_ready();
-
+      
       {
         int trigger_value = aimbot_poll_trigger_action();
         if (trigger_value) {
@@ -1070,6 +1070,13 @@ static void AimbotLoop() {
           }
         }
       }
+
+       if(isPressed(94)){
+          aimbot_settings.smooth = 50;
+        }else if(aimbot_settings.smooth = 50 && isPressed(94)){
+          aimbot_settings.smooth = g_settings.aimbot_settings.smooth;
+        }
+
 
       // Update Trigger Bot state
       int force_attack_state;
