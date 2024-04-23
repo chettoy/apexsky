@@ -61,10 +61,10 @@ pub async fn aimbot_loop(
     mut state: Arc<RwLock<SharedState>>,
     mut aim_key_rx: watch::Receiver<AimKeyStatus>,
     mut aim_select_rx: watch::Receiver<Vec<PreSelectedTarget>>,
+    mut aim_delta_angles_rx: watch::Receiver<[f32; 3]>,
     aim_action_tx: mpsc::Sender<AimbotAction>,
 ) -> anyhow::Result<()> {
     let mut aimbot = Aimbot::default();
-    let mut last_aim_view_angle: Option<[f32; 3]> = None;
     let mut prev_recoil_angle: [f32; 3] = [0.0, 0.0, 0.0];
     let mut start_instant = Instant::now();
 
@@ -236,27 +236,24 @@ pub async fn aimbot_loop(
             let smoothed_delta_angles = math::sub(smoothed_angles, view_angles);
 
             if aimbot_settings.aim_mode & 0x4 != 0 {
-                let natural_delta = if let Some(prev_view_angles) = last_aim_view_angle {
-                    math::sub(view_angles, prev_view_angles)
-                } else {
-                    [0.0, 0.0, 0.0]
-                };
-                let target_delta = math::add(natural_delta, smoothed_delta_angles);
+                let natural_delta = *aim_delta_angles_rx.borrow();
+                //println!("{:?}", natural_delta);
+
+                fn check(natural_delta: f32, smoothed_delta: f32) -> f32 {
+                    if !natural_delta.is_normal() {
+                        return 0.0;
+                    }
+                    if (smoothed_delta.signum() * natural_delta.signum()).is_sign_positive() {
+                        smoothed_delta.abs().min(natural_delta.abs() * 7.0)
+                            * smoothed_delta.signum()
+                    } else {
+                        smoothed_delta.abs().min(natural_delta.abs() * 0.7)
+                            * smoothed_delta.signum()
+                    }
+                }
                 let assist_delta = [
-                    if natural_delta[0].is_normal()
-                        && target_delta[0].signum() == natural_delta[0].signum()
-                    {
-                        smoothed_delta_angles[0]
-                    } else {
-                        0.0
-                    },
-                    if natural_delta[1].is_normal()
-                        && target_delta[1].signum() == natural_delta[1].signum()
-                    {
-                        smoothed_delta_angles[1]
-                    } else {
-                        0.0
-                    },
+                    check(natural_delta[0], smoothed_delta_angles[0]),
+                    check(natural_delta[1], smoothed_delta_angles[1]),
                     smoothed_delta_angles[2],
                 ];
                 if assist_delta[0].is_normal() || assist_delta[1].is_normal() {
@@ -265,10 +262,6 @@ pub async fn aimbot_loop(
             } else {
                 shift_angles = Some(smoothed_delta_angles);
             }
-
-            last_aim_view_angle = Some(view_angles);
-        } else {
-            last_aim_view_angle = None;
         }
 
         if aiming {

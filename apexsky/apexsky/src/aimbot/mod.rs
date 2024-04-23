@@ -462,10 +462,13 @@ impl Aimbot {
         self.triggerbot_ready = self.settings.auto_shoot && self.triggerbot_key_state > 0;
 
         // Update target lock
-        if !self.aiming || self.triggerbot_ready {
+        if !self.aiming
+            || self.is_headshot()
+            || self.triggerbot_ready
+            || (self.settings.aim_mode & 0x4 != 0)
+        {
             self.cancel_locking();
-        }
-        if self.aiming && !self.is_headshot() && !self.triggerbot_ready {
+        } else {
             self.lock_target(self.aim_entity);
         }
 

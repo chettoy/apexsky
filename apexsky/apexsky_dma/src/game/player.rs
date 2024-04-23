@@ -204,19 +204,35 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
         self.team_num
     }
 
+    #[tracing::instrument]
     fn get_health(&self) -> i32 {
+        if self.health < 0 {
+            tracing::error!(?self);
+        }
         self.health
     }
 
+    #[tracing::instrument]
     fn get_shield_health(&self) -> i32 {
+        if self.shields < 0 {
+            tracing::error!(?self);
+        }
         self.shields
     }
 
+    #[tracing::instrument]
     fn get_max_health(&self) -> i32 {
+        if self.max_health < 0 {
+            tracing::error!(?self);
+        }
         self.max_health
     }
 
+    #[tracing::instrument]
     fn get_max_shield_health(&self) -> i32 {
+        if self.max_shields < 0 {
+            tracing::error!(?self);
+        }
         self.max_shields
     }
 

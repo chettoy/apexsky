@@ -152,6 +152,7 @@ impl TaskManager for State {
 
         let (aim_key_tx, aim_key_rx) = watch::channel(workers::aim::AimKeyStatus::default());
         let (aim_select_tx, aim_select_rx) = watch::channel(vec![]);
+        let (aim_delta_angles_tx, aim_delta_angles_rx) = watch::channel([0.0,0.0,0.0]);
         let (aim_action_tx, aim_action_rx) = mpsc::channel(5);
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
 
@@ -160,6 +161,7 @@ impl TaskManager for State {
             self.shared_state.clone(),
             aim_key_tx,
             aim_select_tx,
+            aim_delta_angles_tx,
             aim_action_rx,
             aim_select_rx.clone(),
             items_glow_rx.clone(),
@@ -169,6 +171,7 @@ impl TaskManager for State {
             self.shared_state.clone(),
             aim_key_rx.clone(),
             aim_select_rx.clone(),
+            aim_delta_angles_rx.clone(),
             aim_action_tx,
         )));
         self.control_t = Some(task::spawn(control_loop(

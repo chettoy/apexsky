@@ -60,6 +60,7 @@ pub async fn actions_loop(
     shared_state: Arc<RwLock<SharedState>>,
     aim_key_tx: watch::Sender<AimKeyStatus>,
     aim_select_tx: watch::Sender<Vec<PreSelectedTarget>>,
+    aim_delta_angles_tx: watch::Sender<[f32; 3]>,
     mut aim_action_rx: mpsc::Receiver<AimbotAction>,
     mut aim_select_rx: watch::Receiver<Vec<PreSelectedTarget>>,
     mut items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
@@ -73,6 +74,7 @@ pub async fn actions_loop(
     let mut log_items: usize = 0;
     let mut world_ready: bool = false;
     let mut player_ready: bool = false;
+    let mut prev_view_angles: Option<[f32; 3]> = None;
 
     tracing::debug!("{}", s!("task start"));
 
@@ -250,33 +252,47 @@ pub async fn actions_loop(
                 tracing::info!(?apex_state.string_tables.weapon_names);
             }
 
-            trace_span!("Perform aimbot actions").in_scope(|| match aim_action_rx.try_recv() {
-                Ok(action) => {
-                    if player_ready && ENABLE_MEM_AIM {
-                        if let Some(delta) = action.shift_angles {
-                            if let Some(lplayer) = &shared_state.read().local_player {
-                                let lplayer = lplayer.get_entity();
+            trace_span!("Perform aimbot actions").in_scope(|| {
+                if !player_ready {
+                    return;
+                }
+                let Some(lplayer) = &shared_state.read().local_player else {
+                    tracing::warn!("{}", s!("UNREACHABLE: invalid localplayer"));
+                    return;
+                };
 
-                                // read view_angles
-                                let ptr = lplayer.entity_ptr.into_raw();
-                                let view_angles = match mem
-                                    .apex_mem_read::<[f32; 3]>(ptr + G_OFFSETS.player_viewangles)
-                                {
-                                    Ok(v) => v,
-                                    Err(e) => {
-                                        tracing::warn!(%e, "{}", s!("err read viewangles"));
-                                        return;
-                                    }
-                                };
-                                if view_angles[2].abs() > 1.0 {
-                                    tracing::warn!(
-                                        ?view_angles,
-                                        "{}",
-                                        s!("got invalid view_angles")
-                                    );
-                                    return;
-                                }
+                let lplayer = lplayer.get_entity();
 
+                // read view_angles
+                let ptr = lplayer.entity_ptr.into_raw();
+                let view_angles =
+                    match mem.apex_mem_read::<[f32; 3]>(ptr + G_OFFSETS.player_viewangles) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            tracing::warn!(%e, "{}", s!("err read viewangles"));
+                            return;
+                        }
+                    };
+                if view_angles[2].abs() > 1.0 {
+                    tracing::warn!(?view_angles, "{}", s!("got invalid view_angles"));
+                    return;
+                }
+                // send delta_view_angles
+                let delta_view_angles = prev_view_angles
+                    .map(|prev| math::sub(view_angles, prev))
+                    .unwrap_or([0.0, 0.0, 0.0]);
+                aim_delta_angles_tx
+                    .send(delta_view_angles)
+                    .unwrap_or_else(|e| {
+                        tracing::error!(%e, ?aim_delta_angles_tx, "{}", s!("send delta_view_angles"));
+                    });
+                prev_view_angles = Some(view_angles);
+
+                // aimbot actions
+                match aim_action_rx.try_recv() {
+                    Ok(action) => {
+                        if ENABLE_MEM_AIM {
+                            if let Some(delta) = action.shift_angles {
                                 // calc and check target view angles
                                 let mut update_angles = math::add(view_angles, delta);
                                 if update_angles[0].abs() > 360.0
@@ -301,34 +317,29 @@ pub async fn actions_loop(
                                     tracing::warn!(%e, "{}", s!("err write viewangles"));
                                     return;
                                 });
-                            } else {
-                                tracing::warn!(
-                                    ?action,
-                                    "{}",
-                                    s!("UNREACHABLE: invalid localplayer")
-                                );
+                                prev_view_angles = Some(update_angles);
                             }
-                        }
-                        if let Some(trigger) = action.force_attack {
-                            if trigger != apex_state.in_attack_state() {
-                                let force_attack = if trigger { 5 } else { 4 };
-                                let base = mem.apex_mem_baseaddr();
-                                mem.apex_mem_write::<i32>(
-                                    base + G_OFFSETS.in_attack + 0x8,
-                                    &force_attack,
-                                )
-                                .unwrap_or_else(|e| {
-                                    tracing::warn!(%e, "{}", s!("err write force_attack"));
-                                    return;
-                                });
+                            if let Some(trigger) = action.force_attack {
+                                if trigger != apex_state.in_attack_state() {
+                                    let force_attack = if trigger { 5 } else { 4 };
+                                    let base = mem.apex_mem_baseaddr();
+                                    mem.apex_mem_write::<i32>(
+                                        base + G_OFFSETS.in_attack + 0x8,
+                                        &force_attack,
+                                    )
+                                    .unwrap_or_else(|e| {
+                                        tracing::warn!(%e, "{}", s!("err write force_attack"));
+                                        return;
+                                    });
+                                }
                             }
                         }
                     }
-                }
-                Err(e) => {
-                    use tokio::sync::mpsc::error::TryRecvError;
-                    if e != TryRecvError::Empty {
-                        tracing::error!(%e, ?aim_action_rx, "{}", s!("perform aimbot actions"));
+                    Err(e) => {
+                        use tokio::sync::mpsc::error::TryRecvError;
+                        if e != TryRecvError::Empty {
+                            tracing::error!(%e, ?aim_action_rx, "{}", s!("perform aimbot actions"));
+                        }
                     }
                 }
             });
