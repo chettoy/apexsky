@@ -25,11 +25,11 @@
     },
     {
         "int": 28,
-        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_v19_grimreaper_w.rmdl"
+        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_base_w.rmdl"
     },
     {
         "int": 33,
-        "model": "mdl/weapons/m1a1_hemlok/w_hemlok_legendary_01.rmdl"
+        "model": "mdl/weapons/m1a1_hemlok/w_hemlok.rmdl"
     },
     {
         "int": 39,
@@ -45,15 +45,15 @@
     },
     {
         "int": 54,
-        "model": "mdl/weapons/prowler_smg/w_prowler_smg_deco.rmdl"
+        "model": "mdl/techart/mshop/weapons/class/smg/prowler/prowler_base_w.rmdl"
     },
     {
         "int": 60,
-        "model": "mdl/techart/mshop/weapons/class/smg/volt/volt_lgnd_v22_queensguard_w.rmdl"
+        "model": "mdl/weapons/hemlok_smg/w_hemlok_smg.rmdl"
     },
     {
         "int": 65,
-        "model": "mdl/weapons/rspn101_dmr/w_rspn101_dmr_deco.rmdl"
+        "model": "mdl/weapons/rspn101_dmr/w_rspn101_dmr.rmdl"
     },
     {
         "int": 70,
@@ -65,11 +65,11 @@
     },
     {
         "int": 80,
-        "model": "mdl/content/r2/models/weapons/rspn101/dmx/r301_lgnd_v21_monsters_w.rmdl"
+        "model": "mdl/weapons/rspn101/w_rspn101.rmdl"
     },
     {
         "int": 86,
-        "model": "mdl/techart/mshop/weapons/class/shotgun/eva8/eva8_lgnd_v22_magicwitch_w.rmdl"
+        "model": "mdl/weapons/w1128/w_w1128.rmdl"
     },
     {
         "int": 91,
@@ -77,7 +77,7 @@
     },
     {
         "int": 96,
-        "model": "mdl/weapons/pstl_sa3/w_pstl_sa3_legendary_01.rmdl"
+        "model": "mdl/weapons/pstl_sa3/w_pstl_sa3.rmdl"
     },
     {
         "int": 107,
@@ -89,7 +89,7 @@
     },
     {
         "int": 117,
-        "model": "mdl/weapons/p2011_auto/w_p2011_auto_legendary_03.rmdl"
+        "model": "mdl/weapons/p2011_auto/w_p2011_auto.rmdl"
     },
     {
         "int": 123,
@@ -101,11 +101,11 @@
     },
     {
         "int": 130,
-        "model": "mdl/weapons/3030repeater/w_3030repeater_supersonic.rmdl"
+        "model": "mdl/weapons/3030repeater/w_3030repeater.rmdl"
     },
     {
         "int": 136,
-        "model": "mdl/techart/mshop/weapons/class/assault/nemesis/nemesis_lgnd_v22_racer_w.rmdl"
+        "model": "mdl/techart/mshop/weapons/class/assault/nemesis/nemesis_base_w.rmdl"
     },
     {
         "int": 141,
@@ -430,6 +430,10 @@
     {
         "int": 307,
         "model": "mdl/props/nessie/nessie_april_fools.rmdl"
+    },
+    {
+        "int": 314,
+        "model": "mdl/props/nessie/nessie_april_fools_large.rmdl"
     },
     {
         "int": 323,
