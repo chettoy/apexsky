@@ -43,7 +43,7 @@ impl Default for AimbotSettings {
     fn default() -> Self {
         Self {
             gamepad: false, // auto
-            aim_mode: 2,    // 0 no aim, 1 aim with no vis check, 2 aim with vis check
+            aim_mode: 2,    // 0 no aim, 1 aim with no vis check, 2 aim with vis check, 4 aim assist
             auto_shoot: true,
             ads_fov: 12.0,
             non_ads_fov: 50.0,

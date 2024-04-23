@@ -231,6 +231,7 @@ pub enum MessageId {
     MenuValueAimbotOff,
     MenuValueAimbotNoVisCheck,
     MenuValueAimbotOn,
+    MenuValueAimbotAssist,
     InputPromptAimbotMode,
     MenuItemAimDist,
     InputPromptAimDist,

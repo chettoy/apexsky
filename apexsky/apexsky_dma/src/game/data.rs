@@ -27,7 +27,7 @@ macro_rules! define_item_id {
 }
 
 /*
- * GameVersion=v3.0.63.32
+ * GameVersion=v3.0.65.42
  */
 pub const OFFSET_YAW: u64 = 0x223c - 0x8;
 pub const OFFSET_HIGHLIGHT_SETTINGS: u64 = 0xbb247d0;

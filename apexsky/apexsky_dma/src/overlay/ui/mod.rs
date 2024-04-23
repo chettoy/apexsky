@@ -219,8 +219,10 @@ pub fn ui_system(
             outer_margin: egui::Margin::ZERO,
             rounding: egui::Rounding::same(6.0),
             shadow: egui::epaint::Shadow {
-                extrusion: 3.0,
+                offset: [0.0, 0.0].into(),
+                spread: 3.0,
                 color: Color32::from_black_alpha(61),
+                blur: 0.0,
             },
             fill: Color32::from_rgba_premultiplied(13, 13, 13, 138),
             stroke: egui::Stroke::new(1.0, Color32::from_rgba_premultiplied(48, 48, 48, 74)),

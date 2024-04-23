@@ -537,6 +537,10 @@ fn build_aimbot_menu(
                     i18n_msg!(i18n_bundle, MenuValueAimbotOn).to_string(),
                     Style::default().fg(Color::Green),
                 ),
+                4 => Span::styled(
+                    i18n_msg!(i18n_bundle, MenuValueAimbotAssist).to_string(),
+                    Style::default().fg(Color::Green),
+                ),
                 _ => Span::styled(
                     std::borrow::Cow::Borrowed("!").to_string(),
                     Style::default().fg(Color::Red),
@@ -548,7 +552,7 @@ fn build_aimbot_menu(
             let i18n_bundle = get_fluent_bundle();
             let val = val.trim();
             if let Some(new_val) = val.parse::<u8>().ok() {
-                if vec![0, 1, 2].contains(&new_val) {
+                if vec![0, 1, 2, 4].contains(&new_val) {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.aim_mode = new_val.into();
                     return None;

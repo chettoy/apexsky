@@ -243,11 +243,13 @@ menu-item-aimbot-mode = 自瞄模式
 menu-value-aimbot-off = 關閉
 menu-value-aimbot-no-vis-check = 關閉可視檢查
 menu-value-aimbot-on = 開啟
+menu-value-aimbot-assist = 輔助瞄準
 input-prompt-aimbot-mode = 
     '自瞄模式' 的新值： 
         0 => 關閉
         1 => 關閉可視檢查
         2 => 開啟
+        4 => 輔助瞄準
 menu-item-aim-dist = 自瞄最大距離
 input-prompt-aim-dist = '自瞄最大距離' 的新值：
     (10 到 1600)（米）

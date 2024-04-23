@@ -244,11 +244,13 @@ menu-item-aimbot-mode = Aimbot Mode
 menu-value-aimbot-off = Off
 menu-value-aimbot-no-vis-check = On without Vis Check
 menu-value-aimbot-on = On
+menu-value-aimbot-assist = Aim Assist
 input-prompt-aimbot-mode = 
     New value for 'Aimbot Mode': 
         0 => Off
         1 => On without Vis Check
         2 => On
+        4 => Aim Assist
 menu-item-aim-dist = Aimbot Max Distance
 input-prompt-aim-dist = New value for 'Aimbot Max Distance':
     (10 to 1600) (meters)
