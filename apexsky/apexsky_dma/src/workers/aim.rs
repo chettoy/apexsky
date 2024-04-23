@@ -64,6 +64,7 @@ pub async fn aimbot_loop(
     aim_action_tx: mpsc::Sender<AimbotAction>,
 ) -> anyhow::Result<()> {
     let mut aimbot = Aimbot::default();
+    let mut last_aim_view_angle: Option<[f32; 3]> = None;
     let mut prev_recoil_angle: [f32; 3] = [0.0, 0.0, 0.0];
     let mut start_instant = Instant::now();
 
@@ -223,23 +224,56 @@ pub async fn aimbot_loop(
             tracing::debug!("711aac39-e83c-4788 trigger updated");
         }
 
+        let aimbot_settings = aimbot.get_settings();
+
+        let mut shift_angles: Option<[f32; 3]> = None;
+
         // Aim Assist
-        let mut shift_angles: Option<[f32; 3]> = if aimbot.is_aiming() && aim_result.valid {
+        if aimbot.is_aiming() && aim_result.valid {
+            let view_angles = [aim_result.view_pitch, aim_result.view_yew, 0.0];
             let smoothed_angles = aimbot.smooth_aim_angles(&aim_result, smooth_factor);
             let smoothed_angles = [smoothed_angles.0, smoothed_angles.1, 0.0];
-            Some(math::sub(
-                smoothed_angles,
-                [aim_result.view_pitch, aim_result.view_yew, 0.0],
-            ))
+            let smoothed_delta_angles = math::sub(smoothed_angles, view_angles);
+
+            if aimbot_settings.aim_mode & 0x4 != 0 {
+                let natural_delta = if let Some(prev_view_angles) = last_aim_view_angle {
+                    math::sub(view_angles, prev_view_angles)
+                } else {
+                    [0.0, 0.0, 0.0]
+                };
+                let target_delta = math::add(natural_delta, smoothed_delta_angles);
+                let assist_delta = [
+                    if natural_delta[0].is_normal()
+                        && target_delta[0].signum() == natural_delta[0].signum()
+                    {
+                        smoothed_delta_angles[0]
+                    } else {
+                        0.0
+                    },
+                    if natural_delta[1].is_normal()
+                        && target_delta[1].signum() == natural_delta[1].signum()
+                    {
+                        smoothed_delta_angles[1]
+                    } else {
+                        0.0
+                    },
+                    smoothed_delta_angles[2],
+                ];
+                if assist_delta[0].is_normal() || assist_delta[1].is_normal() {
+                    shift_angles = Some(assist_delta);
+                }
+            } else {
+                shift_angles = Some(smoothed_delta_angles);
+            }
+
+            last_aim_view_angle = Some(view_angles);
         } else {
-            None
-        };
+            last_aim_view_angle = None;
+        }
 
         if aiming {
             tracing::debug!(?shift_angles, "711aac39-e83c-4788");
         }
-
-        let aimbot_settings = aimbot.get_settings();
 
         // Reduce recoil
         if aimbot_settings.no_recoil {

@@ -43,7 +43,7 @@ impl Default for AimbotSettings {
     fn default() -> Self {
         Self {
             gamepad: false, // auto
-            aim_mode: 2,    // 0 no aim, 1 aim with no vis check, 2 aim with vis check, 4 aim assist
+            aim_mode: 2,    // avo (aim assist 0x4, vis check 0x2, on/off 0x1)
             auto_shoot: true,
             ads_fov: 12.0,
             non_ads_fov: 50.0,
@@ -379,7 +379,7 @@ impl Aimbot {
             self.love_aimentity = love;
 
             // vis check for shooting current aim entity
-            if self.settings.aim_mode == 2 && !self.is_grenade() {
+            if self.settings.aim_mode & 0x2 != 0 && !self.is_grenade() {
                 self.gun_safety = !visible;
             }
         }
@@ -397,7 +397,7 @@ impl Aimbot {
         }
 
         // disable safety if vis check or aimbot is turned off
-        if self.settings.aim_mode < 2 && !self.is_grenade() {
+        if self.settings.aim_mode & 0x2 == 0 && !self.is_grenade() {
             self.gun_safety = false;
         }
 

@@ -384,7 +384,9 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
                 )
             } else if aimbot.is_grenade() {
                 (Color32::BLUE, s!("Skynade On").to_string())
-            } else if aimbot_mode == 2 {
+            } else if aimbot_mode & 0x4 != 0 {
+                (Color32::GREEN, s!("Aim Assist").to_string())
+            } else if aimbot_mode & 0x2 != 0 {
                 (Color32::GREEN, s!("Aim On").to_string())
             } else if aimbot_mode == 0 {
                 (Color32::RED, s!("Aim Off").to_string())
