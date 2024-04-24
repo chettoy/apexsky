@@ -27,64 +27,66 @@ mod ui;
 pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option<TaskChannels>) {
     let (sound_ent_tx, mut sound_ent_rx) = watch::channel(Vec::<SoundEntity>::new());
     let (sound_src_tx, mut sound_src_rx) = watch::channel::<Option<AudioSource>>(None);
-    let (sonic_active, sonic_t) = {
-        let active = Arc::new(Mutex::new(true));
-        (
-            active.clone(),
-            std::thread::spawn(move || {
-                let ambisonic_scene = AmbisonicBuilder::default().build();
-                let mut sound_entities = HashMap::<u64, SoundController>::new();
-                tracing::debug!("{}", s!("sonic task start"));
-                while *active.lock() {
-                    std::thread::sleep(Duration::from_millis(15));
-                    //let audio_src = ambisonic::rodio::source::SineWave::new(440);
+    // let (sonic_active, sonic_t) = {
+    //     let active = Arc::new(Mutex::new(true));
+    //     (
+    //         active.clone(),
+    //         std::thread::spawn(move || {
+    //             let ambisonic_scene = AmbisonicBuilder::default().build();
+    //             let mut sound_entities = HashMap::<u64, SoundController>::new();
+    //             tracing::debug!("{}", s!("sonic task start"));
+    //             while *active.lock() {
+    //                 std::thread::sleep(Duration::from_millis(15));
+    //                 //let audio_src = ambisonic::rodio::source::SineWave::new(440);
 
-                    if !sound_ent_rx.has_changed().unwrap_or_else(|e| {
-                        // If it is not because of a normal exit, an error is displayed
-                        if *active.lock() {
-                            tracing::error!(%e, "{}", s!("sound_ent_rx if changed"));
-                        }
-                        false
-                    }) {
-                        continue;
-                    }
+    //                 if !sound_ent_rx.has_changed().unwrap_or_else(|e| {
+    //                     // If it is not because of a normal exit, an error is displayed
+    //                     if *active.lock() {
+    //                         tracing::error!(%e, "{}", s!("sound_ent_rx if changed"));
+    //                     }
+    //                     false
+    //                 }) {
+    //                     continue;
+    //                 }
 
-                    let ents = sound_ent_rx.borrow_and_update();
-                    let mut data: HashMap<u64, _> = ents
-                        .iter()
-                        .map(|obj| (obj.target.entity_ptr, obj))
-                        .collect();
-                    sound_entities = sound_entities
-                        .into_iter()
-                        .filter_map(|(ptr, mut sound)| {
-                            if let Some(ent) = data.remove(&ptr) {
-                                sound.adjust_position(ent.relative);
-                                Some((ptr, sound))
-                            } else {
-                                sound.stop();
-                                None
-                            }
-                        })
-                        .collect();
-                    data.into_iter().for_each(|(ptr, ent)| {
-                        if let Some(src) = sound_src_rx.borrow_and_update().as_ref().cloned() {
-                            let src =
-                                ambisonic::rodio::Decoder::new(std::io::Cursor::new(src.clone()))
-                                    .unwrap();
-                            let sound = ambisonic_scene
-                                .play_at(src.convert_samples().repeat_infinite(), ent.relative);
-                            sound_entities.insert(ptr, sound);
-                        }
-                    });
-                }
-                //tracing::debug!("{}", s!("sonic task end"));
-            }),
-        )
-    };
+    //                 let ents = sound_ent_rx.borrow_and_update();
+    //                 let mut data: HashMap<u64, _> = ents
+    //                     .iter()
+    //                     .map(|obj| (obj.target.entity_ptr, obj))
+    //                     .collect();
+    //                 sound_entities = sound_entities
+    //                     .into_iter()
+    //                     .filter_map(|(ptr, mut sound)| {
+    //                         if let Some(ent) = data.remove(&ptr) {
+    //                             sound.adjust_position(ent.relative);
+    //                             Some((ptr, sound))
+    //                         } else {
+    //                             sound.stop();
+    //                             None
+    //                         }
+    //                     })
+    //                     .collect();
+    //                 data.into_iter().for_each(|(ptr, ent)| {
+    //                     if let Some(src) = sound_src_rx.borrow_and_update().as_ref().cloned() {
+    //                         let src =
+    //                             ambisonic::rodio::Decoder::new(std::io::Cursor::new(src.clone()))
+    //                                 .unwrap();
+    //                         let sound = ambisonic_scene
+    //                             .play_at(src.convert_samples().repeat_infinite(), ent.relative);
+    //                         sound_entities.insert(ptr, sound);
+    //                     }
+    //                 });
+    //             }
+    //             //tracing::debug!("{}", s!("sonic task end"));
+    //         }),
+    //     )
+    // };
 
     static S_TITLE: Lazy<String> =
         Lazy::new(|| s!("Absolutely Not Cheating.exe - Totally Legit Gameplay 😇").to_string());
     App::new()
+        .register_type::<Health>()
+        .register_type::<Mana>()
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
@@ -106,14 +108,12 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option
             }),
             EmbeddedAssetPlugin,
             FrameTimeDiagnosticsPlugin,
-        ))
-        .add_plugins(EguiPlugin)
-        .init_asset::<Blob>()
-        .init_asset_loader::<BlobAssetLoader>()
-        .add_plugins((
+            EguiPlugin,
             hpbar::HealthBarPlugin::<Health>::default(),
             hpbar::HealthBarPlugin::<Mana>::default(),
         ))
+        .init_asset::<Blob>()
+        .init_asset_loader::<BlobAssetLoader>()
         .insert_resource(
             hpbar::ColorScheme::<Health>::new()
                 .foreground_color(hpbar::ForegroundColor::Static(Color::GREEN))
@@ -131,12 +131,14 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option
             font_loaded: false,
             sound_loaded: false,
             data_latency: 0.0,
+            update_latency: 0.0,
             target_count: 0,
             sound_ent_tx,
             sound_src_tx,
         })
         // ClearColor must have 0 alpha, otherwise some color will bleed through
         .insert_resource(ClearColor(Color::NONE))
+        .insert_resource(Msaa::Sample4)
         .add_systems(Startup, setup)
         .add_systems(Update, ui::toggle_mouse_passthrough)
         .add_systems(Update, ui::ui_system)
@@ -144,10 +146,11 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option
         // .add_systems(Update, update_positions)
         // .add_systems(Update, update_listener)
         .add_systems(Update, follow_game_state)
+        .add_systems(Update, despawn_dead_targets)
         .run();
 
-    *sonic_active.lock() = false;
-    sonic_t.join().unwrap();
+    // *sonic_active.lock() = false;
+    // sonic_t.join().unwrap();
 }
 
 struct EmbeddedAssetPlugin;
@@ -178,6 +181,7 @@ pub(crate) struct MyOverlayState {
     font_loaded: bool,
     sound_loaded: bool,
     data_latency: f64,
+    update_latency: f64,
     target_count: usize,
     sound_ent_tx: watch::Sender<Vec<SoundEntity>>,
     sound_src_tx: watch::Sender<Option<AudioSource>>,
@@ -353,8 +357,18 @@ struct Emitter {
 //     }
 // }
 
+fn despawn_dead_targets(
+    mut commands: Commands,
+    mut aim_targets: Query<Entity, (With<AimTarget>, Without<Health>)>,
+) {
+    for entity in aim_targets.iter_mut() {
+        commands.entity(entity).despawn();
+    }
+}
+
 #[tracing::instrument(skip_all)]
 fn follow_game_state(
+    time: Res<Time>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -390,6 +404,8 @@ fn follow_game_state(
         ),
     >,
 ) {
+    overlay_state.update_latency = time.delta_seconds_f64() * 1000.0;
+
     let (cam_proj, cam_trans) = query_camera.single_mut();
     let listener_trans = listeners.single_mut();
     // assume perspective. do nothing if orthographic.
@@ -465,32 +481,37 @@ fn follow_game_state(
                 .collect()
         } else {
             // test data
-            [(
-                0,
-                UpdateTarget {
-                    info: PreSelectedTarget {
-                        fov: 1.0,
-                        distance: 40.0,
-                        is_visible: true,
-                        is_knocked: false,
-                        health_points: 150,
-                        love_status: apexsky::love_players::LoveStatus::Normal,
-                        is_kill_leader: false,
-                        entity_ptr: 0,
+            let health = 100. - time.elapsed_seconds() * 5.0;
+            if health < 1.0 {
+                [].into()
+            } else {
+                [(
+                    0,
+                    UpdateTarget {
+                        info: PreSelectedTarget {
+                            fov: 1.0,
+                            distance: 40.0,
+                            is_visible: true,
+                            is_knocked: false,
+                            health_points: 150,
+                            love_status: apexsky::love_players::LoveStatus::Normal,
+                            is_kill_leader: false,
+                            entity_ptr: 0,
+                        },
+                        data: None,
+                        point_pos: Vec3 {
+                            x: 0.,
+                            y: -40.,
+                            z: -40.,
+                        },
+                        health,
+                        max_health: 100.,
+                        shield: 50.,
+                        max_shield: 150.,
                     },
-                    data: None,
-                    point_pos: Vec3 {
-                        x: 0.,
-                        y: -40.,
-                        z: -40.,
-                    },
-                    health: 100.,
-                    max_health: 100.,
-                    shield: 50.,
-                    max_shield: 150.,
-                },
-            )]
-            .into()
+                )]
+                .into()
+            }
         };
 
     // Get updated target data
@@ -516,25 +537,25 @@ fn follow_game_state(
     }
     overlay_state.target_count = targets.len();
 
-    // Update ambisonic
-    if let Some(cam_matrix) = cam_matrix {
-        let sound_entities: Vec<_> = targets
-            .values()
-            .map(|target| {
-                let relative = cam_matrix.transform_point(target.point_pos);
-                SoundEntity {
-                    target: target.info.clone(),
-                    relative: [relative.x / 39.62, relative.y / 39.62, relative.z / 39.62],
-                }
-            })
-            .collect();
-        overlay_state
-            .sound_ent_tx
-            .send(sound_entities)
-            .unwrap_or_else(|e| {
-                tracing::error!(%e, "{}", s!("send sound_entity"));
-            });
-    }
+    // // Update ambisonic
+    // if let Some(cam_matrix) = cam_matrix {
+    //     let sound_entities: Vec<_> = targets
+    //         .values()
+    //         .map(|target| {
+    //             let relative = cam_matrix.transform_point(target.point_pos);
+    //             SoundEntity {
+    //                 target: target.info.clone(),
+    //                 relative: [relative.x / 39.62, relative.y / 39.62, relative.z / 39.62],
+    //             }
+    //         })
+    //         .collect();
+    //     overlay_state
+    //         .sound_ent_tx
+    //         .send(sound_entities)
+    //         .unwrap_or_else(|e| {
+    //             tracing::error!(%e, "{}", s!("send sound_entity"));
+    //         });
+    // }
 
     // Update or despawn existing entities
     for (entity, mut target_transform, mut aim_target, mut health, mut mana) in
@@ -549,7 +570,7 @@ fn follow_game_state(
             mana.current = target.shield;
         } else {
             commands.entity(entity).remove::<(Health, Mana)>();
-            commands.entity(entity).despawn();
+            //commands.entity(entity).despawn();
         }
     }
 

@@ -44,6 +44,7 @@ struct Esp2dData {
 pub fn ui_system(
     mut contexts: EguiContexts,
     mut overlay_state: ResMut<MyOverlayState>,
+    time: Res<Time>,
     diagnostics: Res<DiagnosticsStore>,
     blobs: Res<Assets<Blob>>,
 ) {
@@ -148,7 +149,13 @@ pub fn ui_system(
                 }
             },
             game_fps: format!("{:.1}", state.game_fps),
-            latency: format!("{:.0}{}", overlay_state.data_latency, s!("ms")),
+            latency: format!(
+                "{:.0}{}{:.0}{}",
+                overlay_state.data_latency,
+                s!("ms(data) + "),
+                time.delta_seconds() * 1000.0,
+                s!("ms(ui)"),
+            ),
             target_count: overlay_state.target_count.to_string(),
             local_position: lplayer_buf
                 .and_then(|p| p.origin.clone())
