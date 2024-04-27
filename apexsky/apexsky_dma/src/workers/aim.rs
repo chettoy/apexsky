@@ -235,7 +235,7 @@ pub async fn aimbot_loop(
             let smoothed_angles = [smoothed_angles.0, smoothed_angles.1, 0.0];
             let smoothed_delta_angles = math::sub(smoothed_angles, view_angles);
 
-            if aimbot_settings.aim_mode & 0x4 != 0 {
+            if aimbot_settings.aim_mode & 0x4 != 0 && !aimbot.is_grenade() {
                 let natural_delta = *aim_delta_angles_rx.borrow();
                 //println!("{:?}", natural_delta);
 

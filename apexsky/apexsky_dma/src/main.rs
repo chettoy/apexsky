@@ -69,6 +69,7 @@ struct State {
     active: bool,
     active_tx: watch::Sender<bool>,
     shared_state: Arc<RwLock<SharedState>>,
+    io_thread: Option<std::thread::JoinHandle<anyhow::Result<()>>>,
     actions_t: Option<JoinHandle<anyhow::Result<()>>>,
     aim_t: Option<JoinHandle<anyhow::Result<()>>>,
     control_t: Option<JoinHandle<anyhow::Result<()>>>,
@@ -85,6 +86,7 @@ impl State {
             active,
             active_tx,
             shared_state: Arc::new(RwLock::new(SharedState::default())),
+            io_thread: None,
             actions_t: None,
             aim_t: None,
             control_t: None,
@@ -142,20 +144,25 @@ trait TaskManager {
 impl TaskManager for State {
     async fn start_tasks(&mut self) -> TaskChannels {
         use workers::{
-            actions::actions_loop, aim::aimbot_loop, control::control_loop, esp::esp_loop,
-            items::items_loop,
+            access::io_thread, actions::actions_loop, aim::aimbot_loop, control::control_loop,
+            esp::esp_loop, items::items_loop,
         };
 
         self.stop_tasks().await;
 
         self.set_active(true);
 
+        // let (access_tx, access_rx) = mpsc::channel(100);
         let (aim_key_tx, aim_key_rx) = watch::channel(workers::aim::AimKeyStatus::default());
         let (aim_select_tx, aim_select_rx) = watch::channel(vec![]);
-        let (aim_delta_angles_tx, aim_delta_angles_rx) = watch::channel([0.0,0.0,0.0]);
+        let (aim_delta_angles_tx, aim_delta_angles_rx) = watch::channel([0.0, 0.0, 0.0]);
         let (aim_action_tx, aim_action_rx) = mpsc::channel(5);
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
 
+        // self.io_thread = Some({
+        //     let active_rx = self.active_tx.subscribe();
+        //     std::thread::spawn(move || io_thread(active_rx, access_rx))
+        // });
         self.actions_t = Some(task::spawn(actions_loop(
             self.active_tx.subscribe(),
             self.shared_state.clone(),
@@ -212,9 +219,45 @@ impl TaskManager for State {
         if let Some(handle) = self.items_t.take() {
             handle.await.ok();
         }
+        if let Some(handle) = self.io_thread.take() {
+            handle.join().ok();
+        }
     }
 
     async fn check_tasks(&mut self) {
+        fn check_thread(
+            handle: &mut Option<std::thread::JoinHandle<anyhow::Result<()>>>,
+            tag: &str,
+        ) -> bool {
+            if let Some(handle) = handle.as_ref() {
+                if !handle.is_finished() {
+                    return true;
+                }
+            } else {
+                return false;
+            }
+
+            let Some(handle) = handle.take() else {
+                return false;
+            };
+
+            match handle.join() {
+                Ok(r) => {
+                    if let Err(e) = r {
+                        tracing::error!(%e, ?e, "{}", tag);
+                        false
+                    } else {
+                        tracing::debug!("{}{}", tag, s!(" finished"));
+                        true
+                    }
+                }
+                Err(e) => {
+                    tracing::error!(?e, "{}", tag);
+                    false
+                }
+            }
+        }
+
         #[instrument]
         async fn check_task(
             handle: &mut Option<JoinHandle<anyhow::Result<()>>>,
@@ -251,6 +294,7 @@ impl TaskManager for State {
                 }
             }
         }
+        check_thread(&mut self.io_thread, s!("io_thread"));
         check_task(&mut self.actions_t, s!("actions_t")).await;
         check_task(&mut self.aim_t, s!("aim_t")).await;
         check_task(&mut self.control_t, s!("control_t")).await;
