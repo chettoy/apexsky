@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashMap};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -27,10 +27,28 @@ pub trait MemAccess {
     ) -> anyhow::Result<()>;
 }
 
+pub trait MemAccessPro {
+    async fn req_mem_read<T: dataview::Pod + ?Sized>(
+        &mut self,
+        addr: u64,
+        dest: &mut T,
+        priority: i32,
+        req_id: usize,
+    ) -> anyhow::Result<()>;
+    async fn req_mem_write<T: dataview::Pod + ?Sized>(
+        &mut self,
+        addr: u64,
+        data: &T,
+        priority: i32,
+        req_id: usize,
+    ) -> anyhow::Result<()>;
+    async fn req_flush(priority_threshold: i32) -> anyhow::Result<()>;
+}
+
 type MemApi = mpsc::Sender<PriorityAccess>;
 
 pub struct PriorityAccess {
-    priority: u32,
+    priority: i32,
     req: AccessRequest,
 }
 
@@ -55,6 +73,7 @@ impl Ord for PriorityAccess {
 }
 
 pub enum AccessRequest {
+    FlushRequests(i32),
     MemBaseaddr(MemBaseaddrRequest),
     MemRead(MemReadRequest),
     MemWrite(MemWriteRequest),
@@ -160,6 +179,8 @@ impl MemAccess for MemApi {
     }
 }
 
+// impl MemAccessPro for MemApi {}
+
 #[instrument(skip_all)]
 pub fn io_thread(
     active: watch::Receiver<bool>,
@@ -167,11 +188,12 @@ pub fn io_thread(
 ) -> anyhow::Result<()> {
     tracing::debug!("{}", s!("task start"));
 
-    let mut accessible = false;
-    let mut priority_queue = BinaryHeap::new();
+    let mut accessible: bool = false;
+    let mut priority_queue: BinaryHeap<PriorityAccess> = BinaryHeap::new();
+    let mut scatter_map: HashMap<usize, Vec<MemReadRequest>> = HashMap::new();
     let mut start_instant = Instant::now();
 
-    let connector = choose_connector();
+    let connector: String = choose_connector();
     let Some(mut mem_os) = create_os_instance(connector) else {
         press_to_exit();
         return Ok(());
@@ -212,6 +234,7 @@ pub fn io_thread(
                 break;
             }
 
+            // Receive all requests and store to queue
             loop {
                 match access_rx.try_recv() {
                     Ok(req) => priority_queue.push(req),
@@ -227,10 +250,38 @@ pub fn io_thread(
                 }
             }
 
-            todo!();
-            // loop {
-            //     let req = priority_queue.pop();
-            // }
+            // Execution of the requests
+            loop {
+                let Some(access) = priority_queue.peek() else {
+                    break;
+                };
+                if access.priority < 0 {
+                    break;
+                }
+                match priority_queue.pop().unwrap().req {
+                    AccessRequest::MemBaseaddr(r) => {
+                        let _ = r.future_tx.send(match mem.get_proc_baseaddr() {
+                            0 => None,
+                            a => Some(a),
+                        });
+                    }
+                    AccessRequest::MemRead(r) => match scatter_map.get_mut(&r.id) {
+                        Some(arr) => {
+                            arr.push(r);
+                        }
+                        None => {
+                            scatter_map.insert(r.id, vec![r]);
+                        }
+                    },
+                    AccessRequest::MemWrite(r) => {
+                        let _ = r.future_tx.send(mem.write_raw(r.address, &r.write));
+                    }
+                    AccessRequest::FlushRequests(priority_threshold) => todo!(),
+                }
+            }
+            scatter_map.drain().for_each(|(id, req_arr)| {
+                todo!();
+            });
         }
     }
 

@@ -179,7 +179,8 @@ impl<'a> MemProc for MemflowProc<'a> {
 
         if self.status == ProcessStatus::FoundReady {
             let mut c: i16 = 0;
-            self.read_into(self.base_addr.to_umem(), &mut c).ok();
+            self.read_raw_into(self.base_addr.to_umem(), dataview::bytes_mut(&mut c))
+                .ok();
 
             if c != 0x5A4D {
                 self.status = ProcessStatus::NotFound;
@@ -238,17 +239,16 @@ impl<'a> MemProc for MemflowProc<'a> {
     }
 
     #[instrument(skip_all)]
-    fn read_into<T: Pod + ?Sized>(&mut self, addr: u64, out: &mut T) -> anyhow::Result<()> {
+    fn read_raw_into(&mut self, addr: u64, out: &mut [u8]) -> anyhow::Result<()> {
         if self.status != ProcessStatus::FoundReady {
             anyhow::bail!(s!("proc instance is None").to_string());
         }
 
         let addr = Address::from(addr);
-        let dest = dataview::bytes_mut(out);
 
         let mut result = Ok(());
         for i in 0..3 {
-            result = self.proc.read_raw_into(addr, dest);
+            result = self.proc.read_raw_into(addr, out);
             match &result {
                 Ok(_) => {
                     return Ok(());
@@ -269,13 +269,12 @@ impl<'a> MemProc for MemflowProc<'a> {
     }
 
     #[instrument(skip_all)]
-    fn write<T: Pod + ?Sized>(&mut self, addr: u64, data: &T) -> anyhow::Result<()> {
+    fn write_raw(&mut self, addr: u64, data: &[u8]) -> anyhow::Result<()> {
         if self.status != ProcessStatus::FoundReady {
             anyhow::bail!(s!("proc instance is None").to_string());
         }
 
         let addr = Address::from(addr);
-        let data = dataview::bytes(data);
 
         let mut result = Ok(());
         for i in 0..3 {

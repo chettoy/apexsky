@@ -94,7 +94,8 @@ impl<'a> MemProc for MemProcFSProc<'a> {
 
         if self.status == ProcessStatus::FoundReady {
             let mut c: i16 = 0;
-            self.read_into(self.base_addr, &mut c).ok();
+            self.read_raw_into(self.base_addr, dataview::bytes_mut(&mut c))
+                .ok();
 
             if c != 0x5A4D {
                 self.status = ProcessStatus::NotFound;
@@ -151,28 +152,19 @@ impl<'a> MemProc for MemProcFSProc<'a> {
         println!("{}", s!("== speed test end =="));
     }
 
-    fn read_into<T: dataview::Pod + ?Sized>(
-        &mut self,
-        addr: u64,
-        out: &mut T,
-    ) -> anyhow::Result<()> {
+    fn read_raw_into(&mut self, addr: u64, out: &mut [u8]) -> anyhow::Result<()> {
         if self.status != ProcessStatus::FoundReady {
             anyhow::bail!(s!("proc instance is None").to_string());
         }
-
-        let dest = dataview::bytes_mut(out);
-        dest.copy_from_slice(&self.proc.mem_read_ex(addr, dest.len(), FLAG_NOCACHE)?);
+        out.copy_from_slice(&self.proc.mem_read_ex(addr, out.len(), FLAG_NOCACHE)?);
         Ok(())
     }
 
-    fn write<T: dataview::Pod + ?Sized>(&mut self, addr: u64, data: &T) -> anyhow::Result<()> {
+    fn write_raw(&mut self, addr: u64, data: &[u8]) -> anyhow::Result<()> {
         if self.status != ProcessStatus::FoundReady {
             anyhow::bail!(s!("proc instance is None").to_string());
         }
-
-        let data = dataview::bytes(data);
         self.proc.mem_write(addr, &data.to_vec())?;
-
         Ok(())
     }
 }

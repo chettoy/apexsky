@@ -16,8 +16,8 @@ pub trait MemProc: Send + Sync {
     fn get_proc_baseaddr(&self) -> u64;
     fn check_proc_status(&mut self) -> ProcessStatus;
     fn speed_test(&mut self);
-    fn read_into<T: Pod + ?Sized>(&mut self, addr: u64, out: &mut T) -> anyhow::Result<()>;
-    fn write<T: Pod + ?Sized>(&mut self, addr: u64, data: &T) -> anyhow::Result<()>;
+    fn read_raw_into(&mut self, addr: u64, out: &mut [u8]) -> anyhow::Result<()>;
+    fn write_raw(&mut self, addr: u64, data: &[u8]) -> anyhow::Result<()>;
 }
 
 #[derive(Debug)]
@@ -48,18 +48,28 @@ impl<'a> MemProc for MemProcImpl<'a> {
         }
     }
 
-    fn read_into<T: Pod + ?Sized>(&mut self, addr: u64, out: &mut T) -> anyhow::Result<()> {
+    fn read_raw_into(&mut self, addr: u64, out: &mut [u8]) -> anyhow::Result<()> {
         match self {
-            MemProcImpl::Memflow(m) => m.read_into(addr, out),
-            MemProcImpl::Vmm(m) => m.read_into(addr, out),
+            MemProcImpl::Memflow(m) => m.read_raw_into(addr, out),
+            MemProcImpl::Vmm(m) => m.read_raw_into(addr, out),
         }
     }
 
-    fn write<T: Pod + ?Sized>(&mut self, addr: u64, data: &T) -> anyhow::Result<()> {
+    fn write_raw(&mut self, addr: u64, data: &[u8]) -> anyhow::Result<()> {
         match self {
-            MemProcImpl::Memflow(m) => m.write(addr, data),
-            MemProcImpl::Vmm(m) => m.write(addr, data),
+            MemProcImpl::Memflow(m) => m.write_raw(addr, data),
+            MemProcImpl::Vmm(m) => m.write_raw(addr, data),
         }
+    }
+}
+
+impl<'a> MemProcImpl<'a> {
+    pub fn read_into<T: Pod + ?Sized>(&mut self, addr: u64, out: &mut T) -> anyhow::Result<()> {
+        self.read_raw_into(addr, dataview::bytes_mut(out))
+    }
+
+    pub fn write<T: Pod + ?Sized>(&mut self, addr: u64, data: &T) -> anyhow::Result<()> {
+        self.write_raw(addr, dataview::bytes(data))
     }
 }
 
