@@ -142,7 +142,7 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option
         .add_systems(Startup, setup)
         .add_systems(Update, ui::toggle_mouse_passthrough)
         .add_systems(Update, ui::ui_system)
-        .add_systems(Update, load_sound)
+        // .add_systems(Update, load_sound)
         // .add_systems(Update, update_positions)
         // .add_systems(Update, update_listener)
         .add_systems(Update, follow_game_state)
