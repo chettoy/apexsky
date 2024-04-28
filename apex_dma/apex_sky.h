@@ -432,7 +432,7 @@ LoveStatus check_love_player(uint64_t puid, uint64_t euid, const char *name,
                              uint64_t entity_ptr);
 
 void init_spec_checker(uintptr_t local_player_ptr);
-void tick_yew(uintptr_t target_ptr, float yew);
+void tick_yaw(uintptr_t target_ptr, float yaw);
 bool is_spec(uintptr_t target_ptr);
 
 aimbot_state_t aimbot_get_state();

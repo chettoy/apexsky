@@ -54,7 +54,7 @@ public:
 
   void check_proc();
 
-  int open_os();
+  int open_os(bool nokvm);
 
   void speed_test();
 

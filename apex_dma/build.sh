@@ -17,7 +17,7 @@ BUILD_DIR="$SCRIPT_DIR/build"
 mkdir -p "$BUILD_DIR"
 
 # Build release version of apexsky
-cd "$SCRIPT_DIR/apexsky"
+cd "$SCRIPT_DIR/../apexsky/apexsky"
 
 cargo build --release
 cd "$SCRIPT_DIR"

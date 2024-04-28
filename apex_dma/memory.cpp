@@ -5,6 +5,7 @@
 #include <ios>
 #include <iostream>
 #include <string>
+#include <unistd.h>
 
 struct FindProcessContext {
   OsInstance<> *os;
@@ -95,7 +96,7 @@ void Memory::check_proc() {
 
 Memory::Memory() { log_init(LevelFilter::LevelFilter_Info); }
 
-int Memory::open_os() {
+int Memory::open_os(bool nokvm) {
   // load all available plugins
   if (inventory) {
     inventory_free(inventory);
@@ -108,11 +109,27 @@ int Memory::open_os() {
   }
   printf("%s%p\n", xorstr_("inventory initialized: "), inventory);
 
-  const std::string conn_name(xorstr_("pcileech"));
-  const std::string conn_arg(xorstr_(":device=FPGA"));
-
-  const std::string os_name(xorstr_("win32"));
+  std::string conn_name;
+  const std::string conn_arg;
+  std::string os_name;
   const std::string os_arg;
+
+  if (nokvm) {
+    conn_name = std::string();
+    os_name = std::string(xorstr_("native"));
+  } else {
+    if (access(xorstr_("/dev/memflow"), F_OK) != -1) {
+      conn_name = std::string(xorstr_("kvm"));
+    } else {
+      conn_name = std::string(xorstr_("qemu"));
+    }
+    os_name = std::string(xorstr_("win32"));
+  }
+  // const std::string conn_name(xorstr_("pcileech"));
+  // const std::string conn_arg(xorstr_(":device=FPGA"));
+
+  // const std::string os_name(xorstr_("win32"));
+  // const std::string os_arg;
 
   ConnectorInstance connector;
   conn = &connector;

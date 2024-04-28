@@ -26,7 +26,7 @@ fi
 
 # Run 'cargo clean' in apexsky directory
 echo "Running 'cargo clean' in apexsky..."
-cd "${PROJECT_DIR}/apex_dma/apexsky" && cargo clean
+cd "${PROJECT_DIR}/apexsky/apexsky" && cargo clean
 
 # Run 'cargo clean' in lib subdirectories
 for subdirectory in "memflow" "memflow-pcileech" "memflow-win32" "skyapex"; do

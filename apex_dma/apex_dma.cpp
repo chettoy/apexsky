@@ -564,7 +564,7 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
 
   if (target.is_player && (!target.isAlive() || !LPlayer.isAlive())) {
     // Update yew to spec checker
-    tick_yew(target.ptr, target.GetYaw());
+    tick_yaw(target.ptr, target.GetYaw());
     // Exclude self from list when watching others
     if (target.ptr != LPlayer.ptr && is_spec(target.ptr)) {
       tmp_specs.insert(target.ptr);
@@ -641,8 +641,7 @@ void DoActions() {
       } else if (strcmp(level_name, xorstr_("mp_rr_canyonlands_staging_mu1")) ==
                  0) {
         map = 1;
-      } else if (strcmp(level_name, xorstr_("mp_rr_tropic_island_mu2")) ==
-                 0) {
+      } else if (strcmp(level_name, xorstr_("mp_rr_tropic_island_mu2")) == 0) {
         map = 2;
       } else if (strcmp(level_name, xorstr_("mp_rr_desertlands_hu")) == 0) {
         map = 3;
@@ -657,15 +656,15 @@ void DoActions() {
 
       {
         // int pad = 0;
-        // apex_mem.Read<int>(LocalPlayer + offsets.player_controller_active, pad);
-        // bool controller_active = pad == 1;
+        // apex_mem.Read<int>(LocalPlayer + offsets.player_controller_active,
+        // pad); bool controller_active = pad == 1;
         bool firing_range_mode = map == 1;
 
         bool update = true;
         auto settings = global_settings();
         // if (settings.aimbot_settings.gamepad != controller_active) {
         //   settings.aimbot_settings.gamepad = controller_active;
-        // } else 
+        // } else
         if (settings.firing_range != firing_range_mode) {
           settings.firing_range = firing_range_mode;
         } else {
@@ -706,7 +705,7 @@ void DoActions() {
           init_spec_checker(LocalPlayer);
         }
         // Update local entity yew
-        tick_yew(LocalPlayer, LPlayer.GetYaw());
+        tick_yaw(LocalPlayer, LPlayer.GetYaw());
       }
 
       int frame_number = 0;
@@ -1596,10 +1595,11 @@ int main(int argc, char *argv[]) {
   std::thread itemglow_thr;
   std::thread control_thr;
 
+  bool nokvm = (argc == 2 && strcmp("nokvm", argv[1]) == 0);
   if (argc == 2 && strcmp("menu", argv[1]) == 0) {
     run_tui_menu();
     return 0;
-  } else if (apex_mem.open_os() != 0) {
+  } else if (apex_mem.open_os(nokvm) != 0) {
     std::cout << xorstr_("Press any key to exit..") << std::endl;
     std::cin.ignore();
     exit(0);
@@ -1687,5 +1687,3 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
-
-
