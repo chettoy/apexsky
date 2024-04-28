@@ -71,6 +71,19 @@ impl<'a> MemProcImpl<'a> {
     pub fn write<T: Pod + ?Sized>(&mut self, addr: u64, data: &T) -> anyhow::Result<()> {
         self.write_raw(addr, dataview::bytes(data))
     }
+
+    #[tracing::instrument(skip_all)]
+    pub fn get_vmm_scatter(&mut self) -> Option<memprocfs::VmmScatterMemory> {
+        match self {
+            MemProcImpl::Memflow(m) => None,
+            MemProcImpl::Vmm(m) => m
+                .mem_scatter()
+                .map_err(|e| {
+                    tracing::error!(%e, ?e);
+                })
+                .ok(),
+        }
+    }
 }
 
 #[repr(C)]

@@ -1,6 +1,6 @@
 use crate::noobfstr as s;
 use anyhow::{anyhow, Context};
-use memprocfs::{Vmm, VmmProcess, FLAG_NOCACHE};
+use memprocfs::{Vmm, VmmProcess, VmmScatterMemory, FLAG_NOCACHE};
 use once_cell::sync::Lazy;
 use std::{env, sync::Arc, time::Instant};
 
@@ -166,5 +166,15 @@ impl<'a> MemProc for MemProcFSProc<'a> {
         }
         self.proc.mem_write(addr, &data.to_vec())?;
         Ok(())
+    }
+}
+
+impl<'a> MemProcFSProc<'a> {
+    pub fn mem_scatter(&mut self) -> anyhow::Result<VmmScatterMemory> {
+        if self.status != ProcessStatus::FoundReady {
+            anyhow::bail!(s!("proc instance is None").to_string());
+        }
+        let mem_scatter = self.proc.mem_scatter(FLAG_NOCACHE)?;
+        Ok(mem_scatter)
     }
 }
