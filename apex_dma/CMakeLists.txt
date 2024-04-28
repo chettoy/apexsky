@@ -102,10 +102,10 @@ ExternalProject_Add(
     apexsky
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BINARY_DIR ${PROJECT_SOURCE_DIR}/apexsky/
+    BINARY_DIR ${PROJECT_SOURCE_DIR}/../apexsky/apexsky/
     BUILD_COMMAND cargo build --release
     INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/apexsky/target/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
+    BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/../apexsky/apexsky/target/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
     LOG_BUILD ON)
 
 add_dependencies(apex_dma 

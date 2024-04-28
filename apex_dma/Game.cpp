@@ -221,7 +221,7 @@ void Entity::enableGlow(int setting_index, uint8_t inside_value,
   apex_mem.Write<HighlightSetting_t>(highlight_settings_ptr + 0x34 * context_id,
                                      highlight_settings);
 
-  apex_mem.Write<float>(ptr + offsets.entity_fade_dist, 8.0E+4);
+  apex_mem.Write<float>(ptr + 0x264, 8.0E+4);
 
   apex_mem.Write(g_Base + OFFSET_GLOW_FIX, 1);
 }
@@ -253,7 +253,7 @@ QAngle Entity::GetRecoil() {
 }
 
 void Entity::get_name(char *name) {
-  uint64_t index = (this->entity_index - 1) << 4;
+  uint64_t index = (this->entity_index - 1) * 24;
   uint64_t name_ptr = 0;
   apex_mem.Read<uint64_t>(g_Base + offsets.name_list + index, name_ptr);
   apex_mem.ReadArray<char>(name_ptr, name, 32);
@@ -331,7 +331,7 @@ LoveStatus Entity::check_love_player() {
 
 int Entity::xp_level() {
   assert(this->is_player);
-  return this->player_xp_level;
+  return this->player_xp_level + 1;
 }
 
 int Entity::read_xp_level() {
@@ -683,9 +683,13 @@ void WeaponXEntity::update(uint64_t LocalPlayer) {
   weap_id = 0;
   apex_mem.Read<uint32_t>(wep_entity + offsets.weaponx_weapon_name_index,
                           weap_id);
+  lastChargeLevel = 0;
+  apex_mem.Read<int>(wep_entity + m_lastChargeLevel, lastChargeLevel);
 }
 
-float WeaponXEntity::get_projectile_speed() { return projectile_speed; }
+float WeaponXEntity::get_projectile_speed() { 
+return ((weap_id == 2) ? projectile_speed + pow(lastChargeLevel, 5.4684388195808) : projectile_speed);
+}
 
 float WeaponXEntity::get_projectile_gravity() {
   return 750.0f * projectile_scale;

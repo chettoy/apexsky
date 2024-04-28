@@ -37,23 +37,28 @@ typedef struct {
 } aim_angles_t;
 
 typedef struct {
+  int32_t weapon_id;
+  float bullet_speed;
+  float bullet_gravity;
+  float weapon_zoom_fov;
+  uint32_t weapon_mod_bitfield;
+  bool weapon_headshot;
+  bool weapon_semi_auto;
+} current_weapon_info_t;
+
+typedef struct {
   aimbot_settings_t settings;
   bool aiming;
   bool gun_safety;
   bool lock;
+  bool triggerbot_ready;
   int32_t attack_state;
   int32_t zoom_state;
   int32_t aim_key_state;
   int32_t triggerbot_key_state;
   int32_t held_id;
-  int32_t weapon_id;
-  float bullet_speed;
-  float bullet_gravity;
-  float weapon_zoom_fov;
-  int weapon_mod_bitfield;
-  bool weapon_grenade;
-  bool weapon_headshot;
-  bool weapon_semi_auto;
+  bool held_grenade;
+  current_weapon_info_t weapon_info;
   float max_fov;
   float target_score_max;
   uintptr_t local_entity;

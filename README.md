@@ -30,10 +30,13 @@
 
 ## About The Project
 
+
 Apex Legends QEMU/KVM/DMA/Linux hack
 
 UnknownCheats thread: <https://www.unknowncheats.me/forum/apex-legends/406426-kvm-vmread-apex-esp-aimbot.html>
+UnknownCheats thread: <https://www.unknowncheats.me/forum/apex-legends/406426-kvm-vmread-apex-esp-aimbot.html>
 
+Bone IDs reference: <https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes>
 Bone IDs reference: <https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes>
 
 Game version (Steam Only right now): v3.0.65.42
@@ -112,6 +115,7 @@ There are really only two steps:
 1. Run the game on a windows guest in a kvm virtual machine.
 2. Run the compiled apex_dma program on the Linux host.
 
+
     ```shell
     sudo ./apex_dma
     ```
@@ -171,6 +175,7 @@ cd apex_dma
     > First of all, everything related to game state is realized by *access on those specific memory locations*. So we need to use DMA or VM techniques to access memory covertly.
     > AC detects the overlay client, so we re-implement the overlay outside the VM and remove the client.
 
+3. I feel the aimbot seem not good as KrackerCo's one
 3. I feel the aimbot seem not good as KrackerCo's one
 
     > We added a few new parameters to aimbot, if you turn auto bone off, turn no-recoil on (it's off by default now) and set the aimbot predict fps to 75, aimbot will run the same as it did before with the same smoothing values.
