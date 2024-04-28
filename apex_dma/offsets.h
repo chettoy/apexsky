@@ -1,8 +1,8 @@
-// Date 4/9/2024
-// GameVersion=v3.0.63.32
+//Date 2024/04/23
+//GameVersion = v3.0.65.42
 
-#define OFFSET_ITEM_ID 0x1538           // item id?      //updated 2/14/2024
-#define OFFSET_M_CUSTOMSCRIPTINT 0x1538 // m_customScriptInt //updated 2/14/2024
+#define OFFSET_ITEM_ID 0x1558           // item id?      //updated 4/23/2024
+#define OFFSET_M_CUSTOMSCRIPTINT 0x1558 // m_customScriptInt //updated 2/14/2024
 #define OFFSET_YAW                                                             \
   0x223c - 0x8 // m_currentFramePlayer.m_ammoPoolCount//updated 4/7/2024 - 0x8
 
