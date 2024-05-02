@@ -42,16 +42,25 @@ pub struct GameState {
 impl GameState {
     #[instrument(skip(self, api))]
     #[inline(never)]
-    pub fn update(&mut self, api: &mut Api, ctx: &mut UpdateContext) {
-        self.client.update(api, ctx);
-        self.entity_list.update(api, ctx);
-        self.input_system.update(api, ctx);
-        self.string_tables.update(api, ctx);
-        self.name_list.update(api, ctx);
-        self.buttons.update(api, ctx);
-        self.script_data.update(api, ctx);
-        self.items.update(api, ctx);
-        self.mods.update(api, ctx);
+    pub async fn update(&mut self, api: &Api, ctx: &mut UpdateContext) {
+        self.client.update(api, ctx).await;
+        let update_entity_list = self.entity_list.update(api, ctx);
+        let update_input_system = self.input_system.update(api, ctx);
+        let update_string_tables = self.string_tables.update(api, ctx);
+        let update_name_list = self.name_list.update(api, ctx);
+        let update_buttons = self.buttons.update(api, ctx);
+        let update_script_data = self.script_data.update(api, ctx);
+        let update_items = self.items.update(api, ctx);
+        let update_mods = self.mods.update(api, ctx);
+
+        let _ = update_entity_list.await;
+        let _ = update_input_system.await;
+        let _ = update_string_tables.await;
+        let _ = update_name_list.await;
+        let _ = update_buttons.await;
+        let _ = update_script_data.await;
+        let _ = update_items.await;
+        let _ = update_mods.await;
 
         for i in 0..self.entity_list.entities.len() {
             // Temporarily take the entity out of the list
@@ -78,11 +87,14 @@ impl GameState {
 
         if ctx.connected && ctx.data.mp_gamemode != 0 {
             self.gamemode_hash = 0;
-            if let Ok(gamemode_ptr) =
-                api.vm_read::<sdk::Ptr<[u8]>>(api.apex_mem.base.field(ctx.data.mp_gamemode + 0x58))
+            if let Ok(gamemode_ptr) = api
+                .vm_read::<sdk::Ptr<[u8]>>(api.apex_base.field(ctx.data.mp_gamemode + 0x58))
+                .await
             {
                 if !gamemode_ptr.is_null() {
-                    if let Ok(gamemode) = api.vm_read_cstr(gamemode_ptr, &mut self.gamemode_buf) {
+                    if let Ok(gamemode) =
+                        api.vm_read_cstr(gamemode_ptr, &mut self.gamemode_buf).await
+                    {
                         self.gamemode_hash = crate::apexdream::base::hash(gamemode);
                     }
                 }

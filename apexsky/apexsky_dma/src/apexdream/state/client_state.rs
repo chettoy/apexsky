@@ -19,13 +19,13 @@ pub struct ClientState {
 }
 impl ClientState {
     #[instrument(skip_all)]
-    pub fn update(&mut self, api: &mut Api, ctx: &mut UpdateContext) {
-        let base_addr = api.apex_mem.base;
+    pub async fn update(&mut self, api: &Api, ctx: &mut UpdateContext) {
+        let base_addr = api.apex_base;
         let data = &ctx.data;
 
         // Connection signon state
         if ctx.ticked(25, 24) {
-            if let Ok(signon_state) = api.vm_read::<i32>(base_addr.field(data.signon_state)) {
+            if let Ok(signon_state) = api.vm_read::<i32>(base_addr.field(data.signon_state)).await {
                 ctx.connected = self.signon_state != sdk::SIGNONSTATE_FULL
                     && signon_state == sdk::SIGNONSTATE_FULL;
                 //tracing::debug!(signon_state, self.signon_state, ctx.connected);
@@ -41,8 +41,9 @@ impl ClientState {
             self.level_name.clear();
 
             let mut level_name = [0u8; 0x40];
-            if let Ok(level_name) =
-                api.vm_read_cstr(base_addr.field(data.level_name), &mut level_name)
+            if let Ok(level_name) = api
+                .vm_read_cstr(base_addr.field(data.level_name), &mut level_name)
+                .await
             {
                 self.level_hash = crate::apexdream::base::hash(level_name);
                 self.level_name.push_str(level_name);
@@ -63,7 +64,7 @@ impl ClientState {
         ctx.local_entity = self.local_entity;
 
         // Globals
-        if let Ok(globals) = api.vm_read::<sdk::CGlobalVars>(base_addr.field(data.global_vars)) {
+        if let Ok(globals) = api.vm_read::<sdk::CGlobalVars>(base_addr.field(data.global_vars)).await {
             self.framecount = globals.framecount;
             self.curtime = globals.curtime;
             self.interval_per_tick = 1.0 / 20.0;

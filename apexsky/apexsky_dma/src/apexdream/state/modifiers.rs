@@ -10,14 +10,14 @@ pub struct Modifiers {
 
 impl Modifiers {
     #[instrument(skip_all)]
-    pub fn update(&mut self, _api: &mut Api, ctx: &UpdateContext) {
+    pub async fn update(&mut self, _api: &Api, ctx: &UpdateContext) {
         if ctx.connected {
             self.database.clear();
         }
     }
 
     #[instrument(skip_all)]
-    pub fn visit(&mut self, api: &mut Api, ctx: &UpdateContext, entity_ref: EntityRef<'_>) {
+    pub async fn visit(&mut self, api: &Api, ctx: &UpdateContext, entity_ref: EntityRef<'_>) {
         if ctx.data.mods_names == 0 {
             return;
         }
@@ -36,7 +36,10 @@ impl Modifiers {
             return;
         }
 
-        let Ok(count) = api.vm_read::<u32>(mods_ptr.field(ctx.data.mods_count)) else {
+        let Ok(count) = api
+            .vm_read::<u32>(mods_ptr.field(ctx.data.mods_count))
+            .await
+        else {
             return;
         };
         //tracing::trace!(?weapon.weapon_name, count);
@@ -48,20 +51,20 @@ impl Modifiers {
         let mut names = Vec::new();
 
         // Array of pointers to cstrings
-        let mods_names = api
-            .apex_mem
-            .base
-            .field::<[sdk::Ptr<[u8]>]>(ctx.data.mods_names);
+        let mods_names = api.apex_base.field::<[sdk::Ptr<[u8]>]>(ctx.data.mods_names);
 
         for i in 0..count {
             //tracing::trace!(?weapon.weapon_name, i);
-            let Ok(index) = api.vm_read::<u16>(mods_ptr.field(ctx.data.mods_list + i * 10)) else {
+            let Ok(index) = api
+                .vm_read::<u16>(mods_ptr.field(ctx.data.mods_list + i * 10))
+                .await
+            else {
                 continue;
             };
-            let Ok(name_ptr) = api.vm_read(mods_names.at(index as usize)) else {
+            let Ok(name_ptr) = api.vm_read(mods_names.at(index as usize)).await else {
                 continue;
             };
-            let Ok(s) = api.vm_read_cstr(name_ptr, &mut name_buf) else {
+            let Ok(s) = api.vm_read_cstr(name_ptr, &mut name_buf).await else {
                 continue;
             };
             names.push(String::from(s));

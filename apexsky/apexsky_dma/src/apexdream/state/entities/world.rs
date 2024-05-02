@@ -63,6 +63,7 @@ impl WorldEntity {
         }) as Box<dyn Entity>
     }
 }
+#[async_trait]
 impl Entity for WorldEntity {
     fn as_any(&self) -> &dyn Any {
         self
@@ -82,7 +83,7 @@ impl Entity for WorldEntity {
         }
     }
     #[instrument(skip_all)]
-    fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         // Each DeathField array is 0x40 in size
         let base = ctx.data.world_death_field;
         let mut indices = [
@@ -101,7 +102,10 @@ impl Entity for WorldEntity {
             // m_deathFieldTimeEnd
             base + 1 * 0x40 + 12 * 0x40 + 4 * 0x40 + 4 * 0x40 + 4 * 0x40,
         ];
-        if let Ok(fields) = api.vm_gatherd(self.entity_ptr, self.entity_size, &mut indices) {
+        if let Ok(fields) = api
+            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .await
+        {
             self.death_field.is_active = fields[0] & 0xff != 0;
             let last_origin = self.death_field.origin;
             self.death_field.origin[0] = f32::from_bits(fields[1]);

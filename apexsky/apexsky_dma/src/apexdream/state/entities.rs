@@ -2,6 +2,7 @@
 
 use super::*;
 use apexsky::noobfstr as s;
+use async_trait::async_trait;
 use std::any::Any;
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -12,13 +13,14 @@ pub struct EntityInfo {
     pub rate: u32,
 }
 
+#[async_trait]
 pub trait Entity: Any + Sync + Send + std::fmt::Debug {
     fn as_any(&self) -> &dyn Any;
     fn as_ref(&self) -> EntityRef<'_>;
     fn is_serialized(&self) -> bool;
     fn get_info(&self) -> EntityInfo;
-    fn update(&mut self, api: &mut Api, ctx: &UpdateContext);
-    fn post(&mut self, _api: &mut Api, _ctx: &UpdateContext, _state: &GameState) {}
+    async fn update(&mut self, api: &Api, ctx: &UpdateContext);
+    fn post(&mut self, _api: &Api, _ctx: &UpdateContext, _state: &GameState) {}
 }
 
 #[derive(Copy, Clone)]
@@ -92,14 +94,14 @@ pub struct ModelName {
 }
 impl ModelName {
     #[instrument(skip_all)]
-    pub fn update(&mut self, api: &mut Api, model_name_ptr: sdk::Ptr<[u8]>) -> bool {
+    pub async fn update(&mut self, api: &Api, model_name_ptr: sdk::Ptr<[u8]>) -> bool {
         // Update when pointer changes
         if model_name_ptr != self.ptr {
             self.string.clear();
             self.hash = Default::default();
             if !model_name_ptr.is_null() {
                 let mut model_name = [0u8; 128];
-                if let Ok(model_name) = api.vm_read_cstr(model_name_ptr, &mut model_name) {
+                if let Ok(model_name) = api.vm_read_cstr(model_name_ptr, &mut model_name).await {
                     self.string.push_str(model_name);
                     self.string.make_ascii_lowercase(); // Keep everything consistently lower cased
                     self.hash = sdk::ModelName(crate::apexdream::base::hash(&self.string));

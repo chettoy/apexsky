@@ -7,6 +7,7 @@ use std::{collections::HashMap, mem};
 use super::*;
 use crate::noobfstr as s;
 
+#[derive(Debug)]
 pub struct EntityList {
     pub entities: Box<[Option<Box<dyn Entity>>]>,
     ent_info: Box<[sdk::CEntInfo]>,
@@ -33,8 +34,8 @@ impl Default for EntityList {
 impl EntityList {
     #[instrument(skip_all)]
     #[inline(never)]
-    pub fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
-        let base_addr = api.apex_mem.base;
+    pub async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
+        let base_addr = api.apex_base;
 
         self.updates = 0;
 
@@ -57,10 +58,12 @@ impl EntityList {
 
         // Read a chunk of the game's ent info array
         if let Some(ent_info_slice) = self.ent_info.get_mut(start..end) {
-            let _ = api.vm_read_into(
-                base_addr.field(ctx.data.entity_list + start as u32 * 32),
-                ent_info_slice,
-            );
+            let _ = api
+                .vm_read_into(
+                    base_addr.field(ctx.data.entity_list + start as u32 * 32),
+                    ent_info_slice,
+                )
+                .await;
         }
 
         // Update the entities
@@ -73,10 +76,10 @@ impl EntityList {
             {
                 // Recreate the entity object with the correct type
                 let entity_ptr = ent_info[index].pEntity;
-                entities[index] = self.gce.create_entity(api, entity_ptr, index as u32);
+                entities[index] = self.gce.create_entity(api, entity_ptr, index as u32).await;
                 // Always update the entity when created
                 if let Some(entity) = &mut entities[index] {
-                    entity.update(api, ctx);
+                    entity.update(api, ctx).await;
                     self.updates += 1;
                 }
             }
@@ -84,7 +87,7 @@ impl EntityList {
             else if let Some(entity) = &mut entities[index] {
                 let rate = entity.get_info().rate;
                 if ctx.ticked(rate, index as u32) {
-                    entity.update(api, ctx);
+                    entity.update(api, ctx).await;
                     self.updates += 1;
                 }
             }
@@ -100,6 +103,7 @@ impl EntityList {
 //----------------------------------------------------------------
 // GetClientEntity
 
+#[derive(Debug)]
 struct Config {
     log_errors: bool,
     log_uninteresting: bool,
@@ -115,13 +119,14 @@ impl Default for Config {
     }
 }
 
+#[derive(Debug)]
 struct ClientClassData {
     client_class: sdk::ClientClass,
     name_hash: u32,
     name_buf: [u8; 52],
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct GetClientEntity {
     config: Config,
     lookup: HashMap<sdk::Ptr<[sdk::Ptr]>, ClientClassData>,
@@ -129,9 +134,9 @@ struct GetClientEntity {
 
 impl GetClientEntity {
     #[inline(never)]
-    fn create_entity(
+    async fn create_entity(
         &mut self,
-        api: &mut Api,
+        api: &Api,
         entity_ptr: sdk::Ptr,
         index: u32,
     ) -> Option<Box<dyn Entity>> {
@@ -147,7 +152,7 @@ impl GetClientEntity {
         let log_uninteresting = self.config.log_uninteresting;
 
         // Get the entity type name
-        let data = self.get_client_class(api, entity_ptr)?;
+        let data = self.get_client_class(api, entity_ptr).await?;
 
         match data.name_hash {
             sdk::CPlayer => {
@@ -204,26 +209,27 @@ impl GetClientEntity {
     }
 
     #[inline(never)]
-    fn get_client_class(
+    async fn get_client_class(
         &mut self,
-        api: &mut Api,
+        api: &Api,
         entity_ptr: sdk::Ptr,
     ) -> Option<&ClientClassData> {
         // Read the IClientNetworkable vtable at entity_ptr + 3 * 8
-        let client_networkable: sdk::Ptr<[sdk::Ptr]> = match api.vm_read(entity_ptr.field(3 * 8)) {
-            Ok(p) => p,
-            Err(_) => {
-                if self.config.log_errors {
-                    api.log(format!(
-                        "{}{}{}",
-                        s!("get_client_class("),
-                        entity_ptr,
-                        s!("): IClientNetworkable")
-                    ));
+        let client_networkable: sdk::Ptr<[sdk::Ptr]> =
+            match api.vm_read(entity_ptr.field(3 * 8)).await {
+                Ok(p) => p,
+                Err(_) => {
+                    if self.config.log_errors {
+                        api.log(format!(
+                            "{}{}{}",
+                            s!("get_client_class("),
+                            entity_ptr,
+                            s!("): IClientNetworkable")
+                        ));
+                    }
+                    return None;
                 }
-                return None;
-            }
-        };
+            };
 
         // This can be null?!?
         if client_networkable.is_null() {
@@ -233,7 +239,7 @@ impl GetClientEntity {
         // Aggressively cache these lookups
         if !self.lookup.contains_key(&client_networkable) {
             // Read the GetClientEntity function ptr
-            let get_client_entity = match api.vm_read(client_networkable.at(3)) {
+            let get_client_entity = match api.vm_read(client_networkable.at(3)).await {
                 Ok(pgce) => pgce,
                 Err(_) => {
                     if self.config.log_errors {
@@ -251,7 +257,7 @@ impl GetClientEntity {
             };
 
             // Read the offset out of the lea rax, offset instruction
-            let offset = match api.vm_read::<i32>(get_client_entity.field(3)) {
+            let offset = match api.vm_read::<i32>(get_client_entity.field(3)).await {
                 Ok(offset) => offset,
                 Err(_) => {
                     if self.config.log_errors {
@@ -272,7 +278,7 @@ impl GetClientEntity {
             let client_class_ptr = get_client_entity.offset((offset + 7) as i64);
 
             // Read ClientClass instance
-            let client_class = match api.vm_read::<sdk::ClientClass>(client_class_ptr) {
+            let client_class = match api.vm_read::<sdk::ClientClass>(client_class_ptr).await {
                 Ok(cc) => cc,
                 Err(_) => {
                     if self.config.log_errors {
@@ -296,7 +302,10 @@ impl GetClientEntity {
 
             // Read pNetworkName
             let mut name_buf = [0u8; 52];
-            let name = match api.vm_read_cstr(client_class.pNetworkName, &mut name_buf) {
+            let name = match api
+                .vm_read_cstr(client_class.pNetworkName, &mut name_buf)
+                .await
+            {
                 Ok(name) => name,
                 Err(_) => {
                     if self.config.log_errors {

@@ -16,11 +16,11 @@ pub struct Buttons {
 
 impl Buttons {
     #[instrument(skip_all)]
-    pub fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
-        self.read(api, &ctx.data);
+    pub async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
+        self.read(api, &ctx.data).await;
         // clear_input_state at input + 0xF0 (int)
     }
-    pub fn read(&mut self, api: &mut Api, data: &GameData) {
+    pub async fn read(&mut self, api: &Api, data: &GameData) {
         let mut indices = [
             data.in_attack + 0,
             data.in_attack + 4,
@@ -54,11 +54,14 @@ impl Buttons {
             data.in_moveright + 8,
         ];
 
-        if let Ok(fields) = api.vm_gatherd(
-            api.apex_mem.base,
-            /*process.size_of_image*/ 0,
-            &mut indices,
-        ) {
+        if let Ok(fields) = api
+            .vm_gatherd(
+                api.apex_base,
+                /*process.size_of_image*/ 0,
+                &mut indices,
+            )
+            .await
+        {
             let fields = dataview::DataView::from(fields).read::<[sdk::kbutton_t; 10]>(0);
             self.in_attack = fields[0];
             self.in_jump = fields[1];

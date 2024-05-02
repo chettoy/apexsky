@@ -26,6 +26,7 @@ impl VehicleEntity {
         }) as Box<dyn Entity>
     }
 }
+#[async_trait]
 impl Entity for VehicleEntity {
     fn as_any(&self) -> &dyn Any {
         self
@@ -45,7 +46,7 @@ impl Entity for VehicleEntity {
         }
     }
     #[instrument(skip_all)]
-    fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         #[derive(sdk::Pod)]
         #[repr(C)]
         struct Indices {
@@ -72,7 +73,10 @@ impl Entity for VehicleEntity {
             ],
         };
 
-        if let Ok(fields) = api.vm_gatherd(self.entity_ptr, self.entity_size, &mut indices) {
+        if let Ok(fields) = api
+            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .await
+        {
             let last_origin = self.origin;
             self.origin[0] = f32::from_bits(fields.origin[0]);
             self.origin[1] = f32::from_bits(fields.origin[1]);

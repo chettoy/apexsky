@@ -247,6 +247,7 @@ impl PlayerEntity {
         return count;
     }
 }
+#[async_trait]
 impl Entity for PlayerEntity {
     fn as_any(&self) -> &dyn Any {
         self
@@ -266,7 +267,7 @@ impl Entity for PlayerEntity {
         }
     }
     #[instrument(skip_all)]
-    fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         #[derive(sdk::Pod)]
         #[repr(C)]
         struct Indices {
@@ -434,10 +435,13 @@ impl Entity for PlayerEntity {
             yaw: OFFSET_YAW.try_into().unwrap(),
         };
 
-        if let Ok(fields) = api.vm_gatherd(self.entity_ptr, self.entity_size, &mut indices) {
+        if let Ok(fields) = api
+            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .await
+        {
             self.eadp_uid = fields.uid[2] as u64 | (fields.uid[3] as u64) << 32;
             let model_name_ptr = fields.model_name[0] as u64 | (fields.model_name[1] as u64) << 32;
-            self.model_name.update(api, model_name_ptr.into());
+            self.model_name.update(api, model_name_ptr.into()).await;
             if self.eadp_uid < 1 {
                 // tracing::warn!(self.model_name.string, "{}", s!("invalid euid"));
                 tracing::trace!(self.model_name.string, "{}", s!("invalid euid"));
@@ -589,10 +593,13 @@ impl Entity for PlayerEntity {
             self.platform_uid = fields.uid[0] as u64 | (fields.uid[1] as u64) << 32;
 
             let studio_ptr = fields.studio[0] as u64 | (fields.studio[1] as u64) << 32;
-            self.studio.update(api, sdk::Ptr::from_raw(studio_ptr));
+            self.studio
+                .update(api, sdk::Ptr::from_raw(studio_ptr))
+                .await;
             let bone_ptr = fields.bone_array[0] as u64 | (fields.bone_array[1] as u64) << 32;
             self.bones
-                .update(api, ctx, &self.studio, sdk::Ptr::from_raw(bone_ptr));
+                .update(api, ctx, &self.studio, sdk::Ptr::from_raw(bone_ptr))
+                .await;
 
             self.script_net_data_global = sdk::EHandle::from(fields.script[0]);
             self.script_net_data_exclusive = sdk::EHandle::from(fields.script[1]);
@@ -612,7 +619,7 @@ impl Entity for PlayerEntity {
             };
         }
     }
-    fn post(&mut self, _api: &mut Api, ctx: &UpdateContext, _state: &GameState) {
+    fn post(&mut self, _api: &Api, ctx: &UpdateContext, _state: &GameState) {
         // Check if player is visible
         // let is_visible = self.last_visible_time > 0.0
         //     && (self.last_visible_time - state.client.curtime).abs() < 10.0;

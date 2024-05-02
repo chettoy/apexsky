@@ -39,6 +39,7 @@ impl LootEntity {
         }) as Box<dyn Entity>
     }
 }
+#[async_trait]
 impl Entity for LootEntity {
     fn as_any(&self) -> &dyn Any {
         self
@@ -58,7 +59,7 @@ impl Entity for LootEntity {
         }
     }
     #[instrument(skip_all)]
-    fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         #[derive(sdk::Pod)]
         #[repr(C)]
         struct Indices {
@@ -97,7 +98,10 @@ impl Entity for LootEntity {
             ],
         };
 
-        if let Ok(fields) = api.vm_gatherd(self.entity_ptr, self.entity_size, &mut indices) {
+        if let Ok(fields) = api
+            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .await
+        {
             let origin = [
                 f32::from_bits(fields.origin[0]),
                 f32::from_bits(fields.origin[1]),
@@ -134,7 +138,7 @@ impl Entity for LootEntity {
             2
         };
     }
-    fn post(&mut self, _api: &mut Api, _ctx: &UpdateContext, state: &GameState) {
+    fn post(&mut self, _api: &Api, _ctx: &UpdateContext, state: &GameState) {
         self.weapon_name = state.weapon_name(self.weapon_name_index);
         self.known_item = state.known_item(self.custom_script_int);
     }

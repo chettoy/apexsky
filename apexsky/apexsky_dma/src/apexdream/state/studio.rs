@@ -30,7 +30,7 @@ pub struct StudioModel {
 }
 
 impl StudioModel {
-    pub fn update(&mut self, api: &mut Api, ptr: sdk::Ptr<sdk::CStudioHdr>) -> bool {
+    pub async fn update(&mut self, api: &Api, ptr: sdk::Ptr<sdk::CStudioHdr>) -> bool {
         self.ptr = ptr;
 
         if self.ptr.is_null() {
@@ -43,14 +43,17 @@ impl StudioModel {
             return false;
         }
 
-        let Ok(cstudio) = api.vm_read(self.ptr) else {
+        let Ok(cstudio) = api.vm_read(self.ptr).await else {
             return false;
         };
         if self.studiohdr_ptr == cstudio.m_pStudioHdr {
             return true;
         }
         self.studiohdr_ptr = cstudio.m_pStudioHdr;
-        let Ok(()) = api.vm_read_into(self.studiohdr_ptr, &mut self.studiohdr) else {
+        let Ok(()) = api
+            .vm_read_into(self.studiohdr_ptr, &mut self.studiohdr)
+            .await
+        else {
             return false;
         };
 
@@ -67,10 +70,13 @@ impl StudioModel {
             self.hb_lookup.clear();
             self.hb_lookup.resize(numbones, -1);
         }
-        let Ok(()) = api.vm_read_into(
-            self.studiohdr_ptr.field(self.studiohdr.boneoffset()),
-            &mut self.bones[..],
-        ) else {
+        let Ok(()) = api
+            .vm_read_into(
+                self.studiohdr_ptr.field(self.studiohdr.boneoffset()),
+                &mut self.bones[..],
+            )
+            .await
+        else {
             return false;
         };
 
@@ -78,10 +84,13 @@ impl StudioModel {
         // if self.studiohdr.numhitboxsets == 0 {
         // 	return false;
         // }
-        let Ok(()) = api.vm_read_into(
-            self.studiohdr_ptr.field(self.studiohdr.hitboxsetoffset()),
-            &mut self.hitboxset,
-        ) else {
+        let Ok(()) = api
+            .vm_read_into(
+                self.studiohdr_ptr.field(self.studiohdr.hitboxsetoffset()),
+                &mut self.hitboxset,
+            )
+            .await
+        else {
             return false;
         };
 
@@ -95,11 +104,14 @@ impl StudioModel {
             self.hitboxes.resize_with(numhitboxes, Default::default);
         }
         if self.hitboxset.numhitboxes > 0 {
-            let Ok(()) = api.vm_read_into(
-                self.studiohdr_ptr
-                    .field(self.studiohdr.hitboxsetoffset() + self.hitboxset.hitboxoffset()),
-                &mut self.hitboxes[..],
-            ) else {
+            let Ok(()) = api
+                .vm_read_into(
+                    self.studiohdr_ptr
+                        .field(self.studiohdr.hitboxsetoffset() + self.hitboxset.hitboxoffset()),
+                    &mut self.hitboxes[..],
+                )
+                .await
+            else {
                 return false;
             };
         }

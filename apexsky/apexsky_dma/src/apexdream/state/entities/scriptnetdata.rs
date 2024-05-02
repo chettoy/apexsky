@@ -58,7 +58,7 @@ impl ScriptNetDataEntity {
         &self.ents[..usize::min(SIZE, len)]
     }
 
-    fn init(&mut self, api: &mut Api) -> bool {
+    async fn init(&mut self, api: &Api) -> bool {
         if self.initialized == 1 {
             return true;
         }
@@ -67,7 +67,7 @@ impl ScriptNetDataEntity {
         }
         self.initialized = 2;
 
-        let Ok(recv_table) = api.vm_read(self.recv_table) else {
+        let Ok(recv_table) = api.vm_read(self.recv_table).await else {
             return false;
         };
         if recv_table.num_props > 100 {
@@ -77,13 +77,13 @@ impl ScriptNetDataEntity {
         let mut name_buf = [0u8; 64];
         let mut count = 0;
         for i in 0..11 {
-            let Ok(prop_ptr) = api.vm_read(recv_table.props.at(i)) else {
+            let Ok(prop_ptr) = api.vm_read(recv_table.props.at(i)).await else {
                 return false;
             };
-            let Ok(prop) = api.vm_read(prop_ptr) else {
+            let Ok(prop) = api.vm_read(prop_ptr).await else {
                 return false;
             };
-            let Ok(name) = api.vm_read_cstr(prop.name, &mut name_buf) else {
+            let Ok(name) = api.vm_read_cstr(prop.name, &mut name_buf).await else {
                 return false;
             };
             let name = crate::apexdream::base::hash(name);
@@ -125,6 +125,7 @@ impl ScriptNetDataEntity {
     }
 }
 
+#[async_trait]
 impl Entity for ScriptNetDataEntity {
     fn as_any(&self) -> &dyn Any {
         self
@@ -144,12 +145,12 @@ impl Entity for ScriptNetDataEntity {
         }
     }
     #[instrument(skip_all)]
-    fn update(&mut self, api: &mut Api, _ctx: &UpdateContext) {
+    async fn update(&mut self, api: &Api, _ctx: &UpdateContext) {
         // if !self.local_player {
         //     return;
         // }
 
-        if !self.init(api) {
+        if !self.init(api).await {
             return;
         }
 
@@ -164,7 +165,9 @@ impl Entity for ScriptNetDataEntity {
         };
 
         // Read into buffer
-        let _ = api.vm_read_into(self.entity_ptr.field(start_offset), buf);
+        let _ = api
+            .vm_read_into(self.entity_ptr.field(start_offset), buf)
+            .await;
 
         let view = dataview::DataView::from(buf);
         for i in 0..SIZE {
@@ -186,7 +189,7 @@ impl Entity for ScriptNetDataEntity {
                 .unwrap_or_default();
         }
     }
-    fn post(&mut self, _api: &mut Api, _ctx: &UpdateContext, state: &GameState) {
+    fn post(&mut self, _api: &Api, _ctx: &UpdateContext, state: &GameState) {
         self.local_player = false;
         let Some(local) = state.local_player() else {
             return;

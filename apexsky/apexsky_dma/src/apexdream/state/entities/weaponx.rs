@@ -114,6 +114,7 @@ impl WeaponXEntity {
         return sdk::ammo_type(self.weapon_name);
     }
 }
+#[async_trait]
 impl Entity for WeaponXEntity {
     fn as_any(&self) -> &dyn Any {
         self
@@ -133,7 +134,7 @@ impl Entity for WeaponXEntity {
         }
     }
     #[instrument(skip_all)]
-    fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         #[derive(sdk::Pod)]
         #[repr(C)]
         struct Indices {
@@ -196,7 +197,10 @@ impl Entity for WeaponXEntity {
             ],
         };
 
-        if let Ok(fields) = api.vm_gatherd(self.entity_ptr, self.entity_size, &mut indices) {
+        if let Ok(fields) = api
+            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .await
+        {
             self.weapon_owner = sdk::EHandle::from(fields.weapon_owner);
 
             self.last_primary_attack_time = f32::from_bits(fields.attack_time[0]);
@@ -245,7 +249,7 @@ impl Entity for WeaponXEntity {
             512
         };
     }
-    fn post(&mut self, _api: &mut Api, _ctx: &UpdateContext, state: &GameState) {
+    fn post(&mut self, _api: &Api, _ctx: &UpdateContext, state: &GameState) {
         self.weapon_name = state.weapon_name(self.weapon_name_index);
     }
 }

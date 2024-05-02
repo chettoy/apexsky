@@ -110,7 +110,7 @@ impl Default for ScriptValue {
 
 impl ScriptNetData {
     #[instrument(skip_all)]
-    pub fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    pub async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         if ctx.data.network_var_table_ptr == 0 || ctx.data.network_var_table_len == 0 {
             return;
         }
@@ -121,10 +121,9 @@ impl ScriptNetData {
         // FIXME! Do I need to check this more often than connected?
         if ctx.connected {
             let table_ptr = api
-                .apex_mem
-                .base
+                .apex_base
                 .field::<[NetVarEntry]>(ctx.data.network_var_table_ptr);
-            let _ = api.vm_read_into(table_ptr, &mut self.entries[..]);
+            let _ = api.vm_read_into(table_ptr, &mut self.entries[..]).await;
         }
     }
 }

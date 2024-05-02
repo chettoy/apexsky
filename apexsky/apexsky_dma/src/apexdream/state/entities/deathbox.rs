@@ -18,6 +18,7 @@ impl DeathboxEntity {
         })
     }
 }
+#[async_trait]
 impl Entity for DeathboxEntity {
     fn as_any(&self) -> &dyn Any {
         self
@@ -37,7 +38,7 @@ impl Entity for DeathboxEntity {
         }
     }
     #[instrument(skip_all)]
-    fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         #[derive(sdk::Pod)]
         #[repr(C)]
         struct Indices {
@@ -53,7 +54,10 @@ impl Entity for DeathboxEntity {
             ],
         };
 
-        if let Ok(fields) = api.vm_gatherd(self.entity_ptr, self.entity_size, &mut indices) {
+        if let Ok(fields) = api
+            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .await
+        {
             self.origin[0] = f32::from_bits(fields.origin[0]);
             self.origin[1] = f32::from_bits(fields.origin[1]);
             self.origin[2] = f32::from_bits(fields.origin[2]);

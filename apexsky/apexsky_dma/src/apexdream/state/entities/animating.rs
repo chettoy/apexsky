@@ -32,6 +32,7 @@ impl AnimatingEntity {
         })
     }
 }
+#[async_trait]
 impl Entity for AnimatingEntity {
     fn as_any(&self) -> &dyn Any {
         self
@@ -51,7 +52,7 @@ impl Entity for AnimatingEntity {
         }
     }
     #[instrument(skip_all)]
-    fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         if self.spawn_time == 0.0 {
             self.spawn_time = ctx.time;
         }
@@ -82,7 +83,10 @@ impl Entity for AnimatingEntity {
             ],
         };
 
-        if let Ok(fields) = api.vm_gatherd(self.entity_ptr, self.entity_size, &mut indices) {
+        if let Ok(fields) = api
+            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .await
+        {
             let origin = [
                 f32::from_bits(fields.origin[0]),
                 f32::from_bits(fields.origin[1]),
@@ -95,7 +99,7 @@ impl Entity for AnimatingEntity {
             self.origin = origin;
 
             let model_name_ptr = fields.model_name[0] as u64 | (fields.model_name[1] as u64) << 32;
-            self.model_name.update(api, model_name_ptr.into());
+            self.model_name.update(api, model_name_ptr.into()).await;
 
             self.owner_entity = sdk::EHandle::from(fields.owner_entity);
 

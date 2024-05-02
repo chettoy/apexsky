@@ -13,48 +13,22 @@ use crate::mem::{
 };
 use crate::press_to_exit;
 
-pub trait MemAccess {
-    async fn mem_baseaddr(&mut self) -> Option<u64>;
-    async fn mem_read<T: dataview::Pod + ?Sized>(
-        &mut self,
-        addr: u64,
-        dest: &mut T,
-    ) -> anyhow::Result<()>;
-    async fn mem_write<T: dataview::Pod + ?Sized>(
-        &mut self,
-        addr: u64,
-        data: &T,
-    ) -> anyhow::Result<()>;
-}
-
-pub trait MemAccessPro {
-    async fn req_mem_read<T: dataview::Pod + ?Sized>(
-        &mut self,
-        addr: u64,
-        dest: &mut T,
-        priority: i32,
-        req_id: usize,
-    ) -> anyhow::Result<()>;
-    async fn req_mem_write<T: dataview::Pod + ?Sized>(
-        &mut self,
-        addr: u64,
-        data: &T,
-        priority: i32,
-        req_id: usize,
-    ) -> anyhow::Result<()>;
-    async fn req_flush(&mut self, priority_threshold: i32) -> anyhow::Result<usize>;
-}
-
-type MemApi = mpsc::Sender<PriorityAccess>;
+pub type MemApi = mpsc::Sender<PriorityAccess>;
 
 #[derive(Debug)]
 pub struct PriorityAccess {
     priority: i32,
-    req: AccessRequest,
+    req: AccessType,
+}
+
+impl PriorityAccess {
+    fn new(req: AccessType, priority: i32) -> Self {
+        Self { priority, req }
+    }
 }
 
 #[derive(Debug)]
-pub enum AccessRequest {
+pub enum AccessType {
     FlushRequests(FlushRequestsRequest),
     MemBaseaddr(MemBaseaddrRequest),
     MemRead(MemReadRequest),
@@ -88,130 +62,67 @@ pub struct MemWriteRequest {
     future_tx: oneshot::Sender<anyhow::Result<()>>,
 }
 
-impl MemAccess for MemApi {
-    #[instrument(skip_all)]
-    async fn mem_baseaddr(&mut self) -> Option<u64> {
+impl AccessType {
+    pub fn flush(priority_threshold: i32) -> (Self, oneshot::Receiver<usize>) {
         let (future_tx, rx) = oneshot::channel();
-        if let Err(e) = self
-            .send(PriorityAccess {
-                priority: 0,
-                req: AccessRequest::MemBaseaddr(MemBaseaddrRequest { future_tx }),
-            })
-            .await
-        {
-            tracing::error!(%e, ?e);
-            return None;
-        }
-        rx.await.unwrap_or_else(|e| {
-            tracing::error!(%e, ?e);
-            None
-        })
-    }
-
-    #[instrument(skip_all)]
-    async fn mem_read<T: dataview::Pod + ?Sized>(
-        &mut self,
-        addr: u64,
-        dest: &mut T,
-    ) -> anyhow::Result<()> {
-        self.req_mem_read(addr, dest, 0, 0).await
-    }
-
-    #[instrument(skip_all)]
-    async fn mem_write<T: dataview::Pod + ?Sized>(
-        &mut self,
-        addr: u64,
-        data: &T,
-    ) -> anyhow::Result<()> {
-        self.req_mem_write(addr, data, 0, 0).await
-    }
-}
-
-impl MemAccessPro for MemApi {
-    async fn req_mem_read<T: dataview::Pod + ?Sized>(
-        &mut self,
-        addr: u64,
-        dest: &mut T,
-        priority: i32,
-        req_id: usize,
-    ) -> anyhow::Result<()> {
-        let dest = dataview::bytes_mut(dest);
-        let (future_tx, rx) = oneshot::channel();
-        self.send(PriorityAccess {
-            priority,
-            req: AccessRequest::MemRead(MemReadRequest {
-                address: addr,
-                data_size: dest.len(),
-                id: req_id,
-                future_tx,
-            }),
-        })
-        .await
-        .map_err(|e| {
-            tracing::error!(%e, ?e);
-            e
-        })?;
-
-        let data = rx.await.map_err(|e| {
-            tracing::error!(%e, ?e);
-            e
-        })??;
-        dest.copy_from_slice(&data);
-
-        Ok(())
-    }
-
-    async fn req_mem_write<T: dataview::Pod + ?Sized>(
-        &mut self,
-        addr: u64,
-        data: &T,
-        priority: i32,
-        req_id: usize,
-    ) -> anyhow::Result<()> {
-        let data = dataview::bytes(data);
-        let (future_tx, rx) = oneshot::channel();
-        self.send(PriorityAccess {
-            priority,
-            req: AccessRequest::MemWrite(MemWriteRequest {
-                address: addr,
-                write: data.to_vec(),
-                id: req_id,
-                future_tx,
-            }),
-        })
-        .await
-        .map_err(|e| {
-            tracing::error!(%e, ?e);
-            e
-        })?;
-
-        rx.await.map_err(|e| {
-            tracing::error!(%e, ?e);
-            e
-        })?
-    }
-
-    async fn req_flush(&mut self, priority_threshold: i32) -> anyhow::Result<usize> {
-        let (future_tx, rx) = oneshot::channel();
-        self.send(PriorityAccess {
-            priority: 0,
-            req: AccessRequest::FlushRequests(FlushRequestsRequest {
+        (
+            AccessType::FlushRequests(FlushRequestsRequest {
                 priority_threshold,
                 future_tx,
             }),
-        })
-        .await
-        .map_err(|e| {
-            tracing::error!(%e, ?e);
-            e
-        })?;
+            rx,
+        )
+    }
 
-        let count = rx.await.map_err(|e| {
-            tracing::error!(%e, ?e);
-            e
-        })?;
+    pub fn mem_baseaddr() -> (Self, oneshot::Receiver<Option<u64>>) {
+        let (future_tx, rx) = oneshot::channel();
+        (
+            AccessType::MemBaseaddr(MemBaseaddrRequest { future_tx }),
+            rx,
+        )
+    }
 
-        Ok(count)
+    pub fn mem_read(
+        addr: u64,
+        len: usize,
+        req_id: usize,
+    ) -> (Self, oneshot::Receiver<anyhow::Result<Vec<u8>>>) {
+        let (future_tx, rx) = oneshot::channel();
+        (
+            AccessType::MemRead(MemReadRequest {
+                address: addr,
+                data_size: len,
+                id: req_id,
+                future_tx,
+            }),
+            rx,
+        )
+    }
+
+    pub fn mem_write(
+        addr: u64,
+        data: Vec<u8>,
+        req_id: usize,
+    ) -> (Self, oneshot::Receiver<anyhow::Result<()>>) {
+        let (future_tx, rx) = oneshot::channel();
+        (
+            AccessType::MemWrite(MemWriteRequest {
+                address: addr,
+                write: data,
+                id: req_id,
+                future_tx,
+            }),
+            rx,
+        )
+    }
+
+    pub fn mem_write_typed<T: dataview::Pod + ?Sized>(
+        addr: u64,
+        data: &T,
+        req_id: usize,
+    ) -> (Self, oneshot::Receiver<anyhow::Result<()>>) {
+        let data = dataview::bytes(data);
+        Self::mem_write(addr, data.to_vec(), req_id)
     }
 }
 
@@ -399,14 +310,14 @@ fn consume_requests(
             break;
         }
         match priority_queue.pop().unwrap().req {
-            AccessRequest::MemBaseaddr(r) => {
+            AccessType::MemBaseaddr(r) => {
                 let _ = r.future_tx.send(match mem.get_proc_baseaddr() {
                     0 => None,
                     a => Some(a),
                 });
                 flush_report.done_count += 1;
             }
-            AccessRequest::MemRead(r) => {
+            AccessType::MemRead(r) => {
                 match scatter_map.get_mut(&r.id) {
                     Some(arr) => {
                         arr.push(r);
@@ -417,11 +328,11 @@ fn consume_requests(
                 }
                 flush_report.pending_count += 1;
             }
-            AccessRequest::MemWrite(r) => {
+            AccessType::MemWrite(r) => {
                 let _ = r.future_tx.send(mem.write_raw(r.address, &r.write));
                 flush_report.done_count += 1;
             }
-            AccessRequest::FlushRequests(r) => {
+            AccessType::FlushRequests(r) => {
                 flush_report.children.push(consume_requests(
                     Some(r),
                     priority_queue,
@@ -510,5 +421,92 @@ impl Eq for PriorityAccess {}
 impl Ord for PriorityAccess {
     fn cmp(&self, other: &Self) -> Ordering {
         self.priority.cmp(&other.priority)
+    }
+}
+
+pub trait AccessRequest {
+    fn with_priority(self, priority: i32) -> PriorityAccess;
+    fn dispatch(self, api: &MemApi) -> anyhow::Result<()>;
+}
+
+impl AccessRequest for PriorityAccess {
+    fn with_priority(mut self, priority: i32) -> PriorityAccess {
+        self.priority = priority;
+        self
+    }
+
+    fn dispatch(self, api: &MemApi) -> anyhow::Result<()> {
+        api.blocking_send(self).map_err(|e| {
+            tracing::error!(%e, ?e);
+            e.into()
+        })
+    }
+}
+
+impl AccessRequest for AccessType {
+    fn with_priority(self, priority: i32) -> PriorityAccess {
+        PriorityAccess {
+            priority,
+            req: self,
+        }
+    }
+
+    fn dispatch(self, api: &MemApi) -> anyhow::Result<()> {
+        self.with_priority(0).dispatch(api)
+    }
+}
+
+pub trait AsyncAccessRequest<T> {
+    fn with_priority(self, priority: i32) -> (PriorityAccess, oneshot::Receiver<T>);
+    fn dispatch(self, api: &MemApi) -> anyhow::Result<oneshot::Receiver<T>>;
+}
+
+impl<T, R> AsyncAccessRequest<T> for (R, oneshot::Receiver<T>)
+where
+    R: AccessRequest,
+{
+    fn with_priority(self, priority: i32) -> (PriorityAccess, oneshot::Receiver<T>) {
+        (self.0.with_priority(priority), self.1)
+    }
+
+    fn dispatch(self, api: &MemApi) -> anyhow::Result<oneshot::Receiver<T>> {
+        self.0.dispatch(api).map(|_| self.1)
+    }
+}
+
+pub trait AsyncMemReadResponse {
+    async fn recv_for<T>(self) -> anyhow::Result<T>
+    where
+        T: dataview::Pod + Default;
+    fn recv_then<T>(self, callback: fn(anyhow::Result<T>))
+    where
+        T: dataview::Pod + Default;
+}
+
+impl AsyncMemReadResponse for oneshot::Receiver<anyhow::Result<Vec<u8>>> {
+    async fn recv_for<T>(self) -> anyhow::Result<T>
+    where
+        T: dataview::Pod + Default,
+    {
+        self.await?
+            .map(|data| {
+                let mut out: T = T::default();
+                dataview::bytes_mut(&mut out).copy_from_slice(&data);
+                out
+            })
+            .map_err(|e| {
+                tracing::error!(%e, ?e);
+                e
+            })
+    }
+
+    fn recv_then<T>(self, callback: fn(anyhow::Result<T>))
+    where
+        T: dataview::Pod + Default,
+    {
+        tokio::spawn(async move {
+            let result = self.recv_for::<T>().await;
+            callback(result)
+        });
     }
 }

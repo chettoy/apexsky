@@ -152,20 +152,21 @@ impl TaskManager for State {
 
         self.set_active(true);
 
-        // let (access_tx, access_rx) = mpsc::channel(100);
+        let (access_tx, access_rx) = mpsc::channel(100);
         let (aim_key_tx, aim_key_rx) = watch::channel(workers::aim::AimKeyStatus::default());
         let (aim_select_tx, aim_select_rx) = watch::channel(vec![]);
         let (aim_delta_angles_tx, aim_delta_angles_rx) = watch::channel([0.0, 0.0, 0.0]);
         let (aim_action_tx, aim_action_rx) = mpsc::channel(5);
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
 
-        // self.io_thread = Some({
-        //     let active_rx = self.active_tx.subscribe();
-        //     std::thread::spawn(move || io_thread(active_rx, access_rx))
-        // });
+        self.io_thread = Some({
+            let active_rx = self.active_tx.subscribe();
+            std::thread::spawn(move || io_thread(active_rx, access_rx))
+        });
         self.actions_t = Some(task::spawn(actions_loop(
             self.active_tx.subscribe(),
             self.shared_state.clone(),
+            access_tx.clone(),
             aim_key_tx,
             aim_select_tx,
             aim_delta_angles_tx,

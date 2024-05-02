@@ -6,14 +6,15 @@ pub struct InputSystem {
 }
 impl InputSystem {
     #[instrument(skip_all)]
-    pub fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    pub async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         if ctx.ticked(2, 0) {
-            let _ = api.vm_read_into(
-                api.apex_mem
-                    .base
-                    .field(ctx.data.input_system + ctx.data.input_button_state),
-                &mut self.button_state,
-            );
+            let _ = api
+                .vm_read_into(
+                    api.apex_base
+                        .field(ctx.data.input_system + ctx.data.input_button_state),
+                    &mut self.button_state,
+                )
+                .await;
         }
     }
 }

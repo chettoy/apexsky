@@ -2,7 +2,7 @@ use self::{
     data::GameData,
     state::{GameState, UpdateContext},
 };
-use crate::mem::ApexMem;
+use crate::{mem::ApexMem, workers::access::MemApi};
 
 /**
  * https://github.com/CasualX/apexdream
@@ -55,14 +55,12 @@ impl Instance {
         &self.state
     }
 
-    pub fn tick_state(&mut self, apex_mem: ApexMem) {
-        let mut api = crate::apexdream::api::Api { apex_mem };
-
+    pub async fn tick_state(&mut self, api: &mut self::state::Api) {
         let time = apexsky::aimbot::get_unix_timestamp_in_millis() as f64 / 1000.0;
         self.update_ctx.time = time;
         self.state.time = time;
 
-        self.state.update(&mut api, &mut self.update_ctx);
+        self.state.update(api, &mut self.update_ctx).await;
 
         self.update_ctx.tickcount = self.update_ctx.tickcount.wrapping_add(1);
     }

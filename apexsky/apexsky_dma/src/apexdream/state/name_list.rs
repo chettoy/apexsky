@@ -18,8 +18,8 @@ impl Default for NameList {
 }
 impl NameList {
     #[instrument(skip_all)]
-    pub fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
-        let base_addr = api.apex_mem.base;
+    pub async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
+        let base_addr = api.apex_base;
         let data = &ctx.data;
 
         if !ctx.ticked(25, 19) {
@@ -27,7 +27,9 @@ impl NameList {
         }
 
         // Read the name list and check for new names
-        let _ = api.vm_read_into(base_addr.field(data.name_list), &mut *self.pointers2);
+        let _ = api
+            .vm_read_into(base_addr.field(data.name_list), &mut *self.pointers2)
+            .await;
         std::mem::swap(&mut self.pointers1, &mut self.pointers2);
 
         let pointers1 = unsafe { self.pointers1.get_unchecked(..SIZE) };
@@ -37,7 +39,7 @@ impl NameList {
         for i in 0..SIZE {
             if pointers1[i] != pointers2[i] {
                 names[i].clear();
-                if let Ok(name) = api.vm_read_cstr(pointers1[i], &mut name_buf) {
+                if let Ok(name) = api.vm_read_cstr(pointers1[i], &mut name_buf).await {
                     names[i].push_str(name);
                 }
             }

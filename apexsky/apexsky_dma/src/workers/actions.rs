@@ -12,10 +12,11 @@ use ndarray::arr1;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::mem::size_of;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::{mpsc, watch};
 use tokio::time::{sleep, Instant};
-use tracing::{instrument, trace, trace_span};
+use tracing::{instrument, trace, trace_span, Instrument};
 
 use crate::apexdream::{
     base::math,
@@ -23,26 +24,11 @@ use crate::apexdream::{
     state::entities::{BaseNPCEntity, LootEntity},
 };
 use crate::game::{data::*, player::GamePlayer};
-use crate::mem::{
-    memflow_impl::MemflowOs, memprocfs_impl::MemProcFsOs, ApexMem, MemOs, MemProc, MemProcImpl,
-    ProcessStatus,
-};
-use crate::{press_to_exit, SharedState, TreasureClue};
+use crate::workers::access::{AccessType, AsyncAccessRequest, AsyncMemReadResponse};
+use crate::{SharedState, TreasureClue};
 
+use super::access::MemApi;
 use super::aim::{AimKeyStatus, AimbotAction, PreSelectedTarget};
-
-pub trait MemAccess {
-    fn apex_mem_baseaddr(&mut self) -> u64;
-    fn apex_mem_read<T: dataview::Pod + Sized + Default>(
-        &mut self,
-        offset: u64,
-    ) -> anyhow::Result<T>;
-    fn apex_mem_write<T: dataview::Pod + ?Sized>(
-        &mut self,
-        offset: u64,
-        data: &T,
-    ) -> anyhow::Result<()>;
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpectatorInfo {
@@ -58,6 +44,7 @@ const ENABLE_MEM_AIM: bool = true;
 pub async fn actions_loop(
     mut active: watch::Receiver<bool>,
     shared_state: Arc<RwLock<SharedState>>,
+    access_tx: MemApi,
     aim_key_tx: watch::Sender<AimKeyStatus>,
     aim_select_tx: watch::Sender<Vec<PreSelectedTarget>>,
     aim_delta_angles_tx: watch::Sender<[f32; 3]>,
@@ -78,72 +65,20 @@ pub async fn actions_loop(
 
     tracing::debug!("{}", s!("task start"));
 
-    let mut connector = s!("dma").to_string();
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() == 2 {
-        if args[1] == s!("kvm") {
-            connector = s!("kvm").to_string();
-        } else if args[1] == s!("no-kvm")
-            || args[1] == s!("nokvm")
-            || args[1] == s!("nodma")
-            || args[1] == s!("linux")
-            || args[1] == s!("native")
-        {
-            connector = s!("native").to_string();
-        }
-    }
-    // create OS instance
-    let mut mem_os: Box<dyn MemOs> = if connector == s!("dma") {
-        match MemProcFsOs::new(&connector) {
-            Ok(os) => Box::new(os),
-            Err(e) => {
-                tracing::error!(?e, "{}", s!("open_os"));
-                press_to_exit();
-                return Ok(());
-            }
-        }
-    } else {
-        match MemflowOs::new(&connector) {
-            Ok(os) => Box::new(os),
-            Err(e) => {
-                tracing::error!(?e, "{}", s!("open_os"));
-                press_to_exit();
-                return Ok(());
-            }
-        }
-    };
-    fn find_game_process(mem_os: &mut Box<dyn MemOs>) -> Option<MemProcImpl<'_>> {
-        tracing::warn!(parent: None, "{}", s!("Searching for apex process..."));
-        mem_os
-            .open_proc(s!("r5apex.exe").to_string())
-            .map(Some)
-            .unwrap_or_else(|e| {
-                tracing::trace!(?e, "{}", s!("open_proc"));
-                None
-            })
-    }
-
     while *active.borrow_and_update() {
         sleep(Duration::from_secs(2)).await;
-        let Some(mut mem) = find_game_process(&mut mem_os) else {
-            shared_state.write().game_attached = false;
-            continue;
-        };
-        if mem.check_proc_status() != ProcessStatus::FoundReady {
+
+        if AccessType::mem_baseaddr()
+            .with_priority(100)
+            .dispatch(&access_tx)?
+            .await?
+            .is_none()
+        {
             shared_state.write().game_attached = false;
             continue;
         }
 
         if !shared_state.read().game_attached {
-            println!("{}", s!("Apex process found"));
-            println!("{}{:x}", s!("Base: 0x"), mem.get_proc_baseaddr());
-
-            tracing::debug!("{}", s!("speed_test"));
-            mem.speed_test();
-            println!("{}", s!("Press enter to continue.."));
-            tracing::debug!("{}", s!("press to continue"));
-            let _ = std::io::stdin().read_line(&mut String::new());
-
             shared_state.write().game_attached = true;
         }
 
@@ -153,10 +88,15 @@ pub async fn actions_loop(
             let loop_duration = start_instant.elapsed().as_millis();
             start_instant = Instant::now();
 
-            if mem.check_proc_status() != ProcessStatus::FoundReady {
+            let Some(apex_base) = AccessType::mem_baseaddr()
+                .with_priority(100)
+                .dispatch(&access_tx)?
+                .await?
+            else {
                 shared_state.write().game_attached = false;
                 break;
-            }
+            };
+            let mem = &access_tx;
 
             /* Hot Variables Update Begin */
 
@@ -165,9 +105,12 @@ pub async fn actions_loop(
 
             // Tick game state
             let tick_duration = {
-                let a = ApexMem::new(&mut mem);
+                let mut api = crate::apexdream::api::Api {
+                    apex_base: apex_base.into(),
+                    mem_access: mem.clone(),
+                };
                 let tick_start = Instant::now();
-                apexdream.tick_state(a);
+                apexdream.tick_state(&mut api).await;
                 tick_start.elapsed().as_millis()
             };
             let apex_state = apexdream.get_state();
@@ -252,27 +195,28 @@ pub async fn actions_loop(
                 tracing::info!(?apex_state.string_tables.weapon_names);
             }
 
-            trace_span!("Perform aimbot actions").in_scope(|| {
-                if !player_ready {
-                    return;
-                }
-                let Some(lplayer) = &shared_state.read().local_player else {
-                    tracing::warn!("{}", s!("UNREACHABLE: invalid localplayer"));
-                    return;
-                };
-
+            // Perform aimbot actions
+            async fn perform_aimbot_actions(
+                lplayer: &GamePlayer,
+                mem: &MemApi,
+                apex_base: u64,
+                prev_view_angles: &mut Option<[f32; 3]>,
+                aim_delta_angles_tx: &watch::Sender<[f32; 3]>,
+                aim_action_rx: &mut mpsc::Receiver<AimbotAction>,
+                apex_state: &crate::apexdream::state::GameState,
+            ) {
                 let lplayer = lplayer.get_entity();
+                let ptr = lplayer.entity_ptr.into_raw();
 
                 // read view_angles
-                let ptr = lplayer.entity_ptr.into_raw();
-                let view_angles =
-                    match mem.apex_mem_read::<[f32; 3]>(ptr + G_OFFSETS.player_viewangles) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            tracing::warn!(%e, "{}", s!("err read viewangles"));
-                            return;
-                        }
-                    };
+                let view_angles = match read_viewangles(mem, ptr).await {
+                    Ok(v) => v,
+                    Err(e) => {
+                        tracing::warn!(%e, "{}", s!("err read viewangles"));
+                        return;
+                    }
+                };
+
                 if view_angles[2].abs() > 1.0 {
                     tracing::warn!(?view_angles, "{}", s!("got invalid view_angles"));
                     return;
@@ -286,7 +230,7 @@ pub async fn actions_loop(
                     .unwrap_or_else(|e| {
                         tracing::error!(%e, ?aim_delta_angles_tx, "{}", s!("send delta_view_angles"));
                     });
-                prev_view_angles = Some(view_angles);
+                *prev_view_angles = Some(view_angles);
 
                 // aimbot actions
                 match aim_action_rx.try_recv() {
@@ -309,28 +253,21 @@ pub async fn actions_loop(
                                 normalize_angles(&mut update_angles);
 
                                 // write target view angles
-                                mem.apex_mem_write::<[f32; 3]>(
-                                    ptr + G_OFFSETS.player_viewangles,
-                                    &update_angles,
-                                )
-                                .unwrap_or_else(|e| {
+                                if let Err(e) = write_viewangles(mem, ptr, &update_angles).await {
                                     tracing::warn!(%e, "{}", s!("err write viewangles"));
                                     return;
-                                });
-                                prev_view_angles = Some(update_angles);
+                                }
+                                *prev_view_angles = Some(update_angles);
                             }
                             if let Some(trigger) = action.force_attack {
                                 if trigger != apex_state.in_attack_state() {
                                     let force_attack = if trigger { 5 } else { 4 };
-                                    let base = mem.apex_mem_baseaddr();
-                                    mem.apex_mem_write::<i32>(
-                                        base + G_OFFSETS.in_attack + 0x8,
-                                        &force_attack,
-                                    )
-                                    .unwrap_or_else(|e| {
+                                    if let Err(e) =
+                                        write_attack_button(mem, apex_base, force_attack).await
+                                    {
                                         tracing::warn!(%e, "{}", s!("err write force_attack"));
                                         return;
-                                    });
+                                    }
                                 }
                             }
                         }
@@ -342,7 +279,24 @@ pub async fn actions_loop(
                         }
                     }
                 }
-            });
+            }
+            if player_ready {
+                if let Some(lplayer) = &shared_state.read().local_player {
+                    perform_aimbot_actions(
+                        lplayer,
+                        mem,
+                        apex_base,
+                        &mut prev_view_angles,
+                        &aim_delta_angles_tx,
+                        &mut aim_action_rx,
+                        apex_state,
+                    )
+                    .instrument(trace_span!("Perform aimbot actions"))
+                    .await;
+                } else {
+                    tracing::warn!("{}", s!("UNREACHABLE: invalid localplayer"));
+                }
+            }
 
             trace_span!("Send key status to aimbot worker").in_scope(|| {
                 aim_key_tx
@@ -592,10 +546,6 @@ pub async fn actions_loop(
                                             &state,
                                             &g_settings,
                                         )
-                                        // .unwrap_or_else(|e|{
-                                        //     tracing::error!(%e, ?e, ?entity, "{}", s!("error process player"));
-                                        //     None
-                                        // })
                                     })
                                     .collect()
                             } else {
@@ -716,13 +666,20 @@ pub async fn actions_loop(
                 let highlight_injected = {
                     let mut injected = shared_state.read().highlight_injected;
                     if !injected {
-                        let base = mem.apex_mem_baseaddr();
-                        let glow_fix_i32 = mem.apex_mem_read::<i32>(base + OFFSET_GLOW_FIX)?;
-                        let glow_fix_u8 = mem.apex_mem_read::<u8>(base + OFFSET_GLOW_FIX)?;
+                        let glow_fix_i32 =
+                            AccessType::mem_read(apex_base + OFFSET_GLOW_FIX, size_of::<i32>(), 0)
+                                .dispatch(mem)?
+                                .recv_for::<i32>()
+                                .await?;
+                        let glow_fix_u8 =
+                            AccessType::mem_read(apex_base + OFFSET_GLOW_FIX, size_of::<u8>(), 0)
+                                .dispatch(mem)?
+                                .recv_for::<u8>()
+                                .await?;
                         tracing::trace!(glow_fix_i32, glow_fix_u8);
                     }
                     if (g_settings.player_glow || g_settings.item_glow) && player_ready {
-                        match inject_highlight(apex_state.client.framecount, &g_settings, &mut mem)
+                        match inject_highlight(mem, apex_state.client.framecount, &g_settings).await
                         {
                             Ok(_) => {
                                 shared_state.write().highlight_injected = true;
@@ -744,17 +701,47 @@ pub async fn actions_loop(
                         false
                     })
                 {
-                    for target in aim_select_rx.borrow_and_update().iter() {
-                        let target_ptr = target.entity_ptr;
-                        let highlight_context_id =
-                            player_glow(target, apex_state.client.framecount, &g_settings);
-                        mem.apex_mem_write::<u8>(
-                            target_ptr + G_OFFSETS.entity_highlight_generic_context - 1,
-                            &highlight_context_id,
-                        )?;
-                        mem.apex_mem_write::<i32>(target_ptr + OFFSET_GLOW_VISIBLE_TYPE, &2)?;
-                        mem.apex_mem_write::<f32>(target_ptr + OFFSET_GLOW_DISTANCE, &8.0E+4)?;
-                        mem.apex_mem_write::<i32>(target_ptr + OFFSET_GLOW_FIX, &0)?;
+                    let reqs = aim_select_rx
+                        .borrow_and_update()
+                        .iter()
+                        .map(|target| {
+                            let target_ptr = target.entity_ptr;
+                            let highlight_context_id = player_glow(
+                                target,
+                                apex_state.client.framecount,
+                                g_settings.game_fps,
+                                g_settings.player_glow_armor_color,
+                                g_settings.player_glow_love_user,
+                            );
+                            (
+                                AccessType::mem_write_typed::<u8>(
+                                    target_ptr + G_OFFSETS.entity_highlight_generic_context - 1,
+                                    &highlight_context_id,
+                                    0,
+                                ),
+                                AccessType::mem_write_typed::<i32>(
+                                    target_ptr + OFFSET_GLOW_VISIBLE_TYPE,
+                                    &2,
+                                    0,
+                                ),
+                                AccessType::mem_write_typed::<f32>(
+                                    target_ptr + OFFSET_GLOW_DISTANCE,
+                                    &8.0E+4,
+                                    0,
+                                ),
+                                AccessType::mem_write_typed::<i32>(
+                                    target_ptr + OFFSET_GLOW_FIX,
+                                    &0,
+                                    0,
+                                ),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    for (write_glow_id, write_glow_type, write_glow_dist, write_glow_fix) in reqs {
+                        write_glow_id.with_priority(1).dispatch(mem)?.await??;
+                        write_glow_type.with_priority(0).dispatch(mem)?.await??;
+                        write_glow_dist.with_priority(0).dispatch(mem)?.await??;
+                        tokio::spawn(write_glow_fix.with_priority(0).dispatch(mem)?);
                     }
                 }
 
@@ -766,11 +753,19 @@ pub async fn actions_loop(
                         false
                     })
                 {
-                    for &(ptr, ctx_id) in items_glow_rx.borrow_and_update().iter() {
-                        mem.apex_mem_write::<u8>(
-                            ptr + G_OFFSETS.entity_highlight_generic_context - 1,
-                            &ctx_id,
-                        )?;
+                    let reqs = items_glow_rx
+                        .borrow_and_update()
+                        .iter()
+                        .map(|(ptr, ctx_id)| {
+                            AccessType::mem_write_typed(
+                                ptr + G_OFFSETS.entity_highlight_generic_context - 1,
+                                ctx_id,
+                                0,
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    for req in reqs {
+                        req.dispatch(mem)?.await??;
                     }
                 }
 
@@ -895,14 +890,20 @@ fn process_player<'a>(
 }
 
 #[instrument(skip_all)]
-fn player_glow(target: &PreSelectedTarget, frame_count: i32, g_settings: &Settings) -> u8 {
+fn player_glow(
+    target: &PreSelectedTarget,
+    frame_count: i32,
+    game_fps: f32,
+    player_glow_armor_color: bool,
+    player_glow_love_user: bool,
+) -> u8 {
     let mut setting_index = {
         if target.is_knocked {
             HIGHLIGHT_PLAYER_KNOCKED
         } else if target.is_visible {
             HIGHLIGHT_PLAYER_VISIBLE
         } else {
-            if g_settings.player_glow_armor_color {
+            if player_glow_armor_color {
                 let hp = target.health_points;
                 if hp <= 100 {
                     HIGHLIGHT_PLAYER_ORANGE
@@ -924,8 +925,8 @@ fn player_glow(target: &PreSelectedTarget, frame_count: i32, g_settings: &Settin
     };
 
     // love player glow
-    if g_settings.player_glow_love_user {
-        let frame_frag = frame_count / g_settings.game_fps as i32;
+    if player_glow_love_user {
+        let frame_frag = frame_count / game_fps as i32;
         if target.is_visible || frame_frag % 2 == 0 {
             match target.love_status {
                 LoveStatus::Love => {
@@ -941,7 +942,7 @@ fn player_glow(target: &PreSelectedTarget, frame_count: i32, g_settings: &Settin
 
     // kill leader glow
     if target.is_kill_leader {
-        let frame_frag = frame_count / g_settings.game_fps as i32;
+        let frame_frag = frame_count / game_fps as i32;
         if target.is_visible || frame_frag % 3 == 0 {
             setting_index = HIGHLIGHT_PLAYER_ORANGE;
         }
@@ -951,10 +952,10 @@ fn player_glow(target: &PreSelectedTarget, frame_count: i32, g_settings: &Settin
 }
 
 #[instrument(skip_all)]
-fn inject_highlight(
+async fn inject_highlight(
+    mem: &MemApi,
     frame_count: i32,
     g_settings: &Settings,
-    mem: &mut MemProcImpl,
 ) -> anyhow::Result<()> {
     let bits_loot = HighlightBits::new(g_settings.loot_filled, 125, 64, 7, true, false);
     let bits_box = HighlightBits::new(0, 125, 64, 7, true, false);
@@ -1044,17 +1045,29 @@ fn inject_highlight(
         ),
     ];
 
-    let base = mem.apex_mem_baseaddr();
-    let highlight_settings_ptr = mem.apex_mem_read::<u64>(base + OFFSET_HIGHLIGHT_SETTINGS)?;
+    let Some(base) = AccessType::mem_baseaddr().dispatch(mem)?.await? else {
+        return Ok(());
+    };
+    let highlight_settings_ptr =
+        AccessType::mem_read(base + OFFSET_HIGHLIGHT_SETTINGS, size_of::<u64>(), 0)
+            .dispatch(mem)?
+            .recv_for::<u64>()
+            .await?;
     for (context_id, bits, color) in highlight_settings_inject {
         let context_offset = highlight_settings_ptr + 0x34 * context_id as u64;
-        mem.apex_mem_write::<HighlightBits>(context_offset, bits)
+        AccessType::mem_write_typed::<HighlightBits>(context_offset, bits, 0)
+            .dispatch(mem)?
+            .await?
             .context(format!("{:?}", context_id))?;
-        mem.apex_mem_write::<[f32; 3]>(context_offset + 4, &color)
+        AccessType::mem_write_typed::<[f32; 3]>(context_offset + 4, &color, 0)
+            .dispatch(mem)?
+            .await?
             .context(format!("{:?}", context_id))?;
     }
     tracing::trace!(highlight_settings_ptr);
-    mem.apex_mem_write::<i32>(base + OFFSET_GLOW_FIX, &1)
+    AccessType::mem_write_typed::<i32>(base + OFFSET_GLOW_FIX, &1, 0)
+        .dispatch(mem)?
+        .await?
         .unwrap_or_else(|e| {
             tracing::debug!(%e, "{}", s!("err write glow fix"));
         });
@@ -1109,4 +1122,34 @@ fn teammate_check(
         entity_team == local_team
             || (map_testing_local_team != 0 && entity_team == map_testing_local_team)
     }
+}
+
+async fn read_viewangles(mem: &MemApi, ptr: u64) -> anyhow::Result<[f32; 3]> {
+    AccessType::mem_read(ptr + G_OFFSETS.player_viewangles, size_of::<[f32; 3]>(), 0)
+        .with_priority(50)
+        .dispatch(mem)?
+        .recv_for::<[f32; 3]>()
+        .await
+}
+
+async fn write_viewangles(mem: &MemApi, ptr: u64, data: &[f32; 3]) -> anyhow::Result<()> {
+    AccessType::mem_write_typed::<[f32; 3]>(ptr + G_OFFSETS.player_viewangles, data, 0)
+        .with_priority(50)
+        .dispatch(mem)?
+        .await?
+}
+
+async fn write_attack_button(
+    mem: &MemApi,
+    apex_base: u64,
+    force_attack_state: i32,
+) -> anyhow::Result<()> {
+    AccessType::mem_write_typed::<i32>(
+        apex_base + G_OFFSETS.in_attack + 0x8,
+        &force_attack_state,
+        0,
+    )
+    .with_priority(50)
+    .dispatch(mem)?
+    .await?
 }

@@ -69,6 +69,7 @@ impl BaseNPCEntity {
         sdk::add(self.origin, self.bones.get_pos(bone))
     }
 }
+#[async_trait]
 impl Entity for BaseNPCEntity {
     fn as_any(&self) -> &dyn Any {
         self
@@ -88,7 +89,7 @@ impl Entity for BaseNPCEntity {
         }
     }
     #[instrument(skip_all)]
-    fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         #[derive(sdk::Pod)]
         #[repr(C)]
         struct Indices {
@@ -135,7 +136,10 @@ impl Entity for BaseNPCEntity {
             ],
         };
 
-        if let Ok(fields) = api.vm_gatherd(self.entity_ptr, self.entity_size, &mut indices) {
+        if let Ok(fields) = api
+            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .await
+        {
             self.origin = [
                 f32::from_bits(fields.origin[0]),
                 f32::from_bits(fields.origin[1]),
@@ -178,12 +182,15 @@ impl Entity for BaseNPCEntity {
             self.team_num = fields.team[0] as i32;
 
             let model_name_ptr = fields.model_name[0] as u64 | (fields.model_name[1] as u64) << 32;
-            self.model_name.update(api, model_name_ptr.into());
+            self.model_name.update(api, model_name_ptr.into()).await;
             let studio_ptr = fields.studio[0] as u64 | (fields.studio[1] as u64) << 32;
-            self.studio.update(api, sdk::Ptr::from_raw(studio_ptr));
+            self.studio
+                .update(api, sdk::Ptr::from_raw(studio_ptr))
+                .await;
             let bones_ptr = fields.bone_array[0] as u64 | (fields.bone_array[1] as u64) << 32;
             self.bones
-                .update(api, ctx, &self.studio, sdk::Ptr::from_raw(bones_ptr));
+                .update(api, ctx, &self.studio, sdk::Ptr::from_raw(bones_ptr))
+                .await;
 
             self.skin = fields.skin[0] as i32;
             self.skin_mod = fields.skin[1] as i32;
@@ -196,7 +203,7 @@ impl Entity for BaseNPCEntity {
         }
     }
     #[instrument(skip_all)]
-    fn post(&mut self, _api: &mut Api, ctx: &UpdateContext, _state: &GameState) {
+    fn post(&mut self, _api: &Api, ctx: &UpdateContext, _state: &GameState) {
         // Check if npc is visible
         // let is_visible = self.last_visible_time > 0.0
         //     && (self.last_visible_time - state.client.curtime).abs() < 0.1;

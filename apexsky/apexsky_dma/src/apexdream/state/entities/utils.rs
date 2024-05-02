@@ -5,9 +5,9 @@ pub struct BoneArray {
     pub v: Vec<[f32; 12]>,
 }
 impl BoneArray {
-    pub fn update(
+    pub async fn update(
         &mut self,
-        api: &mut Api,
+        api: &Api,
         ctx: &UpdateContext,
         studio: &StudioModel,
         ptr: sdk::Ptr<[[f32; 12]]>,
@@ -25,7 +25,7 @@ impl BoneArray {
             self.v.resize_with(numbones, Default::default);
         }
         let bones = &mut self.v[..];
-        let _ = api.vm_read_into(ptr, bones);
+        let _ = api.vm_read_into(ptr, bones).await;
     }
     pub fn get_pos(&self, bone: usize) -> [f32; 3] {
         if let Some(matrix) = self.v.get(bone) {

@@ -55,24 +55,24 @@ pub struct CNetStringTable {
     /*0x50*/ pub items_client_side: sdk::Ptr<CNetStringDict>,
 }
 
-pub fn load_string_table(
+pub async fn load_string_table(
     st: &mut Box<[String]>,
-    api: &mut Api,
+    api: &Api,
     _ctx: &UpdateContext,
     offset: u32,
-) -> Result<(), api::Error> {
+) -> anyhow::Result<()> {
     let mut ptr = sdk::Ptr::<CNetStringTable>::NULL;
-    let _ = api.vm_read_into(api.apex_mem.base.field(offset), &mut ptr);
+    let _ = api.vm_read_into(api.apex_base.field(offset), &mut ptr);
     if ptr.is_null() {
         return Ok(());
     }
-    let table = api.vm_read(ptr)?;
-    let dict = api.vm_read(table.items)?;
+    let table = api.vm_read(ptr).await?;
+    let dict = api.vm_read(table.items).await?;
     *st = vec![String::new(); dict.used as usize].into_boxed_slice();
     let mut buffer = [0u8; 64];
     for (i, slot) in st.iter_mut().enumerate() {
-        if let Ok(item) = api.vm_read(dict.elements.at(i)) {
-            if let Ok(string) = api.vm_read_cstr(item.string, &mut buffer) {
+        if let Ok(item) = api.vm_read(dict.elements.at(i)).await {
+            if let Ok(string) = api.vm_read_cstr(item.string, &mut buffer).await {
                 *slot = String::from(string);
             }
         }
@@ -86,11 +86,12 @@ pub struct StringTables {
 }
 impl StringTables {
     #[instrument(skip_all)]
-    pub fn update(&mut self, api: &mut Api, ctx: &UpdateContext) {
+    pub async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         // Read stringtable once on connect
         if ctx.connected {
             let data = &ctx.data;
             load_string_table(&mut self.weapon_names, api, ctx, data.nst_weapon_names)
+                .await
                 .unwrap_or_else(|e| {
                     tracing::warn!(?e);
                 });

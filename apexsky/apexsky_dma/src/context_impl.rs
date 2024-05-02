@@ -4,38 +4,9 @@ use std::sync::Arc;
 use tracing::instrument;
 
 use crate::{
-    apexdream::base::solver::ProjectileWeapon,
-    game::data::WeaponId,
-    mem::{MemProc, MemProcImpl},
-    workers::{actions::MemAccess, aim::ContextForAimbot},
-    SharedState,
+    apexdream::base::solver::ProjectileWeapon, game::data::WeaponId,
+    workers::aim::ContextForAimbot, SharedState,
 };
-
-impl<'a> MemAccess for MemProcImpl<'a> {
-    fn apex_mem_baseaddr(&mut self) -> u64 {
-        self.get_proc_baseaddr()
-    }
-
-    #[instrument(skip_all)]
-    fn apex_mem_read<T: dataview::Pod + Sized + Default>(
-        &mut self,
-        offset: u64,
-    ) -> anyhow::Result<T> {
-        let mut v: T = T::default();
-        self.read_into(offset.into(), &mut v)?;
-        Ok(v)
-    }
-
-    #[instrument(skip_all)]
-    fn apex_mem_write<T: dataview::Pod + ?Sized>(
-        &mut self,
-        offset: u64,
-        data: &T,
-    ) -> anyhow::Result<()> {
-        self.write(offset, data)?;
-        Ok(())
-    }
-}
 
 impl ContextForAimbot for Arc<RwLock<SharedState>> {
     #[instrument]

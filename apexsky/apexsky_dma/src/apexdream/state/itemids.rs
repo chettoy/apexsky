@@ -13,7 +13,7 @@ pub struct LootItems {
 
 impl LootItems {
     #[instrument(skip_all)]
-    pub fn update(&mut self, _api: &mut Api, ctx: &UpdateContext) {
+    pub async fn update(&mut self, _api: &Api, ctx: &UpdateContext) {
         // Reload the itemids on new connection
         if ctx.connected {
             self.models.resize_with(MAX_ITEMS, String::new);
@@ -21,7 +21,7 @@ impl LootItems {
         }
     }
 
-    pub fn visit(&mut self, _api: &mut Api, _ctx: &UpdateContext, entity_ref: EntityRef<'_>) {
+    pub fn visit(&mut self, _api: &Api, _ctx: &UpdateContext, entity_ref: EntityRef<'_>) {
         let loot = match entity_ref {
             EntityRef::Loot(loot) => loot,
             _ => return,
