@@ -135,7 +135,10 @@ pub fn io_thread(
 
     let mut accessible: bool = false;
     let mut priority_queue: BinaryHeap<PriorityAccess> = BinaryHeap::new();
-    let mut scatter_map: HashMap<usize, Vec<MemReadRequest>> = HashMap::new();
+    let mut scatter_map: (
+        HashMap<usize, Vec<MemReadRequest>>,
+        HashMap<usize, Vec<MemWriteRequest>>,
+    ) = (HashMap::new(), HashMap::new());
     let mut start_instant = Instant::now();
     let mut next_flush_instant = Instant::now();
 
@@ -232,14 +235,17 @@ pub fn io_thread(
 fn execute_requests(
     priority_threshold: i32,
     priority_queue: &mut BinaryHeap<PriorityAccess>,
-    scatter_map: &mut HashMap<usize, Vec<MemReadRequest>>,
+    scatter_map: &mut (
+        HashMap<usize, Vec<MemReadRequest>>,
+        HashMap<usize, Vec<MemWriteRequest>>,
+    ),
     mem: &mut MemProcImpl,
 ) {
     // flush requests
     let flush_report = consume_requests(None, priority_threshold, priority_queue, scatter_map, mem);
 
     // try scatter read
-    if !scatter_map.is_empty() {
+    if !scatter_map.0.is_empty() {
         // memory ranges to read are tuples:
         // .0 = the virtual address to read.
         // .1 = vector of u8 which memory should be read into.
@@ -252,7 +258,7 @@ fn execute_requests(
         // the prepare_ex function will populate the prepared data regions automatically when the
         // VmmScatterMemory is dropped.
         if let Some(mut mem_scatter) = mem.get_vmm_scatter() {
-            scatter_map.drain().for_each(|(_id, req_arr)| {
+            scatter_map.0.drain().for_each(|(_id, req_arr)| {
                 req_arr.into_iter().for_each(|r| {
                     memory_range_list.push(((r.address, vec![0u8; r.data_size], 0u32), r, None));
                 });
@@ -289,12 +295,51 @@ fn execute_requests(
     }
 
     // try normal read
-    scatter_map.drain().for_each(|(_id, req_arr)| {
+    scatter_map.0.drain().for_each(|(_id, req_arr)| {
         req_arr.into_iter().for_each(|r| {
             let mut buf = vec![0; r.data_size];
             let _ = r
                 .future_tx
                 .send(mem.read_raw_into(r.address, &mut buf).map(|_| buf));
+        });
+    });
+
+    // try scatter write
+    if !scatter_map.1.is_empty() {
+        if let Some(mem_scatter) = mem.get_vmm_scatter() {
+            let mut pending_tx =
+                Vec::with_capacity(scatter_map.1.get(&0).map(|arr0| arr0.len()).unwrap_or(0));
+            scatter_map.1.drain().for_each(|(_id, req_arr)| {
+                req_arr.into_iter().for_each(|r| {
+                    if let Err(e) = mem_scatter.prepare_write(r.address, &r.write) {
+                        tracing::warn!(%e, ?e);
+                        let _ = r.future_tx.send(Err(e));
+                    } else {
+                        pending_tx.push(r.future_tx);
+                    }
+                });
+            });
+            match mem_scatter.execute() {
+                Ok(_) => {
+                    pending_tx.into_iter().for_each(|tx| {
+                        let _ = tx.send(Ok(()));
+                    });
+                }
+                Err(e) => {
+                    tracing::warn!(%e, ?e);
+                    pending_tx.into_iter().for_each(|tx| {
+                        let err = Err(anyhow::anyhow!("{}{e}", s!("scatter write failed: ")));
+                        let _ = tx.send(err);
+                    });
+                }
+            }
+        }
+    }
+
+    // try normal write
+    scatter_map.1.drain().for_each(|(_id, req_arr)| {
+        req_arr.into_iter().for_each(|r| {
+            let _ = r.future_tx.send(mem.write_raw(r.address, &r.write));
         });
     });
 
@@ -314,7 +359,10 @@ fn consume_requests(
     flush_request: Option<FlushRequestsRequest>,
     default_priority_threshold: i32,
     priority_queue: &mut BinaryHeap<PriorityAccess>,
-    scatter_map: &mut HashMap<usize, Vec<MemReadRequest>>,
+    scatter_map: &mut (
+        HashMap<usize, Vec<MemReadRequest>>,
+        HashMap<usize, Vec<MemWriteRequest>>,
+    ),
     mem: &mut MemProcImpl,
 ) -> FlushReport {
     let mut flush_report = FlushReport {
@@ -346,19 +394,26 @@ fn consume_requests(
                 flush_report.done_count += 1;
             }
             AccessType::MemRead(r) => {
-                match scatter_map.get_mut(&r.id) {
+                match scatter_map.0.get_mut(&r.id) {
                     Some(arr) => {
                         arr.push(r);
                     }
                     None => {
-                        scatter_map.insert(r.id, vec![r]);
+                        scatter_map.0.insert(r.id, vec![r]);
                     }
                 }
                 flush_report.pending_count += 1;
             }
             AccessType::MemWrite(r) => {
-                let _ = r.future_tx.send(mem.write_raw(r.address, &r.write));
-                flush_report.done_count += 1;
+                match scatter_map.1.get_mut(&r.id) {
+                    Some(arr) => {
+                        arr.push(r);
+                    }
+                    None => {
+                        scatter_map.1.insert(r.id, vec![r]);
+                    }
+                }
+                flush_report.pending_count += 1;
             }
             AccessType::FlushRequests(r) => {
                 flush_report.children.push(consume_requests(
