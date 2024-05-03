@@ -55,11 +55,11 @@ impl ClientState {
             let _ = api.vm_read_into(
                 base_addr.field(data.local_entity_handle),
                 &mut self.local_entity,
-            );
+            ).await;
             let _ = api.vm_read_into(
                 base_addr.field(G_OFFSETS.local_ent.try_into().unwrap()),
                 &mut self.local_player_ptr,
-            );
+            ).await;
         }
         ctx.local_entity = self.local_entity;
 
@@ -73,17 +73,17 @@ impl ClientState {
         // ViewMatrix
         if ctx.connected || ctx.ticked(25, 6) {
             self.view_render = sdk::Ptr::NULL;
-            let _ = api.vm_read_into(base_addr.field(data.view_render), &mut self.view_render);
+            let _ = api.vm_read_into(base_addr.field(data.view_render), &mut self.view_render).await;
         }
         if !self.view_render.is_null() && (ctx.connected || ctx.ticked(25, 14)) {
             self.view_matrix_ptr = sdk::Ptr::NULL;
             let _ = api.vm_read_into(
                 self.view_render.field(data.view_matrix),
                 &mut self.view_matrix_ptr,
-            );
+            ).await;
         }
         if !self.view_matrix_ptr.is_null() {
-            let _ = api.vm_read_into(self.view_matrix_ptr, &mut self.view_matrix);
+            let _ = api.vm_read_into(self.view_matrix_ptr, &mut self.view_matrix).await;
         }
     }
 }

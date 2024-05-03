@@ -24,7 +24,7 @@ use crate::apexdream::{
     state::entities::{BaseNPCEntity, LootEntity},
 };
 use crate::game::{data::*, player::GamePlayer};
-use crate::workers::access::{AccessType, AsyncAccessRequest, AsyncMemReadResponse};
+use crate::workers::access::{AccessType, PendingAccessRequest, PendingMemRead, PendingMemWrite};
 use crate::{SharedState, TreasureClue};
 
 use super::access::MemApi;
@@ -70,7 +70,8 @@ pub async fn actions_loop(
 
         if AccessType::mem_baseaddr()
             .with_priority(100)
-            .dispatch(&access_tx)?
+            .dispatch(&access_tx)
+            .await?
             .await?
             .is_none()
         {
@@ -90,7 +91,8 @@ pub async fn actions_loop(
 
             let Some(apex_base) = AccessType::mem_baseaddr()
                 .with_priority(100)
-                .dispatch(&access_tx)?
+                .dispatch(&access_tx)
+                .await?
                 .await?
             else {
                 shared_state.write().game_attached = false;
@@ -668,12 +670,14 @@ pub async fn actions_loop(
                     if !injected {
                         let glow_fix_i32 =
                             AccessType::mem_read(apex_base + OFFSET_GLOW_FIX, size_of::<i32>(), 0)
-                                .dispatch(mem)?
+                                .dispatch(mem)
+                                .await?
                                 .recv_for::<i32>()
                                 .await?;
                         let glow_fix_u8 =
                             AccessType::mem_read(apex_base + OFFSET_GLOW_FIX, size_of::<u8>(), 0)
-                                .dispatch(mem)?
+                                .dispatch(mem)
+                                .await?
                                 .recv_for::<u8>()
                                 .await?;
                         tracing::trace!(glow_fix_i32, glow_fix_u8);
@@ -738,10 +742,26 @@ pub async fn actions_loop(
                         })
                         .collect::<Vec<_>>();
                     for (write_glow_id, write_glow_type, write_glow_dist, write_glow_fix) in reqs {
-                        write_glow_id.with_priority(1).dispatch(mem)?.await??;
-                        write_glow_type.with_priority(0).dispatch(mem)?.await??;
-                        write_glow_dist.with_priority(0).dispatch(mem)?.await??;
-                        tokio::spawn(write_glow_fix.with_priority(0).dispatch(mem)?);
+                        write_glow_id
+                            .with_priority(0)
+                            .dispatch(mem)
+                            .await?
+                            .spawn_err_handler();
+                        write_glow_type
+                            .with_priority(0)
+                            .dispatch(mem)
+                            .await?
+                            .spawn_err_handler();
+                        write_glow_dist
+                            .with_priority(0)
+                            .dispatch(mem)
+                            .await?
+                            .spawn_err_handler();
+                        write_glow_fix
+                            .with_priority(0)
+                            .dispatch(mem)
+                            .await?
+                            .spawn_err_handler();
                     }
                 }
 
@@ -765,7 +785,10 @@ pub async fn actions_loop(
                         })
                         .collect::<Vec<_>>();
                     for req in reqs {
-                        req.dispatch(mem)?.await??;
+                        req.with_priority(0)
+                            .dispatch(mem)
+                            .await?
+                            .spawn_err_handler();
                     }
                 }
 
@@ -1045,28 +1068,32 @@ async fn inject_highlight(
         ),
     ];
 
-    let Some(base) = AccessType::mem_baseaddr().dispatch(mem)?.await? else {
+    let Some(base) = AccessType::mem_baseaddr().dispatch(mem).await?.await? else {
         return Ok(());
     };
     let highlight_settings_ptr =
         AccessType::mem_read(base + OFFSET_HIGHLIGHT_SETTINGS, size_of::<u64>(), 0)
-            .dispatch(mem)?
+            .dispatch(mem)
+            .await?
             .recv_for::<u64>()
             .await?;
     for (context_id, bits, color) in highlight_settings_inject {
         let context_offset = highlight_settings_ptr + 0x34 * context_id as u64;
         AccessType::mem_write_typed::<HighlightBits>(context_offset, bits, 0)
-            .dispatch(mem)?
+            .dispatch(mem)
+            .await?
             .await?
             .context(format!("{:?}", context_id))?;
         AccessType::mem_write_typed::<[f32; 3]>(context_offset + 4, &color, 0)
-            .dispatch(mem)?
+            .dispatch(mem)
+            .await?
             .await?
             .context(format!("{:?}", context_id))?;
     }
     tracing::trace!(highlight_settings_ptr);
     AccessType::mem_write_typed::<i32>(base + OFFSET_GLOW_FIX, &1, 0)
-        .dispatch(mem)?
+        .dispatch(mem)
+        .await?
         .await?
         .unwrap_or_else(|e| {
             tracing::debug!(%e, "{}", s!("err write glow fix"));
@@ -1127,7 +1154,8 @@ fn teammate_check(
 async fn read_viewangles(mem: &MemApi, ptr: u64) -> anyhow::Result<[f32; 3]> {
     AccessType::mem_read(ptr + G_OFFSETS.player_viewangles, size_of::<[f32; 3]>(), 0)
         .with_priority(50)
-        .dispatch(mem)?
+        .dispatch(mem)
+        .await?
         .recv_for::<[f32; 3]>()
         .await
 }
@@ -1135,7 +1163,8 @@ async fn read_viewangles(mem: &MemApi, ptr: u64) -> anyhow::Result<[f32; 3]> {
 async fn write_viewangles(mem: &MemApi, ptr: u64, data: &[f32; 3]) -> anyhow::Result<()> {
     AccessType::mem_write_typed::<[f32; 3]>(ptr + G_OFFSETS.player_viewangles, data, 0)
         .with_priority(50)
-        .dispatch(mem)?
+        .dispatch(mem)
+        .await?
         .await?
 }
 
@@ -1150,6 +1179,7 @@ async fn write_attack_button(
         0,
     )
     .with_priority(50)
-    .dispatch(mem)?
+    .dispatch(mem)
+    .await?
     .await?
 }

@@ -62,7 +62,7 @@ pub async fn load_string_table(
     offset: u32,
 ) -> anyhow::Result<()> {
     let mut ptr = sdk::Ptr::<CNetStringTable>::NULL;
-    let _ = api.vm_read_into(api.apex_base.field(offset), &mut ptr);
+    let _ = api.vm_read_into(api.apex_base.field(offset), &mut ptr).await;
     if ptr.is_null() {
         return Ok(());
     }

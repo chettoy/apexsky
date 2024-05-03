@@ -113,7 +113,7 @@ impl Entity for LootEntity {
             self.origin = origin;
 
             let model_name_ptr = fields.model_name[0] as u64 | (fields.model_name[1] as u64) << 32;
-            self.model_name.update(api, model_name_ptr.into());
+            self.model_name.update(api, model_name_ptr.into()).await;
 
             self.skin = fields.skin[0] as i32;
             self.skin_mod = fields.skin[1] as i32;

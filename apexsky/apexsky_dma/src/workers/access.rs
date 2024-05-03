@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
-use std::thread::sleep;
+use std::thread::{sleep, sleep_until};
 use std::time::{Duration, Instant};
 
 use obfstr::obfstr as s;
@@ -137,6 +137,7 @@ pub fn io_thread(
     let mut priority_queue: BinaryHeap<PriorityAccess> = BinaryHeap::new();
     let mut scatter_map: HashMap<usize, Vec<MemReadRequest>> = HashMap::new();
     let mut start_instant = Instant::now();
+    let mut next_flush_instant = Instant::now();
 
     let connector: String = choose_connector();
     let Some(mut mem_os) = create_os_instance(connector) else {
@@ -145,16 +146,20 @@ pub fn io_thread(
     };
 
     while *active.borrow() {
+        // Find game process
         let Some(mut mem) = find_game_process(&mut mem_os) else {
             accessible = false;
             sleep(Duration::from_secs(2));
             continue;
         };
+        // Check
         if mem.check_proc_status() != ProcessStatus::FoundReady {
             accessible = false;
             sleep(Duration::from_secs(2));
             continue;
         }
+
+        // Found and ready
         if !accessible {
             println!("{}", s!("Apex process found"));
             println!("{}{:x}", s!("Base: 0x"), mem.get_proc_baseaddr());
@@ -169,8 +174,6 @@ pub fn io_thread(
         }
 
         while *active.borrow() {
-            sleep(Duration::from_millis(2));
-
             let loop_duration = start_instant.elapsed().as_millis();
             start_instant = Instant::now();
 
@@ -180,99 +183,123 @@ pub fn io_thread(
                 break;
             }
 
-            // Receive all requests and store to queue
             loop {
                 match access_rx.try_recv() {
-                    Ok(req) => priority_queue.push(req),
+                    Ok(req) => {
+                        let preempt = req.priority > 0xf;
+                        priority_queue.push(req);
+                        if preempt {
+                            execute_requests(0x10, &mut priority_queue, &mut scatter_map, &mut mem);
+                        }
+                    }
                     Err(e) => {
                         match e {
-                            mpsc::error::TryRecvError::Empty => (),
+                            mpsc::error::TryRecvError::Empty => {
+                                let now = Instant::now();
+                                if now < next_flush_instant {
+                                    // Execute higher priority requests first
+                                    execute_requests(
+                                        1,
+                                        &mut priority_queue,
+                                        &mut scatter_map,
+                                        &mut mem,
+                                    );
+                                    // Wait until next flush instant
+                                    sleep_until(next_flush_instant);
+                                    // Flush on next free time
+                                    continue;
+                                } else {
+                                    next_flush_instant = now + Duration::from_millis(1);
+                                    // Flush requests
+                                }
+                            }
                             mpsc::error::TryRecvError::Disconnected => {
                                 tracing::error!(%e, ?e);
                             }
                         }
+                        execute_requests(0, &mut priority_queue, &mut scatter_map, &mut mem);
                         break;
                     }
                 }
             }
-
-            // Execution of the requests
-
-            // flush requests
-            let flush_report =
-                consume_requests(None, &mut priority_queue, &mut scatter_map, &mut mem);
-
-            // try scatter read
-            if !scatter_map.is_empty() {
-                // memory ranges to read are tuples:
-                // .0 = the virtual address to read.
-                // .1 = vector of u8 which memory should be read into.
-                // .2 = u32 receiving the bytes successfully read data.
-                let mut memory_range_list: Vec<(
-                    (u64, Vec<u8>, u32),
-                    MemReadRequest,
-                    Option<anyhow::Error>,
-                )> = Vec::new();
-                // the prepare_ex function will populate the prepared data regions automatically when the
-                // VmmScatterMemory is dropped.
-                if let Some(mut mem_scatter) = mem.get_vmm_scatter() {
-                    scatter_map.drain().for_each(|(_id, req_arr)| {
-                        req_arr.into_iter().for_each(|r| {
-                            memory_range_list.push((
-                                (r.address, vec![0u8; r.data_size], 0u32),
-                                r,
-                                None,
-                            ));
-                        });
-                    });
-                    memory_range_list
-                        .iter_mut()
-                        .for_each(|(memory_range_i, _req, err)| {
-                            if let Err(e) = mem_scatter.prepare_ex(memory_range_i) {
-                                err.replace(e);
-                            }
-                        });
-                }
-                memory_range_list
-                    .into_iter()
-                    .for_each(|(memory_range_i, req, err)| {
-                        let result = match err {
-                            Some(e) => Err(e),
-                            None => {
-                                if memory_range_i.2 as usize == req.data_size {
-                                    Ok(memory_range_i.1)
-                                } else {
-                                    Err(anyhow::anyhow!(
-                                        "{}{}{}{}",
-                                        s!("partial read "),
-                                        memory_range_i.2,
-                                        s!("/"),
-                                        req.data_size
-                                    ))
-                                }
-                            }
-                        };
-                        let _ = req.future_tx.send(result);
-                    });
-            }
-
-            // try normal read
-            scatter_map.drain().for_each(|(_id, req_arr)| {
-                req_arr.into_iter().for_each(|r| {
-                    let mut buf = vec![0; r.data_size];
-                    let _ = r
-                        .future_tx
-                        .send(mem.read_raw_into(r.address, &mut buf).map(|_| buf));
-                });
-            });
-
-            // callback
-            flush_respond(flush_report);
         }
     }
 
     tracing::debug!("{}", s!("task end"));
     Ok(())
+}
+
+fn execute_requests(
+    priority_threshold: i32,
+    priority_queue: &mut BinaryHeap<PriorityAccess>,
+    scatter_map: &mut HashMap<usize, Vec<MemReadRequest>>,
+    mem: &mut MemProcImpl,
+) {
+    // flush requests
+    let flush_report = consume_requests(None, priority_threshold, priority_queue, scatter_map, mem);
+
+    // try scatter read
+    if !scatter_map.is_empty() {
+        // memory ranges to read are tuples:
+        // .0 = the virtual address to read.
+        // .1 = vector of u8 which memory should be read into.
+        // .2 = u32 receiving the bytes successfully read data.
+        let mut memory_range_list: Vec<(
+            (u64, Vec<u8>, u32),
+            MemReadRequest,
+            Option<anyhow::Error>,
+        )> = Vec::new();
+        // the prepare_ex function will populate the prepared data regions automatically when the
+        // VmmScatterMemory is dropped.
+        if let Some(mut mem_scatter) = mem.get_vmm_scatter() {
+            scatter_map.drain().for_each(|(_id, req_arr)| {
+                req_arr.into_iter().for_each(|r| {
+                    memory_range_list.push(((r.address, vec![0u8; r.data_size], 0u32), r, None));
+                });
+            });
+            memory_range_list
+                .iter_mut()
+                .for_each(|(memory_range_i, _req, err)| {
+                    if let Err(e) = mem_scatter.prepare_ex(memory_range_i) {
+                        err.replace(e);
+                    }
+                });
+        }
+        memory_range_list
+            .into_iter()
+            .for_each(|(memory_range_i, req, err)| {
+                let result = match err {
+                    Some(e) => Err(e),
+                    None => {
+                        if memory_range_i.2 as usize == req.data_size {
+                            Ok(memory_range_i.1)
+                        } else {
+                            Err(anyhow::anyhow!(
+                                "{}{}{}{}",
+                                s!("partial read "),
+                                memory_range_i.2,
+                                s!("/"),
+                                req.data_size
+                            ))
+                        }
+                    }
+                };
+                let _ = req.future_tx.send(result);
+            });
+    }
+
+    // try normal read
+    scatter_map.drain().for_each(|(_id, req_arr)| {
+        req_arr.into_iter().for_each(|r| {
+            let mut buf = vec![0; r.data_size];
+            let _ = r
+                .future_tx
+                .send(mem.read_raw_into(r.address, &mut buf).map(|_| buf));
+        });
+    });
+
+    // callback
+    flush_respond(flush_report);
 }
 
 #[derive(Debug)]
@@ -285,6 +312,7 @@ struct FlushReport {
 
 fn consume_requests(
     flush_request: Option<FlushRequestsRequest>,
+    default_priority_threshold: i32,
     priority_queue: &mut BinaryHeap<PriorityAccess>,
     scatter_map: &mut HashMap<usize, Vec<MemReadRequest>>,
     mem: &mut MemProcImpl,
@@ -300,7 +328,7 @@ fn consume_requests(
         .flush_request
         .as_ref()
         .map(|r| r.priority_threshold)
-        .unwrap_or(0);
+        .unwrap_or(default_priority_threshold);
 
     loop {
         let Some(access) = priority_queue.peek() else {
@@ -335,6 +363,7 @@ fn consume_requests(
             AccessType::FlushRequests(r) => {
                 flush_report.children.push(consume_requests(
                     Some(r),
+                    default_priority_threshold,
                     priority_queue,
                     scatter_map,
                     mem,
@@ -426,7 +455,7 @@ impl Ord for PriorityAccess {
 
 pub trait AccessRequest {
     fn with_priority(self, priority: i32) -> PriorityAccess;
-    fn dispatch(self, api: &MemApi) -> anyhow::Result<()>;
+    async fn dispatch(self, api: &MemApi) -> anyhow::Result<()>;
 }
 
 impl AccessRequest for PriorityAccess {
@@ -435,8 +464,8 @@ impl AccessRequest for PriorityAccess {
         self
     }
 
-    fn dispatch(self, api: &MemApi) -> anyhow::Result<()> {
-        api.blocking_send(self).map_err(|e| {
+    async fn dispatch(self, api: &MemApi) -> anyhow::Result<()> {
+        api.send(self).await.map_err(|e| {
             tracing::error!(%e, ?e);
             e.into()
         })
@@ -451,17 +480,17 @@ impl AccessRequest for AccessType {
         }
     }
 
-    fn dispatch(self, api: &MemApi) -> anyhow::Result<()> {
-        self.with_priority(0).dispatch(api)
+    async fn dispatch(self, api: &MemApi) -> anyhow::Result<()> {
+        self.with_priority(1).dispatch(api).await
     }
 }
 
-pub trait AsyncAccessRequest<T> {
+pub trait PendingAccessRequest<T> {
     fn with_priority(self, priority: i32) -> (PriorityAccess, oneshot::Receiver<T>);
-    fn dispatch(self, api: &MemApi) -> anyhow::Result<oneshot::Receiver<T>>;
+    async fn dispatch(self, api: &MemApi) -> anyhow::Result<oneshot::Receiver<T>>;
 }
 
-impl<T, R> AsyncAccessRequest<T> for (R, oneshot::Receiver<T>)
+impl<T, R> PendingAccessRequest<T> for (R, oneshot::Receiver<T>)
 where
     R: AccessRequest,
 {
@@ -469,12 +498,12 @@ where
         (self.0.with_priority(priority), self.1)
     }
 
-    fn dispatch(self, api: &MemApi) -> anyhow::Result<oneshot::Receiver<T>> {
-        self.0.dispatch(api).map(|_| self.1)
+    async fn dispatch(self, api: &MemApi) -> anyhow::Result<oneshot::Receiver<T>> {
+        self.0.dispatch(api).await.map(|_| self.1)
     }
 }
 
-pub trait AsyncMemReadResponse {
+pub trait PendingMemRead {
     async fn recv_for<T>(self) -> anyhow::Result<T>
     where
         T: dataview::Pod + Default;
@@ -483,7 +512,7 @@ pub trait AsyncMemReadResponse {
         T: dataview::Pod + Default;
 }
 
-impl AsyncMemReadResponse for oneshot::Receiver<anyhow::Result<Vec<u8>>> {
+impl PendingMemRead for oneshot::Receiver<anyhow::Result<Vec<u8>>> {
     async fn recv_for<T>(self) -> anyhow::Result<T>
     where
         T: dataview::Pod + Default,
@@ -507,6 +536,25 @@ impl AsyncMemReadResponse for oneshot::Receiver<anyhow::Result<Vec<u8>>> {
         tokio::spawn(async move {
             let result = self.recv_for::<T>().await;
             callback(result)
+        });
+    }
+}
+
+pub trait PendingMemWrite {
+    fn spawn_err_handler(self);
+}
+
+impl PendingMemWrite for oneshot::Receiver<anyhow::Result<()>> {
+    fn spawn_err_handler(self) {
+        tokio::spawn(async move {
+            match self.await {
+                Ok(r) => {
+                    if let Err(e) = r {
+                        tracing::error!(%e, ?e);
+                    }
+                }
+                Err(e) => tracing::error!(%e, ?e),
+            }
         });
     }
 }

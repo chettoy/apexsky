@@ -4,7 +4,7 @@ use obfstr::obfstr as s;
 use std::{fmt, mem};
 use tracing::instrument;
 
-use crate::workers::access::{AccessType, AsyncAccessRequest, AsyncMemReadResponse, MemApi};
+use crate::workers::access::{AccessType, PendingAccessRequest, MemApi};
 
 #[derive(Debug)]
 pub struct Api {
@@ -36,7 +36,8 @@ impl Api {
         let result = {
             let dest = dataview::bytes_mut(&mut dest);
             AccessType::mem_read(ptr.into_raw(), dest.len(), 0)
-                .dispatch(&self.mem_access)?
+                .dispatch(&self.mem_access)
+                .await?
                 .await?
                 .map(|data| dest.copy_from_slice(&data))
         };
@@ -60,7 +61,8 @@ impl Api {
         let result = {
             let dest = dataview::bytes_mut(dest);
             AccessType::mem_read(ptr.into_raw(), dest.len(), 0)
-                .dispatch(&self.mem_access)?
+                .dispatch(&self.mem_access)
+                .await?
                 .await?
                 .map(|data| dest.copy_from_slice(&data))
         };
@@ -108,7 +110,8 @@ impl Api {
                 let virtual_address = (base_address + indices[i] as u64) & !0xfff;
                 let temp = AccessType::mem_read(virtual_address, buf.len(), 0)
                     .with_priority(0)
-                    .dispatch(&self.mem_access)?
+                    .dispatch(&self.mem_access)
+                    .await?
                     .await?
                     .ok()
                     .and_then(|data| {
@@ -159,7 +162,8 @@ impl Api {
     #[inline]
     pub async fn vm_write<T: Pod + ?Sized>(&self, ptr: Ptr<T>, data: &T) -> anyhow::Result<()> {
         AccessType::mem_write_typed(ptr.into_raw(), data, 0)
-            .dispatch(&self.mem_access)?
+            .dispatch(&self.mem_access)
+            .await?
             .await?
             .map_err(|e| {
                 #[cfg(feature = "debug_api")]

@@ -1,5 +1,3 @@
-use tracing::warn;
-
 use crate::game::data::OFFSET_YAW;
 use apexsky::offsets::G_OFFSETS;
 

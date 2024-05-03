@@ -1,5 +1,3 @@
-use obfstr::obfstr as s;
-
 use self::entities::ScriptNetDataEntity;
 
 use super::*;
