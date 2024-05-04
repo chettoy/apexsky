@@ -174,6 +174,7 @@ pub async fn actions_loop(
                 wlock.frame_count = apex_state.client.framecount;
                 wlock.view_matrix = apex_state.client.view_matrix;
                 wlock.update_time = apex_state.time;
+                wlock.update_duration = (loop_duration, tick_duration);
 
                 if !player_ready {
                     wlock.spectator_list.clear();

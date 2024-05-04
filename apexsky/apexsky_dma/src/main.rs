@@ -1,4 +1,4 @@
-#![feature(thread_sleep_until)]
+#![feature(option_take_if, thread_sleep_until)]
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -8,7 +8,7 @@ use apexsky::__load_settings;
 use apexsky::aimbot::{AimEntity, Aimbot};
 use apexsky::config::Settings;
 use apexsky::global_state::G_STATE;
-use apexsky::noobfstr as s;
+use obfstr::obfstr as s;
 
 use apexsky::pb::apexlegends::PlayerState;
 use parking_lot::RwLock;
@@ -48,6 +48,7 @@ struct TreasureClue {
 struct SharedState {
     game_attached: bool,
     update_time: f64,
+    update_duration: (u128, u128),
     aim_target: [f32; 3],
     view_matrix: [f32; 16],
     highlight_injected: bool,

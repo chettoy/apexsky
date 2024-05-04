@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use self::{
     data::GameData,
     state::{GameState, UpdateContext},
@@ -37,7 +39,7 @@ pub struct Instance {
 impl Instance {
     pub fn new() -> Self {
         let ctx = UpdateContext {
-            data: GameData::default(),
+            data: Arc::new(GameData::default()),
             time: Default::default(),
             connected: false,
             tickcount: 0,

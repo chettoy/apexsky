@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use bitset_core::BitSet;
 use tracing::instrument;
 
@@ -132,9 +134,9 @@ impl<T> ValueChanged<T> {
 
 //----------------------------------------------------------------
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UpdateContext {
-    pub data: GameData,
+    pub data: Arc<GameData>,
 
     pub time: f64,
     pub tickcount: u32,

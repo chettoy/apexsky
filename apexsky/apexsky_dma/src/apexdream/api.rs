@@ -4,9 +4,9 @@ use obfstr::obfstr as s;
 use std::{fmt, mem};
 use tracing::instrument;
 
-use crate::workers::access::{AccessType, PendingAccessRequest, MemApi};
+use crate::workers::access::{AccessType, MemApi, PendingAccessRequest};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Api {
     pub apex_base: intptr::IntPtr64,
     pub mem_access: MemApi,

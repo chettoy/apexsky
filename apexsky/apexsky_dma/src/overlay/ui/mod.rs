@@ -38,6 +38,7 @@ struct Esp2dData {
     players: Vec<(PreSelectedTarget, PlayerState)>,
     g_settings: apexsky::config::Settings,
     data_timestamp: f64,
+    update_duration: (u128, u128),
 }
 
 #[tracing::instrument(skip_all)]
@@ -115,6 +116,7 @@ pub fn ui_system(
             players: selected_players,
             g_settings: global_settings(),
             data_timestamp: state.update_time,
+            update_duration: state.update_duration,
         }
     };
 
@@ -122,6 +124,7 @@ pub fn ui_system(
         overlay_fps: String,
         game_fps: String,
         latency: String,
+        loop_duration: String,
         target_count: String,
         local_position: String,
         local_angles: String,
@@ -155,6 +158,13 @@ pub fn ui_system(
                 s!("ms(data) + "),
                 time.delta_seconds() * 1000.0,
                 s!("ms(ui)"),
+            ),
+            loop_duration: format!(
+                "{: >4}{}{: >4}{}",
+                esp2d_data.update_duration.1,
+                s!("ms(tick) +"),
+                esp2d_data.update_duration.0,
+                s!("ms(actions)"),
             ),
             target_count: overlay_state.target_count.to_string(),
             local_position: lplayer_buf
@@ -252,6 +262,7 @@ pub fn ui_system(
                 s!(" FPS)")
             ));
             ui.label(format!("{}{}", s!("latency "), dialog_esp.latency));
+            ui.label(format!("{}{}", s!("duration "), dialog_esp.loop_duration));
             ui.label(format!("{}{}", s!("target "), dialog_esp.target_count));
             ui.add_space(5.0);
             ui.label(dialog_esp.local_position);
@@ -345,7 +356,18 @@ pub fn ui_system(
             .iter()
             .map(|(player_info, player_buf)| RadarTarget {
                 pos: player_buf.origin.clone().unwrap().into(),
-                yaw: player_buf.yaw,
+                yaw: player_buf
+                    .view_angles
+                    .as_ref()
+                    .map(|view_angles| {
+                        let yaw = view_angles.y;
+                        if yaw < 0.0 {
+                            yaw + 360.0
+                        } else {
+                            yaw
+                        }
+                    })
+                    .unwrap_or(player_buf.yaw),
                 distance: player_info.distance / 39.62,
                 team_id: player_buf.team_num,
             })

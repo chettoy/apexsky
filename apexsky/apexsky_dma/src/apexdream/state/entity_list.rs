@@ -70,27 +70,47 @@ impl EntityList {
         let prev_info = unsafe { self.prev_info.get_unchecked(..sdk::NUM_ENT_ENTRIES) };
         let ent_info = unsafe { self.ent_info.get_unchecked(..sdk::NUM_ENT_ENTRIES) };
         let entities = unsafe { self.entities.get_unchecked_mut(..sdk::NUM_ENT_ENTRIES) };
+        let mut futs_update = vec![];
+        let mut spawn_update_task = |index, mut entity: Box<dyn Entity>| {
+            futs_update.push((
+                index,
+                tokio::spawn({
+                    let api = api.clone();
+                    let ctx = ctx.clone();
+                    async move {
+                        entity.update(&api, &ctx).await;
+                        entity
+                    }
+                }),
+            ));
+        };
         for index in 0..sdk::NUM_ENT_ENTRIES {
+            let in_range = index >= start && index < end;
+            let ptr_changed = prev_info[index].pEntity != ent_info[index].pEntity;
+
             // If entity pointer has changed
-            if index >= start && index < end && prev_info[index].pEntity != ent_info[index].pEntity
-            {
+            if in_range && ptr_changed {
                 // Recreate the entity object with the correct type
                 let entity_ptr = ent_info[index].pEntity;
                 entities[index] = self.gce.create_entity(api, entity_ptr, index as u32).await;
                 // Always update the entity when created
-                if let Some(entity) = &mut entities[index] {
-                    entity.update(api, ctx).await;
-                    self.updates += 1;
+                if let Some(entity) = entities[index].take() {
+                    spawn_update_task(index, entity);
                 }
             }
             // Update the entity at their specified rate if we are tracking it
-            else if let Some(entity) = &mut entities[index] {
-                let rate = entity.get_info().rate;
-                if ctx.ticked(rate, index as u32) {
-                    entity.update(api, ctx).await;
-                    self.updates += 1;
-                }
+            else if let Some(entity) = entities[index].take_if(|entity| {
+                ctx.ticked(entity.get_info().rate, index as u32) && (!ptr_changed)
+            }) {
+                spawn_update_task(index, entity);
             }
+        }
+
+        // Place the updated entity back in the list
+        for (index, fut_update) in futs_update {
+            let entity = fut_update.await.unwrap();
+            entities[index].replace(entity);
+            self.updates += 1;
         }
 
         // If we reached the end, swap the entity infos

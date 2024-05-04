@@ -536,7 +536,7 @@ impl AccessRequest for AccessType {
     }
 
     async fn dispatch(self, api: &MemApi) -> anyhow::Result<()> {
-        self.with_priority(1).dispatch(api).await
+        self.with_priority(0x1).dispatch(api).await
     }
 }
 
