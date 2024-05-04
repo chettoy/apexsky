@@ -378,7 +378,7 @@ pub async fn actions_loop(
 
             /* Hot Variables Update End */
 
-            if actions_tick % 15 == 0 {
+            if actions_tick % 2 == 0 {
                 // at least 30ms // don't change xD
             } else if actions_tick % 30_000 == 0 {
                 actions_tick = 0;
