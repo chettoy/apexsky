@@ -155,7 +155,7 @@ impl TaskManager for State {
 
         self.set_active(true);
 
-        let (access_tx, access_rx) = mpsc::channel(100);
+        let (access_tx, access_rx) = mpsc::channel(0x2000);
         let (aim_key_tx, aim_key_rx) = watch::channel(workers::aim::AimKeyStatus::default());
         let (aim_select_tx, aim_select_rx) = watch::channel(vec![]);
         let (aim_delta_angles_tx, aim_delta_angles_rx) = watch::channel([0.0, 0.0, 0.0]);

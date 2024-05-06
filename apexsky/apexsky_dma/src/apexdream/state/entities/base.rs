@@ -49,26 +49,42 @@ impl Entity for BaseEntity {
     #[instrument(skip_all)]
     async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         let data = &ctx.data;
-        if self.network_name[0] == 0 {
-            let client_class_ptr = api
-                .apex_base
-                .field::<sdk::ClientClass>(self.client_class_rva);
-            if let Ok(client_class) = api.vm_read(client_class_ptr).await {
-                let _ = api
-                    .vm_read_into(client_class.pNetworkName, &mut self.network_name)
-                    .await;
+
+        let task_update_network_name = async {
+            if self.network_name[0] == 0 {
+                let client_class_ptr = api
+                    .apex_base
+                    .field::<sdk::ClientClass>(self.client_class_rva);
+                if let Ok(client_class) = api.vm_read(client_class_ptr).await {
+                    let _ = api
+                        .vm_read_into(client_class.pNetworkName, &mut self.network_name)
+                        .await;
+                }
             }
-        }
+        };
+
         let entity_ptr = self.entity_ptr;
         // let _ = process.vm_read_into(entity_ptr.field(data.entity_signifier_name + 9), &mut self.signifier_name).await;
-        let _ = api
-            .vm_read_into(entity_ptr.field(data.entity_origin), &mut self.origin)
-            .await;
-        if let Ok(model_name_ptr) = api
-            .vm_read(entity_ptr.field::<sdk::Ptr<[u8]>>(data.entity_model_name))
-            .await
-        {
-            self.model_name.update(api, model_name_ptr).await;
-        }
+
+        let task_update_origin = async {
+            let _ = api
+                .vm_read_into(entity_ptr.field(data.entity_origin), &mut self.origin)
+                .await;
+        };
+
+        let task_update_model_name = async {
+            if let Ok(model_name_ptr) = api
+                .vm_read(entity_ptr.field::<sdk::Ptr<[u8]>>(data.entity_model_name))
+                .await
+            {
+                self.model_name.update(api, model_name_ptr).await;
+            }
+        };
+
+        tokio::join!(
+            task_update_network_name,
+            task_update_origin,
+            task_update_model_name
+        );
     }
 }

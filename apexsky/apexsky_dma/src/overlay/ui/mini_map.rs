@@ -1,7 +1,7 @@
-use apexsky::noobfstr as s;
 use bevy::math::Vec3;
 use bevy_egui::egui;
 use egui::{pos2, Color32};
+use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
 
 struct RadarSettings {
@@ -172,10 +172,10 @@ fn draw_radar_dot(
         [158, 178, 199],
     ];
 
-    let color = if team_id < 0 || team_id > 20 {
-        [0, 0, 0]
+    let color = if team_id < 2 || team_id > 22 {
+        [255, 0, 0]
     } else {
-        TEAM_COLORS[team_id as usize]
+        TEAM_COLORS[team_id as usize - 2]
     };
     let fill_color = Color32::from_rgb(color[0], color[1], color[2]);
     let outline_color = Color32::BLACK;

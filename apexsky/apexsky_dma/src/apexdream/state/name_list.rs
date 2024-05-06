@@ -35,13 +35,29 @@ impl NameList {
         let pointers1 = unsafe { self.pointers1.get_unchecked(..SIZE) };
         let pointers2 = unsafe { self.pointers2.get_unchecked(..SIZE) };
         let names = unsafe { self.names.get_unchecked_mut(..SIZE) };
-        let mut name_buf = [0u8; 128];
+
+        let mut futs_read = vec![];
         for i in 0..SIZE {
             if pointers1[i] != pointers2[i] {
                 names[i].clear();
-                if let Ok(name) = api.vm_read_cstr(pointers1[i], &mut name_buf).await {
-                    names[i].push_str(name);
-                }
+                futs_read.push((
+                    i,
+                    tokio::spawn({
+                        let api = api.clone();
+                        let s_ptr = pointers1[i];
+                        async move {
+                            let mut name_buf = [0u8; 128];
+                            api.vm_read_cstr(s_ptr, &mut name_buf)
+                                .await
+                                .map(|s| s.to_string())
+                        }
+                    }),
+                ));
+            }
+        }
+        for (i, fut_read) in futs_read {
+            if let Ok(name) = fut_read.await.unwrap() {
+                names[i] = name;
             }
         }
     }

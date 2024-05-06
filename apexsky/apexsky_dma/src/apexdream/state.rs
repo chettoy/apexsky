@@ -45,25 +45,22 @@ impl GameState {
     #[instrument(skip(self, api))]
     #[inline(never)]
     pub async fn update(&mut self, api: &Api, ctx: &mut UpdateContext) {
+        // Update globals and ctx
         self.client.update(api, ctx).await;
-        let update_entity_list = self.entity_list.update(api, ctx);
-        let update_input_system = self.input_system.update(api, ctx);
-        let update_string_tables = self.string_tables.update(api, ctx);
-        let update_name_list = self.name_list.update(api, ctx);
-        let update_buttons = self.buttons.update(api, ctx);
-        let update_script_data = self.script_data.update(api, ctx);
-        let update_items = self.items.update(api, ctx);
-        let update_mods = self.mods.update(api, ctx);
 
-        let _ = update_entity_list.await;
-        let _ = update_input_system.await;
-        let _ = update_string_tables.await;
-        let _ = update_name_list.await;
-        let _ = update_buttons.await;
-        let _ = update_script_data.await;
-        let _ = update_items.await;
-        let _ = update_mods.await;
+        // Update others
+        tokio::join!(
+            self.entity_list.update(api, ctx),
+            self.input_system.update(api, ctx),
+            self.string_tables.update(api, ctx),
+            self.name_list.update(api, ctx),
+            self.buttons.update(api, ctx),
+            self.script_data.update(api, ctx),
+            self.items.update(api, ctx),
+            self.mods.update(api, ctx),
+        );
 
+        // Calling `post()` to complete the update of the entities
         for i in 0..self.entity_list.entities.len() {
             // Temporarily take the entity out of the list
             if let Some(mut entity) = self

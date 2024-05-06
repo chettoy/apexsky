@@ -1,3 +1,5 @@
+use parking_lot::Mutex;
+
 use self::entities::{
     AnimatingEntity, BaseNPCEntity, DeathboxEntity, Entity, LootEntity, ScriptNetDataEntity,
     VehicleEntity, WorldEntity,
@@ -70,8 +72,19 @@ impl EntityList {
         let prev_info = unsafe { self.prev_info.get_unchecked(..sdk::NUM_ENT_ENTRIES) };
         let ent_info = unsafe { self.ent_info.get_unchecked(..sdk::NUM_ENT_ENTRIES) };
         let entities = unsafe { self.entities.get_unchecked_mut(..sdk::NUM_ENT_ENTRIES) };
+        let mut futs_recreate = vec![];
         let mut futs_update = vec![];
-        let mut spawn_update_task = |index, mut entity: Box<dyn Entity>| {
+        let mut start_recreate = |index: usize, entity_ptr: sdk::Ptr| {
+            futs_recreate.push((
+                index,
+                tokio::spawn({
+                    let api = api.clone();
+                    let gce = self.gce.clone();
+                    async move { gce.create_entity(&api, entity_ptr, index as u32).await }
+                }),
+            ));
+        };
+        let mut start_update = |index, mut entity: Box<dyn Entity>| {
             futs_update.push((
                 index,
                 tokio::spawn({
@@ -92,21 +105,24 @@ impl EntityList {
             if in_range && ptr_changed {
                 // Recreate the entity object with the correct type
                 let entity_ptr = ent_info[index].pEntity;
-                entities[index] = self.gce.create_entity(api, entity_ptr, index as u32).await;
-                // Always update the entity when created
-                if let Some(entity) = entities[index].take() {
-                    spawn_update_task(index, entity);
-                }
+                start_recreate(index, entity_ptr);
             }
             // Update the entity at their specified rate if we are tracking it
             else if let Some(entity) = entities[index].take_if(|entity| {
                 ctx.ticked(entity.get_info().rate, index as u32) && (!ptr_changed)
             }) {
-                spawn_update_task(index, entity);
+                start_update(index, entity);
             }
         }
 
         // Place the updated entity back in the list
+        for (index, fut_recreate) in futs_recreate {
+            entities[index] = fut_recreate.await.unwrap();
+            // Always update the entity when created
+            if let Some(entity) = entities[index].take() {
+                start_update(index, entity);
+            }
+        }
         for (index, fut_update) in futs_update {
             let entity = fut_update.await.unwrap();
             entities[index].replace(entity);
@@ -123,7 +139,7 @@ impl EntityList {
 //----------------------------------------------------------------
 // GetClientEntity
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Config {
     log_errors: bool,
     log_uninteresting: bool,
@@ -139,23 +155,23 @@ impl Default for Config {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ClientClassData {
     client_class: sdk::ClientClass,
     name_hash: u32,
     name_buf: [u8; 52],
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct GetClientEntity {
     config: Config,
-    lookup: HashMap<sdk::Ptr<[sdk::Ptr]>, ClientClassData>,
+    lookup: Arc<Mutex<HashMap<sdk::Ptr<[sdk::Ptr]>, ClientClassData>>>,
 }
 
 impl GetClientEntity {
     #[inline(never)]
     async fn create_entity(
-        &mut self,
+        &self,
         api: &Api,
         entity_ptr: sdk::Ptr,
         index: u32,
@@ -229,11 +245,7 @@ impl GetClientEntity {
     }
 
     #[inline(never)]
-    async fn get_client_class(
-        &mut self,
-        api: &Api,
-        entity_ptr: sdk::Ptr,
-    ) -> Option<&ClientClassData> {
+    async fn get_client_class(&self, api: &Api, entity_ptr: sdk::Ptr) -> Option<ClientClassData> {
         // Read the IClientNetworkable vtable at entity_ptr + 3 * 8
         let client_networkable: sdk::Ptr<[sdk::Ptr]> =
             match api.vm_read(entity_ptr.field(3 * 8)).await {
@@ -256,8 +268,12 @@ impl GetClientEntity {
             return None;
         }
 
+        if let Some(value) = self.lookup.lock().get(&client_networkable) {
+            return Some(value.to_owned());
+        }
+
         // Aggressively cache these lookups
-        if !self.lookup.contains_key(&client_networkable) {
+        {
             // Read the GetClientEntity function ptr
             let get_client_entity = match api.vm_read(client_networkable.at(3)).await {
                 Ok(pgce) => pgce,
@@ -344,19 +360,21 @@ impl GetClientEntity {
                 }
             };
 
-            // Cache the lookup
             let name_hash = crate::apexdream::base::hash(name);
-            self.lookup.insert(
-                client_networkable,
-                ClientClassData {
-                    client_class,
-                    name_hash,
-                    name_buf,
-                },
-            );
+            // Cache the lookup
+            {
+                let mut lookup = self.lookup.lock();
+                lookup.insert(
+                    client_networkable,
+                    ClientClassData {
+                        client_class,
+                        name_hash,
+                        name_buf,
+                    },
+                );
+                lookup.get(&client_networkable).cloned()
+            }
         }
-
-        self.lookup.get(&client_networkable)
     }
 }
 

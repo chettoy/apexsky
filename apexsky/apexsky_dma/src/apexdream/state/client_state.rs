@@ -2,7 +2,7 @@ use apexsky::offsets::G_OFFSETS;
 
 use super::*;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct ClientState {
     pub signon_state: i32,
     pub level_hash: u32,
@@ -35,55 +35,86 @@ impl ClientState {
             ctx.connected = false;
         }
 
-        // Current level name
-        if ctx.connected {
-            self.level_hash = 0;
-            self.level_name.clear();
+        let task_current_level_name = async {
+            // Current level name
+            if ctx.connected {
+                self.level_hash = 0;
+                self.level_name.clear();
 
-            let mut level_name = [0u8; 0x40];
-            if let Ok(level_name) = api
-                .vm_read_cstr(base_addr.field(data.level_name), &mut level_name)
+                let mut level_name = [0u8; 0x40];
+                if let Ok(level_name) = api
+                    .vm_read_cstr(base_addr.field(data.level_name), &mut level_name)
+                    .await
+                {
+                    self.level_hash = crate::apexdream::base::hash(level_name);
+                    self.level_name.push_str(level_name);
+                }
+            }
+        };
+
+        let task_local_player_handle = async {
+            // Local player entity handle
+            if ctx.connected || ctx.ticked(100, 11) {
+                let _ = api
+                    .vm_read_into(
+                        base_addr.field(data.local_entity_handle),
+                        &mut self.local_entity,
+                    )
+                    .await;
+                let _ = api
+                    .vm_read_into(
+                        base_addr.field(G_OFFSETS.local_ent.try_into().unwrap()),
+                        &mut self.local_player_ptr,
+                    )
+                    .await;
+            }
+            self.local_entity
+        };
+
+        let task_globals = async {
+            // Globals
+            if let Ok(globals) = api
+                .vm_read::<sdk::CGlobalVars>(base_addr.field(data.global_vars))
                 .await
             {
-                self.level_hash = crate::apexdream::base::hash(level_name);
-                self.level_name.push_str(level_name);
+                self.framecount = globals.framecount;
+                self.curtime = globals.curtime;
+                self.interval_per_tick = 1.0 / 20.0;
             }
-        }
+        };
 
-        // Local player entity handle
-        if ctx.connected || ctx.ticked(100, 11) {
-            let _ = api.vm_read_into(
-                base_addr.field(data.local_entity_handle),
-                &mut self.local_entity,
-            ).await;
-            let _ = api.vm_read_into(
-                base_addr.field(G_OFFSETS.local_ent.try_into().unwrap()),
-                &mut self.local_player_ptr,
-            ).await;
-        }
-        ctx.local_entity = self.local_entity;
+        let task_viewmatrix = async {
+            // ViewMatrix
+            if ctx.connected || ctx.ticked(25, 6) {
+                self.view_render = sdk::Ptr::NULL;
+                let _ = api
+                    .vm_read_into(base_addr.field(data.view_render), &mut self.view_render)
+                    .await;
+            }
+            if !self.view_render.is_null() && (ctx.connected || ctx.ticked(25, 14)) {
+                self.view_matrix_ptr = sdk::Ptr::NULL;
+                let _ = api
+                    .vm_read_into(
+                        self.view_render.field(data.view_matrix),
+                        &mut self.view_matrix_ptr,
+                    )
+                    .await;
+            }
+            if !self.view_matrix_ptr.is_null() {
+                let _ = api
+                    .vm_read_into(self.view_matrix_ptr, &mut self.view_matrix)
+                    .await;
+            }
+        };
 
-        // Globals
-        if let Ok(globals) = api.vm_read::<sdk::CGlobalVars>(base_addr.field(data.global_vars)).await {
-            self.framecount = globals.framecount;
-            self.curtime = globals.curtime;
-            self.interval_per_tick = 1.0 / 20.0;
-        }
-
-        // ViewMatrix
-        if ctx.connected || ctx.ticked(25, 6) {
-            self.view_render = sdk::Ptr::NULL;
-            let _ = api.vm_read_into(base_addr.field(data.view_render), &mut self.view_render).await;
-        }
-        if !self.view_render.is_null() && (ctx.connected || ctx.ticked(25, 14)) {
-            self.view_matrix_ptr = sdk::Ptr::NULL;
-            let _ = api.vm_read_into(
-                self.view_render.field(data.view_matrix),
-                &mut self.view_matrix_ptr,
-            ).await;
-        }
-        if !self.view_matrix_ptr.is_null() {
-            let _ = api.vm_read_into(self.view_matrix_ptr, &mut self.view_matrix).await;
+        {
+            let (_, local_entity, _, _) = tokio::join!(
+                task_current_level_name,
+                task_local_player_handle,
+                task_globals,
+                task_viewmatrix
+            );
+            ctx.local_entity = local_entity;
         }
     }
 }
