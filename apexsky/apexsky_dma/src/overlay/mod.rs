@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 
 use ambisonic::rodio::Source;
 use ambisonic::{AmbisonicBuilder, SoundController};
@@ -516,23 +515,25 @@ fn follow_game_state(
 
     // Get updated target data
     if overlay_state.task_channels.is_some() {
-        let state = overlay_state.shared_state.read();
-        targets.iter_mut().for_each(|(ptr, target)| {
-            target.data = state.aim_entities.get(ptr).cloned();
-            if let Some(target_data) = &target.data {
-                let target_pos = target_data.get_bone_position_by_hitbox(0);
-                target.point_pos = Vec3 {
-                    x: -target_pos[1],
-                    y: target_pos[2],
-                    z: -target_pos[0],
-                };
-                target.health = target_data.get_health() as f32;
-                target.max_health = target_data.get_max_health() as f32;
-                target.shield = target_data.get_shield_health() as f32;
-                target.max_shield = target_data.get_max_shield_health() as f32;
-            } else {
-                tracing::warn!(?target, "{}", s!("AimEntities[ptr]=None"));
-            }
+        {
+            let state = overlay_state.shared_state.read();
+            targets.iter_mut().for_each(|(ptr, target)| {
+                target.data = state.aim_entities.get(ptr).cloned();
+            });
+        }
+        targets.retain(|_, target| target.data.is_some());
+        targets.iter_mut().for_each(|(_, target)| {
+            let target_data = target.data.as_ref().unwrap();
+            let target_pos = target_data.get_bone_position_by_hitbox(0);
+            target.point_pos = Vec3 {
+                x: -target_pos[1],
+                y: target_pos[2],
+                z: -target_pos[0],
+            };
+            target.health = target_data.get_health() as f32;
+            target.max_health = target_data.get_max_health() as f32;
+            target.shield = target_data.get_shield_health() as f32;
+            target.max_shield = target_data.get_max_shield_health() as f32;
         });
     }
     overlay_state.target_count = targets.len();
