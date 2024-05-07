@@ -324,7 +324,7 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
     }
 
     fn is_alive(&self) -> bool {
-        self.is_alive()
+        self.is_alive() && self.get_health() > 0
     }
 
     fn is_knocked(&self) -> bool {

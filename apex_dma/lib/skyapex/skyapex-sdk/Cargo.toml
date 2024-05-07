@@ -25,6 +25,6 @@ include-flate = "0.3.0"
 
 
 [features]
-default = ["wasmer"]
+default = ["wasmedge"]
 wasmedge = ["dep:wasmedge-sdk"]
 wasmer = ["dep:wasmer", "dep:wasmer-wasix"]

@@ -755,7 +755,7 @@ async fn perform_aimbot_actions(
         }
     };
 
-    if view_angles[2].abs() > 1.0 {
+    if !(view_angles[0].is_finite() && view_angles[1].is_finite() && view_angles[2].is_finite()) {
         tracing::warn!(?view_angles, "{}", s!("got invalid view_angles"));
         return;
     }
@@ -779,7 +779,7 @@ async fn perform_aimbot_actions(
                     let mut update_angles = math::add(view_angles, delta);
                     if update_angles[0].abs() > 360.0
                         || update_angles[1].abs() > 360.0
-                        || update_angles[2].abs() > 1.0
+                        || update_angles[2].abs() > 360.0
                     {
                         tracing::warn!(?update_angles, "{}", s!("got invalid target view_angles"));
                         return;
@@ -865,31 +865,34 @@ fn process_player<'a>(
     }
 
     // Calc distance
+    // Excluding targets that are too far or too close
     let distance = {
         let target_pos = target_entity.get_position();
         let local_pos = local_player.get_entity().get_position();
         math::dist(target_pos, local_pos)
     };
 
-    // Excluding targets that are too far or too close
-    if distance > g_settings.max_dist || distance < 20.0 {
+    if !distance.is_normal() || distance > g_settings.max_dist || distance < 10.0 {
         return None;
     }
 
-    let target_player = if target_entity.is_player() {
-        match state.players.get(&target_ptr) {
-            Some(p) => Some(p),
-            None => {
-                tracing::error!(?target_ptr, "{}", s!("UNREACHABLE"));
-                return None;
-            }
-        }
-    } else {
-        None
-    };
+    // Calc FOV
+    let fov = calculate_target_fov(local_player.get_entity(), target_entity);
+    if !fov.is_finite() {
+        // inf/neg_inf/nan
+        return None;
+    }
+
+    let target_player = target_entity.is_player().then(|| {
+        let Some(p) = state.players.get(&target_ptr) else {
+            tracing::error!(?target_ptr, "{}", s!("UNREACHABLE"));
+            panic!();
+        };
+        p
+    });
 
     Some(PreSelectedTarget {
-        fov: calculate_target_fov(local_player.get_entity(), target_entity),
+        fov,
         distance,
         is_visible: target_entity.is_visible(),
         is_knocked: target_entity.is_knocked(),
