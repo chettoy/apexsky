@@ -16,71 +16,71 @@
         "model": "mdl/weapons/beam_ar/w_beam_ar.rmdl"
     },
     {
-        "int": 18,
+        "int": 19,
         "model": "mdl/weapons/hemlock_br/w_hemlock_br.rmdl"
     },
     {
-        "int": 23,
+        "int": 24,
         "model": "mdl/weapons/doubletake/w_doubletake.rmdl"
     },
     {
-        "int": 28,
-        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_base_w.rmdl"
+        "int": 29,
+        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_v20_assim_w.rmdl"
     },
     {
-        "int": 33,
+        "int": 34,
         "model": "mdl/weapons/m1a1_hemlok/w_hemlok.rmdl"
     },
     {
-        "int": 39,
+        "int": 40,
         "model": "mdl/techart/mshop/weapons/class/assault/g7/g7_base_w.rmdl"
     },
     {
-        "int": 44,
+        "int": 45,
         "model": "mdl/weapons/alternator_smg/w_alternator_smg.rmdl"
     },
     {
-        "int": 49,
+        "int": 50,
         "model": "mdl/weapons/r97/w_r97.rmdl"
     },
     {
-        "int": 54,
+        "int": 55,
         "model": "mdl/techart/mshop/weapons/class/smg/prowler/prowler_base_w.rmdl"
     },
     {
-        "int": 60,
+        "int": 61,
         "model": "mdl/weapons/hemlok_smg/w_hemlok_smg.rmdl"
     },
     {
-        "int": 65,
+        "int": 66,
         "model": "mdl/weapons/rspn101_dmr/w_rspn101_dmr.rmdl"
     },
     {
-        "int": 70,
+        "int": 71,
         "model": "mdl/weapons/defender/w_defender.rmdl"
     },
     {
-        "int": 75,
+        "int": 76,
         "model": "mdl/weapons/lmg_hemlok/w_lmg_hemlok.rmdl"
     },
     {
-        "int": 80,
+        "int": 81,
         "model": "mdl/weapons/rspn101/w_rspn101.rmdl"
     },
     {
-        "int": 86,
+        "int": 87,
         "model": "mdl/weapons/w1128/w_w1128.rmdl"
     },
     {
-        "int": 91,
+        "int": 92,
         "model": "mdl/weapons/peacekeeper/w_peacekeeper.rmdl"
     },
     {
-        "int": 96,
+        "int": 97,
         "model": "mdl/weapons/pstl_sa3/w_pstl_sa3.rmdl"
     },
     {
-        "int": 107,
+        "int": 106,
         "model": "mdl/weapons/b3wing/w_b3wing.rmdl"
     },
     {
@@ -256,10 +256,6 @@
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_cq_holo_var_2x.rmdl"
     },
     {
-        "int": 232,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_cq_threat.rmdl"
-    },
-    {
         "int": 233,
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_rng_hcog_acgs.rmdl"
     },
@@ -412,15 +408,15 @@
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_chip.rmdl"
     },
     {
-        "int": 273,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_chip.rmdl"
-    },
-    {
         "int": 276,
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_chip.rmdl"
     },
     {
         "int": 277,
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_chip.rmdl"
+    },
+    {
+        "int": 285,
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_chip.rmdl"
     },
     {
@@ -436,7 +432,7 @@
         "model": "mdl/props/nessie/nessie_april_fools_large.rmdl"
     },
     {
-        "int": 323,
+        "int": 324,
         "model": "mdl/props/evo_cache_prop_w/evo_cache_prop_w.rmdl"
     }
 ]
