@@ -10,6 +10,8 @@ use deno_core::*;
 mod ops;
 use ops::*;
 
+use super::manifest::Manifest;
+
 extension!(
   apexsky_extension,
   ops = [
@@ -21,7 +23,13 @@ extension!(
   ],
   esm_entry_point = "ext:apexsky_extension/runtime.js",
   esm = [ dir "src/extension/runtime", "runtime.js" ],
+  options = {
+    manifest: Manifest,
+  },
   middleware = middleware_fn,
+  state = |state, options| {
+    state.put::<Manifest>(options.manifest);
+  },
   docs = "apexsky runtime op2.",
 );
 
@@ -139,6 +147,9 @@ impl ModuleLoader for TypescriptModuleLoader {
 
 #[test]
 fn execute_script() {
+    let example_manifest = include_str!("../../../resource/extensions/example/manifest.json");
+    let manifest: Manifest = serde_json::from_str(&example_manifest).unwrap();
+
     let source_map_store = SourceMapStore(Rc::new(RefCell::new(HashMap::new())));
 
     // Initialize a runtime instance
@@ -146,7 +157,7 @@ fn execute_script() {
         module_loader: Some(Rc::new(TypescriptModuleLoader {
             source_maps: source_map_store.clone(),
         })),
-        extensions: vec![apexsky_extension::init_ops_and_esm()],
+        extensions: vec![apexsky_extension::init_ops_and_esm(manifest)],
         ..Default::default()
     });
 

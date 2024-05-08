@@ -38,7 +38,22 @@ struct Esp2dData {
     players: Vec<(PreSelectedTarget, PlayerState)>,
     g_settings: apexsky::config::Settings,
     data_timestamp: f64,
-    update_duration: (u128, u128),
+}
+
+struct DialogEsp {
+    overlay_fps: String,
+    game_fps: String,
+    latency: String,
+    loop_duration: String,
+    target_count: String,
+    local_position: String,
+    local_angles: String,
+    local_yaw: String,
+    local_held: String,
+    aim_position: String,
+    spectator_list: Vec<SpectatorInfo>,
+    allied_spectator_name: Vec<String>,
+    teammates_info: Vec<PlayerState>,
 }
 
 #[tracing::instrument(skip_all)]
@@ -76,7 +91,7 @@ pub fn ui_system(
         }
     }
 
-    let esp2d_data = {
+    let (esp2d_data, dialog_esp) = {
         let state = overlay_state.shared_state.read();
         let selected_players = {
             if let Some(channels) = &overlay_state.task_channels {
@@ -95,137 +110,118 @@ pub fn ui_system(
                 vec![]
             }
         };
-        let (local_pos, local_yaw) = state
-            .local_player
-            .as_ref()
-            .map(|p| {
-                let buf = p.get_buf();
-                (buf.origin.clone().unwrap().into(), buf.yaw)
+        let lplayer_buf = state.local_player.as_ref().map(|p| p.get_buf());
+        let (local_pos, local_yaw) = lplayer_buf
+            .map(|buf| {
+                (
+                    buf.origin.clone().unwrap().into(),
+                    buf.view_angles.as_ref().map(|v| v.y).unwrap_or(buf.yaw),
+                )
             })
             .unwrap_or_default();
-        Esp2dData {
-            local_pos,
-            local_yaw,
-            aim_target: state.aim_target,
-            view_matrix: state.view_matrix,
-            aimbot_locked: state
-                .aimbot_state
-                .as_ref()
-                .map(|aimbot| aimbot.is_locked())
-                .unwrap_or(false),
-            players: selected_players,
-            g_settings: global_settings(),
-            data_timestamp: state.update_time,
-            update_duration: state.update_duration,
-        }
-    };
-
-    struct DialogEsp {
-        overlay_fps: String,
-        game_fps: String,
-        latency: String,
-        loop_duration: String,
-        target_count: String,
-        local_position: String,
-        local_angles: String,
-        local_yaw: String,
-        local_held: String,
-        aim_position: String,
-        spectator_list: Vec<SpectatorInfo>,
-        allied_spectator_name: Vec<String>,
-        teammates_info: Vec<PlayerState>,
-    }
-
-    let dialog_esp = {
-        let state = overlay_state.shared_state.read();
-        let lplayer_buf = state.local_player.as_ref().map(|p| p.get_buf());
-        DialogEsp {
-            overlay_fps: {
-                // try to get a "smoothed" FPS value from Bevy
-                if let Some(value) = diagnostics
-                    .get(&FrameTimeDiagnosticsPlugin::FPS)
-                    .and_then(|fps| fps.smoothed())
-                {
-                    format!("{:.1}", value)
-                } else {
-                    s!("N/A").to_string()
-                }
+        (
+            Esp2dData {
+                local_pos,
+                local_yaw,
+                aim_target: state.aim_target,
+                view_matrix: state.view_matrix,
+                aimbot_locked: state
+                    .aimbot_state
+                    .as_ref()
+                    .map(|aimbot| aimbot.is_locked())
+                    .unwrap_or(false),
+                players: selected_players,
+                g_settings: global_settings(),
+                data_timestamp: state.update_time,
             },
-            game_fps: format!("{:.1}", state.game_fps),
-            latency: format!(
-                "{:.0}{}{:.0}{}",
-                overlay_state.data_latency,
-                s!("ms(data) + "),
-                time.delta_seconds() * 1000.0,
-                s!("ms(ui)"),
-            ),
-            loop_duration: format!(
-                "{: >4}{}{: >4}{}",
-                esp2d_data.update_duration.1,
-                s!("ms(tick) +"),
-                esp2d_data.update_duration.0,
-                s!("ms(actions)"),
-            ),
-            target_count: overlay_state.target_count.to_string(),
-            local_position: lplayer_buf
-                .and_then(|p| p.origin.clone())
-                .map(|pos| {
-                    format!(
-                        "{}{:.0}{}{:.0}{}{:.0}",
-                        s!("x="),
-                        pos.x,
-                        s!(", y="),
-                        pos.y,
-                        s!(", z="),
-                        pos.z
-                    )
-                })
-                .unwrap_or_default(),
-            local_angles: lplayer_buf
-                .and_then(|p| p.view_angles.clone())
-                .map(|angle| {
-                    format!(
-                        "{}{:.2}{}{:.2}{}{:.2}",
-                        s!("view angles= "),
-                        angle.x,
-                        s!(", "),
-                        angle.y,
-                        s!(", "),
-                        angle.z
-                    )
-                })
-                .unwrap_or_default(),
-            local_yaw: lplayer_buf
-                .map(|p| p.yaw)
-                .map(|yaw| format!("{}{:.2}", s!("yaw="), yaw))
-                .unwrap_or_default(),
-            local_held: state
-                .aimbot_state
-                .as_ref()
-                .map(|aimbot| {
-                    format!(
-                        "{}{}{}{}",
-                        s!("held="),
-                        aimbot.get_held_id(),
-                        s!(", weapon="),
-                        aimbot.get_weapon_id()
-                    )
-                })
-                .unwrap_or_default(),
-            aim_position: format!(
-                "{}{:.2}{}{:.2}{}{:.2}{}",
-                s!("aim["),
-                state.aim_target[0],
-                s!(","),
-                state.aim_target[1],
-                s!(","),
-                state.aim_target[2],
-                s!("]")
-            ),
-            spectator_list: state.spectator_list.clone(),
-            allied_spectator_name: state.allied_spectator_name.clone(),
-            teammates_info: state.teammates.clone(),
-        }
+            DialogEsp {
+                overlay_fps: {
+                    // try to get a "smoothed" FPS value from Bevy
+                    if let Some(value) = diagnostics
+                        .get(&FrameTimeDiagnosticsPlugin::FPS)
+                        .and_then(|fps| fps.smoothed())
+                    {
+                        format!("{:.1}", value)
+                    } else {
+                        s!("N/A").to_string()
+                    }
+                },
+                game_fps: format!("{:.1}", state.game_fps),
+                latency: format!(
+                    "{:.0}{}{:.0}{}",
+                    overlay_state.data_latency,
+                    s!("ms(data) + "),
+                    time.delta_seconds() * 1000.0,
+                    s!("ms(ui)"),
+                ),
+                loop_duration: format!(
+                    "{: >4}{}{: >4}{}",
+                    state.update_duration.1,
+                    s!("ms(tick) +"),
+                    state.update_duration.0,
+                    s!("ms(actions)"),
+                ),
+                target_count: overlay_state.target_count.to_string(),
+                local_position: lplayer_buf
+                    .and_then(|p| p.origin.clone())
+                    .map(|pos| {
+                        format!(
+                            "{}{:.0}{}{:.0}{}{:.0}",
+                            s!("x="),
+                            pos.x,
+                            s!(", y="),
+                            pos.y,
+                            s!(", z="),
+                            pos.z
+                        )
+                    })
+                    .unwrap_or_default(),
+                local_angles: lplayer_buf
+                    .and_then(|p| p.view_angles.clone())
+                    .map(|angle| {
+                        format!(
+                            "{}{:.2}{}{:.2}{}{:.2}",
+                            s!("view angles= "),
+                            angle.x,
+                            s!(", "),
+                            angle.y,
+                            s!(", "),
+                            angle.z
+                        )
+                    })
+                    .unwrap_or_default(),
+                local_yaw: lplayer_buf
+                    .map(|p| p.yaw)
+                    .map(|yaw| format!("{}{:.2}", s!("yaw="), yaw))
+                    .unwrap_or_default(),
+                local_held: state
+                    .aimbot_state
+                    .as_ref()
+                    .map(|aimbot| {
+                        format!(
+                            "{}{}{}{}",
+                            s!("held="),
+                            aimbot.get_held_id(),
+                            s!(", weapon="),
+                            aimbot.get_weapon_id()
+                        )
+                    })
+                    .unwrap_or_default(),
+                aim_position: format!(
+                    "{}{:.2}{}{:.2}{}{:.2}{}",
+                    s!("aim["),
+                    state.aim_target[0],
+                    s!(","),
+                    state.aim_target[1],
+                    s!(","),
+                    state.aim_target[2],
+                    s!("]")
+                ),
+                spectator_list: state.spectator_list.clone(),
+                allied_spectator_name: state.allied_spectator_name.clone(),
+                teammates_info: state.teammates.clone(),
+            },
+        )
     };
 
     egui::Window::new(s!("Hello, world!"))

@@ -27,11 +27,37 @@ const runtime = {
     fetch: async (url) => {
         return core.opAsync("op_fetch", url);
     },
+    onMessage: {
+        listeners: [],
+        addListener: (callback) => {
+            apexsky.runtime.onMessage.listeners.push(callback);
+        },
+    },
 };
 
 const apexsky = {
     runtime,
 }
+
+// Create an async function to poll messages
+async function pollMessages() {
+    while (true) {
+        // Retrieve messages using core.opAsync("op_poll_message")
+        const message = await core.opAsync("op_poll_message");
+
+        // Iterate over all listeners and call them to handle the message
+        apexsky.runtime.onMessage.listeners.forEach((listener) => {
+            listener(message);
+        });
+    }
+}
+
+// Start polling for messages
+pollMessages().catch((err) => {
+    console.error("Error polling messages:", err);
+});
+
+
 
 globalThis.setTimeout = (callback, delay) => {
     core.opAsync("op_set_timeout", delay).then(callback);

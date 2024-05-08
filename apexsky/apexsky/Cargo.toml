@@ -12,24 +12,24 @@ crate-type = ["rlib", "staticlib"]
 [dependencies]
 libc = "0.2.154"
 config = { version = "0.14.0", default-features = false, features = ["toml"] }
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.201", features = ["derive"] }
 toml = "0.8.12"
-ratatui = { version = "0.25.0", features = ["all-widgets", "serde"] }
+ratatui = { version = "=0.25.0", features = ["all-widgets", "serde"] }
 crossterm = "0.27.0"
-anyhow = "1.0"
+anyhow = "1.0.83"
 fluent = "0.16.1"
 unic-langid = "0.9.4"
 strum = { version = "0.26.2", features = ["derive"] }
 strum_macros = "0.26.2"
 sys-locale = "0.3.1"
 unicode-width = "0.1.12"
-serde_json = { version = "1.0", features = ["preserve_order"] }
+serde_json = { version = "1.0.117", features = ["preserve_order"] }
 entropy = "0.4.2"
 rand = "0.8.5"
 indexmap = { version = "2.2.6", features = ["serde"] }
 zbus = { version = "4.2.0", default-features = false, features = ["tokio"] }
 tokio = { version = "1.37.0", features = ["full"] }
-chrono = "0.4"
+chrono = "0.4.38"
 chinese-lunisolar-calendar = "0.2.0"
 obfstr = "0.4.3"
 include-flate = "0.3.0"
