@@ -8,12 +8,17 @@ use apexsky::love_players::LoveStatus;
 use obfstr::obfstr as s;
 
 use parking_lot::RwLock;
-use tokio::sync::{mpsc, watch};
+use tokio::sync::watch;
 use tokio::time::{sleep, sleep_until, Instant};
 use tracing::{instrument, trace};
 
+use crate::aim_actions::{AimExecuter, AimbotAction, MemAimHelper};
 use crate::apexdream::base::math;
 use crate::SharedState;
+
+use super::access::MemApi;
+
+const ENABLE_MEM_AIM: bool = true;
 
 pub trait ContextForAimbot {
     async fn get_aimbot_settings(&self) -> Option<AimbotSettings>;
@@ -21,7 +26,7 @@ pub trait ContextForAimbot {
     async fn get_frame_count(&self) -> u32;
     async fn get_game_fps(&self) -> f32;
     async fn get_held_id(&self) -> Option<i32>;
-    async fn get_player_ptr(&self) -> u64;
+    //async fn get_player_ptr(&self) -> u64;
     async fn get_weapon_info(&self) -> Option<CurrentWeaponInfo>;
     async fn is_world_ready(&self) -> bool;
     async fn update_aim_target_for_esp(&mut self, position: [f32; 3]);
@@ -49,23 +54,23 @@ pub struct PreSelectedTarget {
     pub entity_ptr: u64,
 }
 
-#[derive(Debug, Clone)]
-pub struct AimbotAction {
-    pub shift_angles: Option<[f32; 3]>,
-    pub force_attack: Option<bool>,
-}
-
 #[instrument(skip_all)]
 pub async fn aimbot_loop(
     mut active: watch::Receiver<bool>,
     mut state: Arc<RwLock<SharedState>>,
+    access_tx: MemApi,
     mut aim_key_rx: watch::Receiver<AimKeyStatus>,
     mut aim_select_rx: watch::Receiver<Vec<PreSelectedTarget>>,
-    mut aim_delta_angles_rx: watch::Receiver<[f32; 3]>,
-    aim_action_tx: mpsc::Sender<AimbotAction>,
 ) -> anyhow::Result<()> {
     let mut aimbot = Aimbot::default();
+    let mut natural_delta_viewangles: [f32; 3] = [0.0, 0.0, 0.0];
     let mut prev_recoil_angle: [f32; 3] = [0.0, 0.0, 0.0];
+    let mut prev_view_angles: Option<[f32; 3]> = None;
+    let mut mem_aim_executer = MemAimHelper {
+        mem: access_tx.clone(),
+        apex_base: 0,
+        lplayer_ptr: 0,
+    };
     let mut start_instant = Instant::now();
 
     tracing::debug!("{}", s!("task start"));
@@ -76,37 +81,48 @@ pub async fn aimbot_loop(
         let loop_duration = start_instant.elapsed();
         start_instant = Instant::now();
 
-        if !state.read().game_attached
-            || !state.is_world_ready().await
-            || state.get_player_ptr().await == 0
-        {
+        // Check game_attached and world_ready
+        if !state.read().game_attached || !state.is_world_ready().await {
             tracing::trace!("{}", s!("waiting for world ready"));
             start_instant += Duration::from_millis(500);
             sleep_until(start_instant).await;
             continue;
         }
-        let Some(local_entity) = state.get_entity(state.get_player_ptr().await).await else {
+        // Check base_addr and local_player_ptr
+        mem_aim_executer.self_update().await;
+        if !mem_aim_executer.ready() {
+            tracing::trace!("{}", s!("waiting for mem_aim_executer ready"));
+            start_instant += Duration::from_millis(500);
+            sleep_until(start_instant).await;
+            continue;
+        }
+        // Check local_player entity
+        let Some(local_entity) = state.get_entity(mem_aim_executer.lplayer_ptr).await else {
             tracing::trace!("{}", s!("waiting for local player ready"));
             start_instant += Duration::from_millis(500);
             sleep_until(start_instant).await;
             continue;
         };
 
+        // Calc smooth factor
         let smooth_factor = loop_duration.as_millis() as f32 / 1.054571726;
         trace!(%smooth_factor, loop_duration = loop_duration.as_millis());
 
+        // Read held_id from shared_state
         if let Some(held_id) = state.get_held_id().await {
             aimbot.update_held_id(held_id);
         } else {
             tracing::error!("{}", s!("failed to get held_id"));
         }
 
+        // Read weapon from shared_state
         if let Some(active_weapon) = state.get_weapon_info().await {
             aimbot.update_weapon_info(active_weapon);
         } else {
             tracing::trace!("{}", s!("active_weapon=None"));
         }
 
+        // Receive key status and update it to aimbot
         if aim_key_rx.has_changed().unwrap_or_else(|e| {
             tracing::error!(%e, ?aim_key_rx, "{}", s!("recv key status"));
             false
@@ -124,6 +140,7 @@ pub async fn aimbot_loop(
             aimbot.update_triggerbot_key_state(key_status.triggerbot_hotkey);
         }
 
+        // Receive pre-selected targets and update it to aimbot
         if aim_select_rx.has_changed().unwrap_or_else(|e| {
             tracing::error!(%e, ?aim_select_rx, "{}", s!("recv aim targets"));
             false
@@ -151,7 +168,7 @@ pub async fn aimbot_loop(
         }
 
         // Update Aimbot state
-        aimbot.update(state.get_player_ptr().await, state.get_game_fps().await);
+        aimbot.update(mem_aim_executer.lplayer_ptr, state.get_game_fps().await);
 
         let aiming = aimbot.is_aiming();
         //tracing::trace!(?aiming, "711aac39-e83c-4788");
@@ -175,6 +192,7 @@ pub async fn aimbot_loop(
                     AimAngles::default()
                 } else if aimbot.get_gun_safety() {
                     trace!("{}", s!("711aac39-e83c-4788 safety on"));
+                    //println!("{:?}", target_entity);
                     AimAngles::default()
                 } else if local_entity.is_knocked()
                     || !target_entity.is_alive()
@@ -236,7 +254,7 @@ pub async fn aimbot_loop(
             let smoothed_delta_angles = math::sub(smoothed_angles, view_angles);
 
             if aimbot_settings.aim_mode & 0x4 != 0 && !aimbot.is_grenade() {
-                let natural_delta = *aim_delta_angles_rx.borrow();
+                let natural_delta = natural_delta_viewangles;
                 //println!("{:?}", natural_delta);
 
                 fn check(natural_delta: f32, smoothed_delta: f32) -> f32 {
@@ -302,19 +320,45 @@ pub async fn aimbot_loop(
             tracing::debug!(?shift_angles, "711aac39-e83c-4788 rcs");
         }
 
-        // Aimbot action
-        aim_action_tx
-            .send(AimbotAction {
-                shift_angles,
-                force_attack: match aimbot.poll_trigger_action() {
-                    5 => Some(true),
-                    4 => Some(false),
-                    _ => None,
-                },
-            })
-            .await?;
+        // Create aimbot action
+        let aimbot_action = AimbotAction {
+            shift_angles,
+            force_attack: match aimbot.poll_trigger_action() {
+                5 => Some(true),
+                4 => Some(false),
+                _ => None,
+            },
+        };
 
-        state.write().aimbot_state = Some(aimbot.clone());
+        // Update state for ESP
+        state.write().aimbot_state = Some((aimbot.clone(), loop_duration));
+
+        // Read view_angles
+        let view_angles =
+            match MemAimHelper::read_viewangles(&access_tx, mem_aim_executer.lplayer_ptr).await {
+                Ok(v) => v,
+                Err(e) => {
+                    tracing::warn!(%e, "{}", s!("err read viewangles"));
+                    continue;
+                }
+            };
+        if !(view_angles[0].is_finite() && view_angles[1].is_finite() && view_angles[2].is_finite())
+        {
+            tracing::warn!(?view_angles, "{}", s!("got invalid view_angles"));
+            continue;
+        }
+        // Calc delta_view_angles
+        natural_delta_viewangles = prev_view_angles
+            .map(|prev| math::sub(view_angles, prev))
+            .unwrap_or([0.0, 0.0, 0.0]);
+        // Perform aimbot action
+        if ENABLE_MEM_AIM {
+            let mut executer = mem_aim_executer.get_executer(view_angles);
+            executer.perform(aimbot_action).await.ok();
+            prev_view_angles = Some(executer.get_updated_viewangles().unwrap_or(view_angles));
+        } else {
+            prev_view_angles = Some(view_angles);
+        }
     }
     tracing::debug!("{}", s!("task end"));
 

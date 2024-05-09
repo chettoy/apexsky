@@ -28,6 +28,7 @@ use crate::game::player::GamePlayer;
 
 pub use apexsky::noobfstr;
 
+mod aim_actions;
 mod apexdream;
 mod context_impl;
 mod game;
@@ -64,7 +65,7 @@ struct SharedState {
     aim_entities: HashMap<u64, Arc<dyn AimEntity>>,
     local_player: Option<GamePlayer>,
     view_player: Option<GamePlayer>,
-    aimbot_state: Option<Aimbot>,
+    aimbot_state: Option<(Aimbot, Duration)>,
 }
 
 #[derive(Debug)]
@@ -158,8 +159,6 @@ impl TaskManager for State {
         let (access_tx, access_rx) = mpsc::channel(0x2000);
         let (aim_key_tx, aim_key_rx) = watch::channel(workers::aim::AimKeyStatus::default());
         let (aim_select_tx, aim_select_rx) = watch::channel(vec![]);
-        let (aim_delta_angles_tx, aim_delta_angles_rx) = watch::channel([0.0, 0.0, 0.0]);
-        let (aim_action_tx, aim_action_rx) = mpsc::channel(5);
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
 
         self.io_thread = Some({
@@ -172,18 +171,15 @@ impl TaskManager for State {
             access_tx.clone(),
             aim_key_tx,
             aim_select_tx,
-            aim_delta_angles_tx,
-            aim_action_rx,
             aim_select_rx.clone(),
             items_glow_rx.clone(),
         )));
         self.aim_t = Some(task::spawn(aimbot_loop(
             self.active_tx.subscribe(),
             self.shared_state.clone(),
+            access_tx.clone(),
             aim_key_rx.clone(),
             aim_select_rx.clone(),
-            aim_delta_angles_rx.clone(),
-            aim_action_tx,
         )));
         self.control_t = Some(task::spawn(control_loop(
             self.active_tx.subscribe(),

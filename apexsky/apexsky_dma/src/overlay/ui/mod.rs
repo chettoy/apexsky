@@ -128,7 +128,7 @@ pub fn ui_system(
                 aimbot_locked: state
                     .aimbot_state
                     .as_ref()
-                    .map(|aimbot| aimbot.is_locked())
+                    .map(|(aimbot, _)| aimbot.is_locked())
                     .unwrap_or(false),
                 players: selected_players,
                 g_settings: global_settings(),
@@ -197,7 +197,7 @@ pub fn ui_system(
                 local_held: state
                     .aimbot_state
                     .as_ref()
-                    .map(|aimbot| {
+                    .map(|(aimbot, _)| {
                         format!(
                             "{}{}{}{}",
                             s!("held="),
@@ -396,7 +396,7 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
 
     let info = {
         let state = overlay_state.shared_state.read();
-        if let Some(aimbot) = state.aimbot_state.as_ref() {
+        if let Some((aimbot, aim_duration)) = state.aimbot_state.as_ref() {
             let aimbot_mode = aimbot.get_settings().aim_mode;
             let (aimbot_status_color, aimbot_status_text) = if aimbot.is_locked() {
                 (
@@ -412,7 +412,10 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
             } else if aimbot_mode & 0x4 != 0 {
                 (Color32::GREEN, s!("Aim Assist").to_string())
             } else if aimbot_mode & 0x2 != 0 {
-                (Color32::GREEN, s!("Aim On").to_string())
+                (
+                    Color32::GREEN,
+                    format!("{}{}", s!("Aim On "), aim_duration.as_millis()),
+                )
             } else if aimbot_mode == 0 {
                 (Color32::RED, s!("Aim Off").to_string())
             } else {

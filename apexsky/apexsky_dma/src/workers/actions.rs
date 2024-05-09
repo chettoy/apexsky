@@ -1,7 +1,7 @@
 use anyhow::Context;
 use apexsky::noobfstr as s;
 use apexsky::{
-    aimbot::{calc_angle, calc_fov, normalize_angles, AimEntity},
+    aimbot::{calc_angle, calc_fov, AimEntity},
     config::Settings,
     global_state::G_STATE,
     init_spec_checker, is_spec,
@@ -14,9 +14,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::mem::size_of;
 use std::{collections::HashMap, sync::Arc, time::Duration};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::watch;
 use tokio::time::{sleep, Instant};
-use tracing::{instrument, trace, trace_span, Instrument};
+use tracing::{instrument, trace, trace_span};
 
 use crate::apexdream::{
     base::math,
@@ -28,7 +28,7 @@ use crate::workers::access::{AccessType, PendingAccessRequest, PendingMemRead, P
 use crate::{SharedState, TreasureClue};
 
 use super::access::MemApi;
-use super::aim::{AimKeyStatus, AimbotAction, PreSelectedTarget};
+use super::aim::{AimKeyStatus, PreSelectedTarget};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpectatorInfo {
@@ -38,8 +38,6 @@ pub struct SpectatorInfo {
     pub love_status: LoveStatus,
 }
 
-const ENABLE_MEM_AIM: bool = true;
-
 #[instrument(skip_all)]
 pub async fn actions_loop(
     mut active: watch::Receiver<bool>,
@@ -47,8 +45,6 @@ pub async fn actions_loop(
     access_tx: MemApi,
     aim_key_tx: watch::Sender<AimKeyStatus>,
     aim_select_tx: watch::Sender<Vec<PreSelectedTarget>>,
-    aim_delta_angles_tx: watch::Sender<[f32; 3]>,
-    mut aim_action_rx: mpsc::Receiver<AimbotAction>,
     mut aim_select_rx: watch::Receiver<Vec<PreSelectedTarget>>,
     mut items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
 ) -> anyhow::Result<()> {
@@ -61,7 +57,6 @@ pub async fn actions_loop(
     let mut log_items: usize = 0;
     let mut world_ready: bool = false;
     let mut player_ready: bool = false;
-    let mut prev_view_angles: Option<[f32; 3]> = None;
 
     tracing::debug!("{}", s!("task start"));
 
@@ -105,53 +100,21 @@ pub async fn actions_loop(
             actions_tick += 1;
             let verbose = actions_tick % 1_000 == 0;
 
-            let (_, (tick_duration, apex_state, is_newly_connected)) = {
-                let (rec_lplayer, rec_attack_state) = {
-                    let prev_state = apexdream.get_state();
-                    (
-                        prev_state.client.local_player_ptr,
-                        prev_state.in_attack_state(),
-                    )
-                };
-
-                let task_aimbot_actions = async {
-                    if player_ready {
-                        if rec_lplayer == 0 {
-                            tracing::warn!("{}", s!("UNREACHABLE: invalid localplayer"));
-                        } else {
-                            perform_aimbot_actions(
-                                rec_lplayer,
-                                mem,
-                                apex_base,
-                                &mut prev_view_angles,
-                                &aim_delta_angles_tx,
-                                &mut aim_action_rx,
-                                rec_attack_state,
-                            )
-                            .instrument(trace_span!("Perform aimbot actions"))
-                            .await;
-                        }
-                    }
-                };
-
-                let task_tick_game_state = async {
-                    // Tick game state
-                    (
-                        {
-                            let mut api = crate::apexdream::api::Api {
-                                apex_base: apex_base.into(),
-                                mem_access: mem.clone(),
-                            };
-                            let tick_start = Instant::now();
-                            apexdream.tick_state(&mut api).await;
-                            tick_start.elapsed().as_millis()
-                        },
-                        apexdream.get_state(),
-                        apexdream.is_newly_connected(),
-                    )
-                };
-
-                tokio::join!(task_aimbot_actions, task_tick_game_state)
+            // Tick game state
+            let (tick_duration, apex_state, is_newly_connected) = {
+                (
+                    {
+                        let mut api = crate::apexdream::api::Api {
+                            apex_base: apex_base.into(),
+                            mem_access: mem.clone(),
+                        };
+                        let tick_start = Instant::now();
+                        apexdream.tick_state(&mut api).await;
+                        tick_start.elapsed().as_millis()
+                    },
+                    apexdream.get_state(),
+                    apexdream.is_newly_connected(),
+                )
             };
 
             if verbose {
@@ -735,85 +698,6 @@ pub async fn actions_loop(
 }
 
 #[instrument(skip_all)]
-async fn perform_aimbot_actions(
-    lplayer: u64,
-    mem: &MemApi,
-    apex_base: u64,
-    prev_view_angles: &mut Option<[f32; 3]>,
-    aim_delta_angles_tx: &watch::Sender<[f32; 3]>,
-    aim_action_rx: &mut mpsc::Receiver<AimbotAction>,
-    trigger_state: bool,
-) {
-    let ptr = lplayer;
-
-    // read view_angles
-    let view_angles = match read_viewangles(mem, ptr).await {
-        Ok(v) => v,
-        Err(e) => {
-            tracing::warn!(%e, "{}", s!("err read viewangles"));
-            return;
-        }
-    };
-
-    if !(view_angles[0].is_finite() && view_angles[1].is_finite() && view_angles[2].is_finite()) {
-        tracing::warn!(?view_angles, "{}", s!("got invalid view_angles"));
-        return;
-    }
-    // send delta_view_angles
-    let delta_view_angles = prev_view_angles
-        .map(|prev| math::sub(view_angles, prev))
-        .unwrap_or([0.0, 0.0, 0.0]);
-    aim_delta_angles_tx
-        .send(delta_view_angles)
-        .unwrap_or_else(|e| {
-            tracing::error!(%e, ?aim_delta_angles_tx, "{}", s!("send delta_view_angles"));
-        });
-    *prev_view_angles = Some(view_angles);
-
-    // aimbot actions
-    match aim_action_rx.try_recv() {
-        Ok(action) => {
-            if ENABLE_MEM_AIM {
-                if let Some(delta) = action.shift_angles {
-                    // calc and check target view angles
-                    let mut update_angles = math::add(view_angles, delta);
-                    if update_angles[0].abs() > 360.0
-                        || update_angles[1].abs() > 360.0
-                        || update_angles[2].abs() > 360.0
-                    {
-                        tracing::warn!(?update_angles, "{}", s!("got invalid target view_angles"));
-                        return;
-                    }
-                    normalize_angles(&mut update_angles);
-
-                    // write target view angles
-                    if let Err(e) = write_viewangles(mem, ptr, &update_angles).await {
-                        tracing::warn!(%e, "{}", s!("err write viewangles"));
-                        return;
-                    }
-                    *prev_view_angles = Some(update_angles);
-                }
-                if let Some(trigger) = action.force_attack {
-                    if trigger != trigger_state {
-                        let force_attack = if trigger { 5 } else { 4 };
-                        if let Err(e) = write_attack_button(mem, apex_base, force_attack).await {
-                            tracing::warn!(%e, "{}", s!("err write force_attack"));
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            use tokio::sync::mpsc::error::TryRecvError;
-            if e != TryRecvError::Empty {
-                tracing::error!(%e, ?aim_action_rx, "{}", s!("perform aimbot actions"));
-            }
-        }
-    }
-}
-
-#[instrument(skip_all)]
 fn process_player<'a>(
     local_player: &GamePlayer,
     target_entity: &dyn AimEntity,
@@ -1164,37 +1048,4 @@ fn teammate_check(
         entity_team == local_team
             || (map_testing_local_team != 0 && entity_team == map_testing_local_team)
     }
-}
-
-async fn read_viewangles(mem: &MemApi, ptr: u64) -> anyhow::Result<[f32; 3]> {
-    AccessType::mem_read(ptr + G_OFFSETS.player_viewangles, size_of::<[f32; 3]>(), 0)
-        .with_priority(50)
-        .dispatch(mem)
-        .await?
-        .recv_for::<[f32; 3]>()
-        .await
-}
-
-async fn write_viewangles(mem: &MemApi, ptr: u64, data: &[f32; 3]) -> anyhow::Result<()> {
-    AccessType::mem_write_typed::<[f32; 3]>(ptr + G_OFFSETS.player_viewangles, data, 0)
-        .with_priority(50)
-        .dispatch(mem)
-        .await?
-        .await?
-}
-
-async fn write_attack_button(
-    mem: &MemApi,
-    apex_base: u64,
-    force_attack_state: i32,
-) -> anyhow::Result<()> {
-    AccessType::mem_write_typed::<i32>(
-        apex_base + G_OFFSETS.in_attack + 0x8,
-        &force_attack_state,
-        0,
-    )
-    .with_priority(50)
-    .dispatch(mem)
-    .await?
-    .await?
 }
