@@ -150,6 +150,12 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 sudo apt install cmake clang protobuf-compiler libusb-1.0-0-dev libzstd-dev libglfw3-dev libfreetype6-dev libvulkan-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev wayland-protocols libwayland-dev libxkbcommon-dev
 ```
 
+**Install Build Dependencies (Arch):**
+
+```bash
+sudo pacman -S cmake clang protobuf libusb zstd glfw-x11 freetype2 vulkan-headers libxrandr libxinerama libxcursor libxi libxext wayland-protocols wayland libxkbcommon imagemagick
+```
+
 **Build:**
 
 ```shell
