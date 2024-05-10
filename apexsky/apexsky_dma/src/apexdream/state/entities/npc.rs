@@ -1,3 +1,5 @@
+use apexsky::offsets::G_OFFSETS;
+
 use super::*;
 
 #[derive(Default, Debug, Clone)]
@@ -132,7 +134,8 @@ impl Entity for BaseNPCEntity {
             state: [
                 data.entity_flags,
                 data.entity_life_state,
-                data.bcc_last_visible_time,
+                //data.bcc_last_visible_time,
+                G_OFFSETS.player_last_visible_time.try_into().unwrap(),
             ],
         };
 
