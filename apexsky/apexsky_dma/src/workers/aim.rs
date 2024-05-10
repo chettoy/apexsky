@@ -24,9 +24,10 @@ pub trait ContextForAimbot {
     async fn get_aimbot_settings(&self) -> Option<AimbotSettings>;
     async fn get_entity(&self, target_ptr: u64) -> Option<Arc<dyn AimEntity>>;
     async fn get_frame_count(&self) -> u32;
+    async fn get_game_baseaddr(&self) -> Option<u64>;
     async fn get_game_fps(&self) -> f32;
     async fn get_held_id(&self) -> Option<i32>;
-    //async fn get_player_ptr(&self) -> u64;
+    async fn get_player_ptr(&self) -> u64;
     async fn get_weapon_info(&self) -> Option<CurrentWeaponInfo>;
     async fn is_world_ready(&self) -> bool;
     async fn update_aim_target_for_esp(&mut self, position: [f32; 3]);
@@ -66,7 +67,7 @@ pub async fn aimbot_loop(
     let mut natural_delta_viewangles: [f32; 3] = [0.0, 0.0, 0.0];
     let mut prev_recoil_angle: [f32; 3] = [0.0, 0.0, 0.0];
     let mut prev_view_angles: Option<[f32; 3]> = None;
-    let mut mem_aim_executer = MemAimHelper {
+    let mut mem_aim_helper = MemAimHelper {
         mem: access_tx.clone(),
         apex_base: 0,
         lplayer_ptr: 0,
@@ -82,22 +83,30 @@ pub async fn aimbot_loop(
         start_instant = Instant::now();
 
         // Check game_attached and world_ready
-        if !state.read().game_attached || !state.is_world_ready().await {
+        if !state.is_world_ready().await {
             tracing::trace!("{}", s!("waiting for world ready"));
             start_instant += Duration::from_millis(500);
             sleep_until(start_instant).await;
             continue;
         }
         // Check base_addr and local_player_ptr
-        mem_aim_executer.self_update().await;
-        if !mem_aim_executer.ready() {
+        {
+            let rlock = state.read();
+            mem_aim_helper.apex_base = rlock.game_baseaddr.unwrap_or(0);
+            mem_aim_helper.lplayer_ptr = rlock
+                .local_player
+                .as_ref()
+                .map(|e| e.get_entity().entity_ptr.into_raw())
+                .unwrap_or(0);
+        }
+        if !mem_aim_helper.ready() {
             tracing::trace!("{}", s!("waiting for mem_aim_executer ready"));
             start_instant += Duration::from_millis(500);
             sleep_until(start_instant).await;
             continue;
         }
         // Check local_player entity
-        let Some(local_entity) = state.get_entity(mem_aim_executer.lplayer_ptr).await else {
+        let Some(local_entity) = state.get_entity(mem_aim_helper.lplayer_ptr).await else {
             tracing::trace!("{}", s!("waiting for local player ready"));
             start_instant += Duration::from_millis(500);
             sleep_until(start_instant).await;
@@ -168,7 +177,7 @@ pub async fn aimbot_loop(
         }
 
         // Update Aimbot state
-        aimbot.update(mem_aim_executer.lplayer_ptr, state.get_game_fps().await);
+        aimbot.update(mem_aim_helper.lplayer_ptr, state.get_game_fps().await);
 
         let aiming = aimbot.is_aiming();
         //tracing::trace!(?aiming, "711aac39-e83c-4788");
@@ -335,7 +344,7 @@ pub async fn aimbot_loop(
 
         // Read view_angles
         let view_angles =
-            match MemAimHelper::read_viewangles(&access_tx, mem_aim_executer.lplayer_ptr).await {
+            match MemAimHelper::read_viewangles(&access_tx, mem_aim_helper.lplayer_ptr).await {
                 Ok(v) => v,
                 Err(e) => {
                     tracing::warn!(%e, "{}", s!("err read viewangles"));
@@ -353,7 +362,7 @@ pub async fn aimbot_loop(
             .unwrap_or([0.0, 0.0, 0.0]);
         // Perform aimbot action
         if ENABLE_MEM_AIM {
-            let mut executer = mem_aim_executer.get_executer(view_angles);
+            let mut executer = mem_aim_helper.get_executer(view_angles);
             executer.perform(aimbot_action).await.ok();
             prev_view_angles = Some(executer.get_updated_viewangles().unwrap_or(view_angles));
         } else {

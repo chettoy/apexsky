@@ -35,6 +35,11 @@ impl ContextForAimbot for Arc<RwLock<SharedState>> {
     }
 
     #[instrument]
+    async fn get_game_baseaddr(&self) -> Option<u64> {
+        self.read().game_baseaddr
+    }
+
+    #[instrument]
     async fn get_game_fps(&self) -> f32 {
         self.read().game_fps
     }
@@ -47,14 +52,14 @@ impl ContextForAimbot for Arc<RwLock<SharedState>> {
             .map(|p| p.get_entity().selected_slot as i32)
     }
 
-    // #[instrument]
-    // async fn get_player_ptr(&self) -> u64 {
-    //     self.read()
-    //         .local_player
-    //         .as_ref()
-    //         .map(|e| e.get_entity().entity_ptr.into_raw())
-    //         .unwrap_or(0)
-    // }
+    #[instrument]
+    async fn get_player_ptr(&self) -> u64 {
+        self.read()
+            .local_player
+            .as_ref()
+            .map(|e| e.get_entity().entity_ptr.into_raw())
+            .unwrap_or(0)
+    }
 
     #[instrument]
     async fn get_weapon_info(&self) -> Option<apexsky::aimbot::CurrentWeaponInfo> {

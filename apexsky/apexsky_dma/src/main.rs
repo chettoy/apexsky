@@ -47,7 +47,7 @@ struct TreasureClue {
 
 #[derive(Debug, Default, Clone)]
 struct SharedState {
-    game_attached: bool,
+    game_baseaddr: Option<u64>,
     update_time: f64,
     update_duration: (u128, u128),
     aim_target: [f32; 3],
@@ -352,7 +352,7 @@ fn main() {
         rt.block_on(async {
             loop {
                 state
-                    .toggle_tui_active(if state.shared_state.read().game_attached {
+                    .toggle_tui_active(if state.shared_state.read().game_baseaddr.is_some() {
                         !debug_mode
                     } else {
                         false

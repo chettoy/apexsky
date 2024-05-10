@@ -247,7 +247,7 @@ impl<'a> MemProc for MemflowProc<'a> {
         let addr = Address::from(addr);
 
         let mut result = Ok(());
-        for i in 0..3 {
+        for i in 0..2 {
             result = self.proc.read_raw_into(addr, out);
             match &result {
                 Ok(_) => {

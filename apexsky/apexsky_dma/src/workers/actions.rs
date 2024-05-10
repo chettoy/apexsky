@@ -63,19 +63,21 @@ pub async fn actions_loop(
     while *active.borrow_and_update() {
         sleep(Duration::from_secs(2)).await;
 
-        if AccessType::mem_baseaddr()
+        match AccessType::mem_baseaddr()
             .with_priority(100)
             .dispatch(&access_tx)
             .await?
             .await?
-            .is_none()
         {
-            shared_state.write().game_attached = false;
-            continue;
-        }
-
-        if !shared_state.read().game_attached {
-            shared_state.write().game_attached = true;
+            Some(baseaddr) => {
+                if shared_state.read().game_baseaddr.is_none() {
+                    shared_state.write().game_baseaddr = Some(baseaddr);
+                }
+            }
+            None => {
+                shared_state.write().game_baseaddr = None;
+                continue;
+            }
         }
 
         while *active.borrow_and_update() {
@@ -90,7 +92,7 @@ pub async fn actions_loop(
                 .await?
                 .await?
             else {
-                shared_state.write().game_attached = false;
+                shared_state.write().game_baseaddr = None;
                 break;
             };
             let mem = &access_tx;
@@ -169,6 +171,7 @@ pub async fn actions_loop(
 
                 let mut wlock = shared_state.write();
 
+                wlock.game_baseaddr = Some(apex_base);
                 wlock.world_ready = world_ready;
                 player_ready = world_ready && wlock.local_player.is_some();
 

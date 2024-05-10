@@ -27,7 +27,7 @@ pub async fn items_loop(
 
         {
             let state = shared_state.read();
-            if !state.game_attached || !state.world_ready {
+            if state.game_baseaddr.is_none() || !state.world_ready {
                 tracing::trace!("{}", s!("waiting for world ready"));
                 continue;
             }

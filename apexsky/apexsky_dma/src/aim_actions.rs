@@ -57,7 +57,7 @@ impl MemAimHelper {
 
     async fn read_ptr(mem: &MemApi) -> Option<(u64, u64)> {
         let apex_base = AccessType::mem_baseaddr()
-            .with_priority(100)
+            .with_priority(1)
             .dispatch(&mem)
             .await
             .ok()?
@@ -65,7 +65,7 @@ impl MemAimHelper {
             .ok()??;
         let lplayer_ptr =
             AccessType::mem_read(apex_base + G_OFFSETS.local_ent, size_of::<u64>(), 0)
-                .with_priority(100)
+                .with_priority(1)
                 .dispatch(&mem)
                 .await
                 .ok()?
