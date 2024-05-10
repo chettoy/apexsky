@@ -149,16 +149,53 @@ pub fn io_thread(
     };
 
     while *active.borrow() {
+        start_instant = Instant::now();
+
+        // Fallback response
+        if !accessible {
+            loop {
+                match access_rx.try_recv() {
+                    Ok(req) => match req.req {
+                        AccessType::FlushRequests(r) => {
+                            r.future_tx.send(0).ok();
+                        }
+                        AccessType::MemBaseaddr(r) => {
+                            r.future_tx.send(None).ok();
+                        }
+                        AccessType::MemRead(r) => {
+                            r.future_tx
+                                .send(Err(anyhow::anyhow!("{}", s!("!accessible"))))
+                                .ok();
+                        }
+                        AccessType::MemWrite(r) => {
+                            r.future_tx
+                                .send(Err(anyhow::anyhow!("{}", s!("!accessible"))))
+                                .ok();
+                        }
+                    },
+                    Err(e) => {
+                        match e {
+                            mpsc::error::TryRecvError::Empty => (),
+                            mpsc::error::TryRecvError::Disconnected => {
+                                tracing::error!(%e, ?e);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
         // Find game process
         let Some(mut mem) = find_game_process(&mut mem_os) else {
             accessible = false;
-            sleep(Duration::from_secs(2));
+            sleep_until(start_instant + Duration::from_secs(2));
             continue;
         };
         // Check
         if mem.check_proc_status() != ProcessStatus::FoundReady {
             accessible = false;
-            sleep(Duration::from_secs(2));
+            sleep_until(start_instant + Duration::from_secs(2));
             continue;
         }
 

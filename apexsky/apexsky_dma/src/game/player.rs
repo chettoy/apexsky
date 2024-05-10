@@ -207,7 +207,8 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     #[tracing::instrument]
     fn get_health(&self) -> i32 {
         if self.health < 0 {
-            tracing::error!(?self);
+            tracing::debug!(?self);
+            return 0;
         }
         self.health
     }
@@ -215,7 +216,8 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     #[tracing::instrument]
     fn get_shield_health(&self) -> i32 {
         if self.shields < 0 {
-            tracing::error!(?self);
+            tracing::debug!(?self);
+            return 0;
         }
         self.shields
     }
@@ -223,7 +225,8 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     #[tracing::instrument]
     fn get_max_health(&self) -> i32 {
         if self.max_health < 0 {
-            tracing::error!(?self);
+            tracing::debug!(?self);
+            return 0;
         }
         self.max_health
     }
@@ -231,7 +234,8 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     #[tracing::instrument]
     fn get_max_shield_health(&self) -> i32 {
         if self.max_shields < 0 {
-            tracing::error!(?self);
+            tracing::debug!(?self);
+            return 0;
         }
         self.max_shields
     }
