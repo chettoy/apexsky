@@ -11,6 +11,7 @@ target/
 *.dylib
 .vscode
 Cargo.lock
+!apexsky/Cargo.lock
 .vscode/
 build/
 .cache

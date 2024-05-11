@@ -4,34 +4,37 @@
 #include "lib/xorstr/xorstr.hpp"
 #include "vector.h"
 #include <array>
-#include <cassert>
-#include <cfloat>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib> // For the system() function
-#include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <ostream>
 #include <set>
-#include <shared_mutex>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <thread>
-#include <unistd.h>
-#include <unordered_map> // Include the unordered_map header
 #include <vector>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+#ifdef __linux__
+#include <unistd.h>
+#endif
+
 // this is a test, with seconds
 Memory apex_mem;
 extern const exported_offsets_t offsets;
 
 // Just setting things up, dont edit.
 bool active = true;
-const int ENT_NUM = 10000;
+const int ENT_NUM = 300;
 extern Vector aim_target; // for esp
 int map_testing_local_team = 0;
 
@@ -130,19 +133,19 @@ bool IsInCrossHair(Entity &target) {
   return is_in_cross_hair;
 }
 
-void MapRadarTesting() { // 为什么这能把雷达搞出来...不就来回写了一个地址
+void MapRadarTesting() {
   uintptr_t pLocal;
   apex_mem.Read<uint64_t>(g_Base + offsets.local_ent, pLocal);
   int dt;
-  apex_mem.Read<int>(pLocal + offsets.entity_team, dt);
+  apex_mem.Read<int>(pLocal + offsets.entity_team_num, dt);
   map_testing_local_team = dt;
 
   for (uintptr_t i = 0; i <= 80000; i++) {
-    apex_mem.Write<int>(pLocal + offsets.entity_team, 1);
+    apex_mem.Write<int>(pLocal + offsets.entity_team_num, 1);
   }
 
   for (uintptr_t i = 0; i <= 80000; i++) {
-    apex_mem.Write<int>(pLocal + offsets.entity_team, dt);
+    apex_mem.Write<int>(pLocal + offsets.entity_team_num, dt);
   }
   map_testing_local_team = 0;
 }
@@ -160,8 +163,8 @@ void ClientActions() {
       apex_mem.Read<uint64_t>(g_Base + offsets.local_ent, local_player_ptr);
 
       // read game states
-      apex_mem.Read<typeof(button_state)>(g_Base + offsets.input_system + 0xb0,
-                                          button_state);
+      apex_mem.ReadArray<uint32_t>(g_Base + offsets.input_system + 0xb0,
+                                   button_state, 4);
 
       int attack_state = 0, zoom_state = 0, tduck_state = 0, jump_state = 0,
           backward_state = 0, forward_state = 0, skydrive_state = 0,
@@ -561,7 +564,7 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
 
   if (target.is_player && (!target.isAlive() || !LPlayer.isAlive())) {
     // Update yew to spec checker
-    tick_yew(target.ptr, target.GetYaw());
+    tick_yaw(target.ptr, target.GetYaw());
     // Exclude self from list when watching others
     if (target.ptr != LPlayer.ptr && is_spec(target.ptr)) {
       tmp_specs.insert(target.ptr);
@@ -620,7 +623,6 @@ void DoActions() {
   actions_t = true;
   while (actions_t) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     while (g_Base != 0) {
       std::this_thread::sleep_for(
@@ -632,15 +634,14 @@ void DoActions() {
         continue;
 
       char level_name[200] = {0};
-      apex_mem.ReadArray<char>(g_Base + offsets.levelname, level_name, 200);
+      apex_mem.ReadArray<char>(g_Base + offsets.level_name, level_name, 200);
       // printf("%s\n", level_name);
       if (strcmp(level_name, xorstr_("mp_lobby")) == 0) {
         map = 0;
       } else if (strcmp(level_name, xorstr_("mp_rr_canyonlands_staging_mu1")) ==
                  0) {
         map = 1;
-      } else if (strcmp(level_name, xorstr_("mp_rr_tropic_island_mu1_storm")) ==
-                 0) {
+      } else if (strcmp(level_name, xorstr_("mp_rr_tropic_island_mu2")) == 0) {
         map = 2;
       } else if (strcmp(level_name, xorstr_("mp_rr_desertlands_hu")) == 0) {
         map = 3;
@@ -655,15 +656,15 @@ void DoActions() {
 
       {
         // int pad = 0;
-        // apex_mem.Read<int>(LocalPlayer + offsets.player_controller_active, pad);
-        // bool controller_active = pad == 1;
+        // apex_mem.Read<int>(LocalPlayer + offsets.player_controller_active,
+        // pad); bool controller_active = pad == 1;
         bool firing_range_mode = map == 1;
 
         bool update = true;
         auto settings = global_settings();
         // if (settings.aimbot_settings.gamepad != controller_active) {
         //   settings.aimbot_settings.gamepad = controller_active;
-        // } else 
+        // } else
         if (settings.firing_range != firing_range_mode) {
           settings.firing_range = firing_range_mode;
         } else {
@@ -704,7 +705,7 @@ void DoActions() {
           init_spec_checker(LocalPlayer);
         }
         // Update local entity yew
-        tick_yew(LocalPlayer, LPlayer.GetYaw());
+        tick_yaw(LocalPlayer, LPlayer.GetYaw());
       }
 
       int frame_number = 0;
@@ -987,7 +988,7 @@ static void AimbotLoop() {
 
       { // Read held id
         int held_id;
-        apex_mem.Read<int>(LocalPlayer + offsets.off_weapon,
+        apex_mem.Read<int>(LocalPlayer + offsets.bcc_off_weapon,
                            held_id); // 0x1a1c
         aimbot_update_held_id(held_id);
       }
@@ -1154,6 +1155,7 @@ static void item_glow_t() {
       }
 
       for (int i = 0; i < itementcount; i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
         uint64_t centity = 0;
         apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
         if (centity == 0)
@@ -1584,16 +1586,6 @@ void terminal() {
 int main(int argc, char *argv[]) {
   load_settings();
 
-  // memflow-kvm available or run as root
-  if (geteuid() != 0 && access(xorstr_("/dev/memflow"), F_OK) == -1) {
-    // run as root..
-    print_run_as_root();
-
-    // test menu
-    run_tui_menu();
-    return 0;
-  }
-
   std::thread aimbot_thr;
   std::thread esp_thr;
   std::thread actions_thr;
@@ -1603,7 +1595,13 @@ int main(int argc, char *argv[]) {
   std::thread itemglow_thr;
   std::thread control_thr;
 
-  if (apex_mem.open_os() != 0) {
+  bool nokvm = (argc == 2 && strcmp("nokvm", argv[1]) == 0);
+  if (argc == 2 && strcmp("menu", argv[1]) == 0) {
+    run_tui_menu();
+    return 0;
+  } else if (apex_mem.open_os(nokvm) != 0) {
+    std::cout << xorstr_("Press any key to exit..") << std::endl;
+    std::cin.ignore();
     exit(0);
   }
 
@@ -1632,14 +1630,18 @@ int main(int argc, char *argv[]) {
       }
 
       std::this_thread::sleep_for(std::chrono::seconds(2));
-      printf("%s", xorstr_("Searching for apex process...\n"));
+      puts(xorstr_("Searching for apex process..."));
 
       apex_mem.open_proc(xorstr_("r5apex.exe"));
 
       if (apex_mem.get_proc_status() == process_status::FOUND_READY) {
         g_Base = apex_mem.get_proc_baseaddr();
-        printf("%s", xorstr_("\nApex process found\n"));
-        printf("%s%lx%s", xorstr_("Base: "), g_Base, xorstr_("\n"));
+        std::cout << std::endl << xorstr_("Apex process found") << std::endl;
+        std::cout << xorstr_("Base: 0x") << std::hex << g_Base << std::endl;
+
+        apex_mem.speed_test();
+        std::cout << xorstr_("Press any key to continue..") << std::endl;
+        std::cin.ignore();
 
         aimbot_thr = std::thread(AimbotLoop);
         esp_thr = std::thread(EspLoop);
@@ -1685,5 +1687,3 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
-
-

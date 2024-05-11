@@ -1,7 +1,6 @@
 #include "Game.h"
 #include "apex_sky.h"
 #include "lib/xorstr/xorstr.hpp"
-#include "prediction.h"
 #include "vector.h"
 #include <array>
 #include <cassert>
@@ -28,7 +27,7 @@ extern float veltest;
 extern Vector aim_target;
 
 bool Entity::Observing(uint64_t entitylist) {
-  return *(bool *)(buffer + offsets.observer_mode);
+  return *(bool *)(buffer + offsets.player_observer_state);
 }
 
 // https://github.com/CasualX/apexbot/blob/master/src/state.cpp#L104
@@ -49,7 +48,7 @@ void get_class_name(uint64_t entity_ptr, char *out_str) {
   apex_mem.ReadArray<char>(client_class.pNetworkName, out_str, 32);
 }
 
-int Entity::getTeamId() { return *(int *)(buffer + offsets.entity_team); }
+int Entity::getTeamId() { return *(int *)(buffer + offsets.entity_team_num); }
 
 int Entity::getHealth() {
   assert(this->is_player);
@@ -63,10 +62,12 @@ int Entity::getArmortype() {
   return armortype;
 }
 
-int Entity::getShield() { return *(int *)(buffer + offsets.entity_shield); }
+int Entity::getShield() {
+  return *(int *)(buffer + offsets.entity_shieldhealth);
+}
 
 int Entity::getMaxshield() {
-  return *(int *)(buffer + offsets.entity_maxshield);
+  return *(int *)(buffer + offsets.entity_maxshieldhealth);
 }
 
 Vector Entity::getAbsVelocity() {
@@ -110,18 +111,18 @@ bool Entity::isAlive() {
 }
 
 float Entity::lastVisTime() {
-  return *(float *)(buffer + offsets.visible_time);
+  return *(float *)(buffer + offsets.player_last_visible_time);
 }
 
 float Entity::lastCrossHairTime() {
-  return *(float *)(buffer + offsets.crosshair_last);
+  return *(float *)(buffer + offsets.cweaponx_crosshair_last);
 }
 
 Vector Entity::getBonePositionByHitbox(int id) {
   Vector origin = getPosition();
 
   // BoneByHitBox
-  uint64_t Model = *(uint64_t *)(buffer + offsets.studiohdr);
+  uint64_t Model = *(uint64_t *)(buffer + offsets.animating_studiohdr);
 
   // get studio hdr
   uint64_t StudioHdr;
@@ -155,7 +156,7 @@ Vector Entity::getBonePositionByHitbox(int id) {
 }
 
 QAngle Entity::GetSwayAngles() {
-  return *(QAngle *)(buffer + offsets.breath_angles);
+  return *(QAngle *)(buffer + offsets.player_breath_angles);
 }
 
 QAngle Entity::GetViewAngles() {
@@ -503,7 +504,8 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
   // Calculate the time since the last frame (in seconds)
   float deltaTime = 1.0 / aimbot.game_fps;
 
-  if (aimbot.weapon_headshot && distance <= aimbot.settings.headshot_dist) {
+  if (aimbot.weapon_info.weapon_headshot &&
+      distance <= aimbot.settings.headshot_dist) {
     TargetBonePositionMax = TargetBonePositionMin =
         target.getBonePositionByHitbox(0);
   } else if (aimbot.settings.bone_nearest) {
@@ -526,18 +528,20 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
         target.getBonePositionByHitbox(aimbot.settings.bone);
   }
 
-  if (!aimbot.weapon_grenade) {
+  if (!aimbot.held_grenade) {
     QAngle CalculatedAnglesMin =
         fun_calc_angles(LocalCamera, TargetBonePositionMin, targetVel,
-                        aimbot.bullet_speed, aimbot.bullet_gravity, deltaTime);
+                        aimbot.weapon_info.bullet_speed,
+                        aimbot.weapon_info.bullet_gravity, deltaTime);
     QAngle CalculatedAnglesMax =
         fun_calc_angles(LocalCamera, TargetBonePositionMax, targetVel,
-                        aimbot.bullet_speed, aimbot.bullet_gravity, deltaTime);
+                        aimbot.weapon_info.bullet_speed,
+                        aimbot.weapon_info.bullet_gravity, deltaTime);
 
     double fov0 = Math::GetFov(SwayAngles, CalculatedAnglesMin);
     double fov1 = Math::GetFov(SwayAngles, CalculatedAnglesMax);
     float max_fov = aimbot.max_fov;
-    float zoom_fov = aimbot.weapon_zoom_fov;
+    float zoom_fov = aimbot.weapon_info.weapon_zoom_fov;
     if (zoom_fov != 0.0f && zoom_fov != 1.0f) {
       max_fov *= zoom_fov / 90.0f;
     }
@@ -576,11 +580,11 @@ aim_angles_t CalculateBestBoneAim(Entity &from, Entity &target,
       return aim_angles_t{false};
     }
 
-    vec4_t skynade_angles =
-        skynade_angle(aimbot.weapon_id, aimbot.weapon_mod_bitfield,
-                      aimbot.bullet_gravity / 750.0f, aimbot.bullet_speed,
-                      view_origin.x, view_origin.y, view_origin.z,
-                      target_origin.x, target_origin.y, target_origin.z);
+    vec4_t skynade_angles = skynade_angle(
+        aimbot.weapon_info.weapon_id, aimbot.weapon_info.weapon_mod_bitfield,
+        aimbot.weapon_info.bullet_gravity / 750.0f,
+        aimbot.weapon_info.bullet_speed, view_origin.x, view_origin.y,
+        view_origin.z, target_origin.x, target_origin.y, target_origin.z);
 
     // printf("(%.1f, %.1f)\n", ViewAngles.x, ViewAngles.y);
 
@@ -655,7 +659,7 @@ void WeaponXEntity::update(uint64_t LocalPlayer) {
   extern uint64_t g_Base;
   uint64_t entitylist = g_Base + offsets.entitylist;
   uint64_t wephandle = 0;
-  apex_mem.Read<uint64_t>(LocalPlayer + offsets.active_weapon, wephandle);
+  apex_mem.Read<uint64_t>(LocalPlayer + offsets.bcc_active_weapon, wephandle);
 
   wephandle &= 0xffff;
 
@@ -663,9 +667,11 @@ void WeaponXEntity::update(uint64_t LocalPlayer) {
   apex_mem.Read<uint64_t>(entitylist + (wephandle << 5), wep_entity);
 
   projectile_speed = 0;
-  apex_mem.Read<float>(wep_entity + offsets.bullet_speed, projectile_speed);
+  apex_mem.Read<float>(wep_entity + offsets.cweaponx_bullet_speed,
+                       projectile_speed);
   projectile_scale = 0;
-  apex_mem.Read<float>(wep_entity + offsets.bullet_scale, projectile_scale);
+  apex_mem.Read<float>(wep_entity + offsets.cweaponx_bullet_scale,
+                       projectile_scale);
   zoom_fov = 0;
   apex_mem.Read<float>(wep_entity + offsets.weaponx_zoom_fov, zoom_fov);
   ammo = 0;
@@ -678,13 +684,16 @@ void WeaponXEntity::update(uint64_t LocalPlayer) {
   apex_mem.Read<int>(wep_entity + offsets.weaponx_bitfield_from_player,
                      mod_bitfield);
   weap_id = 0;
-  apex_mem.Read<uint32_t>(wep_entity + offsets.weaponx_weapon_name, weap_id);
+  apex_mem.Read<uint32_t>(wep_entity + offsets.weaponx_weapon_name_index,
+                          weap_id);
   lastChargeLevel = 0;
-  apex_mem.Read<int>(wep_entity + m_lastChargeLevel,lastChargeLevel);
+  apex_mem.Read<int>(wep_entity + m_lastChargeLevel, lastChargeLevel);
 }
 
-float WeaponXEntity::get_projectile_speed() { 
-return ((weap_id == 2) ? projectile_speed + pow(lastChargeLevel, 5.4684388195808) : projectile_speed);
+float WeaponXEntity::get_projectile_speed() {
+  return ((weap_id == 2)
+              ? projectile_speed + pow(lastChargeLevel, 5.4684388195808)
+              : projectile_speed);
 }
 
 float WeaponXEntity::get_projectile_gravity() {

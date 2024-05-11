@@ -3,6 +3,7 @@ mod offsets_loader;
 mod spectators;
 mod utils;
 
+use once_cell::sync::Lazy;
 use std::ffi::CString;
 
 pub use aimbot_utils::*;
@@ -46,6 +47,13 @@ trait PassData {
     fn new_buf(&mut self, size: i32) -> i32;
 }
 
+static S_LOAD: Lazy<String> = Lazy::new(|| s!("load").to_string());
+static S_MEMORY: Lazy<String> = Lazy::new(|| s!("memory").to_string());
+static S_PATH_HOST: Lazy<String> = Lazy::new(|| s!("/mnt/host").to_string());
+static S_PATH_MNT: Lazy<String> = Lazy::new(|| s!("/mnt").to_string());
+static S_PATH_TMP: Lazy<String> = Lazy::new(|| s!("/tmp").to_string());
+static S_SKYAPEX: Lazy<String> = Lazy::new(|| s!("skyapex").to_string());
+
 impl Skyapex {
     pub fn load() -> anyhow::Result<Self> {
         // {
@@ -68,16 +76,16 @@ impl Skyapex {
                 .with_config(config)
                 // .with_plugin_wasi_nn()
                 .build()?
-                .register_module_from_bytes(s!("skyapex"), mod_bytes)?;
+                .register_module_from_bytes(&*S_SKYAPEX, mod_bytes)?;
             let args: Vec<String> = std::env::args().collect();
             let envs: Vec<String> = std::env::vars()
                 .map(|(key, value)| format!("{}={}", key, value))
                 .collect();
             let preopens = vec![
                 s!("/").to_string(),
-                s!("/tmp").to_string(),
-                s!("/mnt").to_string(),
-                s!("/mnt/host:.").to_string(),
+                S_PATH_TMP.to_owned(),
+                S_PATH_MNT.to_owned(),
+                format!("{}{}", &*S_PATH_HOST, s!(":.")),
             ];
             let wasi_module = vm.wasi_module_mut().expect(s!("Not found wasi module"));
             wasi_module.initialize(
@@ -85,7 +93,7 @@ impl Skyapex {
                 Some(envs.iter().map(String::as_str).collect()),
                 Some(preopens.iter().map(String::as_str).collect()),
             );
-            vm.run_func(Some(s!("skyapex")), s!("load"), params!())?;
+            vm.run_func(Some(&*S_SKYAPEX), &*S_LOAD, params!())?;
 
             Ok(Skyapex { vm })
         }
@@ -114,7 +122,7 @@ impl Skyapex {
                 rt
             };
 
-            let mut wasi_env = WasiEnv::builder(s!("skyapex"))
+            let mut wasi_env = WasiEnv::builder(&*S_SKYAPEX)
                 .args(std::env::args())
                 .envs(std::env::vars().filter(|(k, _v)| !k.starts_with("=")))
                 .sandbox_fs({
@@ -126,11 +134,11 @@ impl Skyapex {
                         .build();
                     let fs_backing: Arc<dyn FileSystem + Send + Sync> =
                         Arc::new(PassthruFileSystem::new(default_fs_backing()));
-                    root_fs.remove_dir(Path::new(s!("/tmp")))?;
-                    root_fs.create_dir(Path::new(s!("/mnt")))?;
+                    root_fs.remove_dir(Path::new(&*S_PATH_TMP))?;
+                    root_fs.create_dir(Path::new(&*S_PATH_MNT))?;
                     for (host, guest) in vec![
-                        (std::env::temp_dir(), s!("/tmp")),
-                        (std::env::current_dir()?.to_path_buf(), s!("/mnt/host")),
+                        (std::env::temp_dir(), &*S_PATH_TMP),
+                        (std::env::current_dir()?.to_path_buf(), &*S_PATH_HOST),
                     ] {
                         let host = if !host.is_absolute() {
                             Path::new("/").join(host)
@@ -154,7 +162,7 @@ impl Skyapex {
             wasi_env.initialize(&mut store, instance.clone())?;
             instance
                 .exports
-                .get_function(s!("load"))?
+                .get_function(&*S_LOAD)?
                 .call(&mut store, &[])?;
             Ok(Skyapex {
                 store,
@@ -165,7 +173,7 @@ impl Skyapex {
     }
 
     pub fn pass_string(&mut self, data: String) -> anyhow::Result<i32> {
-        let cstr = CString::new(data).expect(s!("CString::new failed"));
+        let cstr = CString::new(data)?;
         let data = cstr.as_bytes_with_nul();
 
         let new_ptr = self.new_buf(data.len().try_into()?);
@@ -173,15 +181,12 @@ impl Skyapex {
         // Write the string into the lineary memory
         #[cfg(feature = "wasmedge")]
         {
-            let mut memory = self
-                .vm
-                .named_module_mut(s!("skyapex"))?
-                .memory(s!("memory"))?;
+            let mut memory = self.vm.named_module_mut(&*S_SKYAPEX)?.memory(&*S_MEMORY)?;
             memory.write(data, new_ptr as u32)?;
         }
         #[cfg(feature = "wasmer")]
         {
-            let memory = self.instance.exports.get_memory(s!("memory"))?;
+            let memory = self.instance.exports.get_memory(&*S_MEMORY)?;
             let mem_view = memory.view(&self.store);
             mem_view.write(new_ptr as u64, data)?;
         }
@@ -195,7 +200,7 @@ impl Skyapex {
         func_name: impl AsRef<str>,
         args: impl IntoIterator<Item = WasmValue>,
     ) -> anyhow::Result<Vec<WasmValue>> {
-        let res = self.vm.run_func(Some(s!("skyapex")), func_name, args)?;
+        let res = self.vm.run_func(Some(&*S_SKYAPEX), func_name, args)?;
         Ok(res)
     }
     #[cfg(feature = "wasmer")]

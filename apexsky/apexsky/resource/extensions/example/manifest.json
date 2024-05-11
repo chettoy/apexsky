@@ -1,0 +1,26 @@
+{
+    "manifest_version": 0,
+    "name": "Example Extension",
+    "version": "0.1.0",
+    "description": "A basic example extension",
+    "icons": {
+        "48": "images/icon-48.png",
+        "128": "images/icon-128.png"
+    },
+    "components": [
+        {
+            "service": "worker.js",
+            "type": "module"
+        }
+    ],
+    "permissions": [
+        {
+            "name": "com.chettoy.ACCESS_GAME_INPUT",
+            "value": ""
+        },
+        {
+            "name": "com.chettoy.MANAGE_GLOBAL_SETTINGS",
+            "value": ""
+        }
+    ]
+}
