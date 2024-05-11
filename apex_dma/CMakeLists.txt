@@ -12,12 +12,31 @@ include(CPack)
 set(CMAKE_CXX_STANDARD 20)
 set(CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wformat -march=native")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -stdlib=libc++")
+endif()
+
+if(NOT WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wformat -march=native")
+endif()
+
 set(CMAKE_BUILD_TYPE "Release")
 
 # libs
 set(DEP_LIBS_DIR ${PROJECT_SOURCE_DIR}/lib)
 include(ExternalProject)
+
+# Define library extensions based on platform
+if (WIN32)
+    set(LIB_PREFIX "")
+    set(SHARED_LIB_EXT ".dll")
+    set(STATIC_LIB_EXT ".lib")
+else()
+    set(LIB_PREFIX "lib")
+    set(SHARED_LIB_EXT ".so")
+    set(STATIC_LIB_EXT ".a")
+endif()
+
 ExternalProject_Add(
     memflow_ffi
     DOWNLOAD_COMMAND ""
@@ -25,32 +44,27 @@ ExternalProject_Add(
     BINARY_DIR ${DEP_LIBS_DIR}/memflow/
     BUILD_COMMAND cargo build --release
     INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${DEP_LIBS_DIR}/memflow/target/release/libmemflow_ffi.a
+    BUILD_BYPRODUCTS ${DEP_LIBS_DIR}/memflow/target/release/${LIB_PREFIX}memflow_ffi${STATIC_LIB_EXT}
     LOG_BUILD ON)
-ExternalProject_Add(
-    memflow_kvm
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BINARY_DIR ${DEP_LIBS_DIR}/memflow-kvm/
-    BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-kvm/target/release/libmemflow_kvm.so ${CMAKE_BINARY_DIR}/
-    LOG_BUILD ON)
-ExternalProject_Add(
-    memflow_qemu
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BINARY_DIR ${DEP_LIBS_DIR}/memflow-qemu/
-    BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-qemu/target/release/libmemflow_qemu.so ${CMAKE_BINARY_DIR}/
-    LOG_BUILD ON)
-ExternalProject_Add(
-    memflow_win32
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BINARY_DIR ${DEP_LIBS_DIR}/memflow-win32/
-    BUILD_COMMAND cargo build --release --all-features
-    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-win32/target/release/libmemflow_win32.so ${CMAKE_BINARY_DIR}/
-    LOG_BUILD ON)
+
+# ExternalProject_Add(
+#     memflow_pcileech
+#     DOWNLOAD_COMMAND ""
+#     CONFIGURE_COMMAND ""
+#     BINARY_DIR ${DEP_LIBS_DIR}/memflow-pcileech/
+#     BUILD_COMMAND cargo build --release --all-features
+#     INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-pcileech/target/release/${LIB_PREFIX}memflow_pcileech${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
+#     LOG_BUILD ON)
+
+# ExternalProject_Add(
+#     memflow_win32
+#     DOWNLOAD_COMMAND ""
+#     CONFIGURE_COMMAND ""
+#     BINARY_DIR ${DEP_LIBS_DIR}/memflow-win32/
+#     BUILD_COMMAND cargo build --release --all-features
+#     INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-win32/target/release/${LIB_PREFIX}memflow_win32${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
+#     LOG_BUILD ON)
+
 find_package(Threads REQUIRED)
 
 # GLFW
@@ -88,29 +102,51 @@ ExternalProject_Add(
     apexsky
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BINARY_DIR ${PROJECT_SOURCE_DIR}/apexsky/
+    BINARY_DIR ${PROJECT_SOURCE_DIR}/../apexsky/apexsky/
     BUILD_COMMAND cargo build --release
     INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/apexsky/target/release/libapexsky.a
+    BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/../apexsky/target/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
     LOG_BUILD ON)
 
 add_dependencies(apex_dma 
     apexsky
     memflow_ffi
-    memflow_kvm
-    memflow_qemu
-    memflow_win32)
+    # memflow_pcileech
+    # memflow_win32
+    )
 
-target_link_libraries(
-    apex_dma
-    ${PROJECT_SOURCE_DIR}/apexsky/target/release/libapexsky.a
-    ${DEP_LIBS_DIR}/memflow/target/release/libmemflow_ffi.a
-    glfw
-    GL
-    zstd
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${CMAKE_DL_LIBS}
-    m)
+    
+if (WIN32)
+    target_link_libraries(
+        apex_dma
+        ${PROJECT_SOURCE_DIR}/../apexsky/target/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
+        ${DEP_LIBS_DIR}/memflow/target/release/${LIB_PREFIX}memflow_ffi${STATIC_LIB_EXT}
+        glfw
+        opengl32
+        zstd
+        ${CMAKE_THREAD_LIBS_INIT}
+        ${CMAKE_DL_LIBS}
+        bcrypt
+        gdi32
+        imm32
+        ntdll
+        Crypt32
+        Iphlpapi
+        UserEnv
+        Ws2_32)
+else()
+    target_link_libraries(
+        apex_dma
+        ${PROJECT_SOURCE_DIR}/../apexsky/target/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
+        ${DEP_LIBS_DIR}/memflow/target/release/${LIB_PREFIX}memflow_ffi${STATIC_LIB_EXT}
+        glfw
+        GL
+        zstd
+        ${CMAKE_THREAD_LIBS_INIT}
+        ${CMAKE_DL_LIBS}
+        m)
+endif()
+
 target_include_directories(
     apex_dma PUBLIC
     ${DEP_LIBS_DIR}/memflow/memflow-ffi)

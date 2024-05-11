@@ -1,0 +1,36 @@
+[package]
+name = "apexsky_dma"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ambisonic = "0.4.1"
+anyhow = "1.0.83"
+apexsky = { path = "../apexsky" }
+async-trait = "0.1.80"
+bevy = { version = "0.13.2", features = ["wayland"] }
+bevy_egui = "0.27.0"
+bevy_health_bar3d = "3.2.1"
+bitset = "0.1.2"
+bitset-core = "0.1.1"
+chrono = "0.4.38"
+#console-subscriber = "0.1.5"
+dataview = "1.0.1"
+rand = "0.8.5"
+include-flate = "0.3.0"
+indexmap = { version = "2.2.6", features = ["serde"] }
+intptr = { version = "0.1.6", features = ["dataview_1", "serde"] }
+memflow = "0.2.1"
+memprocfs = "5.9.6"
+named_constants = "0.2.0"
+ndarray = "0.15.6"
+obfstr = "0.4.3"
+once_cell = "1.19.0"
+parking_lot = { version = "0.12.2", features = ["arc_lock", "nightly", "owning_ref", "serde"] }
+pe-parser = "0.5.1"
+serde = { version = "1.0.201", features = ["derive"] }
+serde_json = { version = "1.0.117", features = ["preserve_order"] }
+tokio = { version = "1.37.0", features = ["full"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }
+tracing-appender = "0.2.3"

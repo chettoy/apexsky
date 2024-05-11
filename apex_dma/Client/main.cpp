@@ -589,7 +589,7 @@ void Overlay::RenderEsp() {
       float radardistance = (int)(players[i].dist / 39.62);
 
       // Radar Stuff
-      if (g_settings.mini_map_radar == true) {
+      if (g_settings.mini_map_radar && !mainradartoggle) {
         MiniMapRadar(players[i].EntityPosition, players[i].LocalPlayerPosition,
                      players[i].localviewangle.y, radardistance,
                      players[i].entity_team, players[i].targetyaw);
@@ -615,7 +615,7 @@ void Overlay::RenderEsp() {
       }
 
       if (players[i].dist < g_settings.aimbot_settings.aim_dist) {
-        if (g_settings.esp_visuals.healthbar)
+        if (g_settings.esp_visuals.health_bar)
           DrawSeerLikeHealth((players[i].b_x - (players[i].width / 2.0f) + 5),
                              (players[i].b_y - players[i].height - 10),
                              players[i].shield, players[i].maxshield,
@@ -659,7 +659,7 @@ void Overlay::RenderEsp() {
         }
       }
       // Full Radar map, Need Manual setting of cords
-      if (g_settings.main_radar_map) {
+      if (g_settings.main_radar_map && mainradartoggle) {
         worldToScreenMap(players[i].EntityPosition, players[i].entity_team);
       }
     }
