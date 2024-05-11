@@ -181,8 +181,9 @@ int Memory::open_proc(const char *name) {
       //          << module_info.base << " " << module_info.name << " "
       //          << module_info.path << std::endl;
 //
-   //   proc.baseaddr = module_info.base;
-   //   status = process_status::FOUND_READY;
+     // proc.baseaddr = module_info.base;
+ 	proc.baseaddr = info->address;
+     	status = process_status::FOUND_READY;
   //  } else {
    //   status = process_status::FOUND_NO_ACCESS;
      // close_proc();
