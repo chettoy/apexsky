@@ -182,7 +182,7 @@ int Memory::open_proc(const char *name) {
       //          << module_info.path << std::endl;
 //
      // proc.baseaddr = module_info.base;
- 	proc.baseaddr = 0;
+ 	proc.baseaddr = 140701176299520;
      	status = process_status::FOUND_READY;
   //  } else {
    //   status = process_status::FOUND_NO_ACCESS;
