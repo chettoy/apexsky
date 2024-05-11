@@ -108,24 +108,28 @@ Look forward to your testing and feedback.
 
 ## Getting Started
 
-**apexsky_kvm:**
+**apexsky(next) kvm:**
 
 There are really only two steps:
 
 1. Run the game on a windows guest in a kvm virtual machine.
-2. Run the compiled apex_dma program on the Linux host.
+2. Run the compiled apexsky_dma program on the Linux host.
 
 
     ```shell
-    sudo ./apex_dma
+    sudo ./apexsky_dma kvm
     ```
 
 Additional information:
 
-1. Please put the overlay window on the top of the VM screen after start. For example, on top of the looking-glass window.
-2. For a better experience, please passthrough your keyboard, mouse or controller into the VM.
-3. Press Insert to open the Overlay menu. Press and hold the Insert key to temporarily interact with the overlay.
-4. If you are using a resolution other than 1080p, save the configuration and then modify the `screen_width` and `screen_height` in *settings.toml* and reload the configuration.
+1. If you're using the *memflow* connector, ensure you download the corresponding files and place them in the same directory:
+   - [libmemflow_win32.so](https://github.com/memflow/memflow-win32/releases/download/bin-stable/libmemflow_win32.x86_64.so)
+   - [libmemflow_qemu.so](https://github.com/memflow/memflow-qemu/releases/download/bin-0.2.1/libmemflow_qemu.x86_64.so)
+   - [libmemflow_kvm.so](https://github.com/memflow/memflow-kvm/releases/download/bin-stable/libmemflow_kvm.x86_64.so)
+2. Please put the overlay window on the top of the VM screen after start. For example, on top of the looking-glass window.
+3. For a better experience, please passthrough your keyboard, mouse or controller into the VM.
+4. Press Insert to open the Overlay menu. Press and hold the Insert key to temporarily interact with the overlay.
+5. If you are using a resolution other than 1080p, save the configuration and then modify the `screen_width` and `screen_height` in *settings.toml* and reload the configuration.
 
 Click on *[Actions](https://github.com/chettoy/apexsky/actions)* to download the auto-built artifacts.
 
@@ -135,10 +139,11 @@ Or compile it yourself.
 
 **Requirements:**
 
-* C++ toolchain
+* ~~C++ toolchain~~
 * Rust toolchain
-* CMake
+* ~~CMake~~
 * Git
+* Protoc (protobuf)
 
 **Install Rust:**
 
@@ -149,7 +154,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 **Install Build Dependencies (Ubuntu):**
 
 ```bash
-sudo apt install cmake clang protobuf-compiler libusb-1.0-0-dev libzstd-dev libglfw3-dev libfreetype6-dev libvulkan-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev wayland-protocols libwayland-dev libxkbcommon-dev
+sudo apt install clang protobuf-compiler libusb-1.0-0-dev libzstd-dev pkg-config libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0 libwayland-dev libxkbcommon-dev
 ```
 
 **Build:**
@@ -157,9 +162,10 @@ sudo apt install cmake clang protobuf-compiler libusb-1.0-0-dev libzstd-dev libg
 ```shell
 git clone --recurse https://github.com/chettoy/apexsky
 cd apexsky
+git checkout next
 git submodule update --init --recursive
-cd apex_dma
-./build.sh
+cd apexsky
+cargo build --release
 ```
 
 ## FAQ
@@ -175,7 +181,6 @@ cd apex_dma
     > First of all, everything related to game state is realized by *access on those specific memory locations*. So we need to use DMA or VM techniques to access memory covertly.
     > AC detects the overlay client, so we re-implement the overlay outside the VM and remove the client.
 
-3. I feel the aimbot seem not good as KrackerCo's one
 3. I feel the aimbot seem not good as KrackerCo's one
 
     > We added a few new parameters to aimbot, if you turn auto bone off, turn no-recoil on (it's off by default now) and set the aimbot predict fps to 75, aimbot will run the same as it did before with the same smoothing values.

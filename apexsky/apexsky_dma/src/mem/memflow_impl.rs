@@ -2,6 +2,7 @@ use crate::noobfstr as s;
 use anyhow::{anyhow, Context};
 use core::time;
 use memflow::prelude::v1::*;
+use pe_parser::pe::parse_portable_executable;
 use std::time::Instant;
 use tracing::instrument;
 
@@ -17,6 +18,8 @@ pub struct MemflowProc<'a> {
     status: ProcessStatus,
     proc: ProcessInstanceArcBox<'a>,
 }
+
+const MZ_HEADER: u16 = 0x5A4D;
 
 impl std::fmt::Debug for MemflowOs {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
@@ -140,8 +143,43 @@ impl super::MemOs for MemflowOs {
             s!(" "),
             proc_info.path
         );
+        let base_address = proc_info.address;
 
-        let module_info = proc.module_by_name(&name)?;
+        let module_info = match proc.module_by_name(&name) {
+            Ok(info) => info,
+            Err(e) => {
+                tracing::warn!(%e);
+                // Credit: https://www.unknowncheats.me/forum/anti-cheat-bypass/635533-eac-dtb-fix-memflow-rust-paste-ready.html
+                // the idea here is that since EAC sets CR3 to be invalid, memflow cannot resolve the correct DTB.
+                // DTBs must be page aligned, meaning we can iterate across every usize value incrementing by
+                // 4096 (0x1000) bytes, and we will quickly (~600ms) find the correct DTB.
+                // we can verify it is correct by reading the MZ header with our generated DTB value.
+                // once it is fixed, we will never have to touch it again, as we don't need to resolve the process
+                // each time we perform a read or write with memflow!
+                if proc.read::<u16>(base_address)? != MZ_HEADER {
+                    (0..=usize::MAX).step_by(0x1000).find(|&dtb| {
+                        proc.set_dtb(Address::from(dtb), Address::invalid())
+                            .unwrap();
+                        if proc.read::<u16>(base_address).unwrap() != MZ_HEADER {
+                            return false;
+                        }
+                        if let Ok(pe_dat) = proc.read_raw(base_address, 0x1000) {
+                            // parsing the PE is unneeded here, but sometimes you can find two dtbs that yield the MZ header.
+                            // if you are unable to read game addresses, add additional verification here,
+                            // such as trying to read localplayer and seeing if it resolves.
+                            if parse_portable_executable(pe_dat.as_slice()).is_ok() {
+                                tracing::info!("found correct dtb: {:X}", dtb);
+                                return true;
+                            }
+                        }
+
+                        false
+                    });
+                }
+
+                proc.module_by_name(&name)?
+            }
+        };
 
         println!(
             "{}{}{:x}{}{:x}{}{}{}{}",
@@ -178,11 +216,11 @@ impl<'a> MemProc for MemflowProc<'a> {
         }
 
         if self.status == ProcessStatus::FoundReady {
-            let mut c: i16 = 0;
+            let mut c: u16 = 0;
             self.read_raw_into(self.base_addr.to_umem(), dataview::bytes_mut(&mut c))
                 .ok();
 
-            if c != 0x5A4D {
+            if c != MZ_HEADER {
                 self.status = ProcessStatus::NotFound;
                 self.base_addr = Address::null();
             }

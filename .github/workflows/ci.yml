@@ -4,9 +4,9 @@ name: CI
 
 on:
   push:
-    branches: [ "dma-next", "feature-priority-io" ]
+    branches: [ "next" ]
   pull_request:
-    branches: [ "dma-next" ]
+    branches: [ "next" ]
 
 jobs:
   build:
