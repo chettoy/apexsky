@@ -173,23 +173,23 @@ int Memory::open_proc(const char *name) {
               << info->name << " " << info->path << std::endl;
 
     // find the module by its name
-    ModuleInfo module_info;
-    if (!(ret = proc.hProcess.module_by_name(CSliceRef<uint8_t>(target_module),
-                                             &module_info))) {
-      std::cout << target_proc << xorstr_(" module found: 0x") << std::hex
-                << module_info.address << xorstr_("] 0x") << std::hex
-                << module_info.base << " " << module_info.name << " "
-                << module_info.path << std::endl;
-
-      proc.baseaddr = module_info.base;
-      status = process_status::FOUND_READY;
-    } else {
-      status = process_status::FOUND_NO_ACCESS;
-      close_proc();
-
-      printf("%s%s\n", xorstr_("unable to find module: "), target_module);
-      log_debug_errorcode(ret);
-    }
+    //ModuleInfo module_info;
+    //if (!(ret = proc.hProcess.module_by_name(CSliceRef<uint8_t>(target_module),
+     //                                        &module_info))) {
+     // std::cout << target_proc << xorstr_(" module found: 0x") << std::hex
+      //          << module_info.address << xorstr_("] 0x") << std::hex
+      //          << module_info.base << " " << module_info.name << " "
+      //          << module_info.path << std::endl;
+//
+   //   proc.baseaddr = module_info.base;
+   //   status = process_status::FOUND_READY;
+  //  } else {
+   //   status = process_status::FOUND_NO_ACCESS;
+     // close_proc();
+//
+    //  printf("%s%s\n", xorstr_("unable to find module: "), target_module);
+    //  log_debug_errorcode(ret);
+   // }
   } else {
     status = process_status::NOT_FOUND;
   }
