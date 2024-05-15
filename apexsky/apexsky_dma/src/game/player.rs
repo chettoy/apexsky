@@ -173,6 +173,7 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
 
     fn get_bone_position_by_hitbox(&self, hitbox_id: u32) -> [f32; 3] {
         if self.studio.hitboxes.is_empty() {
+            tracing::debug!(?hitbox_id, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));
             return self.origin;
         }
 
@@ -280,6 +281,7 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
 
     fn get_bone_position_by_hitbox(&self, hitbox_id: u32) -> [f32; 3] {
         if self.studio.hitboxes.is_empty() {
+            tracing::debug!(?hitbox_id, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));
             return self.origin;
         }
 

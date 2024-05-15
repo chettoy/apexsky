@@ -30,6 +30,7 @@ macro_rules! define_item_id {
  * GameVersion=v3.0.68.50
  */
 pub const OFFSET_YAW: u64 = 0x223c - 0x8;
+pub const OFFSET_SPECTATOR_LIST: u64 = 0x1eacce8;
 pub const OFFSET_HIGHLIGHT_SETTINGS: u64 = 0xade4bc0;
 //pub const OFFSET_GLOW_CONTEXT_ID: u64 = 0x28c;
 pub const OFFSET_GLOW_VISIBLE_TYPE: u64 = 0x26c;

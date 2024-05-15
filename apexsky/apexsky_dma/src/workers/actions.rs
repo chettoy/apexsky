@@ -18,6 +18,7 @@ use tokio::sync::watch;
 use tokio::time::{sleep, Instant};
 use tracing::{instrument, trace, trace_span};
 
+use crate::apexdream::state::entities::Entity;
 use crate::apexdream::{
     base::math,
     sdk::HighlightBits,
@@ -123,22 +124,22 @@ pub async fn actions_loop(
                 trace!(loop_duration, tick_duration, ?apex_state.client, "{}", s!("game state update"));
             }
 
-            // Update spectator checker
-            if actions_tick % 15 == 0 && player_ready {
-                let lplayer_ptr = apex_state.client.local_player_ptr;
-                // Init spectator checker
-                if prev_lplayer_ptr != lplayer_ptr {
-                    init_spec_checker(lplayer_ptr);
-                    prev_lplayer_ptr = lplayer_ptr;
-                }
-                // Update yaw to spec checker
-                apex_state.players().for_each(|pl| {
-                    if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 50 {
-                        return;
-                    }
-                    apexsky::tick_yaw(pl.entity_ptr.into_raw(), pl.yaw);
-                });
-            }
+            // // Update spectator checker
+            // if actions_tick % 15 == 0 && player_ready {
+            //     let lplayer_ptr = apex_state.client.local_player_ptr;
+            //     // Init spectator checker
+            //     if prev_lplayer_ptr != lplayer_ptr {
+            //         init_spec_checker(lplayer_ptr);
+            //         prev_lplayer_ptr = lplayer_ptr;
+            //     }
+            //     // Update yaw to spec checker
+            //     apex_state.players().for_each(|pl| {
+            //         if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 50 {
+            //             return;
+            //         }
+            //         apexsky::tick_yaw(pl.entity_ptr.into_raw(), pl.yaw);
+            //     });
+            // }
 
             // Calc game FPS
             let game_fps_update = {
@@ -453,7 +454,6 @@ pub async fn actions_loop(
                                     })
                                     .collect()
                             } else {
-                                tracing::error!("{}", s!("UNREACHABLE: invalid localplayer"));
                                 vec![]
                             }
                         };
@@ -517,18 +517,32 @@ pub async fn actions_loop(
                         // Update spectator checker
                         let tmp_specs: Vec<SpectatorInfo> = players
                             .iter()
-                            .filter_map(|(&target_ptr, target_entity)| {
-                                let player_buf = target_entity.get_buf();
-                                if player_buf.is_alive && lplayer_alive {
-                                    None
-                                } else {
-                                    // Update yaw to spec checker
-                                    //apexsky::tick_yaw(target_ptr, player_buf.yaw);
-
-                                    // Exclude self from list when watching others
-                                    if target_ptr != lplayer_ptr && is_spec(target_ptr) {
+                            .filter_map(|(&player_ptr, player)| {
+                                apex_state
+                                    .get_observer_target(player.get_entity().get_info().handle)
+                                    .and_then(|observer_target| {
+                                        let target_ptr = observer_target.entity_ptr.into_raw();
+                                        if player_ptr == lplayer_ptr {
+                                            let Some(target_player) = players.get(&target_ptr)
+                                            else {
+                                                tracing::error!(
+                                                    ?target_ptr,
+                                                    "{}",
+                                                    s!("player not exists")
+                                                );
+                                                return None;
+                                            };
+                                            Some((target_ptr, target_player))
+                                        } else if target_ptr == lplayer_ptr {
+                                            Some((player_ptr, player))
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .and_then(|(item_ptr, item_player)| {
+                                        let player_buf = item_player.get_buf();
                                         Some(SpectatorInfo {
-                                            ptr: target_ptr,
+                                            ptr: item_ptr,
                                             name: player_buf.player_name.clone(),
                                             is_teammate: is_teammate(player_buf.team_num),
                                             love_status: player_buf
@@ -542,10 +556,7 @@ pub async fn actions_loop(
                                                     LoveStatus::Normal
                                                 }),
                                         })
-                                    } else {
-                                        None
-                                    }
-                                }
+                                    })
                             })
                             .collect();
 

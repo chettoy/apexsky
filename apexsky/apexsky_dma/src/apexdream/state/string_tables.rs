@@ -62,19 +62,44 @@ pub async fn load_string_table(
     offset: u32,
 ) -> anyhow::Result<()> {
     let mut ptr = sdk::Ptr::<CNetStringTable>::NULL;
-    let _ = api.vm_read_into(api.apex_base.field(offset), &mut ptr).await;
+    let _ = api
+        .vm_read_into(api.apex_base.field(offset), &mut ptr)
+        .await;
     if ptr.is_null() {
         return Ok(());
     }
     let table = api.vm_read(ptr).await?;
     let dict = api.vm_read(table.items).await?;
     *st = vec![String::new(); dict.used as usize].into_boxed_slice();
-    let mut buffer = [0u8; 64];
-    for (i, slot) in st.iter_mut().enumerate() {
-        if let Ok(item) = api.vm_read(dict.elements.at(i)).await {
+
+    async fn read_item(api: &Api, ptr: intptr::IntPtr<CNetStringTableItem>) -> Option<String> {
+        if let Ok(item) = api.vm_read(ptr).await {
+            let mut buffer = [0u8; 64];
             if let Ok(string) = api.vm_read_cstr(item.string, &mut buffer).await {
-                *slot = String::from(string);
+                return Some(String::from(string));
             }
+        }
+        None
+    }
+
+    let mut futs_read = vec![];
+    let mut start_read = |i| {
+        futs_read.push((
+            i,
+            tokio::spawn({
+                let api = api.clone();
+                let ptr = dict.elements.at(i);
+                async move { read_item(&api, ptr).await }
+            }),
+        ));
+    };
+
+    for (i, _slot) in st.iter().enumerate() {
+        start_read(i);
+    }
+    for (i, fut_read) in futs_read {
+        if let Some(data) = fut_read.await? {
+            *st.get_mut(i).unwrap() = data;
         }
     }
     Ok(())

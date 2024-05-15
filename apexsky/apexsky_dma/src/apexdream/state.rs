@@ -14,6 +14,7 @@ mod input_system;
 mod itemids;
 mod modifiers;
 mod name_list;
+mod observer_list;
 mod script_data;
 mod string_tables;
 mod studio;
@@ -32,6 +33,7 @@ pub struct GameState {
     pub input_system: input_system::InputSystem,
     pub string_tables: string_tables::StringTables,
     pub name_list: name_list::NameList,
+    pub observer_list: observer_list::ObserverList,
     pub buttons: buttons::Buttons,
     pub script_data: script_data::ScriptNetData,
     pub items: itemids::LootItems,
@@ -54,6 +56,7 @@ impl GameState {
             self.input_system.update(api, ctx),
             self.string_tables.update(api, ctx),
             self.name_list.update(api, ctx),
+            self.observer_list.update(api, ctx),
             self.buttons.update(api, ctx),
             self.script_data.update(api, ctx),
             self.items.update(api, ctx),

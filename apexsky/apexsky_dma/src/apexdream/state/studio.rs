@@ -1,4 +1,5 @@
 use super::*;
+use obfstr::obfstr as s;
 
 #[derive(Default, Debug, Clone)]
 pub struct StudioModel {
@@ -37,13 +38,15 @@ impl StudioModel {
             self.hitboxes.clear();
             return false;
         }
-        // Sometimes this pointer is garbage...
-        // Figure out why, this may cause triggerbot to fail!
-        if self.ptr.into_raw() % 8 != 0 {
-            return false;
-        }
+        // // Sometimes this pointer is garbage...
+        // // Figure out why, this may cause triggerbot to fail!
+        // if self.ptr.into_raw() % 8 != 0 {
+        //     tracing::warn!("{}", s!("invalid CStudioHdr ptr"));
+        //     return false;
+        // }
 
         let Ok(cstudio) = api.vm_read(self.ptr).await else {
+            // tracing::warn!("{}", s!("read cstudio"));
             return false;
         };
         if self.studiohdr_ptr == cstudio.m_pStudioHdr {
@@ -54,6 +57,7 @@ impl StudioModel {
             .vm_read_into(self.studiohdr_ptr, &mut self.studiohdr)
             .await
         else {
+            // tracing::warn!("{}", s!("read studiohdr"));
             return false;
         };
 
@@ -63,6 +67,7 @@ impl StudioModel {
         // Read bones
         let numbones = self.studiohdr.numbones as usize;
         if numbones > 256 {
+            tracing::warn!("{}", s!("too many bones to read"));
             return false;
         }
         if self.bones.len() != numbones {
@@ -77,6 +82,7 @@ impl StudioModel {
             )
             .await
         else {
+            // tracing::warn!("{}", s!("read bones"));
             return false;
         };
 
@@ -91,12 +97,14 @@ impl StudioModel {
             )
             .await
         else {
+            // tracing::warn!("{}", s!("read hitboxset"));
             return false;
         };
 
         // Read hitboxes
         let numhitboxes = self.hitboxset.numhitboxes as usize;
-        if numhitboxes > 512 {
+        if numhitboxes > 1024 {
+            tracing::warn!("{}", s!("too many hitboxes to read"));
             self.hitboxes.clear();
             return false;
         }
@@ -112,6 +120,7 @@ impl StudioModel {
                 )
                 .await
             else {
+                // tracing::warn!("{}", s!("read hitboxes"));
                 return false;
             };
         }

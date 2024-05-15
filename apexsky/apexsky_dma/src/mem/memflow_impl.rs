@@ -145,8 +145,26 @@ impl super::MemOs for MemflowOs {
             proc_info.path
         );
 
-        let module_info = match proc.module_by_name(&name) {
-            Ok(info) => info,
+        match proc.module_by_name(&name) {
+            Ok(module_info) => {
+                println!(
+                    "{}{}{:x}{}{:x}{}{}{}{}",
+                    name,
+                    s!(" module found: 0x"),
+                    module_info.address,
+                    s!("] 0x"),
+                    module_info.base,
+                    s!(" "),
+                    module_info.name,
+                    s!(" "),
+                    module_info.path
+                );
+                Ok(super::MemProcImpl::Memflow(MemflowProc {
+                    base_addr: module_info.base,
+                    status: ProcessStatus::FoundReady,
+                    proc,
+                }))
+            }
             Err(e) => {
                 tracing::warn!(%e);
                 let connector = memflow_qemu::create_connector(&Default::default())
@@ -158,8 +176,8 @@ impl super::MemOs for MemflowOs {
                         .context(s!("unable to create win32 instance with qemu connector"))?,
                 );
 
-                let mut win32_proc = win32_kernel.process_by_name(&name)?;
-                let section_base_address = win32_proc.proc_info.section_base;
+                let section_base_address =
+                    win32_kernel.process_by_name(&name)?.proc_info.section_base;
 
                 // Credit: https://www.unknowncheats.me/forum/anti-cheat-bypass/635533-eac-dtb-fix-memflow-rust-paste-ready.html
                 // the idea here is that since EAC sets CR3 to be invalid, memflow cannot resolve the correct DTB.
@@ -168,59 +186,50 @@ impl super::MemOs for MemflowOs {
                 // we can verify it is correct by reading the MZ header with our generated DTB value.
                 // once it is fixed, we will never have to touch it again, as we don't need to resolve the process
                 // each time we perform a read or write with memflow!
-                if win32_proc.read::<u16>(section_base_address)? != MZ_HEADER {
-                    (0..=usize::MAX).step_by(0x1000).find(|&dtb| {
-                        win32_proc
-                            .set_dtb(Address::from(dtb), Address::invalid())
+                if proc.read::<u16>(section_base_address)? != MZ_HEADER {
+                    if let Some(dtb) = (0..=usize::MAX).step_by(0x1000).find(|&dtb| {
+                        proc.set_dtb(Address::from(dtb), Address::invalid())
                             .unwrap();
                         if dtb > 0x1000 * 500 {
                             let progress = dtb / 0x1000;
-                            if progress % 10000 == 0 {
-                                tracing::warn!(?progress);
+                            if progress % 20000 == 0 {
+                                tracing::info!(?progress);
                             }
                         }
-                        if win32_proc.read::<u16>(section_base_address).unwrap() != MZ_HEADER {
+                        if proc.read::<u16>(section_base_address).unwrap() != MZ_HEADER {
                             return false;
                         }
-                        if let Ok(pe_dat) = win32_proc.read_raw(section_base_address, 0x1000) {
-                            tracing::info!("{}{:X}", s!("testing dtb: "), dtb);
+                        tracing::info!("{}{:X}", s!("testing dtb: "), dtb);
+                        if let Ok(pe_dat) = proc.read_raw(section_base_address, 0x1000) {
                             // parsing the PE is unneeded here, but sometimes you can find two dtbs that yield the MZ header.
                             // if you are unable to read game addresses, add additional verification here,
                             // such as trying to read localplayer and seeing if it resolves.
                             if parse_portable_executable(pe_dat.as_slice()).is_ok() {
-                                tracing::info!("{}{:X}", s!("found correct dtb: "), dtb);
-                                proc.set_dtb(Address::from(dtb), Address::invalid())
-                                    .unwrap();
                                 return true;
                             }
                         }
-
                         false
-                    });
+                    }) {
+                        tracing::info!("{}{:X}", s!("[+] dtb: "), dtb);
+                        Ok(super::MemProcImpl::Memflow(MemflowProc {
+                            base_addr: section_base_address,
+                            status: ProcessStatus::FoundReady,
+                            proc,
+                        }))
+                    } else {
+                        tracing::error!("{}", s!("[-] Failed to find module"));
+                        anyhow::bail!("{}", s!("Failed to find dtb"));
+                    }
+                } else {
+                    tracing::error!("{}", s!("f76f0a2e-80bb-4750-a295-0b065dc1c73b"));
+                    Ok(super::MemProcImpl::Memflow(MemflowProc {
+                        base_addr: section_base_address,
+                        status: ProcessStatus::FoundReady,
+                        proc,
+                    }))
                 }
-
-                win32_proc.module_by_name(&name)?
             }
-        };
-
-        println!(
-            "{}{}{:x}{}{:x}{}{}{}{}",
-            name,
-            s!(" module found: 0x"),
-            module_info.address,
-            s!("] 0x"),
-            module_info.base,
-            s!(" "),
-            module_info.name,
-            s!(" "),
-            module_info.path
-        );
-
-        Ok(super::MemProcImpl::Memflow(MemflowProc {
-            base_addr: module_info.base,
-            status: ProcessStatus::FoundReady,
-            proc,
-        }))
+        }
     }
 }
 
