@@ -482,13 +482,13 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
       // set glow color
       if (!(g_settings.firing_range) &&
           (Target.isKnocked() || !Target.isAlive())) {
-        setting_index = 80;
+        setting_index = 50;
         highlight_parameter = {g_settings.glow_r_knocked,
                                g_settings.glow_g_knocked,
                                g_settings.glow_b_knocked};
       } else if (Target.lastVisTime() > lastvis_aim[index] ||
                  (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f)) {
-        setting_index = 81;
+        setting_index = 51;
         highlight_parameter = {g_settings.glow_r_viz, g_settings.glow_g_viz,
                                g_settings.glow_b_viz};
       } else {
@@ -496,26 +496,26 @@ void SetPlayerGlow(Entity &LPlayer, Entity &Target, int index,
           int shield = Target.getShield();
           int health = Target.getHealth();
           if (shield + health <= 100) { // Orange
-            setting_index = 91;
+            setting_index = 60;
             highlight_parameter = {255 / 255.0, 165 / 255.0, 0 / 255.0};
           } else if (shield + health <= 150) { // white
-            setting_index = 92;
+            setting_index = 61;
             highlight_parameter = {247 / 255.0, 247 / 255.0, 247 / 255.0};
           } else if (shield + health <= 175) { // blue
-            setting_index = 93;
+            setting_index = 62;
             highlight_parameter = {39 / 255.0, 178 / 255.0, 255 / 255.0};
           } else if (shield + health <= 200) { // purple
-            setting_index = 94;
+            setting_index = 63;
             highlight_parameter = {206 / 255.0, 59 / 255.0, 255 / 255.0};
           } else if (shield + health <= 225) { // red
-            setting_index = 95;
+            setting_index = 64;
             highlight_parameter = {219 / 255.0, 2 / 255.0, 2 / 255.0};
           } else {
-            setting_index = 90;
+            setting_index = 65;
             highlight_parameter = {2 / 255.0, 2 / 255.0, 2 / 255.0};
           }
         } else {
-          setting_index = 82;
+          setting_index = 52;
           highlight_parameter = {g_settings.glow_r_not, g_settings.glow_g_not,
                                  g_settings.glow_b_not};
         }
