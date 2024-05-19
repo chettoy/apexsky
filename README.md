@@ -34,9 +34,7 @@
 Apex Legends QEMU/KVM/DMA/Linux hack
 
 UnknownCheats thread: <https://www.unknowncheats.me/forum/apex-legends/406426-kvm-vmread-apex-esp-aimbot.html>
-UnknownCheats thread: <https://www.unknowncheats.me/forum/apex-legends/406426-kvm-vmread-apex-esp-aimbot.html>
 
-Bone IDs reference: <https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes>
 Bone IDs reference: <https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes>
 
 Game version (Steam Only right now): v3.0.68.50
@@ -114,22 +112,38 @@ Look forward to your testing and feedback.
 ./apexsky_dma.exe --pcileech fpga
 ```
 
+
+
 **apexsky(next) VM:**
 
+There are really only two steps:
+
 1. Run the game on a windows guest in a kvm virtual machine.
-2. Find the virtual machine process PID and QMP address after starting the virtual machine, then run the compiled apexsky_dma program on the Linux host.
 
-    ```shell
-    sudo ./apexsky_dma --pcileech qemu://hugepage-pid=<PID>,qmp=<QMP_ADDRESS>
-    ```
+2. Run the compiled apex_dma program on the Linux host.
 
-    For example, if your VM's PID is 5678 and the QMP address is /tmp/qmp-win11.sock, the command would be:
+   * Using the DMA Library
 
-    ```shell
-    sudo ./apexsky_dma --pcileech qemu://hugepage-pid=5678,qmp=/tmp/qmp-win11.sock
-    ```
+     Find the virtual machine process PID and QMP address after starting the virtual machine, then run the compiled apexsky_dma program on the Linux host.
 
-    For more details, see https://github.com/ufrisk/LeechCore/wiki/Device_QEMU
+     ```shell
+     sudo ./apexsky_dma --pcileech qemu://hugepage-pid=<PID>,qmp=<QMP_ADDRESS>
+     ```
+
+     For example, if your VM's PID is 5678 and the QMP address is /tmp/qmp-win11.sock, the command would be:
+
+     ```shell
+     sudo ./apexsky_dma --pcileech qemu://hugepage-pid=5678,qmp=/tmp/qmp-win11.sock
+     ```
+
+     For more details, see https://github.com/ufrisk/LeechCore/wiki/Device_QEMU
+
+   * Using Memflow
+
+     ```bash
+     sudo ./apexsky_dma kvm
+     ```
+
 
 Additional information:
 
@@ -158,10 +172,18 @@ Or compile it yourself.
 * Git
 * Protoc (protobuf)
 
-**Install Rust(nightly):**
+**Install Rust nightly:**
+
+Run the following command to install `rustup`:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Set nightly as the default toolchain:
+
+```bash
+rustup default nightly
 ```
 
 **Install Build Dependencies (Ubuntu):**
