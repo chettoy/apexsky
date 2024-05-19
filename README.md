@@ -192,6 +192,12 @@ rustup default nightly
 sudo apt install clang protobuf-compiler libusb-1.0-0-dev libzstd-dev pkg-config libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0 libwayland-dev libxkbcommon-dev
 ```
 
+**Install Build Dependencies (Arch):**
+
+```bash
+sudo pacman -S clang protobuf libusb zstd libx11 pkgconf alsa-lib wayland-protocols wayland
+```
+
 **Build:**
 
 ```shell
