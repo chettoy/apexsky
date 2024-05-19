@@ -27,6 +27,12 @@ pub struct PlayerEntity {
     pub max_speed: f32,
     pub health_history: Vec<ValueChanged<i32>>,
 
+    pub shadow_shield_active: i32,
+    pub temp_shield_health: i32,
+    pub extra_shield_health: i32,
+    pub extra_shield_tier: i32,
+    pub is_performing_boost_action: i32,
+
     pub team_num: i32,
     pub team_color: [u8; 3],
     pub team_member_index: i32,
@@ -293,6 +299,7 @@ impl Entity for PlayerEntity {
             bone_array: [u32; 2],
             studio: [u32; 2],
             script: [u32; 2],
+            temp_shield: [u32; 5],
             xp: u32,
             controller_active: u32,
             yaw: u32,
@@ -427,6 +434,13 @@ impl Entity for PlayerEntity {
             script: [
                 data.player_script_net_data + 0,
                 data.player_script_net_data + 4,
+            ],
+            temp_shield: [
+                data.player_shadow_shield_active,
+                data.player_temp_shield_health,
+                data.player_extra_shield_health,
+                data.player_extra_shield_tier,
+                data.player_is_performing_boost_action,
             ],
             xp: data.player_xp,
             controller_active: data.player_controller_active,
@@ -601,6 +615,12 @@ impl Entity for PlayerEntity {
 
             self.script_net_data_global = sdk::EHandle::from(fields.script[0]);
             self.script_net_data_exclusive = sdk::EHandle::from(fields.script[1]);
+
+            self.shadow_shield_active = fields.temp_shield[0] as i32;
+            self.temp_shield_health = fields.temp_shield[1] as i32;
+            self.extra_shield_health = fields.temp_shield[2] as i32;
+            self.extra_shield_tier = fields.temp_shield[3] as i32;
+            self.is_performing_boost_action = fields.temp_shield[4] as i32;
 
             self.xp = fields.xp as i32;
             self.controller_active = fields.controller_active as i32;

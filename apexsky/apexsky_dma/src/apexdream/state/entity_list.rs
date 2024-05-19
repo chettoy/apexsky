@@ -97,12 +97,13 @@ impl EntityList {
                 }),
             ));
         };
-        for index in 0..sdk::NUM_ENT_ENTRIES {
-            let in_range = index >= start && index < end;
+        //for index in 0..sdk::NUM_ENT_ENTRIES
+        for index in start..end {
+            //let in_range = index >= start && index < end;
             let ptr_changed = prev_info[index].pEntity != ent_info[index].pEntity;
 
             // If entity pointer has changed
-            if in_range && ptr_changed {
+            if ptr_changed {
                 // Recreate the entity object with the correct type
                 let entity_ptr = ent_info[index].pEntity;
                 start_recreate(index, entity_ptr);
@@ -150,7 +151,7 @@ impl Default for Config {
         Config {
             log_errors: false,
             log_uninteresting: false,
-            full_entlist: false,
+            full_entlist: true,
         }
     }
 }

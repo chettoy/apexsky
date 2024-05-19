@@ -78,6 +78,11 @@ pub struct GameData {
     pub player_third_person_shoulder_view: u32,
     pub player_script_net_data: u32,
     pub player_helmet_armor_type: u32,
+    pub player_shadow_shield_active: u32,
+    pub player_temp_shield_health: u32,
+    pub player_extra_shield_health: u32,
+    pub player_extra_shield_tier: u32,
+    pub player_is_performing_boost_action: u32,
     pub player_xp: u32,
     pub player_controller_active: u32,
 
@@ -173,6 +178,14 @@ impl Default for GameData {
                 .unwrap(),
             player_script_net_data: G_OFFSETS.player_net_var.try_into().unwrap(),
             player_helmet_armor_type: G_OFFSETS.player_helmettype.try_into().unwrap(),
+            player_shadow_shield_active: G_OFFSETS.player_shadow_shield_active.try_into().unwrap(),
+            player_temp_shield_health: G_OFFSETS.player_temp_shield_health.try_into().unwrap(),
+            player_extra_shield_health: G_OFFSETS.player_extra_shield_health.try_into().unwrap(),
+            player_extra_shield_tier: G_OFFSETS.player_extra_shield_tier.try_into().unwrap(),
+            player_is_performing_boost_action: G_OFFSETS
+                .player_is_performing_boost_action
+                .try_into()
+                .unwrap(),
             player_xp: G_OFFSETS.player_xp.try_into().unwrap(),
             player_controller_active: G_OFFSETS.player_controller_active.try_into().unwrap(),
             weaponx_weapon_owner: G_OFFSETS.weaponx_weapon_owner.try_into().unwrap(),

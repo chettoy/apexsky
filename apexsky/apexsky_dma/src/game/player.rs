@@ -39,10 +39,10 @@ impl GamePlayer {
             origin: Some(state.origin.into()),
             view_angles: Some(state.view_angles.into()),
             velocity: Some(state.velocity.into()),
-            health: state.health,
-            shield: state.shields,
-            max_health: state.max_health,
-            max_shield: state.max_shields,
+            health: state.get_health(),
+            shield: state.get_shield_health(),
+            max_health: state.get_max_health(),
+            max_shield: state.get_max_shield_health(),
             helmet_type: state.helmet_type,
             armor_type: state.armor_type,
             team_num: state.team_num,
@@ -171,10 +171,18 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
         self.velocity
     }
 
+    #[tracing::instrument]
     fn get_bone_position_by_hitbox(&self, hitbox_id: u32) -> [f32; 3] {
         if self.studio.hitboxes.is_empty() {
             tracing::debug!(?hitbox_id, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));
-            return self.origin;
+            // fallback
+            return {
+                if hitbox_id == 0 {
+                    self.view_origin
+                } else {
+                    self.origin
+                }
+            };
         }
 
         let bone = self
@@ -220,7 +228,7 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
             tracing::debug!(?self);
             return 0;
         }
-        self.shields
+        self.shields + self.temp_shield_health + self.extra_shield_health
     }
 
     #[tracing::instrument]
@@ -238,7 +246,7 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
             tracing::debug!(?self);
             return 0;
         }
-        self.max_shields
+        self.max_shields.max(self.get_shield_health())
     }
 
     fn is_alive(&self) -> bool {
@@ -279,6 +287,7 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
         self.velocity
     }
 
+    #[tracing::instrument]
     fn get_bone_position_by_hitbox(&self, hitbox_id: u32) -> [f32; 3] {
         if self.studio.hitboxes.is_empty() {
             tracing::debug!(?hitbox_id, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));

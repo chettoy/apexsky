@@ -379,6 +379,11 @@ typedef struct {
   uintptr_t player_lean_state;
   uintptr_t player_grapple;
   uintptr_t player_grapple_active;
+  uintptr_t player_shadow_shield_active;
+  uintptr_t player_temp_shield_health;
+  uintptr_t player_extra_shield_health;
+  uintptr_t player_extra_shield_tier;
+  uintptr_t player_is_performing_boost_action;
   uintptr_t player_xp;
   uintptr_t player_third_person_shoulder_view;
   uintptr_t player_net_var;
