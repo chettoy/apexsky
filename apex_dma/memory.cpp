@@ -128,6 +128,7 @@ int Memory::open_os() {
         inventory_create_connector(inventory, conn_name.c_str(),
                                    conn_arg.c_str(), &connector)) {
       printf("%s%s%s", xorstr_("Unable to initialize "), conn_name.c_str(),
+
              xorstr_(" connector.\n"));
       printf("%s%s%s", xorstr_("Fallback to "), conn2_name.c_str(),
              xorstr_(" connector.\n"));
@@ -161,9 +162,6 @@ int Memory::open_proc(const char *name) {
   const char *target_proc = name;
   const char *target_module = name;
 
-  // find a specific process based on its name
-  // via process_by_name
-
   if (!(ret = os.process_by_name(CSliceRef<uint8_t>(target_proc),
                                  &proc.hProcess))) {
     const struct ProcessInfo *info = proc.hProcess.info();
@@ -172,28 +170,27 @@ int Memory::open_proc(const char *name) {
               << info->address << xorstr_("] ") << info->pid << " "
               << info->name << " " << info->path << std::endl;
 
-    // find the module by its name
-    ModuleInfo module_info;
-    if (!(ret = proc.hProcess.module_by_name(CSliceRef<uint8_t>(target_module),
-                                             &module_info))) {
-      std::cout << target_proc << xorstr_(" module found: 0x") << std::hex
-                << module_info.address << xorstr_("] 0x") << std::hex
-                << module_info.base << " " << module_info.name << " "
-                << module_info.path << std::endl;
-
-      proc.baseaddr = module_info.base;
-      status = process_status::FOUND_READY;
-    } else {
-      status = process_status::FOUND_NO_ACCESS;
-      close_proc();
-
-      printf("%s%s\n", xorstr_("unable to find module: "), target_module);
-      log_debug_errorcode(ret);
+    // 修复cr3
+    const short MZ_HEADER = 0x5a4d;
+    char *base_section = new char[8];
+    long *base_section_value = (long *)base_section;
+    memset(base_section, 0, 8);
+    CSliceMut<uint8_t> slice(base_section, 8);
+    os.read_raw_into(proc.hProcess.info()->address + 0x520, slice); // win10
+    proc.baseaddr = *base_section_value;
+    // 遍历dtb
+    for (size_t dtb = 0; dtb < SIZE_MAX; dtb += 0x1000) {
+      proc.hProcess.set_dtb(dtb, Address_INVALID);
+      short c5;
+      Read<short>(*base_section_value, c5);
+      if (c5 == MZ_HEADER) {
+        break;
+      }
     }
+    status = process_status::FOUND_READY;
   } else {
     status = process_status::NOT_FOUND;
   }
-
   return ret;
 }
 
