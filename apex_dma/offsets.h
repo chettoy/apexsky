@@ -6,7 +6,7 @@
 #define OFFSET_YAW                                                             \
   0x223c - 0x8 // m_currentFramePlayer.m_ammoPoolCount//updated 4/7/2024 - 0x8
 
-#define HIGHLIGHT_SETTINGS 0xade4bc0// HighlightSettings  // updated 5/8/2024
+#define HIGHLIGHT_SETTINGS 0xade5c40// HighlightSettings  // updated 5/8/2024
 #define OFFSET_GLOW_CONTEXT_ID 0x28c // updated 1/25/2024
 #define GLOW_VISIBLE_TYPE 0x26c      // updated 1/25/2024
 #define OFFSET_GLOW_FIX 0x268        // updated 1/25/2024
