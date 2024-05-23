@@ -1,3 +1,5 @@
+use apexsky::offsets::G_OFFSETS;
+
 use crate::game::data::OFFSET_SPECTATOR_LIST;
 
 use self::sdk::EHandle;
@@ -45,7 +47,7 @@ impl ObserverList {
         }
         let _ = api
             .vm_read_into(
-                ptr.field::<[CObserverMode]>(0x968),
+                ptr.field::<[CObserverMode]>(G_OFFSETS.global_observer_mode.try_into().unwrap()),
                 &mut *self.observer_modes,
             )
             .await;

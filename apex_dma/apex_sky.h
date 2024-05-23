@@ -419,6 +419,7 @@ typedef struct {
   uintptr_t grapple_attached;
   uintptr_t grapple_pulling;
   uintptr_t var_damage;
+  uintptr_t global_observer_mode;
 } exported_offsets_t;
 
 extern "C" {

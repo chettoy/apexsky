@@ -168,4 +168,5 @@ import_custom_offsets!({
     grapple_attached,
     grapple_pulling,
     var_damage,
+    global_observer_mode,
 });
