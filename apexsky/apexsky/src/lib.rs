@@ -9,9 +9,7 @@ pub mod i18n;
 pub mod love_players;
 pub mod menu;
 pub mod offsets;
-pub mod pb;
 pub mod system;
-pub mod web_map_radar;
 
 pub use ffi::*;
 
@@ -35,22 +33,6 @@ impl From<(f32, f32)> for Vec4 {
             z: 0.0,
             w: 1.0,
         }
-    }
-}
-
-impl From<[f32; 3]> for pb::apexlegends::Vec3 {
-    fn from(value: [f32; 3]) -> Self {
-        Self {
-            x: value[0],
-            y: value[1],
-            z: value[2],
-        }
-    }
-}
-
-impl Into<[f32; 3]> for pb::apexlegends::Vec3 {
-    fn into(self) -> [f32; 3] {
-        [self.x, self.y, self.z]
     }
 }
 

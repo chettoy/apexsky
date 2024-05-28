@@ -1,19 +1,20 @@
-use apexsky::aimbot::get_unix_timestamp_in_millis;
-use apexsky::love_players::LoveStatus;
-use apexsky::noobfstr as s;
-use apexsky::pb::apexlegends::PlayerState;
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy_egui::egui::pos2;
 use bevy_egui::egui::Align2;
 use bevy_egui::{egui, EguiContexts};
+use obfstr::obfstr as s;
 
-use crate::global_settings;
+use crate::overlay::get_unix_timestamp_in_millis;
 use crate::overlay::ui::mini_map::mini_map_radar;
 use crate::overlay::ui::mini_map::RadarTarget;
-use crate::workers::actions::SpectatorInfo;
-use crate::workers::aim::PreSelectedTarget;
+use crate::pb::apexlegends::EspData;
+use crate::pb::apexlegends::EspSettings;
+use crate::pb::apexlegends::EspVisualsFlag;
+use crate::pb::apexlegends::LoveStatusCode;
+use crate::pb::apexlegends::PlayerState;
+use crate::pb::apexlegends::SpectatorInfo;
 
 use super::asset::Blob;
 use super::MyOverlayState;
@@ -27,17 +28,6 @@ pub fn toggle_mouse_passthrough(
 ) {
     let mut window = windows.single_mut();
     window.cursor.hit_test = keyboard_input.pressed(KeyCode::Insert);
-}
-
-struct Esp2dData {
-    local_pos: [f32; 3],
-    local_yaw: f32,
-    aim_target: [f32; 3],
-    view_matrix: [f32; 16],
-    aimbot_locked: bool,
-    players: Vec<(PreSelectedTarget, PlayerState)>,
-    g_settings: apexsky::config::Settings,
-    data_timestamp: f64,
 }
 
 struct DialogEsp {
@@ -91,137 +81,130 @@ pub fn ui_system(
         }
     }
 
-    let (esp2d_data, dialog_esp) = {
-        let state = overlay_state.shared_state.read();
-        let selected_players = {
-            if let Some(channels) = &overlay_state.task_channels {
-                channels
-                    .aim_select_rx
-                    .borrow()
-                    .iter()
-                    .filter_map(|target| {
-                        state
-                            .players
-                            .get(&target.entity_ptr)
-                            .map(|pl| (target.clone(), pl.get_buf().clone()))
-                    })
-                    .collect()
+    let (allied_spectators, spectators): (Vec<_>, Vec<_>) = overlay_state
+        .esp_data
+        .spectators
+        .clone()
+        .map(|list| list.elements)
+        .unwrap_or(vec![])
+        .into_iter()
+        .partition(|info| info.is_teammate);
+    let (spectators_count, allied_spectators_count) = (spectators.len(), allied_spectators.len());
+    let allied_spectator_name = allied_spectators
+        .into_iter()
+        .map(|info| info.name)
+        .collect();
+
+    let dialog_esp = DialogEsp {
+        overlay_fps: {
+            // try to get a "smoothed" FPS value from Bevy
+            if let Some(value) = diagnostics
+                .get(&FrameTimeDiagnosticsPlugin::FPS)
+                .and_then(|fps| fps.smoothed())
+            {
+                format!("{:.1}", value)
             } else {
-                vec![]
+                s!("N/A").to_string()
             }
-        };
-        let lplayer_buf = state.local_player.as_ref().map(|p| p.get_buf());
-        let (local_pos, local_yaw) = lplayer_buf
-            .map(|buf| {
-                (
-                    buf.origin.clone().unwrap().into(),
-                    buf.view_angles.as_ref().map(|v| v.y).unwrap_or(buf.yaw),
+        },
+        game_fps: format!("{:.1}", overlay_state.esp_data.game_fps),
+        latency: format!(
+            "{:.0}{}{:.0}{}",
+            overlay_state.data_latency,
+            s!("ms(data) + "),
+            time.delta_seconds() * 1000.0,
+            s!("ms(ui)"),
+        ),
+        loop_duration: format!(
+            "{: >4}{}{: >4}{}",
+            overlay_state.esp_data.duration_tick,
+            s!("ms(tick) +"),
+            overlay_state.esp_data.duration_actions,
+            s!("ms(actions)"),
+        ),
+        target_count: overlay_state.target_count.to_string(),
+        local_position: overlay_state
+            .esp_data
+            .local_player
+            .as_ref()
+            .and_then(|p| p.origin.clone())
+            .map(|pos| {
+                format!(
+                    "{}{:.0}{}{:.0}{}{:.0}",
+                    s!("x="),
+                    pos.x,
+                    s!(", y="),
+                    pos.y,
+                    s!(", z="),
+                    pos.z
                 )
             })
-            .unwrap_or_default();
-        (
-            Esp2dData {
-                local_pos,
-                local_yaw,
-                aim_target: state.aim_target,
-                view_matrix: state.view_matrix,
-                aimbot_locked: state
-                    .aimbot_state
-                    .as_ref()
-                    .map(|(aimbot, _)| aimbot.is_locked())
-                    .unwrap_or(false),
-                players: selected_players,
-                g_settings: global_settings(),
-                data_timestamp: state.update_time,
-            },
-            DialogEsp {
-                overlay_fps: {
-                    // try to get a "smoothed" FPS value from Bevy
-                    if let Some(value) = diagnostics
-                        .get(&FrameTimeDiagnosticsPlugin::FPS)
-                        .and_then(|fps| fps.smoothed())
-                    {
-                        format!("{:.1}", value)
-                    } else {
-                        s!("N/A").to_string()
-                    }
-                },
-                game_fps: format!("{:.1}", state.game_fps),
-                latency: format!(
-                    "{:.0}{}{:.0}{}",
-                    overlay_state.data_latency,
-                    s!("ms(data) + "),
-                    time.delta_seconds() * 1000.0,
-                    s!("ms(ui)"),
-                ),
-                loop_duration: format!(
-                    "{: >4}{}{: >4}{}",
-                    state.update_duration.1,
-                    s!("ms(tick) +"),
-                    state.update_duration.0,
-                    s!("ms(actions)"),
-                ),
-                target_count: overlay_state.target_count.to_string(),
-                local_position: lplayer_buf
-                    .and_then(|p| p.origin.clone())
-                    .map(|pos| {
-                        format!(
-                            "{}{:.0}{}{:.0}{}{:.0}",
-                            s!("x="),
-                            pos.x,
-                            s!(", y="),
-                            pos.y,
-                            s!(", z="),
-                            pos.z
-                        )
-                    })
-                    .unwrap_or_default(),
-                local_angles: lplayer_buf
-                    .and_then(|p| p.view_angles.clone())
-                    .map(|angle| {
-                        format!(
-                            "{}{:.2}{}{:.2}{}{:.2}",
-                            s!("view angles= "),
-                            angle.x,
-                            s!(", "),
-                            angle.y,
-                            s!(", "),
-                            angle.z
-                        )
-                    })
-                    .unwrap_or_default(),
-                local_yaw: lplayer_buf
-                    .map(|p| p.yaw)
-                    .map(|yaw| format!("{}{:.2}", s!("yaw="), yaw))
-                    .unwrap_or_default(),
-                local_held: state
-                    .aimbot_state
-                    .as_ref()
-                    .map(|(aimbot, _)| {
-                        format!(
-                            "{}{}{}{}",
-                            s!("held="),
-                            aimbot.get_held_id(),
-                            s!(", weapon="),
-                            aimbot.get_weapon_id()
-                        )
-                    })
-                    .unwrap_or_default(),
-                aim_position: format!(
+            .unwrap_or_default(),
+        local_angles: overlay_state
+            .esp_data
+            .local_player
+            .as_ref()
+            .and_then(|p| p.view_angles.clone())
+            .map(|angle| {
+                format!(
+                    "{}{:.2}{}{:.2}{}{:.2}",
+                    s!("view angles= "),
+                    angle.x,
+                    s!(", "),
+                    angle.y,
+                    s!(", "),
+                    angle.z
+                )
+            })
+            .unwrap_or_default(),
+        local_yaw: overlay_state
+            .esp_data
+            .local_player
+            .as_ref()
+            .map(|p| p.yaw)
+            .map(|yaw| format!("{}{:.2}", s!("yaw="), yaw))
+            .unwrap_or_default(),
+        local_held: overlay_state
+            .esp_data
+            .aimbot
+            .as_ref()
+            .map(|aimbot| {
+                format!(
+                    "{}{}{}{}",
+                    s!("held="),
+                    aimbot.held_id,
+                    s!(", weapon="),
+                    aimbot.weapon_id
+                )
+            })
+            .unwrap_or_default(),
+        aim_position: overlay_state
+            .esp_data
+            .aimbot
+            .as_ref()
+            .map(|aimbot| aimbot.target_position.as_ref())
+            .flatten()
+            .map(|aim_target| {
+                format!(
                     "{}{:.2}{}{:.2}{}{:.2}{}",
                     s!("aim["),
-                    state.aim_target[0],
+                    aim_target.x,
                     s!(","),
-                    state.aim_target[1],
+                    aim_target.y,
                     s!(","),
-                    state.aim_target[2],
+                    aim_target.z,
                     s!("]")
-                ),
-                spectator_list: state.spectator_list.clone(),
-                allied_spectator_name: state.allied_spectator_name.clone(),
-                teammates_info: state.teammates.clone(),
-            },
-        )
+                )
+            })
+            .unwrap_or_default(),
+        spectator_list: spectators,
+        allied_spectator_name,
+        teammates_info: overlay_state
+            .esp_data
+            .teammates
+            .clone()
+            .map(|dt| dt.players)
+            .unwrap_or_default(),
     };
 
     egui::Window::new(s!("Hello, world!"))
@@ -314,17 +297,19 @@ pub fn ui_system(
 
                     for spectator_info in dialog_esp.spectator_list.iter() {
                         let name = &spectator_info.name;
-                        match spectator_info.love_status {
-                            LoveStatus::Normal => ui.label(name),
-                            LoveStatus::Love => ui.label(
+                        match LoveStatusCode::try_from(spectator_info.love_status)
+                            .unwrap_or(LoveStatusCode::Normal)
+                        {
+                            LoveStatusCode::Normal => ui.label(name),
+                            LoveStatusCode::Love => ui.label(
                                 egui::RichText::new(name)
                                     .strong()
                                     .color(Color32::from_rgb(231, 27, 100)),
                             ),
-                            LoveStatus::Hate => {
+                            LoveStatusCode::Hate => {
                                 ui.label(egui::RichText::new(name).strong().color(Color32::RED))
                             }
-                            LoveStatus::Ambivalent => {
+                            LoveStatusCode::Ambivalent => {
                                 ui.label(egui::RichText::new(name).strong().color(Color32::BLACK))
                             }
                         };
@@ -341,48 +326,63 @@ pub fn ui_system(
     };
 
     CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
-        esp_2d_ui(ui, &esp2d_data);
-        info_bar_ui(ui, &overlay_state);
+        esp_2d_ui(ui, &overlay_state.esp_data, &overlay_state.esp_settings);
+        info_bar_ui(
+            ui,
+            &overlay_state.esp_data,
+            spectators_count,
+            allied_spectators_count,
+        );
     });
 
     // Radar Stuff
-    if esp2d_data.g_settings.mini_map_radar {
-        let radar_targets = esp2d_data
-            .players
-            .iter()
-            .map(|(player_info, player_buf)| RadarTarget {
-                pos: player_buf.origin.clone().unwrap().into(),
-                yaw: player_buf
-                    .view_angles
-                    .as_ref()
-                    .map(|view_angles| {
-                        let yaw = view_angles.y;
-                        if yaw < 0.0 {
-                            yaw + 360.0
-                        } else {
-                            yaw
-                        }
-                    })
-                    .unwrap_or(player_buf.yaw),
-                distance: player_info.distance / 39.62,
-                team_id: player_buf.team_num,
-            })
-            .collect();
-        mini_map_radar(
-            ctx,
-            esp2d_data.local_pos,
-            esp2d_data.local_yaw,
-            radar_targets,
-            esp2d_data.g_settings.mini_map_radar_dot_size1 as f32,
-            esp2d_data.g_settings.mini_map_radar_dot_size2 as f32,
-        );
+    if overlay_state.esp_data.in_game && overlay_state.esp_settings.mini_map_radar {
+        if let Some((base_pos, base_yaw)) = overlay_state.esp_data.view_player.as_ref().map(|pl| {
+            (
+                pl.origin.clone().unwrap().into(),
+                pl.view_angles.as_ref().map(|v| v.y).unwrap_or(pl.yaw),
+            )
+        }) {
+            let radar_targets = overlay_state
+                .esp_data
+                .targets
+                .as_ref()
+                .map(|list| &list.elements)
+                .unwrap_or(&vec![])
+                .iter()
+                .filter_map(|item| Some((item.info.as_ref()?, item.player_data.as_ref()?)))
+                .map(|(player_info, player_buf)| RadarTarget {
+                    pos: player_buf.origin.clone().unwrap().into(),
+                    yaw: player_buf
+                        .view_angles
+                        .as_ref()
+                        .map(|view_angles| {
+                            let yaw = view_angles.y;
+                            if yaw < 0.0 {
+                                yaw + 360.0
+                            } else {
+                                yaw
+                            }
+                        })
+                        .unwrap_or(player_buf.yaw),
+                    distance: player_info.distance / 39.62,
+                    team_id: player_buf.team_num,
+                })
+                .collect();
+            mini_map_radar(ctx, base_pos, base_yaw, radar_targets, 5., 1.);
+        }
     }
 
     let now = get_unix_timestamp_in_millis() as f64;
-    overlay_state.data_latency = now - esp2d_data.data_timestamp * 1000.0;
+    overlay_state.data_latency = now - overlay_state.esp_data.data_timestamp * 1000.0;
 }
 
-fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
+fn info_bar_ui(
+    ui: &mut egui::Ui,
+    esp_data: &EspData,
+    spectators_count: usize,
+    allied_spectators_count: usize,
+) {
     use egui::{Color32, Pos2, Rect, RichText};
 
     #[derive(Debug, Clone)]
@@ -390,31 +390,28 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
         aimbot_fov: f32,
         aimbot_status_text: String,
         aimbot_status_color: Color32,
-        spectators: usize,
-        allied_spectators: usize,
     }
 
     let info = {
-        let state = overlay_state.shared_state.read();
-        if let Some((aimbot, aim_duration)) = state.aimbot_state.as_ref() {
-            let aimbot_mode = aimbot.get_settings().aim_mode;
-            let (aimbot_status_color, aimbot_status_text) = if aimbot.is_locked() {
+        if let Some(aimbot) = esp_data.aimbot.as_ref() {
+            let aimbot_mode = aimbot.aim_mode;
+            let (aimbot_status_color, aimbot_status_text) = if aimbot.target_locked {
                 (
-                    if aimbot.get_gun_safety() {
+                    if aimbot.gun_safety {
                         Color32::GREEN
                     } else {
                         Color32::from_rgb(255, 165, 0) // Orange
                     },
                     s!("[TARGET LOCK!]").to_string(),
                 )
-            } else if aimbot.is_grenade() {
+            } else if aimbot.held_grenade {
                 (Color32::BLUE, s!("Skynade On").to_string())
             } else if aimbot_mode & 0x4 != 0 {
                 (Color32::GREEN, s!("Aim Assist").to_string())
             } else if aimbot_mode & 0x2 != 0 {
                 (
                     Color32::GREEN,
-                    format!("{}{}", s!("Aim On "), aim_duration.as_millis()),
+                    format!("{}{}", s!("Aim On "), aimbot.loop_duration),
                 )
             } else if aimbot_mode == 0 {
                 (Color32::RED, s!("Aim Off").to_string())
@@ -422,19 +419,15 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
                 (Color32::RED, format!("{}{}", s!("Aim On "), aimbot_mode))
             };
             EspInfo {
-                aimbot_fov: aimbot.get_max_fov(),
+                aimbot_fov: aimbot.max_fov,
                 aimbot_status_text,
                 aimbot_status_color,
-                spectators: state.spectator_list.len(),
-                allied_spectators: state.allied_spectator_name.len(),
             }
         } else {
             EspInfo {
                 aimbot_fov: 0.0,
                 aimbot_status_text: s!("[Aimbot Offline]").to_string(),
                 aimbot_status_color: Color32::GRAY,
-                spectators: state.spectator_list.len(),
-                allied_spectators: state.allied_spectator_name.len(),
             }
         }
     };
@@ -476,8 +469,8 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
             let text_size = 16.0;
             ui.add_space(rounding * 2.0);
             ui.label(
-                RichText::new(format!("{}", info.spectators))
-                    .color(if info.spectators == 0 {
+                RichText::new(format!("{}", spectators_count))
+                    .color(if spectators_count == 0 {
                         Color32::GREEN
                     } else {
                         Color32::RED
@@ -486,7 +479,7 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
             );
             ui.label(RichText::new(s!("--")).size(text_size));
             ui.label(
-                RichText::new(format!("{}", info.allied_spectators))
+                RichText::new(format!("{}", allied_spectators_count))
                     .color(Color32::GREEN)
                     .size(text_size),
             );
@@ -507,61 +500,103 @@ fn info_bar_ui(ui: &mut egui::Ui, overlay_state: &MyOverlayState) {
     });
 }
 
-fn esp_2d_ui(ui: &mut egui::Ui, esp2d_data: &Esp2dData) {
+fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings) {
     use egui::{Color32, Rect};
 
-    let g_settings = &esp2d_data.g_settings;
-    let screen_width = g_settings.screen_width as f32;
-    let screen_height = g_settings.screen_height as f32;
+    if !esp_data.in_game {
+        return;
+    }
 
-    if g_settings.show_aim_target
-        && !(esp2d_data.aim_target[0] == 0.0
-            && esp2d_data.aim_target[1] == 0.0
-            && esp2d_data.aim_target[2] == 0.0)
-    {
-        let bs = world_to_screen(
-            &esp2d_data.aim_target,
-            &esp2d_data.view_matrix,
-            screen_width,
-            screen_height,
-        )
-        .unwrap_or(Vec2 {
-            x: screen_width / 2.0,
-            y: screen_height / 2.0,
-        });
+    let screen_width = esp_settings.screen_width as f32;
+    let screen_height = esp_settings.screen_height as f32;
 
-        const INDICATOR_RADIUS: f32 = 10.0;
+    let view_matrix = esp_data
+        .view_matrix
+        .clone()
+        .unwrap()
+        .elements
+        .try_into()
+        .unwrap();
 
-        let indicator_color = if esp2d_data.aimbot_locked {
-            Color32::from_rgba_premultiplied(255, 165, 0, 158)
-        } else {
-            Color32::from_rgba_premultiplied(255, 255, 255, 158)
-        };
-        let p1 = pos2(bs.x + INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
-        let p2 = pos2(bs.x - INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
-        let p3 = pos2(bs.x - INDICATOR_RADIUS, bs.y + INDICATOR_RADIUS);
-        let p4 = pos2(bs.x + INDICATOR_RADIUS, bs.y + INDICATOR_RADIUS);
-        ui.painter().rect_stroke(
-            Rect { min: p2, max: p4 },
-            INDICATOR_RADIUS,
-            (1.6726, indicator_color),
-        );
-        if esp2d_data.aimbot_locked {
-            let stroke = (2.718, Color32::RED);
-            ui.painter().line_segment([p1, p3], stroke);
-            ui.painter().line_segment([p2, p4], stroke);
+    if esp_settings.show_aim_target {
+        if let Some(aim_pos) = (|| {
+            let pos: [f32; 3] = esp_data.aimbot.as_ref()?.target_position.clone()?.into();
+            if !(pos[0] == 0.0 && pos[1] == 0.0 && pos[2] == 0.0) {
+                Some(pos)
+            } else {
+                None
+            }
+        })() {
+            let bs = world_to_screen(&aim_pos, &view_matrix, screen_width, screen_height)
+                .unwrap_or(Vec2 {
+                    x: screen_width / 2.0,
+                    y: screen_height / 2.0,
+                });
+
+            const INDICATOR_RADIUS: f32 = 10.0;
+
+            let aimbot_target_locked = esp_data
+                .aimbot
+                .as_ref()
+                .map(|a| a.target_locked)
+                .unwrap_or(false);
+            let indicator_color = if aimbot_target_locked {
+                Color32::from_rgba_premultiplied(255, 165, 0, 158)
+            } else {
+                Color32::from_rgba_premultiplied(255, 255, 255, 158)
+            };
+            let p1 = pos2(bs.x + INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
+            let p2 = pos2(bs.x - INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
+            let p3 = pos2(bs.x - INDICATOR_RADIUS, bs.y + INDICATOR_RADIUS);
+            let p4 = pos2(bs.x + INDICATOR_RADIUS, bs.y + INDICATOR_RADIUS);
+            ui.painter().rect_stroke(
+                Rect { min: p2, max: p4 },
+                INDICATOR_RADIUS,
+                (1.6726, indicator_color),
+            );
+            if aimbot_target_locked {
+                let stroke = (2.718, Color32::RED);
+                ui.painter().line_segment([p1, p3], stroke);
+                ui.painter().line_segment([p2, p4], stroke);
+            }
         }
     }
 
-    esp2d_data
-        .players
+    let font_id = egui::FontId {
+        size: 16.0,
+        family: egui::FontFamily::Proportional,
+    };
+    let (box_color_viz, box_color_not_viz) = {
+        let color_viz: [f32; 3] = esp_settings.glow_color_viz.clone().unwrap().into();
+        let color_notviz: [f32; 3] = esp_settings.glow_color_notviz.clone().unwrap().into();
+        let convert = |v: f32| -> u8 { (v.max(0.0).min(1.0) * 255.0).round() as u8 };
+        (
+            (
+                convert(color_viz[0]),
+                convert(color_viz[1]),
+                convert(color_viz[2]),
+            ),
+            (
+                convert(color_notviz[0]),
+                convert(color_notviz[1]),
+                convert(color_notviz[2]),
+            ),
+        )
+    };
+
+    esp_data
+        .targets
+        .as_ref()
+        .map(|list| &list.elements)
+        .unwrap_or(&vec![])
         .iter()
-        .for_each(|(player_info, player_buf)| {
-            let head_position = player_buf.head_position.clone().unwrap();
-            let bottom_position = player_buf.origin.clone().unwrap();
+        .filter_map(|item| Some((item.info.as_ref()?, item.player_data.as_ref()?)))
+        .for_each(|(player_info, player_data)| {
+            let head_position = player_data.head_position.clone().unwrap();
+            let bottom_position = player_data.origin.clone().unwrap();
             let Some(head_screen_pos) = world_to_screen(
                 &head_position.into(),
-                &esp2d_data.view_matrix,
+                &view_matrix,
                 screen_width,
                 screen_height,
             ) else {
@@ -569,7 +604,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp2d_data: &Esp2dData) {
             };
             let Some(bottom_screen_pos) = world_to_screen(
                 &bottom_position.into(),
-                &esp2d_data.view_matrix,
+                &view_matrix,
                 screen_width,
                 screen_height,
             ) else {
@@ -579,27 +614,14 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp2d_data: &Esp2dData) {
             let box_width = box_height / 2.0;
             let box_middle_x = bottom_screen_pos.x - box_width / 2.0;
 
-            let font_id = egui::FontId {
-                size: 16.0,
-                family: egui::FontFamily::Proportional,
-            };
-            let box_color_viz = (
-                (g_settings.glow_r_viz * 255.0).round() as u8,
-                (g_settings.glow_g_viz * 255.0).round() as u8,
-                (g_settings.glow_b_viz * 255.0).round() as u8,
-            );
-            let box_color_not_viz = (
-                (g_settings.glow_r_not * 255.0).round() as u8,
-                (g_settings.glow_g_not * 255.0).round() as u8,
-                (g_settings.glow_b_not * 255.0).round() as u8,
-            );
+            let aim_distance = esp_settings.aim_distance;
 
-            let aim_distance = g_settings.aimbot_settings.aim_dist;
-
-            if g_settings.esp_visuals.damage && player_info.distance < aim_distance {
+            if esp_settings.esp_visuals & EspVisualsFlag::Damage as i32 != 0
+                && player_info.distance < aim_distance
+            {
                 let color = Color32::from_rgb(188, 18, 20);
                 let draw_pos = pos2(box_middle_x, head_screen_pos.y - 32.0);
-                let damage_text = player_buf.damage_dealt.to_string();
+                let damage_text = player_data.damage_dealt.to_string();
                 ui.painter().text(
                     draw_pos,
                     Align2::CENTER_CENTER,
@@ -619,15 +641,15 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp2d_data: &Esp2dData) {
             let alpha = (255.0 * alpha.max(0.0).min(1.0)).round() as u8;
             let radar_distance = (player_info.distance / 39.62).round() as i32;
 
-            if g_settings.esp_visuals.distance {
+            if esp_settings.esp_visuals & EspVisualsFlag::Distance as i32 != 0 {
                 let distance_text = format!(
                     "{}{}{}{}",
                     radar_distance,
                     s!("m("),
-                    player_buf.team_num,
+                    player_data.team_num,
                     s!(")")
                 );
-                let color = if player_buf.is_knocked {
+                let color = if player_data.is_knocked {
                     Color32::RED
                 } else {
                     Color32::from_rgba_premultiplied(0, 255, 0, alpha)
@@ -643,7 +665,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp2d_data: &Esp2dData) {
             }
 
             if player_info.distance < aim_distance {
-                if g_settings.esp_visuals.r#box {
+                if esp_settings.esp_visuals & EspVisualsFlag::Box as i32 != 0 {
                     let (r, g, b) = if player_info.is_visible {
                         box_color_viz
                     } else {
@@ -662,17 +684,17 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp2d_data: &Esp2dData) {
                         stroke,
                     );
                 }
-                if g_settings.esp_visuals.name {
-                    let is_love: LoveStatus = player_buf
-                        .love_state
+                if esp_settings.esp_visuals & EspVisualsFlag::Name as i32 != 0 {
+                    let is_love: LoveStatusCode = player_data
+                        .love_status
                         .try_into()
-                        .unwrap_or(LoveStatus::Normal);
+                        .unwrap_or(LoveStatusCode::Normal);
 
-                    let name_color = if is_love == LoveStatus::Love {
+                    let name_color = if is_love == LoveStatusCode::Love {
                         Color32::from_rgb(231, 27, 100)
-                    } else if is_love == LoveStatus::Hate {
+                    } else if is_love == LoveStatusCode::Hate {
                         Color32::RED
-                    } else if is_love == LoveStatus::Ambivalent {
+                    } else if is_love == LoveStatusCode::Ambivalent {
                         Color32::BLACK
                     } else {
                         Color32::from_rgba_premultiplied(255, 255, 255, alpha)
@@ -681,7 +703,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp2d_data: &Esp2dData) {
                     let draw_pos = pos2(box_middle_x, head_screen_pos.y - 15.0);
                     let nick_pos = pos2(draw_pos.x + 50.0, draw_pos.y);
 
-                    let level_text = format!("{}{}", s!("Lv."), xp_level(player_buf.xp));
+                    let level_text = format!("{}{}", s!("Lv."), xp_level(player_data.xp));
                     let level_color = Color32::from_rgba_premultiplied(0, 255, 0, alpha);
 
                     ui.painter().text(
@@ -694,7 +716,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp2d_data: &Esp2dData) {
                     ui.painter().text(
                         nick_pos,
                         Align2::CENTER_CENTER,
-                        player_buf.player_name.to_owned(),
+                        player_data.player_name.to_owned(),
                         font_id.clone(),
                         name_color,
                     );

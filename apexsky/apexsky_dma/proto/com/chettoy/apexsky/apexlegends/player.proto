@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package com.chettoy.apexsky.apexlegends;
+
+message Vec3 {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message Badge {
+  int32 badge_index = 1;
+  int32 badge_data = 2;
+}
+
+enum GradeFlag {
+  ZERO = 0x00;
+  CHAMPION = 0x01;
+  CHAMP_KILLLEADER = 0x02;
+  KILLLEADER = 0x04;
+  JUMPMASTER = 0x08;
+  EXP_LEADER = 0x10;
+}
+
+enum LoveStatusCode {
+  NORMAL = 0X00;
+  LOVE = 0X01;
+  HATE = 0X02;
+  AMBIVALENT = 0X03;
+}
+
+message PlayerState {
+  Vec3 origin = 2;
+  Vec3 velocity = 3;
+  Vec3 accel = 4;
+  int32 health = 5;
+  int32 shield = 6;
+  int32 max_health = 7;
+  int32 max_shield = 8;
+  float max_speed = 9;
+  int32 shadow_shield_active = 10;
+  int32 temp_shield_health = 11;
+  int32 extra_shield_health = 12;
+  int32 extra_shield_tier = 13;
+  int32 is_performing_boost_action = 14;
+  int32 helmet_type = 15;
+  int32 armor_type = 16;
+  int32 team_num = 17;
+  int32 team_member_index = 18;
+  int32 squad_id = 19;
+  int32 grade_flags = 20;
+  string model_name = 21;
+  Vec3 head_position = 23;
+  Vec3 camera_origin = 24;
+  Vec3 camera_angles = 25;
+  float time_base = 26;
+  Vec3 server_angles = 27;
+  Vec3 view_offset = 28;
+  Vec3 view_origin = 29;
+  Vec3 view_angles = 30;
+  int32 xp = 31;
+  int32 flags = 32;
+  bool is_alive = 33;
+  bool is_knocked = 34;
+  LoveStatusCode love_status = 35;
+  int32 active_weapon = 36;
+  string player_name = 37;
+  uint64 platform_uid = 38;
+  uint64 eadp_uid = 39;
+  bool controller_active = 40;
+  int32 character_index = 41;
+  repeated Badge badges = 42;
+  int32 kills = 43;
+  int32 damageDealt = 44;
+  bool winning_team = 45;
+  float yaw = 46;
+}
+
+message Players {
+  int32 version = 1;
+  repeated PlayerState players = 2;
+}

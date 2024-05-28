@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.chettoy.apexsky.esp";
+option java_outer_classname = "EspProto";
+
+package com.chettoy.apexsky.esp;
+
+import "google/protobuf/empty.proto";
+import "com/chettoy/apexsky/apexlegends/esp_data.proto";
+import "com/chettoy/apexsky/apexlegends/player.proto";
+import "com/chettoy/apexsky/apexlegends/spectator.proto";
+
+service EspService {
+  rpc UnaryEcho(EchoRequest) returns (EchoResponse) {}
+  rpc GetPlayers (GetPlayersRequest) returns (com.chettoy.apexsky.apexlegends.Players) {}
+  rpc GetEspData (com.chettoy.apexsky.apexlegends.EspDataOption) returns (com.chettoy.apexsky.apexlegends.EspData) {}
+  rpc GetEspSettings (google.protobuf.Empty) returns (com.chettoy.apexsky.apexlegends.EspSettings) {}
+}
+
+message GetPlayersRequest {
+  int32 version = 1;
+}
+
+// EchoRequest is the request for echo.
+message EchoRequest {
+  string message = 1;
+}
+
+// EchoResponse is the response for echo.
+message EchoResponse {
+  string message = 1;
+}
+

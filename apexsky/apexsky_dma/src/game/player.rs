@@ -1,9 +1,9 @@
 use apexsky::aimbot::AimEntity;
-use apexsky::pb::apexlegends::{Badge, GradeFlag, PlayerState};
 use obfstr::obfstr as s;
 
 use crate::apexdream::sdk::ScriptNetVarName;
 use crate::apexdream::*;
+use crate::pb::apexlegends::{Badge, GradeFlag, PlayerState};
 
 use self::base::math;
 use self::state::entities::{BaseNPCEntity, Entity, PlayerEntity, WeaponXEntity};
@@ -28,7 +28,7 @@ impl GamePlayer {
             .get_player_name(state.get_info().handle)
             .unwrap()
             .to_string();
-        let love_state = apexsky::love_players::check_my_heart(
+        let love_status = apexsky::love_players::check_my_heart(
             config,
             state.platform_uid,
             state.eadp_uid,
@@ -37,20 +37,38 @@ impl GamePlayer {
         );
         let buf = PlayerState {
             origin: Some(state.origin.into()),
-            view_angles: Some(state.view_angles.into()),
             velocity: Some(state.velocity.into()),
+            accel: Some(state.accel.into()),
             health: state.get_health(),
             shield: state.get_shield_health(),
             max_health: state.get_max_health(),
             max_shield: state.get_max_shield_health(),
+            max_speed: state.max_speed,
+            shadow_shield_active: state.shadow_shield_active,
+            temp_shield_health: state.temp_shield_health,
+            extra_shield_health: state.extra_shield_health,
+            extra_shield_tier: state.extra_shield_tier,
+            is_performing_boost_action: state.is_performing_boost_action,
             helmet_type: state.helmet_type,
             armor_type: state.armor_type,
             team_num: state.team_num,
+            team_member_index: state.team_member_index,
+            squad_id: state.squad_id,
+            grade_flags: state.grade,
+            model_name: state.model_name.string.to_owned(),
+            head_position: Some(state.get_bone_position_by_hitbox(0).into()),
+            camera_origin: Some(state.camera_origin.into()),
+            camera_angles: Some(state.camera_angles.into()),
+            time_base: state.time_base,
+            server_angles: Some(state.server_angles.into()),
+            view_offset: Some(state.view_offset.into()),
+            view_origin: Some(state.view_origin.into()),
+            view_angles: Some(state.view_angles.into()),
             xp: state.xp,
             flags: state.flags as i32,
             is_alive: state.is_alive(),
             is_knocked: state.is_knocked(),
-            love_state: love_state as i32,
+            love_status: love_status as i32,
             active_weapon: active_weapon
                 .as_ref()
                 .map(|weap| weap.weapon_name_index)
@@ -58,7 +76,6 @@ impl GamePlayer {
             player_name,
             platform_uid: state.platform_uid,
             eadp_uid: state.eadp_uid,
-            head_position: Some(state.get_bone_position_by_hitbox(0).into()),
             controller_active: state.controller_active == 1,
             character_index: game_state
                 .read_script_value(
@@ -102,11 +119,10 @@ impl GamePlayer {
                 .read_script_value(ScriptNetVarName::damageDealt, state.script_net_data_global)
                 .to_int()
                 .unwrap_or(-1),
-            grade_flags: state.grade,
             winning_team: false,
             yaw: state.yaw,
-            team_member_index: state.team_member_index,
         };
+
         Self {
             buf,
             state,

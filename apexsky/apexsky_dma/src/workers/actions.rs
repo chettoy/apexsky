@@ -4,7 +4,6 @@ use apexsky::{
     aimbot::{calc_angle, calc_fov, AimEntity},
     config::Settings,
     global_state::G_STATE,
-    init_spec_checker, is_spec,
     love_players::LoveStatus,
     offsets::G_OFFSETS,
 };
@@ -25,35 +24,27 @@ use crate::apexdream::{
     state::entities::{BaseNPCEntity, LootEntity},
 };
 use crate::game::{data::*, player::GamePlayer};
+use crate::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo};
 use crate::workers::access::{AccessType, PendingAccessRequest, PendingMemRead, PendingMemWrite};
 use crate::{SharedState, TreasureClue};
 
 use super::access::MemApi;
-use super::aim::{AimKeyStatus, PreSelectedTarget};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SpectatorInfo {
-    pub ptr: u64,
-    pub name: String,
-    pub is_teammate: bool,
-    pub love_status: LoveStatus,
-}
 
 #[instrument(skip_all)]
 pub async fn actions_loop(
     mut active: watch::Receiver<bool>,
     shared_state: Arc<RwLock<SharedState>>,
     access_tx: MemApi,
-    aim_key_tx: watch::Sender<AimKeyStatus>,
-    aim_select_tx: watch::Sender<Vec<PreSelectedTarget>>,
-    mut aim_select_rx: watch::Receiver<Vec<PreSelectedTarget>>,
+    aim_key_tx: watch::Sender<AimKeyState>,
+    aim_select_tx: watch::Sender<Vec<AimTargetInfo>>,
+    mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
     mut items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
 ) -> anyhow::Result<()> {
     let mut apexdream = crate::apexdream::Instance::new();
     let mut start_instant = Instant::now();
     let mut fps_checkpoint_instant = Instant::now();
     let mut last_checkpoint_frame: i32 = 0;
-    let mut prev_lplayer_ptr: u64 = 0;
+    // let mut prev_lplayer_ptr: u64 = 0;
     let mut actions_tick: i64 = -1;
     let mut log_items: usize = 0;
     let mut world_ready: bool = false;
@@ -178,6 +169,7 @@ pub async fn actions_loop(
 
                 wlock.frame_count = apex_state.client.framecount;
                 wlock.view_matrix = apex_state.client.view_matrix;
+                wlock.tick_num = actions_tick.try_into().unwrap();
                 wlock.update_time = apex_state.time;
                 wlock.update_duration = (loop_duration, tick_duration);
 
@@ -205,7 +197,7 @@ pub async fn actions_loop(
 
             trace_span!("Send key status to aimbot worker").in_scope(|| {
                 aim_key_tx
-                    .send(AimKeyStatus {
+                    .send(AimKeyState {
                         aimbot_hotkey_1: if apex_state.is_button_down(g_settings.aimbot_hot_key_1) {
                             g_settings.aimbot_hot_key_1
                         } else {
@@ -438,7 +430,7 @@ pub async fn actions_loop(
                 aim_select_tx
                     .send(if player_ready {
                         // Iterate over all targetable entities
-                        let mut aim_targets: Vec<PreSelectedTarget> = {
+                        let mut aim_targets: Vec<AimTargetInfo> = {
                             let state = shared_state.read();
                             if let Some(lplayer) = state.local_player.as_ref() {
                                 state
@@ -546,15 +538,16 @@ pub async fn actions_loop(
                                             name: player_buf.player_name.clone(),
                                             is_teammate: is_teammate(player_buf.team_num),
                                             love_status: player_buf
-                                                .love_state
+                                                .love_status
                                                 .try_into()
                                                 .unwrap_or_else(|_| {
                                                     tracing::error!(
-                                                        love_state = player_buf.love_state,
+                                                        love_state = player_buf.love_status,
                                                         ?player_buf
                                                     );
                                                     LoveStatus::Normal
-                                                }),
+                                                })
+                                                as i32,
                                         })
                                     })
                             })
@@ -717,8 +710,7 @@ fn process_player<'a>(
     target_entity: &dyn AimEntity,
     state: &SharedState,
     g_settings: &Settings,
-    //mem: &mut MemProcImpl<'a>,
-) -> Option<PreSelectedTarget> {
+) -> Option<AimTargetInfo> {
     let lplayer_ptr = local_player.get_entity().get_entity_ptr();
     let target_ptr = target_entity.get_entity_ptr();
 
@@ -789,7 +781,7 @@ fn process_player<'a>(
         p
     });
 
-    Some(PreSelectedTarget {
+    Some(AimTargetInfo {
         fov,
         distance,
         is_visible: target_entity.is_visible(),
@@ -797,14 +789,11 @@ fn process_player<'a>(
         health_points: { target_entity.get_shield_health() + target_entity.get_health() },
         love_status: {
             if let Some(target_player) = target_player {
-                target_player
-                    .get_buf()
-                    .love_state
-                    .try_into()
-                    .unwrap_or_else(|_| {
-                        tracing::error!(love_state = target_player.get_buf().love_state, player_buf = ?target_player.get_buf());
-                        LoveStatus::Normal
-                    })
+                target_player.get_buf().love_status.try_into()
+                .unwrap_or_else(|_| {
+                    tracing::error!(love_state = target_player.get_buf().love_status, player_buf = ?target_player.get_buf());
+                    LoveStatus::Normal
+                })
             } else {
                 // not player (dummy)
                 if g_settings.yuan_p {
@@ -813,7 +802,7 @@ fn process_player<'a>(
                     LoveStatus::Normal
                 }
             }
-        },
+        } as i32,
         is_kill_leader: {
             if let Some(target_player) = target_player {
                 GamePlayer::is_kill_leader(target_player.get_buf())
@@ -822,12 +811,13 @@ fn process_player<'a>(
             }
         },
         entity_ptr: target_ptr,
+        is_npc: target_player.is_none(),
     })
 }
 
 #[instrument(skip_all)]
 fn player_glow(
-    target: &PreSelectedTarget,
+    target: &AimTargetInfo,
     frame_count: i32,
     game_fps: f32,
     player_glow_armor_color: bool,
@@ -864,7 +854,7 @@ fn player_glow(
     if player_glow_love_user {
         let frame_frag = frame_count / game_fps as i32;
         if target.is_visible || frame_frag % 2 == 0 {
-            match target.love_status {
+            match target.love_status.try_into().unwrap_or(LoveStatus::Normal) {
                 LoveStatus::Love => {
                     setting_index = HIGHLIGHT_PLAYER_RAINBOW;
                 }

@@ -76,7 +76,7 @@ impl<'a> MemProcImpl<'a> {
     #[tracing::instrument(skip_all)]
     pub fn get_vmm_scatter(&mut self) -> Option<memprocfs::VmmScatterMemory> {
         match self {
-            MemProcImpl::Memflow(m) => None,
+            MemProcImpl::Memflow(_) => None,
             MemProcImpl::Vmm(m) => m
                 .mem_scatter()
                 .map_err(|e| {

@@ -1,9 +1,8 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use ambisonic::rodio::Source;
-use ambisonic::{AmbisonicBuilder, SoundController};
-use apexsky::aimbot::AimEntity;
+// use ambisonic::rodio::Source;
+// use ambisonic::{AmbisonicBuilder, SoundController};
 use bevy::asset::embedded_asset;
 //use bevy::audio::{SpatialScale, Volume};
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
@@ -13,17 +12,43 @@ use bevy_egui::EguiPlugin;
 use bevy_health_bar3d::prelude as hpbar;
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
-use parking_lot::{Mutex, RwLock};
 use tokio::sync::watch;
 
 use crate::overlay::asset::{Blob, BlobAssetLoader};
-use crate::workers::aim::PreSelectedTarget;
-use crate::{SharedState, TaskChannels};
+use crate::pb::apexlegends::{
+    AimEntityData, AimTargetInfo, AimTargetItem, EspData, EspDataOption, EspSettings,
+    LoveStatusCode,
+};
+use crate::pb::esp_service::esp_service_client::EspServiceClient;
 
 mod asset;
 mod ui;
 
-pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option<TaskChannels>) {
+pub(crate) fn main() {
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Unable to create Runtime");
+
+    let _enter = rt.enter();
+
+    let mut rpc_client = match bevy::tasks::block_on(EspServiceClient::connect("http://[::1]:50051")) {
+        Ok(client) => client
+            .accept_compressed(tonic::codec::CompressionEncoding::Zstd)
+            .send_compressed(tonic::codec::CompressionEncoding::Zstd),
+        Err(e) => {
+            tracing::error!(%e, ?e);
+            return;
+        }
+    };
+    let esp_settings = match bevy::tasks::block_on(rpc_client.get_esp_settings(())) {
+        Ok(data) => data.into_inner(),
+        Err(e) => {
+            tracing::error!(%e, ?e);
+            return;
+        }
+    };
+
     let (sound_ent_tx, mut sound_ent_rx) = watch::channel(Vec::<SoundEntity>::new());
     let (sound_src_tx, mut sound_src_rx) = watch::channel::<Option<AudioSource>>(None);
     // let (sonic_active, sonic_t) = {
@@ -123,8 +148,9 @@ pub(crate) fn main(shared_state: Arc<RwLock<SharedState>>, task_channels: Option
                 .foreground_color(hpbar::ForegroundColor::Static(Color::BISQUE)),
         )
         .insert_resource(MyOverlayState {
-            shared_state,
-            task_channels,
+            rpc_client,
+            esp_data: EspData::default(),
+            esp_settings,
             sound_handle: Default::default(),
             font_blob: Default::default(),
             font_loaded: false,
@@ -167,14 +193,15 @@ impl Plugin for EmbeddedAssetPlugin {
 }
 
 pub struct SoundEntity {
-    target: PreSelectedTarget,
+    target: AimTargetInfo,
     relative: [f32; 3],
 }
 
 #[derive(Resource)]
 pub(crate) struct MyOverlayState {
-    shared_state: Arc<RwLock<SharedState>>,
-    task_channels: Option<TaskChannels>,
+    rpc_client: EspServiceClient<tonic::transport::Channel>,
+    esp_data: EspData,
+    esp_settings: EspSettings,
     sound_handle: Handle<AudioSource>,
     font_blob: Handle<Blob>,
     font_loaded: bool,
@@ -187,9 +214,9 @@ pub(crate) struct MyOverlayState {
 }
 
 #[derive(Component, Default)]
-struct AimTarget {
+struct AimTargetEntity {
     ptr: u64,
-    data: Option<Arc<dyn AimEntity>>,
+    data: Option<AimEntityData>,
 }
 
 #[derive(Component)]
@@ -227,9 +254,9 @@ fn setup(
     mut overlay_state: ResMut<MyOverlayState>,
 ) {
     static S_FONT_PATH: Lazy<String> =
-        Lazy::new(|| s!("embedded://apexsky_dma/assets/fonts/LXGWNeoXiHei.ttf").to_string());
+        Lazy::new(|| s!("embedded://apexsky_overlay/assets/fonts/LXGWNeoXiHei.ttf").to_string());
     static S_SOUND_PATH: Lazy<String> =
-        Lazy::new(|| s!("embedded://apexsky_dma/assets/sounds/Windless Slopes.ogg").to_string());
+        Lazy::new(|| s!("embedded://apexsky_overlay/assets/sounds/Windless Slopes.ogg").to_string());
 
     overlay_state.font_blob = asset_server.load(&*S_FONT_PATH);
     overlay_state.sound_handle = asset_server.load(&*S_SOUND_PATH);
@@ -358,7 +385,7 @@ struct Emitter {
 
 fn despawn_dead_targets(
     mut commands: Commands,
-    mut aim_targets: Query<Entity, (With<AimTarget>, Without<Health>)>,
+    mut aim_targets: Query<Entity, (With<AimTargetEntity>, Without<Health>)>,
 ) {
     for entity in aim_targets.iter_mut() {
         commands.entity(entity).despawn();
@@ -377,7 +404,7 @@ fn follow_game_state(
         (
             With<MyCameraMarker>,
             Without<SpatialListener>,
-            Without<AimTarget>,
+            Without<AimTargetEntity>,
         ),
     >,
     mut listeners: Query<
@@ -385,24 +412,37 @@ fn follow_game_state(
         (
             With<SpatialListener>,
             Without<MyCameraMarker>,
-            Without<AimTarget>,
+            Without<AimTargetEntity>,
         ),
     >,
     mut aim_targets: Query<
         (
             Entity,
             &mut Transform,
-            &mut AimTarget,
+            &mut AimTargetEntity,
             &mut Health,
             &mut Mana,
         ),
         (
-            With<AimTarget>,
+            With<AimTargetEntity>,
             Without<MyCameraMarker>,
             Without<SpatialListener>,
         ),
     >,
 ) {
+    let esp_data =
+        match bevy::tasks::block_on(overlay_state.rpc_client.get_esp_data(EspDataOption {
+            version: 0,
+            full_aimbot_state: false,
+            full_targets_list: false,
+        })) {
+            Ok(data) => data.into_inner(),
+            Err(e) => {
+                tracing::error!(%e, ?e);
+                return;
+            }
+        };
+
     overlay_state.update_latency = time.delta_seconds_f64() * 1000.0;
 
     let (cam_proj, cam_trans) = query_camera.single_mut();
@@ -413,42 +453,37 @@ fn follow_game_state(
     };
     persp.fov = 90.0f32.to_radians();
 
-    let cam_matrix = overlay_state
-        .shared_state
-        .read()
-        .view_player
-        .as_ref()
-        .map(|view_player| {
-            let cam_origin = view_player.get_entity().camera_origin;
-            let cam_angles = view_player.get_entity().camera_angles;
+    let _cam_matrix = esp_data.view_player.as_ref().map(|view_player| {
+        let cam_origin: [f32; 3] = view_player.camera_origin.clone().unwrap().into();
+        let cam_angles: [f32; 3] = view_player.camera_angles.clone().unwrap().into();
 
-            let (cam_pitch, cam_yew) = (cam_angles[0].to_radians(), cam_angles[1].to_radians());
-            // pitch: top- bottom+, yew: left+ right-
+        let (cam_pitch, cam_yew) = (cam_angles[0].to_radians(), cam_angles[1].to_radians());
+        // pitch: top- bottom+, yew: left+ right-
 
-            // game: x: forward, y: left, z: top
-            // bevy: x: right, y: top, z: back
-            let cam_position = Vec3 {
-                x: -cam_origin[1],
-                y: cam_origin[2],
-                z: -cam_origin[0],
-            };
-            let cam_direction = Vec3 {
-                x: -cam_pitch.cos() * cam_yew.sin(),
-                y: -cam_pitch.sin(),
-                z: -cam_pitch.cos() * cam_yew.cos(),
-            };
-            let cam_transform =
-                Transform::from_translation(cam_position).looking_to(cam_direction, Vec3::Y);
-            *cam_trans.into_inner() = cam_transform.clone();
-            *listener_trans.into_inner() = cam_transform;
+        // game: x: forward, y: left, z: top
+        // bevy: x: right, y: top, z: back
+        let cam_position = Vec3 {
+            x: -cam_origin[1],
+            y: cam_origin[2],
+            z: -cam_origin[0],
+        };
+        let cam_direction = Vec3 {
+            x: -cam_pitch.cos() * cam_yew.sin(),
+            y: -cam_pitch.sin(),
+            z: -cam_pitch.cos() * cam_yew.cos(),
+        };
+        let cam_transform =
+            Transform::from_translation(cam_position).looking_to(cam_direction, Vec3::Y);
+        *cam_trans.into_inner() = cam_transform.clone();
+        *listener_trans.into_inner() = cam_transform;
 
-            cam_transform.compute_matrix()
-        });
+        cam_transform.compute_matrix()
+    });
 
     #[derive(Debug)]
     struct UpdateTarget {
-        info: PreSelectedTarget,
-        data: Option<Arc<dyn AimEntity>>,
+        info: AimTargetInfo,
+        data: Option<AimEntityData>,
         point_pos: Vec3,
         health: f32,
         max_health: f32,
@@ -456,86 +491,76 @@ fn follow_game_state(
         max_shield: f32,
     }
 
-    // Get target entities
-    let mut targets: HashMap<u64, UpdateTarget> =
-        if let Some(channels) = &mut overlay_state.task_channels {
-            let targets_rx = &mut channels.aim_select_rx;
-            targets_rx
-                .borrow_and_update()
-                .iter()
-                .map(|target| {
-                    (
-                        target.entity_ptr,
-                        UpdateTarget {
-                            info: target.clone(),
-                            data: None,
-                            point_pos: Vec3::default(),
-                            health: 0.0,
-                            max_health: 0.0,
-                            shield: 0.0,
-                            max_shield: 0.0,
-                        },
-                    )
-                })
-                .collect()
-        } else {
-            // test data
-            let health = 100. - time.elapsed_seconds() * 5.0;
-            if health < 1.0 {
-                [].into()
-            } else {
-                [(
-                    0,
-                    UpdateTarget {
-                        info: PreSelectedTarget {
-                            fov: 1.0,
-                            distance: 40.0,
-                            is_visible: true,
-                            is_knocked: false,
-                            health_points: 150,
-                            love_status: apexsky::love_players::LoveStatus::Normal,
-                            is_kill_leader: false,
-                            entity_ptr: 0,
-                        },
-                        data: None,
-                        point_pos: Vec3 {
-                            x: 0.,
-                            y: -40.,
-                            z: -40.,
-                        },
-                        health,
-                        max_health: 100.,
-                        shield: 50.,
-                        max_shield: 150.,
+    impl TryFrom<&AimTargetItem> for UpdateTarget {
+        type Error = ();
+        fn try_from(value: &AimTargetItem) -> Result<Self, Self::Error> {
+            let convert = || {
+                let data = value.data.clone()?;
+                let target_pos: [f32; 3] = data.head_position.clone()?.into();
+                Some(Self {
+                    info: value.info.clone()?,
+                    data: Some(data.clone()),
+                    point_pos: Vec3 {
+                        x: -target_pos[1],
+                        y: target_pos[2],
+                        z: -target_pos[0],
                     },
-                )]
-                .into()
-            }
-        };
-
-    // Get updated target data
-    if overlay_state.task_channels.is_some() {
-        {
-            let state = overlay_state.shared_state.read();
-            targets.iter_mut().for_each(|(ptr, target)| {
-                target.data = state.aim_entities.get(ptr).cloned();
-            });
-        }
-        targets.retain(|_, target| target.data.is_some());
-        targets.iter_mut().for_each(|(_, target)| {
-            let target_data = target.data.as_ref().unwrap();
-            let target_pos = target_data.get_bone_position_by_hitbox(0);
-            target.point_pos = Vec3 {
-                x: -target_pos[1],
-                y: target_pos[2],
-                z: -target_pos[0],
+                    health: data.health as f32,
+                    max_health: data.max_health as f32,
+                    shield: data.shield_health as f32,
+                    max_shield: data.max_shield_health as f32,
+                })
             };
-            target.health = target_data.get_health() as f32;
-            target.max_health = target_data.get_max_health() as f32;
-            target.shield = target_data.get_shield_health() as f32;
-            target.max_shield = target_data.get_max_shield_health() as f32;
-        });
+            convert().ok_or(())
+        }
     }
+
+    // Get target entities
+    let mut targets: HashMap<u64, UpdateTarget> = if esp_data.ready {
+        esp_data
+            .targets
+            .as_ref()
+            .map(|targets| &targets.elements)
+            .unwrap_or(&vec![])
+            .iter()
+            .filter_map(|target| target.try_into().ok().map(|valid| (target.id, valid)))
+            .collect()
+    } else {
+        // test data
+        let health = 100. - time.elapsed_seconds() * 5.0;
+        if health < 1.0 {
+            [].into()
+        } else {
+            [(
+                0,
+                UpdateTarget {
+                    info: AimTargetInfo {
+                        fov: 1.0,
+                        distance: 40.0,
+                        is_visible: true,
+                        is_knocked: false,
+                        health_points: 150,
+                        love_status: LoveStatusCode::Normal.into(),
+                        is_kill_leader: false,
+                        entity_ptr: 0,
+                        is_npc: true,
+                    },
+                    data: None,
+                    point_pos: Vec3 {
+                        x: 0.,
+                        y: -40.,
+                        z: -40.,
+                    },
+                    health,
+                    max_health: 100.,
+                    shield: 50.,
+                    max_shield: 150.,
+                },
+            )]
+            .into()
+        }
+    };
+
     overlay_state.target_count = targets.len();
 
     // // Update ambisonic
@@ -584,7 +609,7 @@ fn follow_game_state(
                 transform: Transform::from_translation(target.point_pos),
                 ..default()
             },
-            AimTarget {
+            AimTargetEntity {
                 ptr,
                 data: target.data,
             },
@@ -617,4 +642,21 @@ fn follow_game_state(
             // },
         ));
     });
+
+    overlay_state.esp_data = esp_data;
+}
+
+/// Function to get the Unix timestamp in milliseconds
+pub fn get_unix_timestamp_in_millis() -> u64 {
+    match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => {
+            // Calculate the total milliseconds from the duration
+            let millis = duration.as_secs() * 1000 + duration.subsec_millis() as u64;
+            millis
+        }
+        Err(e) => {
+            // Handle errors, such as clock rollback
+            panic!("{}{}", s!("Error getting Unix Timestamp: "), e);
+        }
+    }
 }

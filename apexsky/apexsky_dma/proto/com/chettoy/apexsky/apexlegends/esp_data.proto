@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package com.chettoy.apexsky.apexlegends;
+
+import "com/chettoy/apexsky/apexlegends/aimbot.proto";
+import "com/chettoy/apexsky/apexlegends/player.proto";
+import "com/chettoy/apexsky/apexlegends/spectator.proto";
+
+enum EspVisualsFlag {
+  NULL = 0x00;
+  BOX = 0x01;
+  LINE = 0x02;
+  DISTANCE = 0x04;
+  HEALTH_BAR = 0x08;
+  NAME = 0x10;
+  DAMAGE = 0x20;
+}
+
+message Matrix4x4 {
+  repeated float elements = 1;
+}
+
+message AimEntityData {
+  uint64 id = 1;
+  Vec3 view_angles = 2;
+  Vec3 cam_pos = 3;
+  Vec3 sway_angles = 4;
+  Vec3 abs_velocity = 5;
+  Vec3 head_position = 6;
+  Vec3 position = 7;
+  Vec3 view_offset = 8;
+  Vec3 recoil_angles = 9;
+  int32 team_num = 10;
+  int32 health = 11;
+  int32 shield_health = 12;
+  int32 max_health = 13;
+  int32 max_shield_health = 14;
+  bool is_alive = 15;
+  bool is_knocked = 16;
+  bool is_player = 17;
+  bool is_visible = 18;
+}
+
+message AimTargetItem {
+  uint64 id = 1;
+  AimTargetInfo info = 2;
+  AimEntityData data = 3;
+  optional PlayerState player_data = 4;
+}
+
+message AimTargetList {
+  int32 version = 1;
+  repeated AimTargetItem elements = 2;
+}
+
+message AimbotState {
+  int32 version = 1;
+  optional string serialized_data = 2;
+  uint64 loop_duration = 3;
+  Vec3 target_position = 4;
+  int32 aim_mode = 5;
+  bool aiming = 6;
+  bool gun_safety = 7;
+  bool target_locked = 8;
+  int32 aim_key_state = 9;
+  int32 held_id = 10;
+  bool held_grenade = 11;
+  int32 weapon_id = 12;
+  float max_fov = 13;
+  uint64 aim_entity = 14;
+}
+
+message EspDataOption {
+  int32 version = 1;
+  bool full_aimbot_state = 2;
+  bool full_targets_list = 3;
+}
+
+message EspSettings {
+  int32 esp = 1;
+  uint32 screen_width = 2;
+  uint32 screen_height = 3;
+  bool yuan_p = 4;
+  bool debug_mode = 5;
+  int32 esp_visuals = 6;
+  bool mini_map_radar = 7;
+  bool main_map_radar = 8;
+  float max_dist = 9;
+  float aim_distance = 10;
+  bool show_aim_target = 11;
+  Vec3 glow_color_viz = 12;
+  Vec3 glow_color_notviz = 13;
+}
+
+message EspData {
+  bool ready = 1;
+  bool in_game = 2;
+  uint64 tick_num = 3;
+  uint64 frame_count = 4;
+  Matrix4x4 view_matrix = 5;
+  PlayerState view_player = 6;
+  PlayerState local_player = 7;
+  AimbotState aimbot = 8;
+  uint64 target_count = 9;
+  AimTargetList targets = 10;
+  Players teammates = 11;
+  SpectatorList spectators = 12;
+  uint64 duration_tick = 13;
+  uint64 duration_actions = 14;
+  double data_timestamp = 15;
+  float game_fps = 16;
+}

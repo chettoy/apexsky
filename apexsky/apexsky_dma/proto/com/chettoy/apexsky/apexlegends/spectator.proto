@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package com.chettoy.apexsky.apexlegends;
+
+message SpectatorInfo {
+  uint64 ptr = 1;
+  string name = 2;
+  bool is_teammate = 3;
+  int32 love_status = 4;
+}
+
+message SpectatorList {
+  repeated SpectatorInfo elements = 1;
+}

@@ -10,8 +10,8 @@ use apexsky::config::Settings;
 use apexsky::global_state::G_STATE;
 use obfstr::obfstr as s;
 
-use apexsky::pb::apexlegends::PlayerState;
 use parking_lot::RwLock;
+use pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo};
 use tokio::sync::{mpsc, watch};
 use tokio::task::{self, JoinHandle};
 use tokio::time::sleep;
@@ -20,19 +20,19 @@ use tracing_appender::non_blocking::NonBlocking;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::EnvFilter;
-use workers::actions::SpectatorInfo;
-use workers::aim::{AimKeyStatus, PreSelectedTarget};
 
 use crate::game::player::GamePlayer;
+use crate::pb::apexlegends::PlayerState;
 
 pub use apexsky::noobfstr;
 
 mod aim_actions;
 mod apexdream;
 mod context_impl;
+mod esp;
 mod game;
 mod mem;
-mod overlay;
+mod pb;
 mod workers;
 
 #[derive(Debug, Clone)]
@@ -47,6 +47,7 @@ struct TreasureClue {
 #[derive(Debug, Default, Clone)]
 struct SharedState {
     game_baseaddr: Option<u64>,
+    tick_num: u64,
     update_time: f64,
     update_duration: (u128, u128),
     aim_target: [f32; 3],
@@ -133,19 +134,19 @@ impl State {
 
 #[derive(Debug, Clone)]
 struct TaskChannels {
-    pub(crate) aim_key_rx: watch::Receiver<AimKeyStatus>,
-    pub(crate) aim_select_rx: watch::Receiver<Vec<PreSelectedTarget>>,
+    pub(crate) aim_key_rx: watch::Receiver<AimKeyState>,
+    pub(crate) aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
     pub(crate) items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
 }
 
 trait TaskManager {
-    async fn start_tasks(&mut self) -> TaskChannels;
+    async fn start_tasks(&mut self);
     async fn stop_tasks(&mut self);
     async fn check_tasks(&mut self);
 }
 
 impl TaskManager for State {
-    async fn start_tasks(&mut self) -> TaskChannels {
+    async fn start_tasks(&mut self) {
         use workers::{
             access::io_thread, actions::actions_loop, aim::aimbot_loop, control::control_loop,
             esp::esp_loop, items::items_loop,
@@ -156,7 +157,7 @@ impl TaskManager for State {
         self.set_active(true);
 
         let (access_tx, access_rx) = mpsc::channel(0x2000);
-        let (aim_key_tx, aim_key_rx) = watch::channel(workers::aim::AimKeyStatus::default());
+        let (aim_key_tx, aim_key_rx) = watch::channel(AimKeyState::default());
         let (aim_select_tx, aim_select_rx) = watch::channel(vec![]);
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
 
@@ -187,18 +188,17 @@ impl TaskManager for State {
         self.esp_t = Some(task::spawn(esp_loop(
             self.active_tx.subscribe(),
             self.shared_state.clone(),
+            TaskChannels {
+                aim_key_rx,
+                aim_select_rx,
+                items_glow_rx,
+            },
         )));
         self.items_t = Some(task::spawn(items_loop(
             self.active_tx.subscribe(),
             self.shared_state.clone(),
             items_glow_tx,
         )));
-
-        TaskChannels {
-            aim_key_rx,
-            aim_select_rx,
-            items_glow_rx,
-        }
     }
 
     async fn stop_tasks(&mut self) {
@@ -324,15 +324,9 @@ fn main() {
 
     let mut state = State::new();
 
-    let shared_state = state.shared_state.clone();
-
     if args.len() == 2 {
         if args[1] == s!("menu") {
             apexsky::menu::main().unwrap();
-            return;
-        }
-        if args[1] == s!("overlay") {
-            overlay::main(shared_state, None);
             return;
         }
     }
@@ -344,35 +338,23 @@ fn main() {
         debug_mode = true;
     }
 
-    let channels = rt.block_on(state.start_tasks());
+    rt.block_on(state.start_tasks());
 
-    // Execute the runtime in its own thread.
-    std::thread::spawn(move || {
-        rt.block_on(async {
-            loop {
-                state
-                    .toggle_tui_active(if state.shared_state.read().game_baseaddr.is_some() {
-                        !debug_mode
-                    } else {
-                        false
-                    })
-                    .await;
+    rt.block_on(async move {
+        loop {
+            state
+                .toggle_tui_active(if state.shared_state.read().game_baseaddr.is_some() {
+                    !debug_mode
+                } else {
+                    false
+                })
+                .await;
 
-                state.check_tasks().await;
+            state.check_tasks().await;
 
-                sleep(Duration::from_millis(10)).await;
-            }
-        })
-    });
-
-    // Run overlay on main thread
-    loop {
-        if G_STATE.lock().unwrap().config.settings.no_overlay {
-            std::thread::sleep(Duration::from_secs(1));
-        } else {
-            overlay::main(shared_state.clone(), Some(channels.clone()));
+            sleep(Duration::from_millis(10)).await;
         }
-    }
+    });
 }
 
 pub fn global_settings() -> Settings {
@@ -389,7 +371,7 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| {
             EnvFilter::try_new(s!(
-                "apexsky_dma=warn,apexsky=warn,apexsky_dma::mem=info,apexsky_dma::workers::access=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::apexdream=warn"
+                "apexsky_dma=warn,apexsky=warn,apexsky_dma::mem=info,apexsky_dma::workers::access=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::apexdream=warn"
             ))
         })
         .unwrap();

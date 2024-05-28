@@ -14,6 +14,7 @@ use tracing::{instrument, trace};
 
 use crate::aim_actions::{AimExecuter, AimbotAction, MemAimHelper};
 use crate::apexdream::base::math;
+use crate::pb::apexlegends::{AimKeyState, AimTargetInfo};
 use crate::SharedState;
 
 use super::access::MemApi;
@@ -31,35 +32,13 @@ pub trait ContextForAimbot {
     async fn update_aim_target_for_esp(&mut self, position: [f32; 3]);
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct AimKeyStatus {
-    pub aimbot_hotkey_1: i32,
-    pub aimbot_hotkey_2: i32,
-    pub attack_button: i32,
-    pub zoom_button: i32,
-    pub triggerbot_hotkey: i32,
-    pub attack_state: i32,
-}
-
-#[derive(Debug, Clone)]
-pub struct PreSelectedTarget {
-    pub fov: f32,
-    pub distance: f32,
-    pub is_visible: bool,
-    pub is_knocked: bool,
-    pub health_points: i32,
-    pub love_status: LoveStatus,
-    pub is_kill_leader: bool,
-    pub entity_ptr: u64,
-}
-
 #[instrument(skip_all)]
 pub async fn aimbot_loop(
     mut active: watch::Receiver<bool>,
     mut state: Arc<RwLock<SharedState>>,
     access_tx: MemApi,
-    mut aim_key_rx: watch::Receiver<AimKeyStatus>,
-    mut aim_select_rx: watch::Receiver<Vec<PreSelectedTarget>>,
+    mut aim_key_rx: watch::Receiver<AimKeyState>,
+    mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
 ) -> anyhow::Result<()> {
     let mut aimbot = Aimbot::default();
     let mut natural_delta_viewangles: [f32; 3] = [0.0, 0.0, 0.0];
@@ -158,7 +137,7 @@ pub async fn aimbot_loop(
                     t.fov,
                     t.distance,
                     t.is_visible,
-                    t.love_status == LoveStatus::Love,
+                    t.love_status == LoveStatus::Love as i32,
                     t.entity_ptr,
                 );
             });

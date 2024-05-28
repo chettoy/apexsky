@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package com.chettoy.apexsky.apexlegends;
+
+import "com/chettoy/apexsky/apexlegends/player.proto";
+
+message AimKeyState {
+  int32 aimbot_hotkey_1 = 1;
+  int32 aimbot_hotkey_2 = 2;
+  int32 attack_button = 3;
+  int32 zoom_button = 4;
+  int32 triggerbot_hotkey = 5;
+  int32 attack_state = 6;
+}
+
+message AimTargetInfo {
+  float fov = 1;
+  float distance = 2;
+  bool is_visible = 3;
+  bool is_knocked = 4;
+  int32 health_points = 5;
+  LoveStatusCode love_status = 6;
+  bool is_kill_leader = 7;
+  uint64 entity_ptr = 8;
+  bool is_npc = 9;
+}
