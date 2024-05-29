@@ -24,9 +24,9 @@ use crate::apexdream::{
     state::entities::{BaseNPCEntity, LootEntity},
 };
 use crate::game::{data::*, player::GamePlayer};
-use crate::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo};
+use crate::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
 use crate::workers::access::{AccessType, PendingAccessRequest, PendingMemRead, PendingMemWrite};
-use crate::{SharedState, TreasureClue};
+use crate::SharedState;
 
 use super::access::MemApi;
 
@@ -368,13 +368,12 @@ pub async fn actions_loop(
                             .mapv(|x| x * x)
                             .sum()
                             .sqrt();
-                        let clue = TreasureClue {
+                        let clue = TreasureClue { 
+                            entity_handle: entity.entity_ptr.into_raw(),
                             item_id: entity.custom_script_int,
-                            custom_item_id: (entity.custom_script_int as u64
-                                | (entity.survival_property as u64) << 32),
-                            position: entity.origin,
+                            custom_item_id: (entity.custom_script_int as u64 | (entity.survival_property as u64) << 32),
+                            position: Some(entity.origin.into()),
                             distance,
-                            entity_ptr: entity.entity_ptr.into_raw(),
                         };
                         loots.push(clue);
                     });

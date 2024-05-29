@@ -8,7 +8,8 @@ use tokio::time::{sleep_until, Instant};
 use tracing::instrument;
 
 use crate::game::data::*;
-use crate::{SharedState, TreasureClue};
+use crate::pb::apexlegends::TreasureClue;
+use crate::SharedState;
 
 #[instrument]
 pub async fn items_loop(
@@ -40,7 +41,7 @@ pub async fn items_loop(
             .treasure_clues
             .iter()
             .filter_map(|clue| {
-                process_loot(clue, &g_settings).map(|glow_ctx| (clue.entity_ptr, glow_ctx))
+                process_loot(clue, &g_settings).map(|glow_ctx| (clue.entity_handle, glow_ctx))
             })
             .collect();
 
@@ -54,7 +55,7 @@ pub async fn items_loop(
 
 #[instrument(skip_all, fields(clue))]
 fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
-    let ptr = clue.entity_ptr;
+    let ptr = clue.entity_handle;
     if ptr <= 0 {
         tracing::error!(?clue);
         return None;

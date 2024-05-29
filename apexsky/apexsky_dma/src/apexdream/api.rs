@@ -29,7 +29,6 @@ impl Api {
 
     /// Reads memory from the process.
     #[instrument]
-    #[cfg_attr(feature = "debug_api", track_caller)]
     #[inline]
     pub async fn vm_read<T: Pod>(&self, ptr: Ptr<T>) -> anyhow::Result<T> {
         let mut dest: T = unsafe { mem::MaybeUninit::zeroed().assume_init() };
@@ -42,16 +41,13 @@ impl Api {
                 .map(|data| dest.copy_from_slice(&data))
         };
         result.map(|_| dest).map_err(|e| {
-            #[cfg(feature = "debug_api")]
-            self.log(
-                fmtools::fmt!("error: "{std::panic::Location::caller()}" vm_read("{ptr}"): "{result}),
-            );
+            tracing::debug!(?ptr, ?e);
             e
         })
     }
 
     /// Reads memory into the destination from the process.
-    #[cfg_attr(feature = "debug_api", track_caller)]
+    #[instrument(skip(dest))]
     #[inline]
     pub async fn vm_read_into<T: Pod + ?Sized>(
         &self,
@@ -67,15 +63,14 @@ impl Api {
                 .map(|data| dest.copy_from_slice(&data))
         };
         result.map_err(|e| {
-            #[cfg(feature = "debug_api")]
-			self.log(fmtools::fmt!("error: "{std::panic::Location::caller()}" vm_read_into("{ptr}"): "{result}));
+            tracing::debug!(?ptr, ?e);
             e
         })
     }
 
     /// Gathers memory from the process.
     /// This routine is optimized for reading small pieces of large objects.
-    #[cfg_attr(feature = "debug_api", track_caller)]
+    #[instrument(skip_all)]
     #[inline]
     pub async fn vm_gatherd<'a, T: Pod>(
         &self,
@@ -89,8 +84,7 @@ impl Api {
             .await
             .map(|_| &*indices)
             .map_err(|e| {
-                #[cfg(feature = "debug_api")]
-			self.log(fmtools::fmt!("error: "{std::panic::Location::caller()}" vm_gatherd("{ptr}"): "{result}));
+                tracing::debug!(?ptr, ?e);
                 e
             })
     }
@@ -148,6 +142,7 @@ impl Api {
     }
 
     /// Reads bytes to be interpreted as a c-string.
+    #[instrument]
     pub async fn vm_read_cstr<'a>(
         &self,
         ptr: Ptr<[u8]>,
@@ -158,7 +153,7 @@ impl Api {
     }
 
     /// Writes memory into the process.
-    #[cfg_attr(feature = "debug_api", track_caller)]
+    #[instrument(skip(data))]
     #[inline]
     pub async fn vm_write<T: Pod + ?Sized>(&self, ptr: Ptr<T>, data: &T) -> anyhow::Result<()> {
         AccessType::mem_write_typed(ptr.into_raw(), data, 0)
@@ -166,8 +161,7 @@ impl Api {
             .await?
             .await?
             .map_err(|e| {
-                #[cfg(feature = "debug_api")]
-			self.log(fmtools::fmt!("error: "{std::panic::Location::caller()}" vm_write("{ptr}"): "{result}));
+                tracing::debug!(?ptr, ?e);
                 e
             })
     }

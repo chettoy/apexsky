@@ -11,7 +11,7 @@ use apexsky::global_state::G_STATE;
 use obfstr::obfstr as s;
 
 use parking_lot::RwLock;
-use pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo};
+use pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
 use tokio::sync::{mpsc, watch};
 use tokio::task::{self, JoinHandle};
 use tokio::time::sleep;
@@ -29,20 +29,10 @@ pub use apexsky::noobfstr;
 mod aim_actions;
 mod apexdream;
 mod context_impl;
-mod esp;
 mod game;
 mod mem;
 mod pb;
 mod workers;
-
-#[derive(Debug, Clone)]
-struct TreasureClue {
-    item_id: i32,
-    custom_item_id: u64,
-    position: [f32; 3],
-    distance: f32,
-    entity_ptr: u64,
-}
 
 #[derive(Debug, Default, Clone)]
 struct SharedState {

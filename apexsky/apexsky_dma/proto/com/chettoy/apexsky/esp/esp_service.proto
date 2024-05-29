@@ -14,12 +14,19 @@ import "com/chettoy/apexsky/apexlegends/spectator.proto";
 service EspService {
   rpc UnaryEcho(EchoRequest) returns (EchoResponse) {}
   rpc GetPlayers (GetPlayersRequest) returns (com.chettoy.apexsky.apexlegends.Players) {}
+  rpc GetLoots (GetLootsRequest) returns (com.chettoy.apexsky.apexlegends.Loots) {}
   rpc GetEspData (com.chettoy.apexsky.apexlegends.EspDataOption) returns (com.chettoy.apexsky.apexlegends.EspData) {}
   rpc GetEspSettings (google.protobuf.Empty) returns (com.chettoy.apexsky.apexlegends.EspSettings) {}
 }
 
 message GetPlayersRequest {
   int32 version = 1;
+}
+
+message GetLootsRequest {
+  int32 version = 1;
+  float max_distance = 2;
+  repeated int32 wish_list = 3;
 }
 
 // EchoRequest is the request for echo.

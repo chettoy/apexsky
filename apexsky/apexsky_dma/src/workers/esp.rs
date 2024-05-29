@@ -13,14 +13,14 @@ use tracing::instrument;
 use crate::game::player::GamePlayer;
 use crate::pb::apexlegends::{
     AimEntityData, AimTargetItem, AimTargetList, AimbotState, EspData, EspDataOption, EspSettings,
-    EspVisualsFlag, Matrix4x4, Players, SpectatorList,
+    EspVisualsFlag, Loots, Matrix4x4, Players, SpectatorList,
 };
 use crate::{SharedState, TaskChannels};
 
 use tonic::{transport::Server, Request, Response, Status};
 
 use crate::pb::esp_service::esp_service_server::{EspService, EspServiceServer};
-use crate::pb::esp_service::{EchoRequest, EchoResponse, GetPlayersRequest};
+use crate::pb::esp_service::{EchoRequest, EchoResponse, GetLootsRequest, GetPlayersRequest};
 
 #[derive(Debug)]
 pub struct MyEspService {
@@ -56,6 +56,52 @@ impl EspService for MyEspService {
                 .map(GamePlayer::get_buf)
                 .cloned()
                 .collect(),
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn get_loots(
+        &self,
+        request: Request<GetLootsRequest>,
+    ) -> Result<Response<Loots>, Status> {
+        tracing::info!("Got a get_loots request from {:?}", request.remote_addr());
+        let req = request.into_inner();
+        let reply = Loots {
+            version: 0,
+            loots: {
+                let filter_dist = req.max_distance > 0.0;
+                let filter_id = !req.wish_list.is_empty();
+                if !filter_dist && !filter_id {
+                    self.state.read().treasure_clues.clone()
+                } else if filter_dist {
+                    self.state
+                        .read()
+                        .treasure_clues
+                        .iter()
+                        .filter(|clue| clue.distance <= req.max_distance)
+                        .cloned()
+                        .collect()
+                } else if filter_id {
+                    self.state
+                        .read()
+                        .treasure_clues
+                        .iter()
+                        .filter(|clue| req.wish_list.contains(&clue.item_id))
+                        .cloned()
+                        .collect()
+                } else {
+                    self.state
+                        .read()
+                        .treasure_clues
+                        .iter()
+                        .filter(|clue| {
+                            clue.distance <= req.max_distance
+                                && req.wish_list.contains(&clue.item_id)
+                        })
+                        .cloned()
+                        .collect()
+                }
+            },
         };
         Ok(Response::new(reply))
     }
@@ -298,19 +344,22 @@ pub async fn esp_loop(
                 }
             } else {
                 // Start server
-                let addr = "[::1]:50051".parse().unwrap();
+                let config = G_STATE.lock().unwrap().config.esp_service.clone();
                 let service = EspServiceServer::new(MyEspService {
                     state: state.clone(),
                     channels: channels.clone(),
                 })
                 .accept_compressed(CompressionEncoding::Zstd)
-                .send_compressed(CompressionEncoding::Zstd);
+                .accept_compressed(CompressionEncoding::Gzip)
+                .send_compressed(CompressionEncoding::Zstd)
+                .send_compressed(CompressionEncoding::Gzip);
                 let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
                 let task = tokio::spawn(
                     Server::builder()
                         .trace_fn(|_| tracing::info_span!("esp_server"))
+                        .accept_http1(config.accept_http1)
                         .add_service(service)
-                        .serve_with_shutdown(addr, shutdown_rx.map(drop)),
+                        .serve_with_shutdown(config.listen, shutdown_rx.map(drop)),
                 );
                 server_task = Some((task, shutdown_tx));
             }

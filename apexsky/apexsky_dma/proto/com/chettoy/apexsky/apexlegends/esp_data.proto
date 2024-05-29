@@ -20,6 +20,19 @@ message Matrix4x4 {
   repeated float elements = 1;
 }
 
+message TreasureClue {
+  uint64 entity_handle = 1;
+  int32 item_id = 2;
+  uint64 custom_item_id = 3;
+  Vec3 position = 4;
+  float distance = 5;  
+}
+
+message Loots {
+  int32 version = 1;
+  repeated TreasureClue loots = 2;
+}
+
 message AimEntityData {
   uint64 id = 1;
   Vec3 view_angles = 2;

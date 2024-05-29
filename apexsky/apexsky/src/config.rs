@@ -1,7 +1,7 @@
 use crate::noobfstr as s;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf};
 
 use crate::{aimbot::AimbotSettings, love_players::LovePlayer};
 
@@ -152,13 +152,20 @@ pub struct Loot {
     pub weapon_sentinel: bool,
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, Default)]
 pub struct Config {
+    pub esp_service: EspServiceConfig,
     pub settings: Settings,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub(crate) love_player: Vec<LovePlayer>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub(crate) hate_player: Vec<LovePlayer>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct EspServiceConfig {
+    pub listen: SocketAddr,
+    pub accept_http1: bool,
 }
 
 #[repr(C)]
@@ -371,6 +378,15 @@ impl Default for Loot {
     }
 }
 
+impl Default for EspServiceConfig {
+    fn default() -> Self {
+        Self {
+            listen: obfstr::obfstr!("[::1]:50051").parse().unwrap(),
+            accept_http1: false,
+        }
+    }
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -444,16 +460,6 @@ impl Default for Settings {
             loot_outline: 0,
 
             loot: Loot::default(),
-        }
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            settings: Default::default(),
-            love_player: Default::default(),
-            hate_player: Default::default(),
         }
     }
 }
