@@ -1,5 +1,6 @@
+#include <chrono>
 #include <iostream>
-#include <unistd.h>
+#include <thread>
 
 #include "esp_client.hpp"
 
@@ -35,7 +36,7 @@ int main(int argc, char **argv) {
 
     if (!espData.in_game() || !espData.has_local_player()) {
       std::cout << "Waiting for the game to be ready.." << std::endl;
-      sleep(2);
+      std::this_thread::sleep_for(std::chrono::seconds(2));
       continue;
     }
 
@@ -71,7 +72,7 @@ int main(int argc, char **argv) {
                 << "," << player.origin().z() << ")" << std::endl;
     }
 
-    sleep(2);
+    std::this_thread::sleep_for(std::chrono::seconds(2));
   }
 
   return 0;
