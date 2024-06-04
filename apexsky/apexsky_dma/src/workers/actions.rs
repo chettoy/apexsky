@@ -979,27 +979,30 @@ async fn inject_highlight(
             .await?
             .recv_for::<u64>()
             .await?;
-    for (context_id, bits, color) in highlight_settings_inject {
+    let mut futs_write_highlight_settings: Vec<tokio::task::JoinHandle<anyhow::Result<()>>> = Vec::with_capacity(highlight_settings_inject.len());
+    for (context_id, &bits, color) in highlight_settings_inject {
         let context_offset = highlight_settings_ptr + 0x34 * context_id as u64;
-        AccessType::mem_write_typed::<HighlightBits>(context_offset, bits, 0)
-            .dispatch(mem)
-            .await?
-            .await?
-            .context(format!("{:?}", context_id))?;
-        AccessType::mem_write_typed::<[f32; 3]>(context_offset + 4, &color, 0)
-            .dispatch(mem)
-            .await?
-            .await?
-            .context(format!("{:?}", context_id))?;
+        futs_write_highlight_settings.push(tokio::spawn({
+            let mem = mem.clone();
+            async move {
+                let (r1, r2) = tokio::try_join!(
+                    AccessType::mem_write_typed::<HighlightBits>(context_offset, &bits, 0)
+                        .dispatch(&mem)
+                        .await?,
+                    AccessType::mem_write_typed::<[f32; 3]>(context_offset + 4, &color, 0)
+                        .dispatch(&mem)
+                        .await?,
+                )?;
+                r1.context(format!("{:?}", context_id))?;
+                r2.context(format!("{:?}", context_id))?;
+                Ok(())
+            }
+        }));
+    }
+    for task in futs_write_highlight_settings {
+        task.await??;
     }
     tracing::trace!(highlight_settings_ptr);
-    AccessType::mem_write_typed::<i32>(base + OFFSET_GLOW_FIX, &1, 0)
-        .dispatch(mem)
-        .await?
-        .await?
-        .unwrap_or_else(|e| {
-            tracing::debug!(%e, "{}", s!("err write glow fix"));
-        });
 
     Ok(())
 }
