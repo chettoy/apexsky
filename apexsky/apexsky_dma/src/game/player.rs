@@ -191,26 +191,24 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     fn get_bone_position_by_hitbox(&self, hitbox_id: u32) -> [f32; 3] {
         if self.studio.hitboxes.is_empty() {
             tracing::debug!(?hitbox_id, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));
-            // fallback
-            return {
-                if hitbox_id == 0 {
-                    self.view_origin
-                } else {
-                    self.origin
-                }
-            };
         }
 
-        let bone = self
+        if let Some(bone) = self
             .studio
             .hitboxes
             .get(hitbox_id as usize)
             .map(|hitbox| hitbox.bone as usize)
-            .unwrap_or_else(|| {
-                tracing::error!(?hitbox_id, bone_head=self.studio.bone_head, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));
-                hitbox_id as usize
-            });
-        math::add(self.origin, self.bones.get_pos(bone))
+        {
+            math::add(self.origin, self.bones.get_pos(bone))
+        } else {
+            tracing::debug!(?hitbox_id, bone_head=self.studio.bone_head, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));
+            // fallback
+            if hitbox_id == 0 {
+                self.view_origin
+            } else {
+                self.origin
+            }
+        }
     }
 
     fn get_position(&self) -> [f32; 3] {
@@ -307,19 +305,20 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
     fn get_bone_position_by_hitbox(&self, hitbox_id: u32) -> [f32; 3] {
         if self.studio.hitboxes.is_empty() {
             tracing::debug!(?hitbox_id, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));
-            return self.origin;
         }
 
-        let bone = self
+        if let Some(bone) = self
             .studio
             .hitboxes
             .get(hitbox_id as usize)
             .map(|hitbox| hitbox.bone as usize)
-            .unwrap_or_else(|| {
-                tracing::error!(?hitbox_id, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));
-                hitbox_id as usize
-            });
-        self.get_bone_pos(bone)
+        {
+            self.get_bone_pos(bone)
+        } else {
+            tracing::debug!(?hitbox_id, hitboxes=?self.studio.hitboxes, "{}", s!("invalid hitbox"));
+            // fallback
+            self.origin
+        }
     }
 
     fn get_position(&self) -> [f32; 3] {

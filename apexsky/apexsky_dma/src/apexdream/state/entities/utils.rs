@@ -31,7 +31,7 @@ impl BoneArray {
         if let Some(matrix) = self.v.get(bone) {
             [matrix[3], matrix[7], matrix[11]]
         } else {
-            tracing::warn!(bone, ?self.v, "{}", s!("711aac39-e83c-4788 invalid bone"));
+            tracing::debug!(bone, ?self.v, "{}", s!("711aac39-e83c-4788 invalid bone"));
             [0.0; 3]
         }
     }
