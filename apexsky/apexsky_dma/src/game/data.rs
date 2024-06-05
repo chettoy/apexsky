@@ -27,7 +27,7 @@ macro_rules! define_item_id {
 }
 
 /*
- * GameVersion=v3.0.70.55
+ * GameVersion=v3.0.71.58
  */
 pub const OFFSET_YAW: u64 = 0x223c - 0x8;
 pub const OFFSET_SPECTATOR_LIST: u64 = 0x1eadd28;
