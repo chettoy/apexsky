@@ -79,4 +79,5 @@ message PlayerState {
 message Players {
   int32 version = 1;
   repeated PlayerState players = 2;
+  double data_timestamp = 3;
 }

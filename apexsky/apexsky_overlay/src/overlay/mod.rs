@@ -16,10 +16,11 @@ use tokio::sync::watch;
 
 use crate::overlay::asset::{Blob, BlobAssetLoader};
 use crate::pb::apexlegends::{
-    AimEntityData, AimTargetInfo, AimTargetItem, EspData, EspDataOption, EspSettings,
-    LoveStatusCode,
+    AimEntityData, AimTargetInfo, AimTargetItem, EspData, EspDataOption, EspSettings, Loots,
+    LoveStatusCode, TreasureClue,
 };
 use crate::pb::esp_service::esp_service_client::EspServiceClient;
+use crate::pb::esp_service::GetLootsRequest;
 
 mod asset;
 mod ui;
@@ -32,15 +33,16 @@ pub(crate) fn main() {
 
     let _enter = rt.enter();
 
-    let mut rpc_client = match bevy::tasks::block_on(EspServiceClient::connect("http://[::1]:50051")) {
-        Ok(client) => client
-            .accept_compressed(tonic::codec::CompressionEncoding::Zstd)
-            .send_compressed(tonic::codec::CompressionEncoding::Zstd),
-        Err(e) => {
-            tracing::error!(%e, ?e);
-            return;
-        }
-    };
+    let mut rpc_client =
+        match bevy::tasks::block_on(EspServiceClient::connect("http://[::1]:50051")) {
+            Ok(client) => client
+                .accept_compressed(tonic::codec::CompressionEncoding::Zstd)
+                .send_compressed(tonic::codec::CompressionEncoding::Zstd),
+            Err(e) => {
+                tracing::error!(%e, ?e);
+                return;
+            }
+        };
     let esp_settings = match bevy::tasks::block_on(rpc_client.get_esp_settings(())) {
         Ok(data) => data.into_inner(),
         Err(e) => {
@@ -151,6 +153,7 @@ pub(crate) fn main() {
             rpc_client,
             esp_data: EspData::default(),
             esp_settings,
+            esp_loots: Loots::default(),
             sound_handle: Default::default(),
             font_blob: Default::default(),
             font_loaded: false,
@@ -202,6 +205,7 @@ pub(crate) struct MyOverlayState {
     rpc_client: EspServiceClient<tonic::transport::Channel>,
     esp_data: EspData,
     esp_settings: EspSettings,
+    esp_loots: Loots,
     sound_handle: Handle<AudioSource>,
     font_blob: Handle<Blob>,
     font_loaded: bool,
@@ -255,8 +259,9 @@ fn setup(
 ) {
     static S_FONT_PATH: Lazy<String> =
         Lazy::new(|| s!("embedded://apexsky_overlay/assets/fonts/LXGWNeoXiHei.ttf").to_string());
-    static S_SOUND_PATH: Lazy<String> =
-        Lazy::new(|| s!("embedded://apexsky_overlay/assets/sounds/Windless Slopes.ogg").to_string());
+    static S_SOUND_PATH: Lazy<String> = Lazy::new(|| {
+        s!("embedded://apexsky_overlay/assets/sounds/Windless Slopes.ogg").to_string()
+    });
 
     overlay_state.font_blob = asset_server.load(&*S_FONT_PATH);
     overlay_state.sound_handle = asset_server.load(&*S_SOUND_PATH);
@@ -442,6 +447,20 @@ fn follow_game_state(
                 return;
             }
         };
+
+    // Retrieve loots data every 0.2 seconds
+    if esp_data.data_timestamp > overlay_state.esp_loots.data_timestamp + 0.2 {
+        match bevy::tasks::block_on(overlay_state.rpc_client.get_loots(GetLootsRequest {
+            version: 0,
+            max_distance: 40.0 * 200.0,
+            wish_list: vec![194, 198, 199, 219, 222, 223, 247, 248, 252, 256, 267],
+        })) {
+            Ok(data) => overlay_state.esp_loots = data.into_inner(),
+            Err(e) => {
+                tracing::error!(%e, ?e);
+            }
+        }
+    }
 
     overlay_state.update_latency = time.delta_seconds_f64() * 1000.0;
 

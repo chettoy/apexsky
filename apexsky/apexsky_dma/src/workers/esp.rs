@@ -46,16 +46,18 @@ impl EspService for MyEspService {
         request: Request<GetPlayersRequest>,
     ) -> Result<Response<Players>, Status> {
         tracing::info!("Got a get_players request from {:?}", request.remote_addr());
-        let reply = Players {
-            version: 0,
-            players: self
-                .state
-                .read()
-                .players
-                .values()
-                .map(GamePlayer::get_buf)
-                .cloned()
-                .collect(),
+        let reply = {
+            let lock = self.state.read();
+            Players {
+                version: 0,
+                players: lock
+                    .players
+                    .values()
+                    .map(GamePlayer::get_buf)
+                    .cloned()
+                    .collect(),
+                data_timestamp: lock.update_time,
+            }
         };
         Ok(Response::new(reply))
     }
@@ -66,32 +68,14 @@ impl EspService for MyEspService {
     ) -> Result<Response<Loots>, Status> {
         tracing::info!("Got a get_loots request from {:?}", request.remote_addr());
         let req = request.into_inner();
-        let reply = Loots {
-            version: 0,
-            loots: {
-                let filter_dist = req.max_distance > 0.0;
-                let filter_id = !req.wish_list.is_empty();
-                if !filter_dist && !filter_id {
-                    self.state.read().treasure_clues.clone()
-                } else if filter_dist {
-                    self.state
-                        .read()
-                        .treasure_clues
-                        .iter()
-                        .filter(|clue| clue.distance <= req.max_distance)
-                        .cloned()
-                        .collect()
-                } else if filter_id {
-                    self.state
-                        .read()
-                        .treasure_clues
-                        .iter()
-                        .filter(|clue| req.wish_list.contains(&clue.item_id))
-                        .cloned()
-                        .collect()
-                } else {
-                    self.state
-                        .read()
+        let filter_dist = req.max_distance > 0.0;
+        let filter_id = !req.wish_list.is_empty();
+        let reply = {
+            let lock = self.state.read();
+            Loots {
+                version: 0,
+                loots: match (filter_dist, filter_id) {
+                    (true, true) => lock
                         .treasure_clues
                         .iter()
                         .filter(|clue| {
@@ -99,9 +83,23 @@ impl EspService for MyEspService {
                                 && req.wish_list.contains(&clue.item_id)
                         })
                         .cloned()
-                        .collect()
-                }
-            },
+                        .collect(),
+                    (true, false) => lock
+                        .treasure_clues
+                        .iter()
+                        .filter(|clue| clue.distance <= req.max_distance)
+                        .cloned()
+                        .collect(),
+                    (false, true) => lock
+                        .treasure_clues
+                        .iter()
+                        .filter(|clue| req.wish_list.contains(&clue.item_id))
+                        .cloned()
+                        .collect(),
+                    (false, false) => lock.treasure_clues.clone(),
+                },
+                data_timestamp: lock.update_time,
+            }
         };
         Ok(Response::new(reply))
     }
@@ -200,6 +198,7 @@ impl EspService for MyEspService {
                 teammates: Some(Players {
                     version: 0,
                     players: lock.teammates.clone(),
+                    data_timestamp: lock.update_time,
                 }),
                 spectators: Some(SpectatorList {
                     elements: lock.spectator_list.clone(),

@@ -12,6 +12,7 @@ use crate::overlay::ui::mini_map::RadarTarget;
 use crate::pb::apexlegends::EspData;
 use crate::pb::apexlegends::EspSettings;
 use crate::pb::apexlegends::EspVisualsFlag;
+use crate::pb::apexlegends::Loots;
 use crate::pb::apexlegends::LoveStatusCode;
 use crate::pb::apexlegends::PlayerState;
 use crate::pb::apexlegends::SpectatorInfo;
@@ -326,7 +327,12 @@ pub fn ui_system(
     };
 
     CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
-        esp_2d_ui(ui, &overlay_state.esp_data, &overlay_state.esp_settings);
+        esp_2d_ui(
+            ui,
+            &overlay_state.esp_data,
+            &overlay_state.esp_settings,
+            &overlay_state.esp_loots,
+        );
         info_bar_ui(
             ui,
             &overlay_state.esp_data,
@@ -500,7 +506,7 @@ fn info_bar_ui(
     });
 }
 
-fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings) {
+fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings, esp_loots: &Loots) {
     use egui::{Color32, Rect};
 
     if !esp_data.in_game {
@@ -517,6 +523,11 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings) 
         .elements
         .try_into()
         .unwrap();
+
+    let font_id = egui::FontId {
+        size: 16.0,
+        family: egui::FontFamily::Proportional,
+    };
 
     if esp_settings.show_aim_target {
         if let Some(aim_pos) = (|| {
@@ -541,9 +552,9 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings) 
                 .map(|a| a.target_locked)
                 .unwrap_or(false);
             let indicator_color = if aimbot_target_locked {
-                Color32::from_rgba_premultiplied(255, 165, 0, 158)
+                Color32::from_rgba_unmultiplied(255, 165, 0, 158)
             } else {
-                Color32::from_rgba_premultiplied(255, 255, 255, 158)
+                Color32::from_rgba_unmultiplied(255, 255, 255, 158)
             };
             let p1 = pos2(bs.x + INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
             let p2 = pos2(bs.x - INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
@@ -562,10 +573,51 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings) 
         }
     }
 
-    let font_id = egui::FontId {
-        size: 16.0,
-        family: egui::FontFamily::Proportional,
-    };
+    if !esp_loots.loots.is_empty() {
+        if let Some(bs_local) = world_to_screen(
+            &esp_data
+                .view_player
+                .as_ref()
+                .and_then(|p| p.origin.clone())
+                .unwrap_or_default()
+                .into(),
+            &view_matrix,
+            screen_width,
+            screen_height,
+        ) {
+            for clue in &esp_loots.loots {
+                let Some(position) = clue.position.clone() else {
+                    continue;
+                };
+                let Some(bs_loot) =
+                    world_to_screen(&position.into(), &view_matrix, screen_width, screen_height)
+                else {
+                    continue;
+                };
+                let (scr_pos_local, scr_pos_loot) =
+                    (pos2(bs_local.x, bs_local.y), pos2(bs_loot.x, bs_loot.y));
+                let distance_text = format!(
+                    "{}{}{}{}",
+                    clue.item_id,
+                    s!("("),
+                    (clue.distance / 39.62).round() as i32,
+                    s!("m)")
+                );
+                ui.painter().line_segment(
+                    [scr_pos_local, scr_pos_loot],
+                    (0.5, Color32::from_rgba_unmultiplied(255, 255, 255, 32)),
+                );
+                ui.painter().text(
+                    scr_pos_loot,
+                    Align2::CENTER_CENTER,
+                    distance_text,
+                    font_id.clone(),
+                    Color32::from_rgb(212, 175, 55),
+                );
+            }
+        }
+    }
+
     let (box_color_viz, box_color_not_viz) = {
         let color_viz: [f32; 3] = esp_settings.glow_color_viz.clone().unwrap().into();
         let color_notviz: [f32; 3] = esp_settings.glow_color_notviz.clone().unwrap().into();
@@ -652,7 +704,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings) 
                 let color = if player_data.is_knocked {
                     Color32::RED
                 } else {
-                    Color32::from_rgba_premultiplied(0, 255, 0, alpha)
+                    Color32::from_rgba_unmultiplied(0, 255, 0, alpha)
                 };
                 let pos = pos2(box_middle_x, bottom_screen_pos.y + 1.0);
                 ui.painter().text(
@@ -671,7 +723,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings) 
                     } else {
                         box_color_not_viz
                     };
-                    let box_color = Color32::from_rgba_premultiplied(r, g, b, alpha);
+                    let box_color = Color32::from_rgba_unmultiplied(r, g, b, alpha);
                     let min_pos = pos2(box_middle_x - box_width / 2.0, head_screen_pos.y);
                     let max_pos = pos2(min_pos.x + box_width, min_pos.y + box_height);
                     let stroke = (1.0, box_color);
@@ -697,14 +749,14 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings) 
                     } else if is_love == LoveStatusCode::Ambivalent {
                         Color32::BLACK
                     } else {
-                        Color32::from_rgba_premultiplied(255, 255, 255, alpha)
+                        Color32::from_rgba_unmultiplied(255, 255, 255, alpha)
                     };
 
                     let draw_pos = pos2(box_middle_x, head_screen_pos.y - 15.0);
                     let nick_pos = pos2(draw_pos.x + 50.0, draw_pos.y);
 
                     let level_text = format!("{}{}", s!("Lv."), xp_level(player_data.xp));
-                    let level_color = Color32::from_rgba_premultiplied(0, 255, 0, alpha);
+                    let level_color = Color32::from_rgba_unmultiplied(0, 255, 0, alpha);
 
                     ui.painter().text(
                         draw_pos,
