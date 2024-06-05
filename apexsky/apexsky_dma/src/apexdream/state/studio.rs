@@ -104,7 +104,7 @@ impl StudioModel {
         // Read hitboxes
         let numhitboxes = self.hitboxset.numhitboxes as usize;
         if numhitboxes > 1024 {
-            tracing::warn!("{}", s!("too many hitboxes to read"));
+            // tracing::warn!("{}", s!("too many hitboxes to read"));
             self.hitboxes.clear();
             return false;
         }
