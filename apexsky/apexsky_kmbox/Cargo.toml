@@ -1,0 +1,13 @@
+[package]
+name = "apexsky_kmbox"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+embedded-graphics = "0.8.1"
+obfstr = "0.4.3"
+rand = "0.8.5"
+thiserror = "1.0.61"
+tokio = { version = "1.38.0", features = ["net", "time"] }
+zerocopy = { version = "0.7.34", features = ["derive"] }

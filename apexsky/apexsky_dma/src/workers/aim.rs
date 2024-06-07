@@ -12,14 +12,15 @@ use tokio::sync::watch;
 use tokio::time::{sleep, sleep_until, Instant};
 use tracing::{instrument, trace};
 
-use crate::aim_actions::{AimExecuter, AimbotAction, MemAimHelper};
 use crate::apexdream::base::math;
+use crate::executer::{AimExecuter, AimbotAction, KmboxAimExecuter, MemAimHelper};
 use crate::pb::apexlegends::{AimKeyState, AimTargetInfo};
 use crate::SharedState;
 
 use super::access::MemApi;
 
 const ENABLE_MEM_AIM: bool = true;
+const ENABLE_KMBOX_AIM: Option<(&str, u32)> = Some(("127.0.0.1:12345", 0x00000000));
 
 pub trait ContextForAimbot {
     async fn get_aimbot_settings(&self) -> Option<AimbotSettings>;
@@ -40,6 +41,9 @@ pub async fn aimbot_loop(
     mut aim_key_rx: watch::Receiver<AimKeyState>,
     mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
 ) -> anyhow::Result<()> {
+    tracing::debug!("{}", s!("task start"));
+
+    let mut start_instant = Instant::now();
     let mut aimbot = Aimbot::default();
     let mut natural_delta_viewangles: [f32; 3] = [0.0, 0.0, 0.0];
     let mut prev_recoil_angle: [f32; 3] = [0.0, 0.0, 0.0];
@@ -49,9 +53,11 @@ pub async fn aimbot_loop(
         apex_base: 0,
         lplayer_ptr: 0,
     };
-    let mut start_instant = Instant::now();
-
-    tracing::debug!("{}", s!("task start"));
+    let mut kmbox_aim_executer = if let Some((addr, mac)) = ENABLE_KMBOX_AIM {
+        Some(KmboxAimExecuter::connect(addr.parse()?, mac).await?)
+    } else {
+        None
+    };
 
     while *active.borrow_and_update() {
         sleep(Duration::from_millis(2)).await;
@@ -342,6 +348,9 @@ pub async fn aimbot_loop(
             let mut executer = mem_aim_helper.get_executer(view_angles);
             executer.perform(aimbot_action).await.ok();
             prev_view_angles = Some(executer.get_updated_viewangles().unwrap_or(view_angles));
+        } else if let Some(ref mut executer) = kmbox_aim_executer {
+            executer.perform(aimbot_action).await.ok();
+            prev_view_angles = Some(view_angles);
         } else {
             prev_view_angles = Some(view_angles);
         }

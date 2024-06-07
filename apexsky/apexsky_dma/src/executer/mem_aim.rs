@@ -8,15 +8,7 @@ use crate::{
     workers::access::{AccessType, MemApi, PendingAccessRequest, PendingMemRead},
 };
 
-#[derive(Debug, Clone)]
-pub struct AimbotAction {
-    pub shift_angles: Option<[f32; 3]>,
-    pub force_attack: Option<bool>,
-}
-
-pub trait AimExecuter {
-    async fn perform(&mut self, action: AimbotAction) -> anyhow::Result<()>;
-}
+use super::{AimExecuter, AimbotAction};
 
 #[derive(Debug)]
 pub struct MemAimHelper {

@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 apexsky = { path = "../apexsky" }
+apexsky_kmbox = { path = "../apexsky_kmbox" }
 async-trait = "0.1.80"
 bitset = "0.1.2"
 bitset-core = "0.1.1"
