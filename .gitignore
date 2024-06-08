@@ -2,6 +2,8 @@ apex_dma/.cache
 apex_dma/build
 apexsky/apexsky_*/src/pb/*.rs
 !apexsky/apexsky_*/src/pb/mod.rs
+esp_iot/src/pb/*.rs
+!esp_iot/src/pb/mod.rs
 .vs/
 x64/
 *.o
@@ -12,6 +14,7 @@ target/
 .vscode
 Cargo.lock
 !apexsky/Cargo.lock
+!esp_iot/Cargo.lock
 .vscode/
 build/
 .cache
