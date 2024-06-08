@@ -1,5 +1,3 @@
-#![feature(option_take_if)]
-
 pub mod aimbot;
 pub mod config;
 pub mod extension;

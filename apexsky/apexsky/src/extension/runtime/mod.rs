@@ -1,10 +1,9 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use anyhow::{anyhow, bail, Context, Error};
+use anyhow::{anyhow, bail, Error};
 use deno_ast::MediaType;
 use deno_ast::ParseParams;
 use deno_ast::SourceMapOption;
-use deno_ast::SourceTextInfo;
 use deno_core::*;
 
 mod ops;
@@ -109,7 +108,7 @@ impl ModuleLoader for TypescriptModuleLoader {
             let code = if should_transpile {
                 let parsed = deno_ast::parse_module(ParseParams {
                     specifier: module_specifier.clone(),
-                    text_info: SourceTextInfo::from_string(code),
+                    text: code.into(),
                     media_type,
                     capture_tokens: false,
                     scope_analysis: false,
@@ -128,14 +127,14 @@ impl ModuleLoader for TypescriptModuleLoader {
                 source_maps
                     .0
                     .borrow_mut()
-                    .insert(module_specifier.to_string(), source_map.into_bytes());
-                res.text
+                    .insert(module_specifier.to_string(), source_map);
+                res.source
             } else {
-                code
+                code.into_bytes()
             };
             Ok(ModuleSource::new(
                 module_type,
-                ModuleSourceCode::String(code.into()),
+                ModuleSourceCode::Bytes(code.into_boxed_slice().into()),
                 module_specifier,
                 None,
             ))
