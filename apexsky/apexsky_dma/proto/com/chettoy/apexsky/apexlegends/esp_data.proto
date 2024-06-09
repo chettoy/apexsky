@@ -123,4 +123,5 @@ message EspData {
   uint64 duration_actions = 14;
   double data_timestamp = 15;
   float game_fps = 16;
+  float current_zoom_fov = 17;
 }

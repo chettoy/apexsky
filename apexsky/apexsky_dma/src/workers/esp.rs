@@ -207,6 +207,27 @@ impl EspService for MyEspService {
                 duration_actions: lock.update_duration.0.try_into().unwrap(),
                 data_timestamp: lock.update_time,
                 game_fps: lock.game_fps,
+                current_zoom_fov: {
+                    lock.aimbot_state
+                        .as_ref()
+                        .is_some_and(|(aimbot, _)| aimbot.get_zoom_state() > 0)
+                        .then(|| {
+                            lock.view_player
+                                .as_ref()
+                                .and_then(GamePlayer::get_active_weapon)
+                                .map(|weapon| {
+                                    let zoom_fov = weapon.cur_zoom_fov;
+                                    if zoom_fov.is_normal() && (zoom_fov - 1.0).abs() > f32::EPSILON
+                                    {
+                                        zoom_fov
+                                    } else {
+                                        90.0
+                                    }
+                                })
+                                .unwrap_or(90.0)
+                        })
+                        .unwrap_or(90.0)
+                },
             }
         };
         Ok(Response::new(reply))

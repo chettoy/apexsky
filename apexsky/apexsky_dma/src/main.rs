@@ -1,4 +1,4 @@
-#![feature(option_take_if, thread_sleep_until, try_find)]
+#![feature(thread_sleep_until, try_find)]
 
 use std::collections::HashMap;
 use std::sync::Arc;

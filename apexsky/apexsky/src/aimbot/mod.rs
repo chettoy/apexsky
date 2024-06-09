@@ -304,6 +304,10 @@ impl Aimbot {
         self.attack_state = attack_state;
     }
 
+    pub fn get_zoom_state(&self) -> i32 {
+        self.zoom_state
+    }
+
     #[tracing::instrument]
     pub fn update_zoom_state(&mut self, zoom_state: i32) {
         self.zoom_state = zoom_state;

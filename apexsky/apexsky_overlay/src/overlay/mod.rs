@@ -470,7 +470,7 @@ fn follow_game_state(
     let Projection::Perspective(persp) = cam_proj.into_inner() else {
         return;
     };
-    persp.fov = 90.0f32.to_radians();
+    persp.fov = esp_data.current_zoom_fov.to_radians();
 
     let _cam_matrix = esp_data.view_player.as_ref().map(|view_player| {
         let cam_origin: [f32; 3] = view_player.camera_origin.clone().unwrap().into();
