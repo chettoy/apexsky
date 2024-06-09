@@ -829,19 +829,13 @@ fn player_glow(
             HIGHLIGHT_PLAYER_VISIBLE
         } else {
             if player_glow_armor_color {
-                let hp = target.health_points;
-                if hp <= 100 {
-                    HIGHLIGHT_PLAYER_ORANGE
-                } else if hp <= 150 {
-                    HIGHLIGHT_PLAYER_WHITE
-                } else if hp <= 175 {
-                    HIGHLIGHT_PLAYER_BLUE
-                } else if hp <= 200 {
-                    HIGHLIGHT_PLAYER_PURPLE
-                } else if hp <= 225 {
-                    HIGHLIGHT_PLAYER_RED
-                } else {
-                    HIGHLIGHT_PLAYER_BLACK
+                match target.health_points {
+                    0..=100 => HIGHLIGHT_PLAYER_ORANGE,
+                    101..=150 => HIGHLIGHT_PLAYER_WHITE,
+                    151..=175 => HIGHLIGHT_PLAYER_BLUE,
+                    176..=200 => HIGHLIGHT_PLAYER_PURPLE,
+                    201..=225 => HIGHLIGHT_PLAYER_RED,
+                    _ => HIGHLIGHT_PLAYER_BLACK
                 }
             } else {
                 HIGHLIGHT_PLAYER_NOTVIZ

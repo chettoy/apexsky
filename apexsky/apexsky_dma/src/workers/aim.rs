@@ -4,6 +4,7 @@ use std::time::Duration;
 use apexsky::aimbot::{
     AimAngles, AimEntity, Aimbot, AimbotSettings, CurrentWeaponInfo, TriggerBot,
 };
+use apexsky::global_state::G_STATE;
 use apexsky::love_players::LoveStatus;
 use obfstr::obfstr as s;
 
@@ -20,7 +21,6 @@ use crate::SharedState;
 use super::access::MemApi;
 
 const ENABLE_MEM_AIM: bool = true;
-const ENABLE_KMBOX_AIM: Option<(&str, u32)> = Some(("127.0.0.1:12345", 0x00000000));
 
 pub trait ContextForAimbot {
     async fn get_aimbot_settings(&self) -> Option<AimbotSettings>;
@@ -53,10 +53,21 @@ pub async fn aimbot_loop(
         apex_base: 0,
         lplayer_ptr: 0,
     };
-    let mut kmbox_aim_executer = if let Some((addr, mac)) = ENABLE_KMBOX_AIM {
-        Some(KmboxAimExecuter::connect(addr.parse()?, mac).await?)
-    } else {
-        None
+    let mut kmbox_aim_executer = {
+        let kmbox_config = G_STATE.lock().unwrap().config.device.clone();
+        if kmbox_config.use_kmbox_net {
+            let (addr, mac) = (kmbox_config.kmbox_addr, kmbox_config.kmbox_mac);
+            let mac = u32::from_str_radix(&hex::encode(mac), 16)?;
+            KmboxAimExecuter::connect(addr, mac).await.map_or_else(
+                |e| {
+                    tracing::error!(%e, ?e, "{}", s!("Failed to connect to KmboxNet."));
+                    None
+                },
+                |v| Some(v),
+            )
+        } else {
+            None
+        }
     };
 
     while *active.borrow_and_update() {
@@ -344,13 +355,13 @@ pub async fn aimbot_loop(
             .map(|prev| math::sub(view_angles, prev))
             .unwrap_or([0.0, 0.0, 0.0]);
         // Perform aimbot action
-        if ENABLE_MEM_AIM {
+        if let Some(ref mut executer) = kmbox_aim_executer {
+            executer.perform(aimbot_action).await.ok();
+            prev_view_angles = Some(view_angles);
+        } else if ENABLE_MEM_AIM {
             let mut executer = mem_aim_helper.get_executer(view_angles);
             executer.perform(aimbot_action).await.ok();
             prev_view_angles = Some(executer.get_updated_viewangles().unwrap_or(view_angles));
-        } else if let Some(ref mut executer) = kmbox_aim_executer {
-            executer.perform(aimbot_action).await.ok();
-            prev_view_angles = Some(view_angles);
         } else {
             prev_view_angles = Some(view_angles);
         }

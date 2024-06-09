@@ -36,6 +36,7 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }
 tracing-appender = "0.2.3"
 futures-util = "0.3.30"
+hex = "0.4.3"
 
 
 [build-dependencies]

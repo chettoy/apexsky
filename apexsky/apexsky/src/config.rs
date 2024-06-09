@@ -155,6 +155,7 @@ pub struct Loot {
 #[derive(Clone, Deserialize, Serialize, Debug, Default)]
 pub struct Config {
     pub esp_service: EspServiceConfig,
+    pub device: DeviceConfig,
     pub settings: Settings,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub(crate) love_player: Vec<LovePlayer>,
@@ -166,6 +167,14 @@ pub struct Config {
 pub struct EspServiceConfig {
     pub listen: SocketAddr,
     pub accept_http1: bool,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct DeviceConfig {
+    pub kmbox_addr: SocketAddr,
+    #[serde(with = "hex::serde")]
+    pub kmbox_mac: [u8; 4],
+    pub use_kmbox_net: bool,
 }
 
 #[repr(C)]
@@ -384,6 +393,13 @@ impl Default for EspServiceConfig {
             listen: obfstr::obfstr!("[::1]:50051").parse().unwrap(),
             accept_http1: false,
         }
+    }
+}
+
+impl Default for DeviceConfig {
+    fn default() -> Self {
+        let data = obfstr::obfstr!("{\"kmbox_addr\":\"127.0.0.1:1234\",\"kmbox_mac\":\"48656c6c\",\"use_kmbox_net\": false}").to_owned();
+        serde_json::from_str(&data).unwrap()
     }
 }
 

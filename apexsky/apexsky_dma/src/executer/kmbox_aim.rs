@@ -18,6 +18,12 @@ impl KmboxAimExecuter {
 
 impl AimExecuter for KmboxAimExecuter {
     async fn perform(&mut self, action: super::AimbotAction) -> anyhow::Result<()> {
+        let delta_to_mouse_move = |delta: [f32; 3]| {
+            (
+                (delta[1] * 5.0).round() as i16,
+                (delta[0] * 5.0).round() as i16,
+            )
+        };
         match (action.shift_angles, action.force_attack) {
             (None, None) => Ok(()),
             (None, Some(press)) => {
@@ -25,15 +31,15 @@ impl AimExecuter for KmboxAimExecuter {
                 Ok(())
             }
             (Some(delta), None) => {
-                self.kmbox
-                    .mouse_move(delta[1].round() as i16, delta[0].round() as i16)
-                    .await?;
+                let update = delta_to_mouse_move(delta);
+                self.kmbox.mouse_move(update.0, update.1).await?;
                 Ok(())
             }
             (Some(delta), Some(press)) => {
+                let update = delta_to_mouse_move(delta);
                 let mut soft_mouse = SoftMouse::default();
                 soft_mouse.set_left_button(press);
-                soft_mouse.set_move(delta[1].round() as i32, delta[0].round() as i32);
+                soft_mouse.set_move(update.0.into(), update.1.into());
                 self.kmbox.mouse_all(soft_mouse).await?;
                 Ok(())
             }
