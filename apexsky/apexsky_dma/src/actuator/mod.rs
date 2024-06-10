@@ -32,7 +32,7 @@ impl AimActuator for DeviceAimActuator {
 
 pub(self) fn delta_to_mouse_move(delta: [f32; 3]) -> (i16, i16) {
     (
-        (delta[1] * -5.0).round() as i16,
-        (delta[0] * 5.0).round() as i16,
+        (delta[1] * -32.0).round() as i16,
+        (delta[0] * 32.0).round() as i16,
     )
 }

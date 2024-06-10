@@ -20,9 +20,6 @@ impl QmpAimActuator {
         let stream = stream.negotiate().await?;
         let (qmp, handle) = stream.spawn_tokio();
 
-        let status = qmp.execute(qapi::qmp::query_status {}).await?;
-        tracing::debug!("VCPU status: {:#?}", status);
-
         Ok(Self {
             qmp,
             _handle: handle,
