@@ -4,6 +4,7 @@ use std::time::Duration;
 use apexsky::aimbot::{
     AimAngles, AimEntity, Aimbot, AimbotSettings, CurrentWeaponInfo, TriggerBot,
 };
+use apexsky::config::DeviceConfig;
 use apexsky::global_state::G_STATE;
 use apexsky::love_players::LoveStatus;
 use obfstr::obfstr as s;
@@ -13,8 +14,10 @@ use tokio::sync::watch;
 use tokio::time::{sleep, sleep_until, Instant};
 use tracing::{instrument, trace};
 
+use crate::actuator::{
+    AimActuator, AimbotAction, DeviceAimActuator, KmboxAimActuator, MemAimHelper, QmpAimActuator,
+};
 use crate::apexdream::base::math;
-use crate::executer::{AimExecuter, AimbotAction, KmboxAimExecuter, MemAimHelper};
 use crate::pb::apexlegends::{AimKeyState, AimTargetInfo};
 use crate::SharedState;
 
@@ -31,6 +34,23 @@ pub trait ContextForAimbot {
     async fn get_weapon_info(&self) -> Option<CurrentWeaponInfo>;
     async fn is_world_ready(&self) -> bool;
     async fn update_aim_target_for_esp(&mut self, position: [f32; 3]);
+}
+
+async fn create_aim_actuator_from_device(
+    config: &DeviceConfig,
+) -> anyhow::Result<Option<DeviceAimActuator>> {
+    if config.use_kmbox_net {
+        let (addr, mac) = (config.kmbox_addr, config.kmbox_mac);
+        let mac = u32::from_str_radix(&hex::encode(mac), 16)?;
+        let kmbox_aim = KmboxAimActuator::connect(addr, mac).await?;
+        Ok(Some(DeviceAimActuator::KmboxNet(kmbox_aim)))
+    } else if config.use_qemu_qmp {
+        let addr = &config.qemu_qmp_addr;
+        let qmp_aim = QmpAimActuator::connect(addr).await?;
+        Ok(Some(DeviceAimActuator::QemuQmp(qmp_aim)))
+    } else {
+        Ok(None)
+    }
 }
 
 #[instrument(skip_all)]
@@ -53,21 +73,14 @@ pub async fn aimbot_loop(
         apex_base: 0,
         lplayer_ptr: 0,
     };
-    let mut kmbox_aim_executer = {
-        let kmbox_config = G_STATE.lock().unwrap().config.device.clone();
-        if kmbox_config.use_kmbox_net {
-            let (addr, mac) = (kmbox_config.kmbox_addr, kmbox_config.kmbox_mac);
-            let mac = u32::from_str_radix(&hex::encode(mac), 16)?;
-            KmboxAimExecuter::connect(addr, mac).await.map_or_else(
-                |e| {
-                    tracing::error!(%e, ?e, "{}", s!("Failed to connect to KmboxNet."));
-                    None
-                },
-                |v| Some(v),
-            )
-        } else {
-            None
-        }
+    let mut aim_actuator = {
+        let device_config = G_STATE.lock().unwrap().config.device.clone();
+        create_aim_actuator_from_device(&device_config)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::error!(%e, ?e, "{}", s!("Unable to connect to actuator device."));
+                None
+            })
     };
 
     while *active.borrow_and_update() {
@@ -350,18 +363,20 @@ pub async fn aimbot_loop(
             tracing::warn!(?view_angles, "{}", s!("got invalid view_angles"));
             continue;
         }
+
         // Calc delta_view_angles
         natural_delta_viewangles = prev_view_angles
             .map(|prev| math::sub(view_angles, prev))
             .unwrap_or([0.0, 0.0, 0.0]);
+
         // Perform aimbot action
-        if let Some(ref mut executer) = kmbox_aim_executer {
-            executer.perform(aimbot_action).await.ok();
+        if let Some(ref mut actuator) = aim_actuator {
+            actuator.perform(aimbot_action).await.ok();
             prev_view_angles = Some(view_angles);
         } else if ENABLE_MEM_AIM {
-            let mut executer = mem_aim_helper.get_executer(view_angles);
-            executer.perform(aimbot_action).await.ok();
-            prev_view_angles = Some(executer.get_updated_viewangles().unwrap_or(view_angles));
+            let mut actuator = mem_aim_helper.get_actuator(view_angles);
+            actuator.perform(aimbot_action).await.ok();
+            prev_view_angles = Some(actuator.get_updated_viewangles().unwrap_or(view_angles));
         } else {
             prev_view_angles = Some(view_angles);
         }

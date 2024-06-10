@@ -1,4 +1,4 @@
-use crate::noobfstr as s;
+use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::PathBuf};
@@ -175,6 +175,8 @@ pub struct DeviceConfig {
     #[serde(with = "hex::serde")]
     pub kmbox_mac: [u8; 4],
     pub use_kmbox_net: bool,
+    pub qemu_qmp_addr: String,
+    pub use_qemu_qmp: bool,
 }
 
 #[repr(C)]
@@ -390,7 +392,7 @@ impl Default for Loot {
 impl Default for EspServiceConfig {
     fn default() -> Self {
         Self {
-            listen: obfstr::obfstr!("[::1]:50051").parse().unwrap(),
+            listen: s!("[::1]:50051").parse().unwrap(),
             accept_http1: false,
         }
     }
@@ -398,7 +400,16 @@ impl Default for EspServiceConfig {
 
 impl Default for DeviceConfig {
     fn default() -> Self {
-        let data = obfstr::obfstr!("{\"kmbox_addr\":\"127.0.0.1:1234\",\"kmbox_mac\":\"48656c6c\",\"use_kmbox_net\": false}").to_owned();
+        let data = format!(
+            "{}{}{}{}{}{}{}",
+            s!("{"),
+            s!("\"kmbox_addr\":\"127.0.0.1:1234\","),
+            s!("\"kmbox_mac\":\"48656c6c\","),
+            s!("\"use_kmbox_net\": false,"),
+            s!("\"qemu_qmp_addr\": \"/tmp/qmp-win11.sock\","),
+            s!("\"use_qemu_qmp\": false"),
+            s!("}")
+        );
         serde_json::from_str(&data).unwrap()
     }
 }

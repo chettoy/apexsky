@@ -2,28 +2,23 @@ use std::net::SocketAddr;
 
 use apexsky_kmbox::kmbox::{KmboxNet, SoftMouse};
 
-use super::AimExecuter;
+use super::{delta_to_mouse_move, AimActuator};
 
 #[derive(Debug)]
-pub struct KmboxAimExecuter {
+pub struct KmboxAimActuator {
     kmbox: KmboxNet,
 }
 
-impl KmboxAimExecuter {
+impl KmboxAimActuator {
     pub async fn connect(addr: SocketAddr, mac: u32) -> anyhow::Result<Self> {
-        let kmbox = KmboxNet::init(addr, mac).await?;
+        let mut kmbox = KmboxNet::init(addr, mac).await?;
+        kmbox.lcd_logo().await?;
         Ok(Self { kmbox })
     }
 }
 
-impl AimExecuter for KmboxAimExecuter {
+impl AimActuator for KmboxAimActuator {
     async fn perform(&mut self, action: super::AimbotAction) -> anyhow::Result<()> {
-        let delta_to_mouse_move = |delta: [f32; 3]| {
-            (
-                (delta[1] * 5.0).round() as i16,
-                (delta[0] * 5.0).round() as i16,
-            )
-        };
         match (action.shift_angles, action.force_attack) {
             (None, None) => Ok(()),
             (None, Some(press)) => {

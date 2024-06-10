@@ -476,8 +476,8 @@ fn follow_game_state(
         let cam_origin: [f32; 3] = view_player.camera_origin.clone().unwrap().into();
         let cam_angles: [f32; 3] = view_player.camera_angles.clone().unwrap().into();
 
-        let (cam_pitch, cam_yew) = (cam_angles[0].to_radians(), cam_angles[1].to_radians());
-        // pitch: top- bottom+, yew: left+ right-
+        let (cam_pitch, cam_yaw) = (cam_angles[0].to_radians(), cam_angles[1].to_radians());
+        // pitch: top- bottom+, yaw: left+ right-
 
         // game: x: forward, y: left, z: top
         // bevy: x: right, y: top, z: back
@@ -487,9 +487,9 @@ fn follow_game_state(
             z: -cam_origin[0],
         };
         let cam_direction = Vec3 {
-            x: -cam_pitch.cos() * cam_yew.sin(),
+            x: -cam_pitch.cos() * cam_yaw.sin(),
             y: -cam_pitch.sin(),
-            z: -cam_pitch.cos() * cam_yew.cos(),
+            z: -cam_pitch.cos() * cam_yaw.cos(),
         };
         let cam_transform =
             Transform::from_translation(cam_position).looking_to(cam_direction, Vec3::Y);

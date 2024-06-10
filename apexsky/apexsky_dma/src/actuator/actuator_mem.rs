@@ -8,7 +8,7 @@ use crate::{
     workers::access::{AccessType, MemApi, PendingAccessRequest, PendingMemRead},
 };
 
-use super::{AimExecuter, AimbotAction};
+use super::{AimActuator, AimbotAction};
 
 #[derive(Debug)]
 pub struct MemAimHelper {
@@ -18,7 +18,7 @@ pub struct MemAimHelper {
 }
 
 #[derive(Debug)]
-pub struct MemAimExecuter<'a> {
+pub struct MemAimActuator<'a> {
     father: &'a MemAimHelper,
     view_angles: [f32; 3],
     updated_viewangles: Option<[f32; 3]>,
@@ -39,8 +39,8 @@ impl MemAimHelper {
         self.apex_base != 0 && self.lplayer_ptr != 0
     }
 
-    pub fn get_executer(&self, view_angles: [f32; 3]) -> MemAimExecuter {
-        MemAimExecuter {
+    pub fn get_actuator(&self, view_angles: [f32; 3]) -> MemAimActuator {
+        MemAimActuator {
             father: self,
             view_angles,
             updated_viewangles: None,
@@ -101,13 +101,13 @@ impl MemAimHelper {
     }
 }
 
-impl MemAimExecuter<'_> {
+impl MemAimActuator<'_> {
     pub fn get_updated_viewangles(&self) -> Option<[f32; 3]> {
         self.updated_viewangles
     }
 }
 
-impl AimExecuter for MemAimExecuter<'_> {
+impl AimActuator for MemAimActuator<'_> {
     async fn perform(&mut self, action: AimbotAction) -> anyhow::Result<()> {
         if let Some(delta) = action.shift_angles {
             // calc and check target view angles

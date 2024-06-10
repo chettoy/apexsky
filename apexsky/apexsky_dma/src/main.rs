@@ -26,9 +26,9 @@ use crate::pb::apexlegends::PlayerState;
 
 pub use apexsky::noobfstr;
 
+mod actuator;
 mod apexdream;
 mod context_impl;
-mod executer;
 mod game;
 mod mem;
 mod pb;
