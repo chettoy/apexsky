@@ -171,10 +171,13 @@ pub struct EspServiceConfig {
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct DeviceConfig {
-    pub kmbox_addr: SocketAddr,
+    pub kmbox_net_addr: SocketAddr,
     #[serde(with = "hex::serde")]
-    pub kmbox_mac: [u8; 4],
+    pub kmbox_net_mac: [u8; 4],
     pub use_kmbox_net: bool,
+    pub kmbox_b_serialport: String,
+    pub kmbox_b_baud: u32,
+    pub use_kmbox_b: bool,
     pub qemu_qmp_addr: String,
     pub use_qemu_qmp: bool,
 }
@@ -401,11 +404,14 @@ impl Default for EspServiceConfig {
 impl Default for DeviceConfig {
     fn default() -> Self {
         let data = format!(
-            "{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}{}{}",
             s!("{"),
-            s!("\"kmbox_addr\":\"127.0.0.1:1234\","),
-            s!("\"kmbox_mac\":\"48656c6c\","),
+            s!("\"kmbox_net_addr\":\"127.0.0.1:1234\","),
+            s!("\"kmbox_net_mac\":\"48656c6c\","),
             s!("\"use_kmbox_net\": false,"),
+            s!("\"kmbox_b_serialport\":\"COM9\","),
+            s!("\"kmbox_b_baud\":115200,"),
+            s!("\"use_kmbox_b\": false,"),
             s!("\"qemu_qmp_addr\": \"/tmp/qmp-win11.sock\","),
             s!("\"use_qemu_qmp\": false"),
             s!("}")

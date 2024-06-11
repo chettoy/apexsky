@@ -8,6 +8,7 @@ use apexsky::config::DeviceConfig;
 use apexsky::global_state::G_STATE;
 use apexsky::love_players::LoveStatus;
 use apexsky_dmalib::access::MemApi;
+use apexsky_kmbox::kmbox::{KmboxB, KmboxNet};
 use obfstr::obfstr as s;
 
 use parking_lot::RwLock;
@@ -39,14 +40,18 @@ async fn create_aim_actuator_from_device(
     config: &DeviceConfig,
 ) -> anyhow::Result<Option<DeviceAimActuator>> {
     if config.use_kmbox_net {
-        let (addr, mac) = (config.kmbox_addr, config.kmbox_mac);
+        let (addr, mac) = (config.kmbox_net_addr, config.kmbox_net_mac);
         let mac = u32::from_str_radix(&hex::encode(mac), 16)?;
-        let kmbox_aim = KmboxAimActuator::connect(addr, mac).await?;
-        Ok(Some(DeviceAimActuator::KmboxNet(kmbox_aim)))
+        let kmbox_aim = KmboxAimActuator::<KmboxNet>::connect(addr, mac).await?;
+        Ok(Some(kmbox_aim.into()))
+    } else if config.use_kmbox_b {
+        let (serialport, baud) = (&config.kmbox_b_serialport, config.kmbox_b_baud);
+        let kmbox_aim = KmboxAimActuator::<KmboxB>::connect(serialport, baud).await?;
+        Ok(Some(kmbox_aim.into()))
     } else if config.use_qemu_qmp {
         let addr = &config.qemu_qmp_addr;
         let qmp_aim = QmpAimActuator::connect(addr).await?;
-        Ok(Some(DeviceAimActuator::QemuQmp(qmp_aim)))
+        Ok(Some(qmp_aim.into()))
     } else {
         Ok(None)
     }

@@ -6,28 +6,25 @@ pub use actuator_kmbox::KmboxAimActuator;
 pub use actuator_mem::MemAimHelper;
 pub use actuator_qmp::QmpAimActuator;
 
+use apexsky_kmbox::kmbox::{KmboxB, KmboxNet};
+use enum_dispatch::enum_dispatch;
+
 #[derive(Debug, Clone)]
 pub struct AimbotAction {
     pub shift_angles: Option<[f32; 3]>,
     pub force_attack: Option<bool>,
 }
 
+#[enum_dispatch]
 pub trait AimActuator {
     async fn perform(&mut self, action: AimbotAction) -> anyhow::Result<()>;
 }
 
+#[enum_dispatch(AimActuator)]
 pub enum DeviceAimActuator {
-    KmboxNet(KmboxAimActuator),
+    KmboxNet(KmboxAimActuator<KmboxNet>),
+    KmboxB(KmboxAimActuator<KmboxB>),
     QemuQmp(QmpAimActuator),
-}
-
-impl AimActuator for DeviceAimActuator {
-    async fn perform(&mut self, action: AimbotAction) -> anyhow::Result<()> {
-        match self {
-            DeviceAimActuator::KmboxNet(inner) => inner.perform(action).await,
-            DeviceAimActuator::QemuQmp(inner) => inner.perform(action).await,
-        }
-    }
 }
 
 pub(self) fn delta_to_mouse_move(delta: [f32; 3]) -> (i16, i16) {
