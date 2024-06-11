@@ -28,14 +28,16 @@ impl<'a> std::fmt::Debug for MemProcFSProc<'a> {
     }
 }
 
-impl super::MemOs for MemProcFsOs {
-    fn new(choose_connector: &str) -> anyhow::Result<Self> {
-        let device = if choose_connector == s!("dma") {
-            s!("fpga").to_owned()
-        } else if let Some(device) = choose_connector.strip_prefix(s!("pcileech/")) {
+impl MemProcFsOs {
+    pub fn new(choose_connector: super::MemConnector) -> anyhow::Result<Self> {
+        let device = if let super::MemConnector::PCILeech(device) = choose_connector {
             device.to_owned()
         } else {
-            return Err(anyhow!("{}{}", s!("Invalid connector: "), choose_connector));
+            return Err(anyhow!(
+                "{}{:?}",
+                s!("Invalid connector: "),
+                choose_connector
+            ));
         };
 
         tracing::info!("{}{}", s!("leechcore device: "), device);
@@ -75,7 +77,9 @@ impl super::MemOs for MemProcFsOs {
 
         Ok(Self { vmm: Arc::new(vmm) })
     }
+}
 
+impl super::MemOs for MemProcFsOs {
     fn open_proc<'a>(&'a mut self, name: String) -> anyhow::Result<super::MemProcImpl> {
         let process = self.vmm.process_from_name(&name)?;
 

@@ -1,4 +1,7 @@
 use dataview::Pod;
+use enum_dispatch::enum_dispatch;
+use memflow_impl::MemflowOs;
+use memprocfs_impl::MemProcFsOs;
 
 use self::{memflow_impl::MemflowProc, memprocfs_impl::MemProcFSProc};
 
@@ -7,12 +10,10 @@ pub mod memflow_impl;
 pub mod memprocfs_impl;
 
 pub trait MemOs: Send + Sync {
-    fn new(choose_connector: &str) -> anyhow::Result<Self>
-    where
-        Self: Sized;
     fn open_proc<'a>(&'a mut self, name: String) -> anyhow::Result<MemProcImpl>;
 }
 
+#[enum_dispatch]
 pub trait MemProc: Send + Sync {
     fn get_proc_baseaddr(&self) -> u64;
     fn check_proc_status(&mut self) -> ProcessStatus;
@@ -21,47 +22,33 @@ pub trait MemProc: Send + Sync {
     fn write_raw(&mut self, addr: u64, data: &[u8]) -> anyhow::Result<()>;
 }
 
+pub enum MemOsImpl {
+    Memflow(MemflowOs),
+    Vmm(MemProcFsOs),
+}
+
+impl MemOs for MemOsImpl {
+    fn open_proc<'a>(&'a mut self, name: String) -> anyhow::Result<MemProcImpl> {
+        match self {
+            MemOsImpl::Memflow(inner) => inner.open_proc(name),
+            MemOsImpl::Vmm(inner) => inner.open_proc(name),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum MemConnector {
+    MemflowKvm,
+    MemflowNative,
+    MemflowPCILeech,
+    PCILeech(String),
+}
+
 #[derive(Debug)]
+#[enum_dispatch(MemProc)]
 pub enum MemProcImpl<'a> {
     Memflow(MemflowProc<'a>),
     Vmm(MemProcFSProc<'a>),
-}
-
-impl<'a> MemProc for MemProcImpl<'a> {
-    fn get_proc_baseaddr(&self) -> u64 {
-        match self {
-            MemProcImpl::Memflow(m) => m.get_proc_baseaddr(),
-            MemProcImpl::Vmm(m) => m.get_proc_baseaddr(),
-        }
-    }
-
-    fn check_proc_status(&mut self) -> ProcessStatus {
-        match self {
-            MemProcImpl::Memflow(m) => m.check_proc_status(),
-            MemProcImpl::Vmm(m) => m.check_proc_status(),
-        }
-    }
-
-    fn speed_test(&mut self) {
-        match self {
-            MemProcImpl::Memflow(m) => m.speed_test(),
-            MemProcImpl::Vmm(m) => m.speed_test(),
-        }
-    }
-
-    fn read_raw_into(&mut self, addr: u64, out: &mut [u8]) -> anyhow::Result<()> {
-        match self {
-            MemProcImpl::Memflow(m) => m.read_raw_into(addr, out),
-            MemProcImpl::Vmm(m) => m.read_raw_into(addr, out),
-        }
-    }
-
-    fn write_raw(&mut self, addr: u64, data: &[u8]) -> anyhow::Result<()> {
-        match self {
-            MemProcImpl::Memflow(m) => m.write_raw(addr, data),
-            MemProcImpl::Vmm(m) => m.write_raw(addr, data),
-        }
-    }
 }
 
 impl<'a> MemProcImpl<'a> {

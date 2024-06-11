@@ -1,10 +1,11 @@
-use crate::noobfstr as s;
+use std::time::Instant;
+
 use anyhow::{anyhow, Context};
 use core::time;
 use memflow::prelude::v1::*;
 use memflow_win32::prelude::v1::*;
+use obfstr::obfstr as s;
 use pe_parser::pe::parse_portable_executable;
-use std::time::Instant;
 use tracing::instrument;
 
 use super::{MemProc, ProcessStatus};
@@ -47,15 +48,15 @@ impl<'a> std::fmt::Debug for MemflowProc<'a> {
     }
 }
 
-impl super::MemOs for MemflowOs {
-    fn new(choose_connector: &str) -> anyhow::Result<Self> {
+impl MemflowOs {
+    pub fn new(choose_connector: super::MemConnector) -> anyhow::Result<Self> {
         // load all available plugins
         let inventory = Inventory::scan();
         println!("{}", s!("inventory initialized"));
 
         let (connector_name, connector_args, os_name) = {
-            if choose_connector == s!("kvm") {
-                (
+            match choose_connector {
+                super::MemConnector::MemflowKvm => (
                     {
                         if std::path::Path::new(s!("/dev/memflow")).exists() {
                             s!("kvm").to_string()
@@ -65,22 +66,18 @@ impl super::MemOs for MemflowOs {
                     },
                     String::new(),
                     s!("win32").to_string(),
-                )
-            } else if choose_connector == s!("native") {
-                (String::new(), String::new(), s!("native").to_string())
-            } else if choose_connector == s!("dma") {
-                (
+                ),
+                super::MemConnector::MemflowNative => {
+                    (String::new(), String::new(), s!("native").to_string())
+                }
+                super::MemConnector::MemflowPCILeech => (
                     s!("pcileech").to_string(),
                     s!(":device=FPGA").to_string(),
                     s!("win32").to_string(),
-                )
-            } else {
-                anyhow::bail!(format!(
-                    "{}{}{}",
-                    s!("no such connector `"),
-                    choose_connector,
-                    s!("`")
-                ));
+                ),
+                super::MemConnector::PCILeech(v) => {
+                    anyhow::bail!(format!("{}{}{}", s!("no such connector `"), v, s!("`")))
+                }
             }
         };
 
@@ -125,7 +122,9 @@ impl super::MemOs for MemflowOs {
             os,
         })
     }
+}
 
+impl super::MemOs for MemflowOs {
     #[instrument]
     fn open_proc<'a>(&'a mut self, name: String) -> anyhow::Result<super::MemProcImpl<'a>> {
         let mut proc = self.os.process_by_name(&name)?;
@@ -168,12 +167,14 @@ impl super::MemOs for MemflowOs {
             Err(e) => {
                 tracing::warn!(%e);
                 let connector = memflow_qemu::create_connector(&Default::default())
-                    .context(s!("unable to initialize qemu connector"))?;
+                    .context(s!("unable to initialize qemu connector").to_string())?;
                 let mut win32_kernel = Box::new(
                     Win32Kernel::builder(connector)
                         .build_default_caches()
                         .build()
-                        .context(s!("unable to create win32 instance with qemu connector"))?,
+                        .context(
+                            s!("unable to create win32 instance with qemu connector").to_string(),
+                        )?,
                 );
 
                 let section_base_address =

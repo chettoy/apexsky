@@ -7,6 +7,7 @@ use apexsky::aimbot::{
 use apexsky::config::DeviceConfig;
 use apexsky::global_state::G_STATE;
 use apexsky::love_players::LoveStatus;
+use apexsky_dmalib::access::MemApi;
 use obfstr::obfstr as s;
 
 use parking_lot::RwLock;
@@ -20,8 +21,6 @@ use crate::actuator::{
 use crate::apexdream::base::math;
 use crate::pb::apexlegends::{AimKeyState, AimTargetInfo};
 use crate::SharedState;
-
-use super::access::MemApi;
 
 const ENABLE_MEM_AIM: bool = true;
 

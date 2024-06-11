@@ -4,7 +4,7 @@ use obfstr::obfstr as s;
 use std::{fmt, mem};
 use tracing::instrument;
 
-use crate::workers::access::{AccessType, MemApi, PendingAccessRequest};
+use apexsky_dmalib::access::{AccessType, MemApi, PendingAccessRequest};
 
 #[derive(Debug, Clone)]
 pub struct Api {

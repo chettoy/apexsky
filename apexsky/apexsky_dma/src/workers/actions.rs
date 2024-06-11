@@ -1,5 +1,5 @@
 use anyhow::Context;
-use apexsky::noobfstr as s;
+use apexsky_dmalib::access::{AccessType, MemApi, PendingAccessRequest, PendingMemRead, PendingMemWrite};
 use apexsky::{
     aimbot::{calc_angle, calc_fov, AimEntity},
     config::Settings,
@@ -8,6 +8,7 @@ use apexsky::{
     offsets::G_OFFSETS,
 };
 use ndarray::arr1;
+use obfstr::obfstr as s;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -25,10 +26,7 @@ use crate::apexdream::{
 };
 use crate::game::{data::*, player::GamePlayer};
 use crate::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
-use crate::workers::access::{AccessType, PendingAccessRequest, PendingMemRead, PendingMemWrite};
 use crate::SharedState;
-
-use super::access::MemApi;
 
 #[instrument(skip_all)]
 pub async fn actions_loop(

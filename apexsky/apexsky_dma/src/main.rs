@@ -1,5 +1,3 @@
-#![feature(thread_sleep_until, try_find)]
-
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -8,6 +6,7 @@ use apexsky::__load_settings;
 use apexsky::aimbot::{AimEntity, Aimbot};
 use apexsky::config::Settings;
 use apexsky::global_state::G_STATE;
+use apexsky_dmalib::MemConnector;
 use obfstr::obfstr as s;
 
 use parking_lot::RwLock;
@@ -30,7 +29,6 @@ mod actuator;
 mod apexdream;
 mod context_impl;
 mod game;
-mod mem;
 mod pb;
 mod workers;
 
@@ -138,8 +136,8 @@ trait TaskManager {
 impl TaskManager for State {
     async fn start_tasks(&mut self) {
         use workers::{
-            access::io_thread, actions::actions_loop, aim::aimbot_loop, control::control_loop,
-            esp::esp_loop, items::items_loop,
+            actions::actions_loop, aim::aimbot_loop, control::control_loop, esp::esp_loop,
+            items::items_loop,
         };
 
         self.stop_tasks().await;
@@ -153,7 +151,21 @@ impl TaskManager for State {
 
         self.io_thread = Some({
             let active_rx = self.active_tx.subscribe();
-            std::thread::spawn(move || io_thread(active_rx, access_rx))
+            std::thread::spawn(move || {
+                use apexsky_dmalib::access::io_thread;
+                use apexsky_dmalib::AccessError;
+                match io_thread(active_rx, access_rx, choose_connector()) {
+                    Ok(_) => Ok(()),
+                    Err(e) => match e {
+                        AccessError::Connector(e) => {
+                            tracing::error!(e);
+                            press_to_exit();
+                            Ok(())
+                        }
+                        AccessError::AnyError(e) => Err(e),
+                    },
+                }
+            })
         });
         self.actions_t = Some(task::spawn(actions_loop(
             self.active_tx.subscribe(),
@@ -351,6 +363,26 @@ pub fn global_settings() -> Settings {
     G_STATE.lock().unwrap().config.settings.clone()
 }
 
+#[instrument]
+fn choose_connector() -> MemConnector {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() == 2 {
+        if args[1] == s!("kvm") {
+            return MemConnector::MemflowKvm;
+        } else if args[1] == s!("no-kvm")
+            || args[1] == s!("nokvm")
+            || args[1] == s!("nodma")
+            || args[1] == s!("linux")
+            || args[1] == s!("native")
+        {
+            return MemConnector::MemflowNative;
+        }
+    } else if args.len() == 3 && args[1] == s!("--pcileech") {
+        return MemConnector::PCILeech(args[2].clone());
+    }
+    MemConnector::PCILeech(s!("fpga").to_string())
+}
+
 pub fn press_to_exit() {
     println!("{}", s!("Press enter to exit.."));
     let _ = std::io::stdin().read_line(&mut String::new());
@@ -361,7 +393,7 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| {
             EnvFilter::try_new(s!(
-                "apexsky_dma=warn,apexsky=warn,apexsky_dma::mem=info,apexsky_dma::actuator=info,apexsky_dma::workers::access=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::apexdream=warn"
+                "apexsky_dma=warn,apexsky=warn,apexsky_dmalib::mem=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::apexdream=warn"
             ))
         })
         .unwrap();

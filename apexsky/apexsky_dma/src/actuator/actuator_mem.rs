@@ -1,12 +1,10 @@
 use std::mem::size_of;
 
 use apexsky::{aimbot::normalize_angles, offsets::G_OFFSETS};
+use apexsky_dmalib::access::{AccessType, MemApi, PendingAccessRequest, PendingMemRead};
 use obfstr::obfstr as s;
 
-use crate::{
-    apexdream::base::math,
-    workers::access::{AccessType, MemApi, PendingAccessRequest, PendingMemRead},
-};
+use crate::apexdream::base::math;
 
 use super::{AimActuator, AimbotAction};
 

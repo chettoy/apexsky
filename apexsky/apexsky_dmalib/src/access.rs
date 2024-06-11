@@ -11,7 +11,8 @@ use crate::mem::{
     memflow_impl::MemflowOs, memprocfs_impl::MemProcFsOs, MemOs, MemProc, MemProcImpl,
     ProcessStatus,
 };
-use crate::press_to_exit;
+use crate::mem::{MemConnector, MemOsImpl};
+use crate::AccessError;
 
 pub type MemApi = mpsc::Sender<PriorityAccess>;
 
@@ -130,7 +131,8 @@ impl AccessType {
 pub fn io_thread(
     active: watch::Receiver<bool>,
     mut access_rx: mpsc::Receiver<PriorityAccess>,
-) -> anyhow::Result<()> {
+    mem_connector: crate::mem::MemConnector,
+) -> Result<(), AccessError> {
     tracing::debug!("{}", s!("task start"));
 
     let mut accessible: bool = false;
@@ -142,11 +144,8 @@ pub fn io_thread(
     let mut start_instant = Instant::now();
     let mut next_flush_instant = Instant::now();
 
-    let connector: String = choose_connector();
-    let Some(mut mem_os) = create_os_instance(connector) else {
-        press_to_exit();
-        return Ok(());
-    };
+    let mut mem_os =
+        create_os_instance(mem_connector).map_err(|e| AccessError::Connector(e.to_string()))?;
 
     while *active.borrow() {
         start_instant = Instant::now();
@@ -281,56 +280,6 @@ fn execute_requests(
 ) {
     // flush requests
     let flush_report = consume_requests(None, priority_threshold, priority_queue, scatter_map, mem);
-
-    // // try scatter read
-    // if !scatter_map.0.is_empty() {
-    //     // memory ranges to read are tuples:
-    //     // .0 = the virtual address to read.
-    //     // .1 = vector of u8 which memory should be read into.
-    //     // .2 = u32 receiving the bytes successfully read data.
-    //     let mut memory_range_list: Vec<(
-    //         (u64, Vec<u8>, u32),
-    //         MemReadRequest,
-    //         Option<anyhow::Error>,
-    //     )> = Vec::new();
-    //     // the prepare_ex function will populate the prepared data regions automatically when the
-    //     // VmmScatterMemory is dropped.
-    //     if let Some(mut mem_scatter) = mem.get_vmm_scatter() {
-    //         scatter_map.0.drain().for_each(|(_id, req_arr)| {
-    //             req_arr.into_iter().for_each(|r| {
-    //                 memory_range_list.push(((r.address, vec![0u8; r.data_size], 0u32), r, None));
-    //             });
-    //         });
-    //         memory_range_list
-    //             .iter_mut()
-    //             .for_each(|(memory_range_i, _req, err)| {
-    //                 if let Err(e) = mem_scatter.prepare_ex(memory_range_i) {
-    //                     err.replace(e);
-    //                 }
-    //             });
-    //     }
-    //     memory_range_list
-    //         .into_iter()
-    //         .for_each(|(memory_range_i, req, err)| {
-    //             let result = match err {
-    //                 Some(e) => Err(e),
-    //                 None => {
-    //                     if memory_range_i.2 as usize == req.data_size {
-    //                         Ok(memory_range_i.1)
-    //                     } else {
-    //                         Err(anyhow::anyhow!(
-    //                             "{}{}{}{}",
-    //                             s!("partial read "),
-    //                             memory_range_i.2,
-    //                             s!("/"),
-    //                             req.data_size
-    //                         ))
-    //                     }
-    //                 }
-    //             };
-    //             let _ = req.future_tx.send(result);
-    //         });
-    // }
 
     // try scatter read
     if !scatter_map.0.is_empty() {
@@ -509,48 +458,14 @@ fn flush_respond(flush_report: FlushReport) {
 }
 
 #[instrument]
-fn choose_connector() -> String {
-    let mut connector = s!("dma").to_string();
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() == 2 {
-        if args[1] == s!("kvm") {
-            connector = s!("kvm").to_string();
-        } else if args[1] == s!("no-kvm")
-            || args[1] == s!("nokvm")
-            || args[1] == s!("nodma")
-            || args[1] == s!("linux")
-            || args[1] == s!("native")
-        {
-            connector = s!("native").to_string();
-        }
-    } else if args.len() == 3 && args[1] == s!("--pcileech") {
-        connector = format!("{}{}", s!("pcileech/"), args[2]);
-    }
-    connector
-}
-
-#[instrument]
-fn create_os_instance(connector: String) -> Option<Box<dyn MemOs>> {
-    if connector == s!("dma") || connector.starts_with(s!("pcileech/")) {
-        match MemProcFsOs::new(&connector) {
-            Ok(os) => Some(Box::new(os)),
-            Err(e) => {
-                tracing::error!(?e, "{}", s!("open_os"));
-                None
-            }
-        }
-    } else {
-        match MemflowOs::new(&connector) {
-            Ok(os) => Some(Box::new(os)),
-            Err(e) => {
-                tracing::error!(?e, "{}", s!("open_os"));
-                None
-            }
-        }
+fn create_os_instance(connector: MemConnector) -> anyhow::Result<MemOsImpl> {
+    match connector {
+        MemConnector::PCILeech(_) => Ok(MemOsImpl::Vmm(MemProcFsOs::new(connector)?)),
+        _ => Ok(MemOsImpl::Memflow(MemflowOs::new(connector)?)),
     }
 }
 
-fn find_game_process(mem_os: &mut Box<dyn MemOs>) -> Option<MemProcImpl<'_>> {
+fn find_game_process(mem_os: &mut MemOsImpl) -> Option<MemProcImpl<'_>> {
     tracing::info!(parent: None, "{}", s!("Searching for apex process..."));
     mem_os
         .open_proc(s!("r5apex.exe").to_string())
@@ -583,7 +498,8 @@ impl Ord for PriorityAccess {
 
 pub trait AccessRequest {
     fn with_priority(self, priority: i32) -> PriorityAccess;
-    async fn dispatch(self, api: &MemApi) -> anyhow::Result<()>;
+    fn dispatch(self, api: &MemApi)
+        -> impl std::future::Future<Output = anyhow::Result<()>> + Send;
 }
 
 impl AccessRequest for PriorityAccess {
@@ -615,12 +531,16 @@ impl AccessRequest for AccessType {
 
 pub trait PendingAccessRequest<T> {
     fn with_priority(self, priority: i32) -> (PriorityAccess, oneshot::Receiver<T>);
-    async fn dispatch(self, api: &MemApi) -> anyhow::Result<oneshot::Receiver<T>>;
+    fn dispatch(
+        self,
+        api: &MemApi,
+    ) -> impl std::future::Future<Output = anyhow::Result<oneshot::Receiver<T>>> + Send;
 }
 
 impl<T, R> PendingAccessRequest<T> for (R, oneshot::Receiver<T>)
 where
-    R: AccessRequest,
+    R: AccessRequest + Send,
+    T: Send,
 {
     fn with_priority(self, priority: i32) -> (PriorityAccess, oneshot::Receiver<T>) {
         (self.0.with_priority(priority), self.1)
@@ -632,7 +552,7 @@ where
 }
 
 pub trait PendingMemRead {
-    async fn recv_for<T>(self) -> anyhow::Result<T>
+    fn recv_for<T>(self) -> impl std::future::Future<Output = anyhow::Result<T>> + Send
     where
         T: dataview::Pod + Default;
     fn recv_then<T>(self, callback: fn(anyhow::Result<T>))

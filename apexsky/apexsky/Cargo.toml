@@ -33,7 +33,6 @@ chrono = "0.4.38"
 chinese-lunisolar-calendar = "0.2.0"
 obfstr = "0.4.3"
 include-flate = "0.3.0"
-prost = "0.12.6"
 skyapex-sdk = { path = "../../apex_dma/lib/skyapex/skyapex-sdk" }
 once_cell = "1.19.0"
 tracing = "0.1.40"
