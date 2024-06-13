@@ -70,6 +70,10 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
         return None;
     }
 
+    if clue.distance > g_settings.aimbot_settings.aim_dist {
+        return None;
+    }
+
     let select = &g_settings.loot;
 
     match item_id {
@@ -216,6 +220,6 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
         ItemId::WeaponRampage if select.weapon_rampage => Some(HIGHLIGHT_LOOT_HEAVY),
         ItemId::WeaponCARSMG if select.weapon_car_smg => Some(HIGHLIGHT_LOOT_HEAVY),
 
-        _ => None,
+        _ => Some(0),
     }
 }
