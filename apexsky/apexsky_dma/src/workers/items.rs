@@ -220,6 +220,6 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
         ItemId::WeaponRampage if select.weapon_rampage => Some(HIGHLIGHT_LOOT_HEAVY),
         ItemId::WeaponCARSMG if select.weapon_car_smg => Some(HIGHLIGHT_LOOT_HEAVY),
 
-        _ => Some(0),
+        _ => None,
     }
 }
