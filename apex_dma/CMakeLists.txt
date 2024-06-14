@@ -42,28 +42,37 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
     BINARY_DIR ${DEP_LIBS_DIR}/memflow/
-    BUILD_COMMAND cargo build --release
+    BUILD_COMMAND cargo +stable build --release
     INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${DEP_LIBS_DIR}/memflow/target/release/${LIB_PREFIX}memflow_ffi${STATIC_LIB_EXT}
     LOG_BUILD ON)
 
-# ExternalProject_Add(
-#     memflow_pcileech
-#     DOWNLOAD_COMMAND ""
-#     CONFIGURE_COMMAND ""
-#     BINARY_DIR ${DEP_LIBS_DIR}/memflow-pcileech/
-#     BUILD_COMMAND cargo build --release --all-features
-#     INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-pcileech/target/release/${LIB_PREFIX}memflow_pcileech${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
-#     LOG_BUILD ON)
+ExternalProject_Add(
+    memflow_kvm
+    DOWNLOAD_COMMAND ""
+    CONFIGURE_COMMAND ""
+    BINARY_DIR ${DEP_LIBS_DIR}/memflow-kvm/
+    BUILD_COMMAND cargo +stable build --release --all-features
+    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-kvm/target/release/${LIB_PREFIX}memflow_kvm${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
+    LOG_BUILD ON)
 
-# ExternalProject_Add(
-#     memflow_win32
-#     DOWNLOAD_COMMAND ""
-#     CONFIGURE_COMMAND ""
-#     BINARY_DIR ${DEP_LIBS_DIR}/memflow-win32/
-#     BUILD_COMMAND cargo build --release --all-features
-#     INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-win32/target/release/${LIB_PREFIX}memflow_win32${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
-#     LOG_BUILD ON)
+ExternalProject_Add(
+    memflow_qemu
+    DOWNLOAD_COMMAND ""
+    CONFIGURE_COMMAND ""
+    BINARY_DIR ${DEP_LIBS_DIR}/memflow-qemu/
+    BUILD_COMMAND cargo +stable build --release --all-features
+    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-qemu/target/release/${LIB_PREFIX}memflow_qemu${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
+    LOG_BUILD ON)
+
+ExternalProject_Add(
+    memflow_win32
+    DOWNLOAD_COMMAND ""
+    CONFIGURE_COMMAND ""
+    BINARY_DIR ${DEP_LIBS_DIR}/memflow-win32/
+    BUILD_COMMAND cargo +stable build --release --all-features
+    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-win32/target/release/${LIB_PREFIX}memflow_win32${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
+    LOG_BUILD ON)
 
 find_package(Threads REQUIRED)
 
@@ -103,7 +112,7 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
     BINARY_DIR ${PROJECT_SOURCE_DIR}/../apexsky/apexsky/
-    BUILD_COMMAND cargo build --release
+    BUILD_COMMAND cargo +stable build --release
     INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/../apexsky/target/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
     LOG_BUILD ON)
@@ -111,11 +120,11 @@ ExternalProject_Add(
 add_dependencies(apex_dma 
     apexsky
     memflow_ffi
-    # memflow_pcileech
-    # memflow_win32
-    )
+    memflow_kvm
+    memflow_qemu
+    memflow_win32)
 
-    
+
 if (WIN32)
     target_link_libraries(
         apex_dma

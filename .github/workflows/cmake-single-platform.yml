@@ -27,7 +27,6 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
-    - run: rustup default nightly
 
     - name: Install dependencies
       run: |
