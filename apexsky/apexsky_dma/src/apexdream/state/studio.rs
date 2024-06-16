@@ -67,7 +67,7 @@ impl StudioModel {
         // Read bones
         let numbones = self.studiohdr.numbones as usize;
         if numbones > 256 {
-            tracing::warn!("{}", s!("too many bones to read"));
+            tracing::debug!("{}", s!("too many bones to read"));
             return false;
         }
         if self.bones.len() != numbones {

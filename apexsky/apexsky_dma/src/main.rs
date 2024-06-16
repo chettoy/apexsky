@@ -392,7 +392,7 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| {
             EnvFilter::try_new(s!(
-                "apexsky_dma=warn,apexsky=warn,apexsky_dmalib::mem=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::apexdream=warn"
+                "apexsky_dma=warn,apexsky=warn,apexsky_dmalib=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::apexdream=warn"
             ))
         })
         .unwrap();

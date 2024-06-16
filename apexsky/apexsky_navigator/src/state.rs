@@ -150,9 +150,9 @@ impl TeamInfo {
                         },
                     );
                     team.max_shield_level = i32::max(team.max_shield_level, pl_data.armor_type);
-                    team.total_damage += u32::try_from(pl_data.damage_dealt).unwrap();
-                    team.total_healthpoints += u32::try_from(pl_info.health_points).unwrap();
-                    team.total_kills += u16::try_from(pl_data.kills).unwrap();
+                    team.total_damage += u32::try_from(pl_data.damage_dealt).unwrap_or(0);
+                    team.total_healthpoints += u32::try_from(pl_info.health_points).unwrap_or(0);
+                    team.total_kills += u16::try_from(pl_data.kills).unwrap_or(0);
                 } else {
                     teams.insert(
                         pl_data.team_num,
@@ -166,9 +166,9 @@ impl TeamInfo {
                             downed_members: if pl_info.is_knocked { 1 } else { 0 },
                             max_distance_each_other: 0.0,
                             max_shield_level: pl_data.armor_type,
-                            total_damage: pl_data.damage_dealt.try_into().unwrap(),
-                            total_healthpoints: pl_info.health_points.try_into().unwrap(),
-                            total_kills: pl_data.kills.try_into().unwrap(),
+                            total_damage: pl_data.damage_dealt.try_into().unwrap_or(0),
+                            total_healthpoints: pl_info.health_points.try_into().unwrap_or(0),
+                            total_kills: pl_data.kills.try_into().unwrap_or(0),
                         },
                     );
                 }
