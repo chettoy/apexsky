@@ -9,9 +9,12 @@ macro_rules! diff_member {
     };
 }
 
+#[allow(dead_code)]
 pub(crate) struct State {
     pub ready: bool,
     pub in_game: bool,
+    pub skydiving: bool,
+    pub on_the_ground: bool,
     pub local_pos: [f32; 3],
     pub local_yaw: f32,
     pub under_observation: usize,
@@ -21,9 +24,12 @@ pub(crate) struct State {
     pub radar_points: Vec<([f32; 2], PlayerState)>,
 }
 
+#[allow(dead_code)]
 pub(crate) struct StateDiff {
     pub ready: Option<bool>,
     pub in_game: Option<bool>,
+    pub skydiving: Option<bool>,
+    pub on_the_ground: Option<bool>,
     pub under_observation: Option<usize>,
     pub team_in_the_rear: Option<bool>,
 }
@@ -33,6 +39,8 @@ impl StateDiff {
         StateDiff {
             ready: diff_member!(old, new, ready),
             in_game: diff_member!(old, new, in_game),
+            skydiving: diff_member!(old, new, skydiving),
+            on_the_ground: diff_member!(old, new, on_the_ground),
             under_observation: diff_member!(old, new, under_observation),
             team_in_the_rear: {
                 let old = old.and_then(|old| old.team_in_the_rear);
@@ -90,6 +98,14 @@ impl State {
         Self {
             ready: data.ready,
             in_game: data.in_game && data.local_player.is_some(),
+            skydiving: data
+                .local_player
+                .as_ref()
+                .is_some_and(|pl| pl.skydive_state > 0),
+            on_the_ground: data
+                .local_player
+                .as_ref()
+                .is_some_and(|pl| (pl.flags & 0x1) != 0),
             local_pos,
             local_yaw,
             under_observation: data

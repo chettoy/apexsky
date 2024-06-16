@@ -201,7 +201,11 @@ impl EspService for MyEspService {
                     data_timestamp: lock.update_time,
                 }),
                 spectators: Some(SpectatorList {
-                    elements: lock.spectator_list.clone(),
+                    elements: [
+                        lock.spectator_list.clone(),
+                        lock.allied_spectator_list.clone(),
+                    ]
+                    .concat(),
                 }),
                 duration_tick: lock.update_duration.1.try_into().unwrap(),
                 duration_actions: lock.update_duration.0.try_into().unwrap(),

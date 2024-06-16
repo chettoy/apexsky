@@ -101,8 +101,8 @@ async fn main() -> anyhow::Result<()> {
             }
         }
 
-        {
-            let rel_pos = state_diff
+        if state.on_the_ground && !state.skydiving {
+            if let Some(pos) = state_diff
                 .team_in_the_rear
                 .and_then(|_| state.team_in_the_rear)
                 .map(|team_id| state.nearby_teams.get(&team_id))
@@ -111,8 +111,8 @@ async fn main() -> anyhow::Result<()> {
                 .flatten()
                 .map(|(_dist, pos)| (arr1(pos) - arr1(&state.local_pos)) / 40.0 / 20.0)
                 .map(|rel| [rel[0], rel[1], rel[2]])
-                .map(|game_pos| [game_pos[1], game_pos[2], -game_pos[0]]);
-            if let Some(pos) = rel_pos {
+                .map(|game_pos| [game_pos[1], game_pos[2], -game_pos[0]])
+            {
                 sonic_tx
                     .send(SonicCtrl::Play(SonicMessage::Voice(VoicePrompt::new(
                         ContentId::EnemyInTheRear,
@@ -120,20 +120,20 @@ async fn main() -> anyhow::Result<()> {
                     ))))
                     .await?;
             }
-        }
 
-        if state.nearby_teams.len() == 2
-            && prev_state
-                .map(|state| state.nearby_teams.len())
-                .unwrap_or(0)
-                < 2
-        {
-            sonic_tx
-                .send(SonicCtrl::Play(SonicMessage::Voice(VoicePrompt::new(
-                    ContentId::DualTeamsNearby,
-                    [4.0, 0.0, 0.0],
-                ))))
-                .await?;
+            if state.nearby_teams.len() == 2
+                && prev_state
+                    .map(|state| state.nearby_teams.len())
+                    .unwrap_or(0)
+                    < 2
+            {
+                sonic_tx
+                    .send(SonicCtrl::Play(SonicMessage::Voice(VoicePrompt::new(
+                        ContentId::DualTeamsNearby,
+                        [4.0, 0.0, 0.0],
+                    ))))
+                    .await?;
+            }
         }
 
         sleep(Duration::from_secs(2)).await;

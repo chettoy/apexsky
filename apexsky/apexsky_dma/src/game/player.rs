@@ -121,6 +121,7 @@ impl GamePlayer {
                 .unwrap_or(-1),
             winning_team: false,
             yaw: state.yaw,
+            skydive_state: state.skydive_state,
         };
 
         Self {

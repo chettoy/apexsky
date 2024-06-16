@@ -43,7 +43,7 @@ struct SharedState {
     treasure_clues: Vec<TreasureClue>,
     teammates: Vec<PlayerState>,
     spectator_list: Vec<SpectatorInfo>,
-    allied_spectator_name: Vec<String>,
+    allied_spectator_list: Vec<SpectatorInfo>,
     map_testing_local_team: i32,
     world_ready: bool,
     frame_count: i32,
