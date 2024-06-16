@@ -1,6 +1,12 @@
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use apexsky_proto::pb::apexlegends::{
+    AimEntityData, AimTargetInfo, AimTargetItem, EspData, EspDataOption, EspSettings, Loots,
+    LoveStatusCode,
+};
+use apexsky_proto::pb::esp_service::esp_service_client::EspServiceClient;
+use apexsky_proto::pb::esp_service::GetLootsRequest;
 // use ambisonic::rodio::Source;
 // use ambisonic::{AmbisonicBuilder, SoundController};
 use bevy::asset::embedded_asset;
@@ -15,12 +21,6 @@ use once_cell::sync::Lazy;
 use tokio::sync::watch;
 
 use crate::overlay::asset::{Blob, BlobAssetLoader};
-use crate::pb::apexlegends::{
-    AimEntityData, AimTargetInfo, AimTargetItem, EspData, EspDataOption, EspSettings, Loots,
-    LoveStatusCode, TreasureClue,
-};
-use crate::pb::esp_service::esp_service_client::EspServiceClient;
-use crate::pb::esp_service::GetLootsRequest;
 
 mod asset;
 mod ui;

@@ -2,8 +2,6 @@ apex_dma/.cache
 apex_dma/build
 apexsky/apexsky_*/src/pb/*.rs
 !apexsky/apexsky_*/src/pb/mod.rs
-esp_iot/src/pb/*.rs
-!esp_iot/src/pb/mod.rs
 .vs/
 x64/
 *.o

@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use apexsky::{config::Settings, global_state::G_STATE};
+use apexsky_proto::pb::apexlegends::TreasureClue;
 use obfstr::obfstr as s;
 use parking_lot::RwLock;
 use tokio::sync::watch;
@@ -8,7 +9,6 @@ use tokio::time::{sleep_until, Instant};
 use tracing::instrument;
 
 use crate::game::data::*;
-use crate::pb::apexlegends::TreasureClue;
 use crate::SharedState;
 
 #[instrument]

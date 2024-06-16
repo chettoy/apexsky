@@ -1,15 +1,15 @@
 use std::time::Duration;
 
+use apexsky_proto::pb::{
+    apexlegends::EspDataOption, esp_service::esp_service_client::EspServiceClient,
+};
 use buttplug::{
     client::{ButtplugClient, ScalarValueCommand},
     core::{
         connector::new_json_ws_client_connector, message::ClientGenericDeviceMessageAttributes,
     },
 };
-use pb::{apexlegends::EspDataOption, esp_service::esp_service_client::EspServiceClient};
 use tokio::time::sleep;
-
-mod pb;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

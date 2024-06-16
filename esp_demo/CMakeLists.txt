@@ -5,7 +5,7 @@ project(EspDemo C CXX)
 include(./cmake/grpc-common.cmake)
 
 # Proto file path
-get_filename_component(proto_include_path "../apexsky/apexsky_dma/proto/" ABSOLUTE)
+get_filename_component(proto_include_path "../apexsky/apexsky_proto/proto/" ABSOLUTE)
 
 # Generated sources
 set(esp_proto_srcs 

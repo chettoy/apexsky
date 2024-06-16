@@ -7,10 +7,11 @@ use apexsky::aimbot::{AimEntity, Aimbot};
 use apexsky::config::Settings;
 use apexsky::global_state::G_STATE;
 use apexsky_dmalib::MemConnector;
+use apexsky_proto::pb::apexlegends::{
+    AimKeyState, AimTargetInfo, PlayerState, SpectatorInfo, TreasureClue,
+};
 use obfstr::obfstr as s;
-
 use parking_lot::RwLock;
-use pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
 use tokio::sync::{mpsc, watch};
 use tokio::task::{self, JoinHandle};
 use tokio::time::sleep;
@@ -21,7 +22,6 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::EnvFilter;
 
 use crate::game::player::GamePlayer;
-use crate::pb::apexlegends::PlayerState;
 
 pub use apexsky::noobfstr;
 
@@ -29,7 +29,6 @@ mod actuator;
 mod apexdream;
 mod context_impl;
 mod game;
-mod pb;
 mod workers;
 
 #[derive(Debug, Default, Clone)]

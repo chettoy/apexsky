@@ -26,7 +26,7 @@ unicode-width = "0.1.13"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 entropy = "0.4.2"
 rand = "0.8.5"
-indexmap = { version = "2.2.6", features = ["serde"] }
+indexmap = "2.2.6"
 zbus = { version = "4.2.2", default-features = false, features = ["tokio"] }
 tokio = { version = "1.38.0", features = ["full"] }
 chrono = "0.4.38"
@@ -37,6 +37,6 @@ skyapex-sdk = { path = "../../apex_dma/lib/skyapex/skyapex-sdk" }
 once_cell = "1.19.0"
 tracing = "0.1.40"
 deno_ast = { version = "0.39.1", features = ["transpiling"] }
-deno_core = "0.287.0"
+deno_core = "0.289.0"
 reqwest = { version = "0.12.4", default-features = false, features = ["charset", "http2", "macos-system-configuration", "blocking", "json", "rustls-tls"] }
 hex = { version = "0.4.3", features = ["serde"] }

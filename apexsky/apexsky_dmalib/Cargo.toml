@@ -8,7 +8,6 @@ anyhow = "1.0"
 chrono = "0.4.38"
 dataview = "1.0.1"
 enum_dispatch = "0.3.13"
-indexmap = { version = "2.2.6", features = ["serde"] }
 memflow = "0.2.1"
 memflow-qemu = { git = "https://github.com/memflow/memflow-qemu", rev = "78bdf30" }
 memflow-win32 = "0.2.0"

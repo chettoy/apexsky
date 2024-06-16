@@ -9,8 +9,8 @@ use apexsky::global_state::G_STATE;
 use apexsky::love_players::LoveStatus;
 use apexsky_dmalib::access::MemApi;
 use apexsky_kmbox::kmbox::{KmboxB, KmboxNet};
+use apexsky_proto::pb::apexlegends::{AimKeyState, AimTargetInfo};
 use obfstr::obfstr as s;
-
 use parking_lot::RwLock;
 use tokio::sync::watch;
 use tokio::time::{sleep, sleep_until, Instant};
@@ -20,7 +20,6 @@ use crate::actuator::{
     AimActuator, AimbotAction, DeviceAimActuator, KmboxAimActuator, MemAimHelper, QmpAimActuator,
 };
 use crate::apexdream::base::math;
-use crate::pb::apexlegends::{AimKeyState, AimTargetInfo};
 use crate::SharedState;
 
 const ENABLE_MEM_AIM: bool = true;
