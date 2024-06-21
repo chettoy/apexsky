@@ -1068,7 +1068,7 @@ fn build_hotkey_menu(
             ),
             &prompt_text_keycode!(i18n_bundle, HotkeyItemAimbot1),
             |val| {
-                if let Some(keycode) = val.parse::<u8>().ok() {
+                if let Some(keycode) = val.parse::<u16>().ok() {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_hot_key_1 = keycode as i32;
                     return None;
@@ -1084,7 +1084,7 @@ fn build_hotkey_menu(
             ),
             &prompt_text_keycode!(i18n_bundle, HotkeyItemAimbot2),
             |val| {
-                if let Some(keycode) = val.parse::<u8>().ok() {
+                if let Some(keycode) = val.parse::<u16>().ok() {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_hot_key_2 = keycode as i32;
                     return None;
@@ -1100,7 +1100,7 @@ fn build_hotkey_menu(
             ),
             &prompt_text_keycode!(i18n_bundle, HotkeyItemTriggerBot),
             |val| {
-                if let Some(keycode) = val.parse::<u8>().ok() {
+                if let Some(keycode) = val.parse::<u16>().ok() {
                     let settings = &mut lock_config!().settings;
                     settings.trigger_bot_hot_key = keycode as i32;
                     return None;
