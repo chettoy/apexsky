@@ -382,7 +382,7 @@ pub async fn esp_loop(
                     Server::builder()
                         .trace_fn(|_| tracing::info_span!("esp_server"))
                         .accept_http1(config.accept_http1)
-                        .add_service(service)
+                        .add_service(tonic_web::enable(service))
                         .serve_with_shutdown(config.listen, shutdown_rx.map(drop)),
                 );
                 server_task = Some((task, shutdown_tx));
