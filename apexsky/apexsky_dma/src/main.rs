@@ -156,8 +156,8 @@ impl TaskManager for State {
                 match io_thread(active_rx, access_rx, choose_connector()) {
                     Ok(_) => Ok(()),
                     Err(e) => match e {
-                        AccessError::Connector(e) => {
-                            tracing::error!(e);
+                        AccessError::Connector(connector, e) => {
+                            tracing::error!(?connector, ?e, %e);
                             press_to_exit();
                             Ok(())
                         }

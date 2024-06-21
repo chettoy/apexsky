@@ -144,8 +144,8 @@ pub fn io_thread(
     let mut start_instant = Instant::now();
     let mut next_flush_instant = Instant::now();
 
-    let mut mem_os =
-        create_os_instance(mem_connector).map_err(|e| AccessError::Connector(e.to_string()))?;
+    let mut mem_os = create_os_instance(mem_connector.clone())
+        .map_err(|e| AccessError::Connector(mem_connector, e))?;
 
     while *active.borrow() {
         start_instant = Instant::now();
