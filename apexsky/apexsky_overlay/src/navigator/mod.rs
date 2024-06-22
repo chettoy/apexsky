@@ -1,3 +1,4 @@
+use fyrox_sound::algebra::{Point3, UnitQuaternion, Vector3};
 use instant::Instant;
 use ndarray::arr1;
 
@@ -99,6 +100,15 @@ impl VoiceNavigator {
                 .map(|(_dist, pos)| (arr1(pos) - arr1(&state.local_pos)) / 40.0 / 20.0)
                 .map(|rel| [rel[0], rel[1], rel[2]])
                 .map(|game_pos| [-game_pos[1], game_pos[2], -game_pos[0]])
+                .map(|engine_pos| {
+                    let axis = Vector3::y_axis();
+                    let rotation_matrix =
+                        UnitQuaternion::from_axis_angle(&axis, -state.local_yaw.to_radians())
+                            .to_homogeneous();
+                    let pos: Vector3<f32> =
+                        rotation_matrix.transform_point(&engine_pos.into()).coords;
+                    [pos[0], pos[1], pos[2]]
+                })
             {
                 buf.push(SonicMessage::Voice(VoicePrompt::new(
                     ContentId::EnemyInTheRear,

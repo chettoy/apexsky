@@ -77,10 +77,6 @@ pub fn update_voice_navigator(
         .map(|pl| pl.view_angles.as_ref().map(|v| v.y).unwrap_or(pl.yaw))
         .unwrap_or(0.0);
 
-    let axis = fyrox_sound::algebra::Vector3::y_axis();
-    let rotation_matrix =
-        UnitQuaternion::from_axis_angle(&axis, -yaw.to_radians()).to_homogeneous();
-
     for msg in messages.into_iter() {
         let voice_msg = match msg {
             SonicMessage::Voice(inner) => inner,
@@ -91,16 +87,11 @@ pub fn update_voice_navigator(
             continue;
         };
 
-        let pos = voice_msg.position();
         sound_system
             .context
             .state()
             .source_mut(source_handle)
-            .set_position(
-                rotation_matrix
-                    .transform_point(&fyrox_sound::algebra::Point3::new(pos[0], pos[1], pos[2]))
-                    .coords,
-            )
+            .set_position(voice_msg.position().into())
             .play();
     }
 }
