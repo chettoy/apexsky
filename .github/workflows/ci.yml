@@ -88,9 +88,6 @@ jobs:
 
     - name: Build Overlay
       run: cd apexsky/apexsky_overlay && cargo build --release --target ${{ matrix.target }}
-    
-    - name: Build Navigator
-      run: cd apexsky/apexsky_navigator && cargo build --release --target ${{ matrix.target }}
 
     # - name: Test
     #   working-directory: ${{ steps.strings.outputs.build-output-dir }}
@@ -114,6 +111,5 @@ jobs:
         path: |
           apexsky/target/${{ matrix.target }}/release/${{ matrix.bin-prefix }}apexsky_dma${{ matrix.bin-ext }}
           apexsky/target/${{ matrix.target }}/release/${{ matrix.bin-prefix }}apexsky_overlay${{ matrix.bin-ext }}
-          apexsky/target/${{ matrix.target }}/release/${{ matrix.bin-prefix }}apexsky_navigator${{ matrix.bin-ext }}
         retention-days: 5
 

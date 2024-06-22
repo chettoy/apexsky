@@ -1,10 +1,3 @@
-use apexsky_proto::pb::apexlegends::EspData;
-use apexsky_proto::pb::apexlegends::EspSettings;
-use apexsky_proto::pb::apexlegends::EspVisualsFlag;
-use apexsky_proto::pb::apexlegends::Loots;
-use apexsky_proto::pb::apexlegends::LoveStatusCode;
-use apexsky_proto::pb::apexlegends::PlayerState;
-use apexsky_proto::pb::apexlegends::SpectatorInfo;
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
@@ -13,11 +6,20 @@ use bevy_egui::egui::Align2;
 use bevy_egui::{egui, EguiContexts};
 use obfstr::obfstr as s;
 
-use crate::overlay::get_unix_timestamp_in_millis;
 use crate::overlay::ui::mini_map::mini_map_radar;
 use crate::overlay::ui::mini_map::RadarTarget;
+use crate::overlay::utils::get_unix_timestamp_in_millis;
+use crate::pb::apexlegends::EspData;
+use crate::pb::apexlegends::EspSettings;
+use crate::pb::apexlegends::EspVisualsFlag;
+use crate::pb::apexlegends::Loots;
+use crate::pb::apexlegends::LoveStatusCode;
+use crate::pb::apexlegends::PlayerState;
+use crate::pb::apexlegends::SpectatorInfo;
 
 use super::asset::Blob;
+use super::system::game_esp::EspServiceAddr;
+use super::system::game_esp::EspSystem;
 use super::MyOverlayState;
 
 mod mini_map;
@@ -27,8 +29,17 @@ pub fn toggle_mouse_passthrough(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut windows: Query<&mut Window>,
 ) {
-    let mut window = windows.single_mut();
-    window.cursor.hit_test = keyboard_input.pressed(KeyCode::Insert);
+    #[cfg(feature = "native")]
+    {
+        let mut window = windows.single_mut();
+        window.cursor.hit_test = keyboard_input.pressed(KeyCode::Insert);
+    }
+}
+
+#[derive(Resource, Debug, Default)]
+pub(crate) struct UiState {
+    input_esp_addr: String,
+    input_addr_valid: Option<EspServiceAddr>,
 }
 
 struct DialogEsp {
@@ -51,6 +62,8 @@ struct DialogEsp {
 pub fn ui_system(
     mut contexts: EguiContexts,
     mut overlay_state: ResMut<MyOverlayState>,
+    mut ui_state: ResMut<UiState>,
+    esp_system: Option<Res<EspSystem>>,
     time: Res<Time>,
     diagnostics: Res<DiagnosticsStore>,
     blobs: Res<Assets<Blob>>,
@@ -82,11 +95,9 @@ pub fn ui_system(
         }
     }
 
-    let (allied_spectators, spectators): (Vec<_>, Vec<_>) = overlay_state
-        .esp_data
-        .spectators
-        .clone()
-        .map(|list| list.elements)
+    let (allied_spectators, spectators): (Vec<_>, Vec<_>) = esp_system
+        .as_ref()
+        .and_then(|v| v.esp_data.spectators.clone().map(|list| list.elements))
         .unwrap_or(vec![])
         .into_iter()
         .partition(|info| info.is_teammate);
@@ -96,119 +107,121 @@ pub fn ui_system(
         .map(|info| info.name)
         .collect();
 
-    let dialog_esp = DialogEsp {
-        overlay_fps: {
-            // try to get a "smoothed" FPS value from Bevy
-            if let Some(value) = diagnostics
-                .get(&FrameTimeDiagnosticsPlugin::FPS)
-                .and_then(|fps| fps.smoothed())
-            {
-                format!("{:.1}", value)
-            } else {
-                s!("N/A").to_string()
-            }
-        },
-        game_fps: format!("{:.1}", overlay_state.esp_data.game_fps),
-        latency: format!(
-            "{:.0}{}{:.0}{}",
-            overlay_state.data_latency,
-            s!("ms(data) + "),
-            time.delta_seconds() * 1000.0,
-            s!("ms(ui)"),
-        ),
-        loop_duration: format!(
-            "{: >4}{}{: >4}{}",
-            overlay_state.esp_data.duration_tick,
-            s!("ms(tick) +"),
-            overlay_state.esp_data.duration_actions,
-            s!("ms(actions)"),
-        ),
-        target_count: overlay_state.target_count.to_string(),
-        local_position: overlay_state
-            .esp_data
-            .local_player
-            .as_ref()
-            .and_then(|p| p.origin.clone())
-            .map(|pos| {
-                format!(
-                    "{}{:.0}{}{:.0}{}{:.0}",
-                    s!("x="),
-                    pos.x,
-                    s!(", y="),
-                    pos.y,
-                    s!(", z="),
-                    pos.z
-                )
-            })
-            .unwrap_or_default(),
-        local_angles: overlay_state
-            .esp_data
-            .local_player
-            .as_ref()
-            .and_then(|p| p.view_angles.clone())
-            .map(|angle| {
-                format!(
-                    "{}{:.2}{}{:.2}{}{:.2}",
-                    s!("view angles= "),
-                    angle.x,
-                    s!(", "),
-                    angle.y,
-                    s!(", "),
-                    angle.z
-                )
-            })
-            .unwrap_or_default(),
-        local_yaw: overlay_state
-            .esp_data
-            .local_player
-            .as_ref()
-            .map(|p| p.yaw)
-            .map(|yaw| format!("{}{:.2}", s!("yaw="), yaw))
-            .unwrap_or_default(),
-        local_held: overlay_state
-            .esp_data
-            .aimbot
-            .as_ref()
-            .map(|aimbot| {
-                format!(
-                    "{}{}{}{}",
-                    s!("held="),
-                    aimbot.held_id,
-                    s!(", weapon="),
-                    aimbot.weapon_id
-                )
-            })
-            .unwrap_or_default(),
-        aim_position: overlay_state
-            .esp_data
-            .aimbot
-            .as_ref()
-            .map(|aimbot| aimbot.target_position.as_ref())
-            .flatten()
-            .map(|aim_target| {
-                format!(
-                    "{}{:.2}{}{:.2}{}{:.2}{}",
-                    s!("aim["),
-                    aim_target.x,
-                    s!(","),
-                    aim_target.y,
-                    s!(","),
-                    aim_target.z,
-                    s!("]")
-                )
-            })
-            .unwrap_or_default(),
-        spectator_list: spectators,
-        allied_spectator_name,
-        teammates_info: overlay_state
-            .esp_data
-            .teammates
-            .clone()
-            .map(|dt| dt.players)
-            .unwrap_or_default(),
+    let dialog_esp = {
+        let esp_system = esp_system.as_ref();
+        DialogEsp {
+            overlay_fps: {
+                // try to get a "smoothed" FPS value from Bevy
+                if let Some(value) = diagnostics
+                    .get(&FrameTimeDiagnosticsPlugin::FPS)
+                    .and_then(|fps| fps.smoothed())
+                {
+                    format!("{:.1}", value)
+                } else {
+                    s!("N/A").to_string()
+                }
+            },
+            game_fps: format!(
+                "{:.1}",
+                esp_system.map(|v| v.esp_data.game_fps).unwrap_or_default()
+            ),
+            latency: format!(
+                "{:.0}{}{:.0}{}",
+                overlay_state.data_latency,
+                s!("ms(data) + "),
+                time.delta_seconds() * 1000.0,
+                s!("ms(ui)"),
+            ),
+            loop_duration: esp_system
+                .map(|v| {
+                    let data = &v.esp_data;
+                    format!(
+                        "{: >4}{}{: >4}{}",
+                        data.duration_tick,
+                        s!("ms(tick) +"),
+                        data.duration_actions,
+                        s!("ms(actions)"),
+                    )
+                })
+                .unwrap_or_default(),
+            target_count: esp_system
+                .map(|v| v.target_count)
+                .unwrap_or_default()
+                .to_string(),
+            local_position: esp_system
+                .and_then(|v| v.esp_data.local_player.as_ref())
+                .and_then(|pl| pl.origin.clone())
+                .map(|pos| {
+                    format!(
+                        "{}{:.0}{}{:.0}{}{:.0}",
+                        s!("x="),
+                        pos.x,
+                        s!(", y="),
+                        pos.y,
+                        s!(", z="),
+                        pos.z
+                    )
+                })
+                .unwrap_or_default(),
+            local_angles: esp_system
+                .and_then(|v| v.esp_data.local_player.as_ref())
+                .and_then(|pl| pl.view_angles.clone())
+                .map(|angle| {
+                    format!(
+                        "{}{:.2}{}{:.2}{}{:.2}",
+                        s!("view angles= "),
+                        angle.x,
+                        s!(", "),
+                        angle.y,
+                        s!(", "),
+                        angle.z
+                    )
+                })
+                .unwrap_or_default(),
+            local_yaw: esp_system
+                .and_then(|v| v.esp_data.local_player.as_ref())
+                .map(|pl| pl.yaw)
+                .map(|yaw| format!("{}{:.2}", s!("yaw="), yaw))
+                .unwrap_or_default(),
+            local_held: esp_system
+                .and_then(|v| v.esp_data.aimbot.as_ref())
+                .map(|aimbot| {
+                    format!(
+                        "{}{}{}{}",
+                        s!("held="),
+                        aimbot.held_id,
+                        s!(", weapon="),
+                        aimbot.weapon_id
+                    )
+                })
+                .unwrap_or_default(),
+            aim_position: esp_system
+                .and_then(|v| v.esp_data.aimbot.as_ref())
+                .map(|aimbot| aimbot.target_position.as_ref())
+                .flatten()
+                .map(|aim_target| {
+                    format!(
+                        "{}{:.2}{}{:.2}{}{:.2}{}",
+                        s!("aim["),
+                        aim_target.x,
+                        s!(","),
+                        aim_target.y,
+                        s!(","),
+                        aim_target.z,
+                        s!("]")
+                    )
+                })
+                .unwrap_or_default(),
+            spectator_list: spectators,
+            allied_spectator_name,
+            teammates_info: esp_system
+                .and_then(|v| v.esp_data.teammates.clone())
+                .map(|dt| dt.players)
+                .unwrap_or_default(),
+        }
     };
 
-    egui::Window::new(s!("Hello, world!"))
+    let _show = egui::Window::new(s!("Hello, world!"))
         .auto_sized()
         .default_pos(pos2(1600.0, 320.0))
         .frame(egui::Frame {
@@ -254,6 +267,7 @@ pub fn ui_system(
             ui.add_space(10.0);
 
             ScrollArea::vertical()
+                .id_source(s!("scroll-teammates"))
                 .max_width(320.0)
                 .max_height(480.0)
                 .show(ui, |ui| {
@@ -285,6 +299,7 @@ pub fn ui_system(
             ui.add_space(10.0);
 
             ScrollArea::vertical()
+                .id_source(s!("scroll-spectators"))
                 .max_width(320.0)
                 .max_height(480.0)
                 .show(ui, |ui| {
@@ -316,71 +331,135 @@ pub fn ui_system(
                         };
                     }
                 });
+
+            ui.add_space(10.0);
+
+            // buttons
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                if ui
+                    .add(egui::Button::new(
+                        egui::RichText::new(s!("Connection")).color(
+                            if esp_system
+                                .as_ref()
+                                .is_some_and(|esp| esp.esp_settings.esp > 0)
+                            {
+                                Color32::LIGHT_GREEN
+                            } else {
+                                Color32::LIGHT_YELLOW
+                            },
+                        ),
+                    ))
+                    .clicked()
+                {
+                    overlay_state.user_gesture = true;
+                    if ui_state.input_esp_addr.is_empty() {
+                        ui_state.input_esp_addr = overlay_state
+                            .override_esp_addr
+                            .as_ref()
+                            .map(|addr| addr.get_addr())
+                            .unwrap_or(EspServiceAddr::default().get_addr());
+                        ui_state.input_addr_valid =
+                            EspServiceAddr::from_str(&ui_state.input_esp_addr);
+                    } else {
+                        if esp_system.is_none() && ui_state.input_addr_valid.is_some() {
+                            overlay_state.override_esp_addr = ui_state.input_addr_valid.clone();
+                        }
+                        ui_state.input_esp_addr.clear();
+                    }
+                }
+                if ui
+                    .add(egui::Button::new(if !overlay_state.user_gesture {
+                        egui::RichText::new(s!("Click me"))
+                    } else {
+                        egui::RichText::new(s!(" Ready  ")).color(Color32::LIGHT_GREEN)
+                    }))
+                    .clicked()
+                {
+                    overlay_state.user_gesture = true;
+                }
+                if ui.add(egui::Button::new(s!("Test sound"))).clicked() {
+                    overlay_state.test_sound = true;
+                }
+            });
+
+            // address bar
+            if !ui_state.input_esp_addr.is_empty() {
+                let invalid = ui_state.input_addr_valid.is_none();
+                let response = ui.add(
+                    egui::TextEdit::singleline(&mut ui_state.input_esp_addr)
+                        .text_color_opt(invalid.then_some(Color32::DARK_RED)),
+                );
+                if response.changed() {
+                    ui_state.input_addr_valid = EspServiceAddr::from_str(&ui_state.input_esp_addr);
+                }
+                if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    if ui_state.input_addr_valid.is_some() {
+                        overlay_state.override_esp_addr = ui_state.input_addr_valid.clone();
+                        ui_state.input_esp_addr.clear();
+                    }
+                }
+            }
         });
 
-    let panel_frame = egui::Frame {
-        fill: Color32::TRANSPARENT, //ctx.style().visuals.window_fill(),
-        rounding: 10.0.into(),
-        stroke: egui::Stroke::NONE, //ctx.style().visuals.widgets.noninteractive.fg_stroke,
-        outer_margin: 0.5.into(),   // so the stroke is within the bounds
-        ..Default::default()
-    };
+    if let Some(ref esp_system_connected) = esp_system {
+        let esp_settings = &esp_system_connected.esp_settings;
+        let esp_data = &esp_system_connected.esp_data;
+        let esp_loots = &esp_system_connected.esp_loots;
 
-    CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
-        esp_2d_ui(
-            ui,
-            &overlay_state.esp_data,
-            &overlay_state.esp_settings,
-            &overlay_state.esp_loots,
-        );
-        info_bar_ui(
-            ui,
-            &overlay_state.esp_data,
-            spectators_count,
-            allied_spectators_count,
-        );
-    });
+        let panel_frame = egui::Frame {
+            fill: Color32::TRANSPARENT, //ctx.style().visuals.window_fill(),
+            rounding: 10.0.into(),
+            stroke: egui::Stroke::NONE, //ctx.style().visuals.widgets.noninteractive.fg_stroke,
+            outer_margin: 0.5.into(),   // so the stroke is within the bounds
+            ..Default::default()
+        };
 
-    // Radar Stuff
-    if overlay_state.esp_data.in_game && overlay_state.esp_settings.mini_map_radar {
-        if let Some((base_pos, base_yaw)) = overlay_state.esp_data.view_player.as_ref().map(|pl| {
-            (
-                pl.origin.clone().unwrap().into(),
-                pl.view_angles.as_ref().map(|v| v.y).unwrap_or(pl.yaw),
-            )
-        }) {
-            let radar_targets = overlay_state
-                .esp_data
-                .targets
-                .as_ref()
-                .map(|list| &list.elements)
-                .unwrap_or(&vec![])
-                .iter()
-                .filter_map(|item| Some((item.info.as_ref()?, item.player_data.as_ref()?)))
-                .map(|(player_info, player_buf)| RadarTarget {
-                    pos: player_buf.origin.clone().unwrap().into(),
-                    yaw: player_buf
-                        .view_angles
-                        .as_ref()
-                        .map(|view_angles| {
-                            let yaw = view_angles.y;
-                            if yaw < 0.0 {
-                                yaw + 360.0
-                            } else {
-                                yaw
-                            }
-                        })
-                        .unwrap_or(player_buf.yaw),
-                    distance: player_info.distance / 39.62,
-                    team_id: player_buf.team_num,
-                })
-                .collect();
-            mini_map_radar(ctx, base_pos, base_yaw, radar_targets, 5., 1.);
+        CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
+            esp_2d_ui(ui, &esp_data, &esp_settings, &esp_loots);
+            info_bar_ui(ui, &esp_data, spectators_count, allied_spectators_count);
+        });
+
+        // Radar Stuff
+        if esp_data.in_game && esp_settings.mini_map_radar {
+            if let Some((base_pos, base_yaw)) = esp_data.view_player.as_ref().map(|pl| {
+                (
+                    pl.origin.clone().unwrap().into(),
+                    pl.view_angles.as_ref().map(|v| v.y).unwrap_or(pl.yaw),
+                )
+            }) {
+                let radar_targets = esp_data
+                    .targets
+                    .as_ref()
+                    .map(|list| &list.elements)
+                    .unwrap_or(&vec![])
+                    .iter()
+                    .filter_map(|item| Some((item.info.as_ref()?, item.player_data.as_ref()?)))
+                    .map(|(player_info, player_buf)| RadarTarget {
+                        pos: player_buf.origin.clone().unwrap().into(),
+                        yaw: player_buf
+                            .view_angles
+                            .as_ref()
+                            .map(|view_angles| {
+                                let yaw = view_angles.y;
+                                if yaw < 0.0 {
+                                    yaw + 360.0
+                                } else {
+                                    yaw
+                                }
+                            })
+                            .unwrap_or(player_buf.yaw),
+                        distance: player_info.distance / 39.62,
+                        team_id: player_buf.team_num,
+                    })
+                    .collect();
+                mini_map_radar(ctx, base_pos, base_yaw, radar_targets, 5., 1.);
+            }
         }
     }
 
     let now = get_unix_timestamp_in_millis() as f64;
-    overlay_state.data_latency = now - overlay_state.esp_data.data_timestamp * 1000.0;
+    overlay_state.data_latency =
+        now - esp_system.map(|v| v.esp_data.data_timestamp).unwrap_or(0.0) * 1000.0;
 }
 
 fn info_bar_ui(

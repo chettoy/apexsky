@@ -1,3 +1,17 @@
+# 0. Enable web_sys_unstable_apis for bevy_egui
+
+[build]
+rustflags = ["--cfg=web_sys_unstable_apis"]
+
+# 1. Set up cargo to use wasm-server-runner.
+
+# https://bevy-cheatbook.github.io/platforms/wasm.html
+# The easiest and most automatic way to get started is the wasm-server-runner tool. It is great for testing during development.
+[target.wasm32-unknown-unknown]
+runner = "wasm-server-runner"
+
+# 2. Bevy fast build configuration
+
 # Add the contents of this file to `config.toml` to enable "fast build" configuration. Please read the notes below.
 
 # NOTE: For maximum performance, build using a nightly compiler

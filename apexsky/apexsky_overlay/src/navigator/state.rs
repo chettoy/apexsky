@@ -1,6 +1,7 @@
-use apexsky_proto::pb::apexlegends::{AimTargetItem, EspData, PlayerState};
 use indexmap::IndexMap;
 use ndarray::arr1;
+
+use crate::pb::apexlegends::{AimTargetItem, EspData, PlayerState};
 
 macro_rules! diff_member {
     ($old:ident, $new:ident, $member:ident) => {
@@ -10,6 +11,7 @@ macro_rules! diff_member {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub(crate) struct State {
     pub ready: bool,
     pub in_game: bool,
@@ -25,6 +27,7 @@ pub(crate) struct State {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub(crate) struct StateDiff {
     pub ready: Option<bool>,
     pub in_game: Option<bool>,
@@ -129,6 +132,7 @@ impl State {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct TeamInfo {
     pub team_num: i32,
     pub members: Vec<PlayerState>,

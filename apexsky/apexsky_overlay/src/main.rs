@@ -1,22 +1,28 @@
-use obfstr::obfstr as s;
-use tracing_appender::non_blocking::NonBlocking;
+#![feature(is_none_or)]
 
+mod navigator;
 mod overlay;
+mod pb;
 
 fn main() {
-    let (non_blocking, _guard) = tracing_appender::non_blocking(tracing_appender::rolling::daily(
-        s!("log"),
-        s!("overlay.log"),
-    ));
-    init_logger(non_blocking, true);
+    //#[cfg(feature = "native")]
+    let _logger_guard = init_logger();
 
     println!("Hello, world!");
     overlay::main();
 }
 
-fn init_logger(non_blocking: NonBlocking, print: bool) {
+#[cfg(feature = "native")]
+fn init_logger() -> tracing_appender::non_blocking::WorkerGuard {
+    use obfstr::obfstr as s;
     use tracing::Level;
     use tracing_subscriber::{fmt::writer::MakeWriterExt, layer::SubscriberExt, EnvFilter};
+
+    let print = true;
+    let (non_blocking, guard) = tracing_appender::non_blocking(tracing_appender::rolling::daily(
+        s!("log"),
+        s!("overlay.log"),
+    ));
 
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| EnvFilter::try_new(s!("apexsky_overlay=debug,apexsky=warn")))
@@ -53,4 +59,31 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
         tracing::subscriber::set_global_default(subscriber)
     }
     .expect(s!("setting default subscriber failed"));
+
+    guard
+}
+
+#[cfg(feature = "web-wasm")]
+fn init_logger() {
+    use obfstr::obfstr as s;
+    use tracing_subscriber::fmt::format::Pretty;
+    use tracing_subscriber::prelude::*;
+    use tracing_subscriber::EnvFilter;
+    use tracing_web::{performance_layer, MakeWebConsoleWriter};
+
+    let filter_layer = EnvFilter::try_from_default_env()
+        .or_else(|_| EnvFilter::try_new(s!("apexsky_overlay=debug,apexsky=warn")))
+        .unwrap();
+
+    let fmt_layer = tracing_subscriber::fmt::layer()
+        .with_ansi(false) // Only partially supported across browsers
+        .without_time() // std::time is not available in browsers, see note below
+        .with_writer(MakeWebConsoleWriter::new()); // write events to the console
+    let perf_layer = performance_layer().with_details_from_fields(Pretty::default());
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .with(perf_layer)
+        .init(); // Install these as subscribers to tracing events
 }

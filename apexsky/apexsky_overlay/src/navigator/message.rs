@@ -1,6 +1,6 @@
 use rand::Rng;
 
-use crate::resource::ContentId;
+use super::resource::ContentId;
 
 pub trait AsSonicMessage {
     fn cut_in(&self) -> bool;
@@ -10,7 +10,7 @@ pub trait AsSonicMessage {
     fn velocity(&self) -> [f32; 3];
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SonicMessage {
     Voice(VoicePrompt),
 }
@@ -47,7 +47,7 @@ impl AsSonicMessage for SonicMessage {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VoicePrompt {
     src_id: ContentId,
     alter_id: usize,
