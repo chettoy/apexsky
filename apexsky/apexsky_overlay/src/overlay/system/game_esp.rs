@@ -79,34 +79,51 @@ pub fn init_grpc_client(server_url: String) -> Option<EspClient> {
     }
 }
 
+#[derive(Debug)]
+struct EspFreshData {
+    request_time: Instant,
+    response_time: Instant,
+    new_esp_data: Option<EspData>,
+    new_esp_settings: Option<EspSettings>,
+    new_esp_loots: Option<Loots>,
+}
+
 #[derive(Resource)]
 pub(crate) struct EspSystem {
-    pub(crate) _server_endpoint: String,
-    pub(crate) rpc_client: EspClient,
+    pub(crate) server_endpoint: String,
+    rpc_client: EspClient,
     pub(crate) connect_time: Instant,
     pub(crate) esp_data: EspData,
     pub(crate) esp_settings: EspSettings,
     pub(crate) esp_loots: Loots,
-    pub(crate) fresh_data:
-        Arc<Mutex<Option<(Option<EspData>, Option<EspSettings>, Option<Loots>)>>>,
+    fresh_data: Arc<Mutex<Option<EspFreshData>>>,
     pub(crate) update_latency: f64,
     pub(crate) target_count: usize,
     last_settings_fetch_time: Option<Instant>,
+    pub(crate) last_data_response_time: Option<Instant>,
 }
 
 impl EspSystem {
     fn connect(server_url: String) -> Option<Self> {
+        let now = Instant::now();
         Some(Self {
-            _server_endpoint: server_url.clone(),
+            server_endpoint: server_url.clone(),
             rpc_client: init_grpc_client(server_url)?,
-            connect_time: Instant::now(),
+            connect_time: now,
             esp_data: Default::default(),
             esp_settings: Default::default(),
             esp_loots: Default::default(),
-            fresh_data: Arc::new(Mutex::new(Some((None, None, None)))),
+            fresh_data: Arc::new(Mutex::new(Some(EspFreshData {
+                request_time: now,
+                response_time: now,
+                new_esp_data: None,
+                new_esp_settings: None,
+                new_esp_loots: None,
+            }))),
             update_latency: 0.0,
             target_count: 0,
             last_settings_fetch_time: None,
+            last_data_response_time: None,
         })
     }
 }
@@ -192,7 +209,7 @@ pub(crate) fn follow_game_state(
         return;
     };
 
-    if let Some(esp_settings) = fresh_data.1.take() {
+    if let Some(esp_settings) = fresh_data.new_esp_settings.take() {
         let screen_wh = (
             esp_settings.screen_width as f32,
             esp_settings.screen_height as f32,
@@ -207,10 +224,18 @@ pub(crate) fn follow_game_state(
             window.resolution = screen_wh.into();
         }
     }
-    if let Some(loots_data) = fresh_data.2.take() {
+    if let Some(loots_data) = fresh_data.new_esp_loots.take() {
         esp_system.esp_loots = loots_data;
     }
-    let esp_data = fresh_data.0.take().unwrap_or(esp_system.esp_data.clone());
+    if let Some(esp_data) = fresh_data.new_esp_data.take() {
+        esp_system.esp_data = esp_data;
+        esp_system.last_data_response_time = (fresh_data.response_time > esp_system.connect_time)
+            .then_some(fresh_data.response_time);
+    }
+
+    esp_system.update_latency = time.delta_seconds_f64() * 1000.0;
+
+    let esp_data = &esp_system.esp_data;
 
     let fetch = {
         // Retrieve settings every 2 seconds
@@ -237,14 +262,15 @@ pub(crate) fn follow_game_state(
             }
 
             if DRY_RUN {
-                *store.lock() = Some((None, None, None));
+                *store.lock() = Some(fresh_data);
             } else {
-                let esp_settings = if update_settings {
+                let request_time = Instant::now();
+                let new_esp_settings = if update_settings {
                     unwrap_resp(client.get_esp_settings(()).await)
                 } else {
                     None
                 };
-                let esp_data = unwrap_resp(
+                let new_esp_data = unwrap_resp(
                     client
                         .get_esp_data(EspDataOption {
                             version: 0,
@@ -253,7 +279,7 @@ pub(crate) fn follow_game_state(
                         })
                         .await,
                 );
-                let esp_loots = if update_loots {
+                let new_esp_loots = if update_loots {
                     unwrap_resp(
                         client
                             .get_loots(GetLootsRequest {
@@ -268,7 +294,15 @@ pub(crate) fn follow_game_state(
                 } else {
                     None
                 };
-                *store.lock() = Some((esp_data, esp_settings, esp_loots));
+                let response_time = Instant::now();
+                let fresh_data = EspFreshData {
+                    request_time,
+                    response_time,
+                    new_esp_data,
+                    new_esp_settings,
+                    new_esp_loots,
+                };
+                *store.lock() = Some(fresh_data);
             }
         }
     };
@@ -281,8 +315,6 @@ pub(crate) fn follow_game_state(
         let task = task_pool.spawn(fetch);
         task.detach();
     }
-
-    esp_system.update_latency = time.delta_seconds_f64() * 1000.0;
 
     let (cam_proj, cam_trans) = query_camera.single_mut();
     let listener_trans = listeners.single_mut();
@@ -466,6 +498,4 @@ pub(crate) fn follow_game_state(
             // },
         ));
     });
-
-    esp_system.esp_data = esp_data;
 }

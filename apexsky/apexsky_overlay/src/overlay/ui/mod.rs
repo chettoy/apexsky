@@ -338,32 +338,62 @@ pub fn ui_system(
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
                 if ui
                     .add(egui::Button::new(
-                        egui::RichText::new(s!("Connection")).color(
-                            if esp_system
-                                .as_ref()
-                                .is_some_and(|esp| esp.esp_settings.esp > 0)
-                            {
+                        egui::RichText::new(s!("Connection")).color((|| {
+                            // gRPC not connected: red
+                            let Some(esp_system) = esp_system.as_ref() else {
+                                return Color32::LIGHT_RED;
+                            };
+                            // ESP service no response: yellow
+                            let Some(response_time) = esp_system.last_data_response_time else {
+                                return Color32::YELLOW;
+                            };
+                            // ESP service timeout: yellow
+                            if response_time.elapsed().as_millis() > 200 {
+                                return Color32::LIGHT_YELLOW;
+                            }
+                            // Not attached to game: blue
+                            if !esp_system.esp_data.ready {
+                                return Color32::LIGHT_BLUE;
+                            }
+                            // Not in game: green
+                            if !esp_system.esp_data.in_game {
+                                return Color32::LIGHT_GREEN;
+                            }
+                            // in game: green blink
+                            if response_time.elapsed().as_secs() % 2 == 0 {
                                 Color32::LIGHT_GREEN
                             } else {
-                                Color32::LIGHT_YELLOW
-                            },
-                        ),
+                                Color32::GREEN
+                            }
+                        })()),
                     ))
                     .clicked()
                 {
+                    // For audio in browser
                     overlay_state.user_gesture = true;
+
+                    // Toggle address TextEdit
                     if ui_state.input_esp_addr.is_empty() {
+                        // set value and show
                         ui_state.input_esp_addr = overlay_state
                             .override_esp_addr
                             .as_ref()
                             .map(|addr| addr.get_addr())
+                            .or(esp_system.as_ref().map(|v| v.server_endpoint.clone()))
                             .unwrap_or(EspServiceAddr::default().get_addr());
                         ui_state.input_addr_valid =
                             EspServiceAddr::from_str(&ui_state.input_esp_addr);
                     } else {
-                        if esp_system.is_none() && ui_state.input_addr_valid.is_some() {
-                            overlay_state.override_esp_addr = ui_state.input_addr_valid.clone();
+                        // validate input and override address
+                        if let Some(valid_input) = &ui_state.input_addr_valid {
+                            if esp_system
+                                .as_ref()
+                                .is_none_or(|v| v.server_endpoint != valid_input.get_addr())
+                            {
+                                overlay_state.override_esp_addr = ui_state.input_addr_valid.clone();
+                            }
                         }
+                        // clear and dismiss
                         ui_state.input_esp_addr.clear();
                     }
                 }
@@ -387,17 +417,32 @@ pub fn ui_system(
                 let invalid = ui_state.input_addr_valid.is_none();
                 let response = ui.add(
                     egui::TextEdit::singleline(&mut ui_state.input_esp_addr)
-                        .text_color_opt(invalid.then_some(Color32::DARK_RED)),
+                        .text_color_opt(invalid.then_some(Color32::RED)),
                 );
+                // Validate input
                 if response.changed() {
                     ui_state.input_addr_valid = EspServiceAddr::from_str(&ui_state.input_esp_addr);
                 }
+                // Submit input and dismiss
                 if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     if ui_state.input_addr_valid.is_some() {
                         overlay_state.override_esp_addr = ui_state.input_addr_valid.clone();
                         ui_state.input_esp_addr.clear();
                     }
                 }
+                // Quick input button
+                ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                    if ui.add(egui::Button::new(s!("⬆ 127.0.0.1"))).clicked() {
+                        ui_state.input_esp_addr = s!("http://127.0.0.1:50051").to_string();
+                        ui_state.input_addr_valid =
+                            EspServiceAddr::from_str(&ui_state.input_esp_addr);
+                    }
+                    if ui.add(egui::Button::new(s!("⬆ 192.168.122.1"))).clicked() {
+                        ui_state.input_esp_addr = s!("http://192.168.122.1:50051").to_string();
+                        ui_state.input_addr_valid =
+                            EspServiceAddr::from_str(&ui_state.input_esp_addr);
+                    }
+                });
             }
         });
 
