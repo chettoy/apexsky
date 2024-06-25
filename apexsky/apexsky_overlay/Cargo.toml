@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 async-trait = "0.1.80"
-bevy = { version = "0.13.2", features = ["wayland", "webgl2"] }
+bevy = { version = "0.13.2", features = ["wayland"] }
 bevy_async_task = "0.1.1"
 bevy_egui = "0.27.1"
 bevy_health_bar3d = "3.2.1"
@@ -40,3 +40,5 @@ tonic-build = "0.11.0"
 default = ["native"]
 native = ["tokio/full", "tonic/transport", "tonic/zstd", "tracing-appender"]
 web-wasm = ["tonic-web-wasm-client", "tracing-web", "instant/wasm-bindgen", "wasm-bindgen-futures"]
+web-wasm-webgpu = ["web-wasm", "bevy/webgpu"]
+web-wasm-webgl = ["web-wasm", "bevy/webgl2"]
