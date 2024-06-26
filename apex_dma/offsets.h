@@ -7,7 +7,7 @@
 
 #define HIGHLIGHT_SETTINGS 0xb0d8f70 // HighlightSettings                       //updated 6/26/2024
 #define OFFSET_GLOW_CONTEXT_ID 0x29c                                            //updated 6/26/2024
-#define GLOW_VISIBLE_TYPE 0x26c      // updated 1/25/2024
+#define GLOW_VISIBLE_TYPE 0x27c      // updated 1/25/2024
 #define OFFSET_GLOW_FIX 0x278                                                   //updated 6/26/2024
 // Mode: HighlightSettings + 0x34 * Context + 0x0
 // Color: HighlightSettings + 0x34 * Context + 0x4
