@@ -29,13 +29,13 @@ macro_rules! define_item_id {
 /*
  * GameVersion=v3.0.71.58
  */
-pub const OFFSET_YAW: u64 = 0x223c - 0x8;
+pub const OFFSET_YAW: u64 = 0x224c - 0x8;
 pub const OFFSET_SPECTATOR_LIST: u64 = 0x1eadd28;
-pub const OFFSET_HIGHLIGHT_SETTINGS: u64 = 0xade5c40;
+pub const OFFSET_HIGHLIGHT_SETTINGS: u64 = 0xb0d8f70;
 //pub const OFFSET_GLOW_CONTEXT_ID: u64 = 0x28c;
 pub const OFFSET_GLOW_VISIBLE_TYPE: u64 = 0x26c;
 pub const OFFSET_GLOW_DISTANCE: u64 = 0x264;
-pub const OFFSET_GLOW_FIX: u64 = 0x268;
+pub const OFFSET_GLOW_FIX: u64 = 0x278;
 
 #[repr(C)]
 #[allow(dead_code)]
