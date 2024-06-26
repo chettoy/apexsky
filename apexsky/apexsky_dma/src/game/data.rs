@@ -32,8 +32,8 @@ macro_rules! define_item_id {
 pub const OFFSET_YAW: u64 = 0x224c - 0x8;
 pub const OFFSET_SPECTATOR_LIST: u64 = 0x1ef9c58;
 pub const OFFSET_HIGHLIGHT_SETTINGS: u64 = 0xb0d8f70;
-//pub const OFFSET_GLOW_CONTEXT_ID: u64 = 0x28c;
-pub const OFFSET_GLOW_VISIBLE_TYPE: u64 = 0x34;
+//pub const OFFSET_GLOW_CONTEXT_ID: u64 = 0x29c;
+pub const OFFSET_GLOW_VISIBLE_TYPE: u64 = 0x27c;
 pub const OFFSET_GLOW_DISTANCE: u64 = 0x264;
 pub const OFFSET_GLOW_FIX: u64 = 0x278;
 
