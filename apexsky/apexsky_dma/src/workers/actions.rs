@@ -10,8 +10,8 @@ use apexsky_dmalib::access::{AccessType, MemApi, PendingAccessRequest, PendingMe
 use apexsky_proto::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
 use ndarray::arr1;
 use obfstr::obfstr as s;
+//use apexsky::noobfstr as s;
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::mem::size_of;
 use std::{collections::HashMap, sync::Arc, time::Duration};
@@ -19,7 +19,7 @@ use tokio::sync::watch;
 use tokio::time::{sleep, Instant};
 use tracing::{instrument, trace, trace_span};
 
-use crate::apexdream::state::entities::Entity;
+use crate::{apexdream::state::entities::Entity, workers::items::LootInt};
 use crate::apexdream::{
     base::math,
     sdk::HighlightBits,
@@ -38,6 +38,8 @@ pub async fn actions_loop(
     mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
     mut items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
 ) -> anyhow::Result<()> {
+    tracing::debug!("{}", s!("task start"));
+
     let mut apexdream = crate::apexdream::Instance::new();
     let mut start_instant = Instant::now();
     let mut fps_checkpoint_instant = Instant::now();
@@ -47,8 +49,6 @@ pub async fn actions_loop(
     let mut log_items: usize = 0;
     let mut world_ready: bool = false;
     let mut player_ready: bool = false;
-
-    tracing::debug!("{}", s!("task start"));
 
     while *active.borrow_and_update() {
         sleep(Duration::from_secs(2)).await;
@@ -191,6 +191,29 @@ pub async fn actions_loop(
             // Log WeaponId
             if is_newly_connected {
                 tracing::info!(?apex_state.string_tables.weapon_names);
+                if apex_state.is_firing_range() && apex_state.string_tables.weapon_names.len() != WEAPON_LIST.len() {
+                    match (|| -> anyhow::Result<()> {
+                        use std::fs;
+                        use std::io::Write;
+
+                        let weapons_json = serde_json::to_string(&apex_state.string_tables.weapon_names)?;
+                        let path = std::env::current_dir()?.join(s!("updated_weapon.json"));
+                        let mut json_file = fs::OpenOptions::new()
+                            .create(true)
+                            .write(true)
+                            .truncate(true)
+                            .open(path)?;
+                        write!(json_file, "{}", weapons_json)?;
+                        Ok(())
+                    })() {
+                        Ok(()) => {
+                            tracing::info!("{}", s!("Exported to updated_item.json"));
+                        }
+                        Err(e) => {
+                            tracing::warn!(%e, ?e);
+                        }
+                    }
+                }
             }
 
             trace_span!("Send key status to aimbot worker").in_scope(|| {
@@ -388,11 +411,7 @@ pub async fn actions_loop(
                         if loot_count == 0 {
                             tracing::debug!("{}", s!("wait items"));
                         } else if loot_count > log_items {
-                            #[derive(Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-                            struct LootInt {
-                                int: i32,
-                                model: String,
-                            }
+                            // create new item list
                             let item_namelist = apex_state
                                 .entities_as::<LootEntity>()
                                 .map(|entity| LootInt {
@@ -400,19 +419,19 @@ pub async fn actions_loop(
                                     model: entity.model_name.string.clone(),
                                 })
                                 .collect::<HashSet<LootInt>>();
-                            let mut item_namelist: Vec<_> = item_namelist.into_iter().collect();
+                            let mut item_namelist: Vec<LootInt> = item_namelist.into_iter().collect();
                             item_namelist.sort_by(|a, b| a.int.cmp(&b.int));
+                            tracing::info!("{loot_count}{}", s!(" items sorted"));
+                            log_items = loot_count;
 
-                            match serde_json::to_string(&item_namelist) {
-                                Ok(items_json) => {
-                                    tracing::info!(items_json, "{loot_count}{}", s!(" items sorted"))
+                            match crate::workers::items::export_new_items(item_namelist) {
+                                Ok(()) => {
+                                    tracing::info!("{}", s!("Exported to updated_item.json"));
                                 }
                                 Err(e) => {
-                                    tracing::warn!(%e, ?item_namelist, "{loot_count}{}", s!(" items sorted"))
+                                    tracing::warn!(%e, ?loots, "{loot_count}{}", s!(" items sorted"))
                                 }
                             }
-
-                            log_items = loot_count;
                         }
                     }
 

@@ -4,6 +4,7 @@ use apexsky::{config::Settings, global_state::G_STATE};
 use apexsky_proto::pb::apexlegends::TreasureClue;
 use obfstr::obfstr as s;
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
 use tokio::time::{sleep_until, Instant};
 use tracing::instrument;
@@ -222,4 +223,41 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
 
         _ => None,
     }
+}
+
+#[derive(Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub(crate) struct LootInt {
+    pub(crate) int: i32,
+    pub(crate) model: String,
+}
+
+pub fn export_new_items(loots: Vec<LootInt>) -> anyhow::Result<()> {
+    use std::fs;
+    use std::io::Write;
+
+    let mut modify = false;
+    for item in &loots {
+        let Some(model) = ITEM_LIST.get(&item.int) else {
+            modify = true;
+            tracing::info!(?item, "{}", s!("new loot item"));
+            continue;
+        };
+        if *model != item.model {
+            modify = true;
+            tracing::info!(?item, "{}", s!("loot model changed"));
+        }
+    }
+
+    if modify {
+        let items_json = serde_json::to_string(&loots)?;
+        let path = std::env::current_dir()?.join(s!("updated_item.json"));
+        let mut json_file = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(path)?;
+        write!(json_file, "{}", items_json)?;
+    }
+
+    Ok(())
 }

@@ -1,3 +1,9 @@
+use std::collections::HashMap;
+
+use once_cell::sync::Lazy;
+
+use crate::workers::items::LootInt;
+
 macro_rules! define_item_id {
     ($(#[$attr:meta])* $vis:vis enum $name:ident {
         $($variant:ident = $value:expr),*,
@@ -225,3 +231,15 @@ pub const HIGHLIGHT_PLAYER_PURPLE: u8 = 67;
 pub const HIGHLIGHT_PLAYER_RED: u8 = 68;
 pub const HIGHLIGHT_PLAYER_RAINBOW: u8 = 69;
 pub const HIGHLIGHT_PLAYER_BLACK: u8 = 70;
+
+pub static ITEM_LIST: Lazy<HashMap<i32, String>> = Lazy::new(|| {
+    include_flate::flate!(static ITEM_JSON: str from "../apexsky/resource/default/item.json");
+    let data: Vec<LootInt> = serde_json::from_str(&ITEM_JSON).unwrap();
+    data.into_iter()
+        .map(|item| (item.int, item.model))
+        .collect()
+});
+pub static WEAPON_LIST: Lazy<Vec<String>> = Lazy::new(|| {
+    include_flate::flate!(static WEAPON_JSON: str from "../apexsky/resource/default/weapon.json");
+    serde_json::from_str(&WEAPON_JSON).unwrap()
+});
