@@ -3,6 +3,7 @@ use std::{str::FromStr, thread::sleep, time::Duration};
 use memprocfs::{Vmm, VmmProcess};
 use obfstr::obfstr as s;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct DtbInfo {
     index: u32,

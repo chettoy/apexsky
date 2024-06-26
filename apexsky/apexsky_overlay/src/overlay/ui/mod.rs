@@ -1,3 +1,10 @@
+use apexsky_proto::pb::apexlegends::EspData;
+use apexsky_proto::pb::apexlegends::EspSettings;
+use apexsky_proto::pb::apexlegends::EspVisualsFlag;
+use apexsky_proto::pb::apexlegends::Loots;
+use apexsky_proto::pb::apexlegends::LoveStatusCode;
+use apexsky_proto::pb::apexlegends::PlayerState;
+use apexsky_proto::pb::apexlegends::SpectatorInfo;
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
@@ -9,13 +16,6 @@ use obfstr::obfstr as s;
 use crate::overlay::get_unix_timestamp_in_millis;
 use crate::overlay::ui::mini_map::mini_map_radar;
 use crate::overlay::ui::mini_map::RadarTarget;
-use crate::pb::apexlegends::EspData;
-use crate::pb::apexlegends::EspSettings;
-use crate::pb::apexlegends::EspVisualsFlag;
-use crate::pb::apexlegends::Loots;
-use crate::pb::apexlegends::LoveStatusCode;
-use crate::pb::apexlegends::PlayerState;
-use crate::pb::apexlegends::SpectatorInfo;
 
 use super::asset::Blob;
 use super::MyOverlayState;

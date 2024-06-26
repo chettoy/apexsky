@@ -1,5 +1,4 @@
 use anyhow::Context;
-use apexsky_dmalib::access::{AccessType, MemApi, PendingAccessRequest, PendingMemRead, PendingMemWrite};
 use apexsky::{
     aimbot::{calc_angle, calc_fov, AimEntity},
     config::Settings,
@@ -7,6 +6,8 @@ use apexsky::{
     love_players::LoveStatus,
     offsets::G_OFFSETS,
 };
+use apexsky_dmalib::access::{AccessType, MemApi, PendingAccessRequest, PendingMemRead, PendingMemWrite};
+use apexsky_proto::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
 use ndarray::arr1;
 use obfstr::obfstr as s;
 use parking_lot::RwLock;
@@ -25,7 +26,6 @@ use crate::apexdream::{
     state::entities::{BaseNPCEntity, LootEntity},
 };
 use crate::game::{data::*, player::GamePlayer};
-use crate::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
 use crate::SharedState;
 
 #[instrument(skip_all)]
@@ -173,7 +173,7 @@ pub async fn actions_loop(
 
                 if !player_ready {
                     wlock.spectator_list.clear();
-                    wlock.allied_spectator_name.clear();
+                    wlock.allied_spectator_list.clear();
                 }
 
                 if let Some(fps_update) = game_fps_update {
@@ -463,11 +463,10 @@ pub async fn actions_loop(
 
             if player_ready {
                 trace_span!("Spectator check").in_scope(|| {
-                    let Some((lplayer_ptr, lplayer_alive, lplayer_team)) =
+                    let Some((lplayer_ptr, lplayer_team)) =
                         shared_state.read().local_player.as_ref().map(|p| {
                             (
                                 p.get_entity().entity_ptr.into_raw(),
-                                p.get_buf().is_alive,
                                 p.get_buf().team_num,
                             )
                         })
@@ -512,16 +511,7 @@ pub async fn actions_loop(
                                     .and_then(|observer_target| {
                                         let target_ptr = observer_target.entity_ptr.into_raw();
                                         if player_ptr == lplayer_ptr {
-                                            let Some(target_player) = players.get(&target_ptr)
-                                            else {
-                                                tracing::error!(
-                                                    ?target_ptr,
-                                                    "{}",
-                                                    s!("player not exists")
-                                                );
-                                                return None;
-                                            };
-                                            Some((target_ptr, target_player))
+                                            players.get(&target_ptr).map(|target_player|(target_ptr, target_player))
                                         } else if target_ptr == lplayer_ptr {
                                             Some((player_ptr, player))
                                         } else {
@@ -553,14 +543,10 @@ pub async fn actions_loop(
                         // Update spectator namelist
                         let (allied_spectators, spectators): (Vec<_>, Vec<_>) =
                             tmp_specs.into_iter().partition(|info| info.is_teammate);
-                        let allied_spectator_name = allied_spectators
-                            .into_iter()
-                            .map(|info| info.name)
-                            .collect();
 
                         {
                             let mut wlock = shared_state.write();
-                            wlock.allied_spectator_name = allied_spectator_name;
+                            wlock.allied_spectator_list = allied_spectators;
                             wlock.spectator_list = spectators;
                             wlock.teammates = teammates;
                         }

@@ -74,6 +74,7 @@ message PlayerState {
   int32 damageDealt = 44;
   bool winning_team = 45;
   float yaw = 46;
+  int32 skydive_state = 47;
 }
 
 message Players {

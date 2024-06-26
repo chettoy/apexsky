@@ -7,8 +7,8 @@ pub use mem::MemConnector;
 
 #[derive(thiserror::Error, Debug)]
 pub enum AccessError {
-    #[error("AccessErr: open_os {0:?}")]
-    Connector(String),
+    #[error("AccessErr: open_os {0:?} {1:?}")]
+    Connector(MemConnector, anyhow::Error),
     #[error("AccessErr: error {0:?}")]
     AnyError(#[from] anyhow::Error),
 }

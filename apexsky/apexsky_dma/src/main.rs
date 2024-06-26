@@ -7,10 +7,11 @@ use apexsky::aimbot::{AimEntity, Aimbot};
 use apexsky::config::Settings;
 use apexsky::global_state::G_STATE;
 use apexsky_dmalib::MemConnector;
+use apexsky_proto::pb::apexlegends::{
+    AimKeyState, AimTargetInfo, PlayerState, SpectatorInfo, TreasureClue,
+};
 use obfstr::obfstr as s;
-
 use parking_lot::RwLock;
-use pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
 use tokio::sync::{mpsc, watch};
 use tokio::task::{self, JoinHandle};
 use tokio::time::sleep;
@@ -21,7 +22,6 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::EnvFilter;
 
 use crate::game::player::GamePlayer;
-use crate::pb::apexlegends::PlayerState;
 
 pub use apexsky::noobfstr;
 
@@ -29,7 +29,6 @@ mod actuator;
 mod apexdream;
 mod context_impl;
 mod game;
-mod pb;
 mod workers;
 
 #[derive(Debug, Default, Clone)]
@@ -44,7 +43,7 @@ struct SharedState {
     treasure_clues: Vec<TreasureClue>,
     teammates: Vec<PlayerState>,
     spectator_list: Vec<SpectatorInfo>,
-    allied_spectator_name: Vec<String>,
+    allied_spectator_list: Vec<SpectatorInfo>,
     map_testing_local_team: i32,
     world_ready: bool,
     frame_count: i32,
@@ -157,8 +156,8 @@ impl TaskManager for State {
                 match io_thread(active_rx, access_rx, choose_connector()) {
                     Ok(_) => Ok(()),
                     Err(e) => match e {
-                        AccessError::Connector(e) => {
-                            tracing::error!(e);
+                        AccessError::Connector(connector, e) => {
+                            tracing::error!(?connector, ?e, %e);
                             press_to_exit();
                             Ok(())
                         }
@@ -393,7 +392,7 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| {
             EnvFilter::try_new(s!(
-                "apexsky_dma=warn,apexsky=warn,apexsky_dmalib::mem=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::apexdream=warn"
+                "apexsky_dma=warn,apexsky=warn,apexsky_dmalib=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::apexdream=warn"
             ))
         })
         .unwrap();

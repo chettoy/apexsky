@@ -1,9 +1,9 @@
 use apexsky::aimbot::AimEntity;
+use apexsky_proto::pb::apexlegends::{Badge, GradeFlag, PlayerState};
 use obfstr::obfstr as s;
 
 use crate::apexdream::sdk::ScriptNetVarName;
 use crate::apexdream::*;
-use crate::pb::apexlegends::{Badge, GradeFlag, PlayerState};
 
 use self::base::math;
 use self::state::entities::{BaseNPCEntity, Entity, PlayerEntity, WeaponXEntity};
@@ -121,6 +121,7 @@ impl GamePlayer {
                 .unwrap_or(-1),
             winning_team: false,
             yaw: state.yaw,
+            skydive_state: state.skydive_state,
         };
 
         Self {

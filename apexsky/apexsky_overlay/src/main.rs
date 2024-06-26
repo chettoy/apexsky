@@ -2,7 +2,6 @@ use obfstr::obfstr as s;
 use tracing_appender::non_blocking::NonBlocking;
 
 mod overlay;
-mod pb;
 
 fn main() {
     let (non_blocking, _guard) = tracing_appender::non_blocking(tracing_appender::rolling::daily(

@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 ambisonic = "0.4.1"
 anyhow = "1.0"
+apexsky_proto = { path = "../apexsky_proto" }
 async-trait = "0.1.80"
 bevy = { version = "0.13.2", features = ["wayland"] }
 bevy_egui = "0.27.1"
@@ -13,10 +14,9 @@ bevy_health_bar3d = "3.2.1"
 chrono = "0.4.38"
 #console-subscriber = "0.1.5"
 rand = "0.8.5"
-indexmap = { version = "2.2.6", features = ["serde"] }
 obfstr = "0.4.3"
 once_cell = "1.19.0"
-parking_lot = { version = "0.12.3", features = ["arc_lock", "nightly", "owning_ref", "serde"] }
+parking_lot = { version = "0.12.3", features = ["arc_lock", "nightly"] }
 prost = "0.12.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
@@ -25,6 +25,3 @@ tonic = { version = "0.11.0", features = ["zstd"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }
 tracing-appender = "0.2.3"
-
-[build-dependencies]
-tonic-build = "0.11.0"

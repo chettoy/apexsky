@@ -82,6 +82,8 @@ pub struct PlayerEntity {
     pub helmet_type: i32,
     pub armor_type: i32,
 
+    pub skydive_state: i32,
+
     pub next_attack: f32,
     pub last_fired_time: f32,
     pub last_fired_weapon: sdk::EHandle,
@@ -292,6 +294,7 @@ impl Entity for PlayerEntity {
             inventory: [u32; 6],
             zoom_state: u32,
             armor_type: [u32; 2],
+            skydive_state: u32,
             next_attack: [u32; 4],
             selected: [u32; 3],
             uid: [u32; 4],
@@ -411,6 +414,7 @@ impl Entity for PlayerEntity {
                 data.player_helmet_armor_type + 0,
                 data.player_helmet_armor_type + 4,
             ],
+            skydive_state: G_OFFSETS.player_skydive_state.try_into().unwrap(),
             next_attack: [
                 data.bcc_next_attack + 0,
                 data.bcc_next_attack + 4,
@@ -592,6 +596,8 @@ impl Entity for PlayerEntity {
 
             self.helmet_type = fields.armor_type[0] as i32;
             self.armor_type = fields.armor_type[1] as i32;
+
+            self.skydive_state = fields.skydive_state as i32;
 
             self.next_attack = f32::from_bits(fields.next_attack[0]);
             self.last_fired_time = f32::from_bits(fields.next_attack[1]);

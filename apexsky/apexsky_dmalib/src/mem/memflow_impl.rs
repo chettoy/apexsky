@@ -52,7 +52,7 @@ impl MemflowOs {
     pub fn new(choose_connector: super::MemConnector) -> anyhow::Result<Self> {
         // load all available plugins
         let inventory = Inventory::scan();
-        println!("{}", s!("inventory initialized"));
+        tracing::info!("{}", s!("inventory initialized"));
 
         let (connector_name, connector_args, os_name) = {
             match choose_connector {
@@ -84,7 +84,7 @@ impl MemflowOs {
         let connector = if connector_name.is_empty() {
             None
         } else {
-            println!("{}{}{}", s!("Using "), connector_name, s!(" connector."));
+            tracing::info!("{}{}{}", s!("Using "), connector_name, s!(" connector."));
 
             let connector_args = if connector_args.is_empty() {
                 None
