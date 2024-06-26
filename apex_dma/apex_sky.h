@@ -25,6 +25,7 @@ typedef struct {
 
 typedef struct {
   bool valid;
+  bool hitscan;
   float view_pitch;
   float view_yew;
   float delta_pitch;

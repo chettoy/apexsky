@@ -396,7 +396,7 @@ impl Default for EspServiceConfig {
     fn default() -> Self {
         Self {
             listen: s!("[::1]:50051").parse().unwrap(),
-            accept_http1: false,
+            accept_http1: true,
         }
     }
 }

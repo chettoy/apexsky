@@ -193,12 +193,14 @@ pub async fn aimbot_loop(
         //tracing::trace!(?aiming, "711aac39-e83c-4788");
 
         let mut target_pos: Option<[f32; 3]> = None;
+        let mut target_aimentity: Option<Arc<dyn AimEntity>> = None;
         let aim_result = {
             let aim_entity_ptr = aimbot.get_aim_entity();
             if aim_entity_ptr == 0 {
                 aimbot.cancel_locking();
                 AimAngles::default()
             } else if let Some(target_entity) = state.get_entity(aim_entity_ptr).await {
+                target_aimentity = Some(target_entity.clone());
                 target_pos = Some(target_entity.get_position());
 
                 // // debug target entity
@@ -256,7 +258,7 @@ pub async fn aimbot_loop(
         // Update Trigger Bot state
         // Ensure that the triggerbot is updated,
         // otherwise there may be issues with not canceling after firing.
-        aimbot.triggerbot_update(&aim_result, aim_key_rx.borrow().attack_state);
+        aimbot.triggerbot_update(target_aimentity, &aim_result, aim_key_rx.borrow().attack_state);
         if aiming {
             tracing::debug!("711aac39-e83c-4788 trigger updated");
         }

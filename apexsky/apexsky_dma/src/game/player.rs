@@ -1,4 +1,4 @@
-use apexsky::aimbot::AimEntity;
+use apexsky::aimbot::{get_unix_timestamp_in_millis, AimEntity};
 use apexsky_proto::pb::apexlegends::{Badge, GradeFlag, PlayerState};
 use obfstr::obfstr as s;
 
@@ -212,6 +212,19 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
         }
     }
 
+    #[tracing::instrument]
+    fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)> {
+        self.studio
+            .spine()
+            .filter_map(|bbox| {
+                self.bones
+                    .v
+                    .get(bbox.bone as usize)
+                    .and_then(|matrix| Some(([matrix[3], matrix[7], matrix[11]], bbox.radius())))
+            })
+            .collect()
+    }
+
     fn get_position(&self) -> [f32; 3] {
         self.origin
     }
@@ -262,6 +275,14 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
             return 0;
         }
         self.max_shields.max(self.get_shield_health())
+    }
+
+    fn get_visible_duration(&self) -> f64 {
+        if self.is_visible {
+            get_unix_timestamp_in_millis() as f64 / 1000.0 - self.visible_time
+        } else {
+            0.0
+        }
     }
 
     fn is_alive(&self) -> bool {
@@ -322,6 +343,19 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
         }
     }
 
+    #[tracing::instrument]
+    fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)> {
+        self.studio
+            .spine()
+            .filter_map(|bbox| {
+                self.bones
+                    .v
+                    .get(bbox.bone as usize)
+                    .and_then(|matrix| Some(([matrix[3], matrix[7], matrix[11]], bbox.radius())))
+            })
+            .collect()
+    }
+
     fn get_position(&self) -> [f32; 3] {
         self.origin
     }
@@ -352,6 +386,14 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
 
     fn get_max_shield_health(&self) -> i32 {
         self.max_shields
+    }
+
+    fn get_visible_duration(&self) -> f64 {
+        if self.is_visible {
+            get_unix_timestamp_in_millis() as f64 / 1000.0 - self.visible_time
+        } else {
+            0.0
+        }
     }
 
     fn is_alive(&self) -> bool {

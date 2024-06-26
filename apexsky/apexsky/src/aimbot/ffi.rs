@@ -260,5 +260,5 @@ pub extern "C" fn aimbot_poll_trigger_action() -> i32 {
 
 #[no_mangle]
 pub extern "C" fn aimbot_triggerbot_update(aim_angles: &AimAngles, force_attack_state: i32) {
-    aimbot_write!().triggerbot_update(aim_angles, force_attack_state)
+    aimbot_write!().triggerbot_update(None, aim_angles, force_attack_state)
 }
