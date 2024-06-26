@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use bevy::prelude::*;
 use bevy_health_bar3d::prelude as hpbar;
-use instant::Instant;
+use instant::{Duration, Instant};
 use parking_lot::Mutex;
 use url::Url;
 
@@ -101,6 +101,7 @@ pub(crate) struct EspSystem {
     pub(crate) target_count: usize,
     last_settings_fetch_time: Option<Instant>,
     pub(crate) last_data_response_time: Option<Instant>,
+    pub(crate) last_data_traffic_time: Option<Duration>,
 }
 
 impl EspSystem {
@@ -124,6 +125,7 @@ impl EspSystem {
             target_count: 0,
             last_settings_fetch_time: None,
             last_data_response_time: None,
+            last_data_traffic_time: None,
         })
     }
 }
@@ -231,6 +233,9 @@ pub(crate) fn follow_game_state(
         esp_system.esp_data = esp_data;
         esp_system.last_data_response_time = (fresh_data.response_time > esp_system.connect_time)
             .then_some(fresh_data.response_time);
+        esp_system.last_data_traffic_time = esp_system
+            .last_data_response_time
+            .and_then(|resp_time| Some(resp_time - fresh_data.request_time));
     }
 
     esp_system.update_latency = time.delta_seconds_f64() * 1000.0;

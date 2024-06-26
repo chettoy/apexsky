@@ -60,6 +60,7 @@ struct DialogEsp {
 
 #[tracing::instrument(skip_all)]
 pub fn ui_system(
+    mut commands: Commands,
     mut contexts: EguiContexts,
     mut overlay_state: ResMut<MyOverlayState>,
     mut ui_state: ResMut<UiState>,
@@ -126,9 +127,14 @@ pub fn ui_system(
                 esp_system.map(|v| v.esp_data.game_fps).unwrap_or_default()
             ),
             latency: format!(
-                "{:.0}{}{:.0}{}",
+                "{}{}{:.0}{}{:.0}{}",
+                esp_system
+                    .and_then(|v| v.last_data_traffic_time)
+                    .map(|t| t.as_millis() as i32)
+                    .unwrap_or(-1),
+                s!("ms(net), "),
                 overlay_state.data_latency,
-                s!("ms(data) + "),
+                s!("ms(data), "),
                 time.delta_seconds() * 1000.0,
                 s!("ms(ui)"),
             ),
@@ -409,6 +415,17 @@ pub fn ui_system(
                 }
                 if ui.add(egui::Button::new(s!("Test sound"))).clicked() {
                     overlay_state.test_sound = true;
+                }
+                if ui.add(egui::Button::new(s!("Toggle bg"))).clicked() {
+                    overlay_state.user_gesture = true;
+
+                    overlay_state.black_background = !overlay_state.black_background;
+                    let bg_color = if overlay_state.black_background {
+                        Color::BLACK
+                    } else {
+                        Color::NONE
+                    };
+                    commands.insert_resource(ClearColor(bg_color));
                 }
             });
 

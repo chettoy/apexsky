@@ -35,6 +35,7 @@ pub(crate) struct MyOverlayState {
     pub(crate) test_sound: bool,
     pub(crate) override_esp_addr: Option<EspServiceAddr>,
     pub(crate) data_latency: f64,
+    pub(crate) black_background: bool,
 }
 
 #[derive(Component)]

@@ -78,12 +78,7 @@ pub(crate) fn main() {
         .init_resource::<system::sound::SoundSystem>()
         .init_non_send_resource::<system::sound::SoundBufRes>()
         .init_resource::<system::navigator::NavigatorSystem>()
-        // ClearColor must have 0 alpha, otherwise some color will bleed through
-        .insert_resource(if cfg!(feature = "native") && !cfg!(windows) {
-            ClearColor(Color::NONE)
-        } else {
-            ClearColor(Color::BLACK)
-        })
+        .insert_resource(ClearColor(Color::NONE))
         .insert_resource(Msaa::Sample4)
         .add_systems(Startup, setup)
         .add_systems(Startup, system::navigator::setup_voice_navigator)
@@ -168,7 +163,10 @@ fn setup(
         model::MyCameraMarker,
     ));
 
-    if !cfg!(feature = "web-wasm") {
+    if cfg!(feature = "web-wasm") {
+        overlay_state.black_background = true;
+        commands.insert_resource(ClearColor(Color::BLACK));
+    } else {
         overlay_state.user_gesture = true;
     }
 }

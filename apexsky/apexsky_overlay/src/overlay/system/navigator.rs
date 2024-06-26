@@ -54,7 +54,6 @@ pub fn update_voice_navigator(
     mut navigator_system: ResMut<NavigatorSystem>,
 ) {
     use crate::navigator::message::AsSonicMessage;
-    use fyrox_sound::algebra::UnitQuaternion;
 
     if let Some(ref esp_system) = esp_system {
         let mut new_msg = navigator_system.instance.tick(&esp_system.esp_data);
@@ -70,12 +69,6 @@ pub fn update_voice_navigator(
     if messages.is_empty() {
         return;
     }
-
-    let yaw = esp_system
-        .as_ref()
-        .and_then(|v| v.esp_data.view_player.as_ref())
-        .map(|pl| pl.view_angles.as_ref().map(|v| v.y).unwrap_or(pl.yaw))
-        .unwrap_or(0.0);
 
     for msg in messages.into_iter() {
         let voice_msg = match msg {
