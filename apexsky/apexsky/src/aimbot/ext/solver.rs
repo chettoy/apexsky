@@ -170,8 +170,8 @@ pub struct Solution {
     pub time: f32,
 }
 
-const MAX_TIME: f32 = 1.0;
-const TIME_STEP: f32 = 1.0 / 256.0;
+const MAX_TIME: f32 = 2.0;
+const TIME_STEP: f32 = 2.0 / 8192.0;
 
 pub fn solve(
     player: &[f32; 3],

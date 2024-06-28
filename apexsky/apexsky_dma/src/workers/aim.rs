@@ -226,19 +226,17 @@ pub async fn aimbot_loop(
                     (AimAngles::default(), Some(target_entity.get_position()))
                 } else {
                     trace!("{}", s!("711aac39-e83c-4788 calc best aim"));
-                    let info = MemAimHelper::read_aiming_info(
-                        &mem_aim_helper.mem,
-                        mem_aim_helper.lplayer_ptr,
-                        aim_entity_ptr,
-                    )
-                    .await?;
+                    let Some(view_angles) = read_view_angles(&mem_aim_helper).await else {
+                        continue;
+                    };
+                    //let info = read_aiming_info(&mem_aim_helper, target_entity.as_ref()).await?;
                     let (aim_angles, position) = aimbot.calc_best_aim(
                         local_entity.as_ref(),
                         target_entity.as_ref(),
-                        info.local_origin,
-                        info.view_angles,
-                        info.target_origin,
-                        info.target_vel,
+                        //info.local_origin,
+                        view_angles,
+                        //info.target_origin,
+                        //info.target_vel,
                     );
                     trace!(?aim_angles, "{}", s!("711aac39-e83c-4788 best aim"));
                     (aim_angles, Some(position))
@@ -407,4 +405,69 @@ async fn read_view_angles(mem_aim_helper: &MemAimHelper) -> Option<[f32; 3]> {
         return None;
     }
     Some(view_angles)
+}
+
+struct AimingInfo {
+    pub local_origin: [f32; 3],
+    pub view_angles: [f32; 3],
+    pub target_origin: [f32; 3],
+    pub target_vel: [f32; 3],
+}
+
+async fn read_aiming_info(
+    mem_aim_helper: &MemAimHelper,
+    target: &dyn AimEntity,
+) -> anyhow::Result<AimingInfo> {
+    use apexsky::offsets::G_OFFSETS;
+    use apexsky_dmalib::access::{AccessType, PendingAccessRequest, PendingMemRead};
+    use std::mem::size_of;
+
+    let lplayer_ptr = mem_aim_helper.lplayer_ptr;
+    let target_ptr = target.get_entity_ptr();
+    let mem = &mem_aim_helper.mem;
+
+    let reqs = (
+        AccessType::mem_read(
+            lplayer_ptr + G_OFFSETS.centity_origin,
+            size_of::<[f32; 3]>(),
+            0,
+        ),
+        AccessType::mem_read(
+            lplayer_ptr + G_OFFSETS.player_viewangles,
+            size_of::<[f32; 3]>(),
+            0,
+        ),
+        AccessType::mem_read(
+            target_ptr + G_OFFSETS.centity_origin,
+            size_of::<[f32; 3]>(),
+            0,
+        ),
+        AccessType::mem_read(
+            target_ptr + G_OFFSETS.centity_velocity,
+            size_of::<[f32; 3]>(),
+            0,
+        ),
+    );
+    let futs = tokio::try_join!(
+        reqs.0.with_priority(10).dispatch(mem),
+        reqs.1.with_priority(10).dispatch(mem),
+        reqs.2.with_priority(10).dispatch(mem),
+        reqs.3.with_priority(10).dispatch(mem),
+    )?;
+    let vals = tokio::try_join!(
+        futs.0.recv_for::<[f32; 3]>(),
+        futs.1.recv_for::<[f32; 3]>(),
+        futs.2.recv_for::<[f32; 3]>(),
+        futs.3.recv_for::<[f32; 3]>(),
+    )?;
+    Ok(AimingInfo {
+        local_origin: vals.0,
+        view_angles: vals.1,
+        target_origin: vals.2,
+        target_vel: if target.is_player() {
+            vals.3
+        } else {
+            target.get_abs_velocity()
+        },
+    })
 }

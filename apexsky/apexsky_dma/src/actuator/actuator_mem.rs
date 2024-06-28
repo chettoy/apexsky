@@ -97,60 +97,6 @@ impl MemAimHelper {
         .await?
         .await?
     }
-
-    pub async fn read_aiming_info(
-        mem: &MemApi,
-        lplayer_ptr: u64,
-        target_ptr: u64,
-    ) -> anyhow::Result<AimingInfo> {
-        let reqs = (
-            AccessType::mem_read(
-                lplayer_ptr + G_OFFSETS.centity_origin,
-                size_of::<[f32; 3]>(),
-                0,
-            ),
-            AccessType::mem_read(
-                lplayer_ptr + G_OFFSETS.player_viewangles,
-                size_of::<[f32; 3]>(),
-                0,
-            ),
-            AccessType::mem_read(
-                target_ptr + G_OFFSETS.centity_origin,
-                size_of::<[f32; 3]>(),
-                0,
-            ),
-            AccessType::mem_read(
-                target_ptr + G_OFFSETS.centity_velocity,
-                size_of::<[f32; 3]>(),
-                0,
-            ),
-        );
-        let futs = tokio::try_join!(
-            reqs.0.with_priority(10).dispatch(mem),
-            reqs.1.with_priority(10).dispatch(mem),
-            reqs.2.with_priority(10).dispatch(mem),
-            reqs.3.with_priority(10).dispatch(mem),
-        )?;
-        let vals = tokio::try_join!(
-            futs.0.recv_for::<[f32; 3]>(),
-            futs.1.recv_for::<[f32; 3]>(),
-            futs.2.recv_for::<[f32; 3]>(),
-            futs.3.recv_for::<[f32; 3]>(),
-        )?;
-        Ok(AimingInfo {
-            local_origin: vals.0,
-            view_angles: vals.1,
-            target_origin: vals.2,
-            target_vel: vals.3,
-        })
-    }
-}
-
-pub struct AimingInfo {
-    pub local_origin: [f32; 3],
-    pub view_angles: [f32; 3],
-    pub target_origin: [f32; 3],
-    pub target_vel: [f32; 3],
 }
 
 impl MemAimActuator<'_> {

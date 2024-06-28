@@ -583,6 +583,15 @@ impl Aimbot {
 
         // projectile
         if min_bone_offset < 40.0 * 40.0 {
+            let target_hitboxes: Vec<_> = target_hitboxes
+                .iter()
+                .map(|(hit_pos, (bbmin, bbmax))| {
+                    let bbmin = math::muls(*bbmin, 0.9);
+                    let bbmax = math::muls(*bbmax, 0.9);
+                    (*hit_pos, (bbmin, bbmax))
+                })
+                .collect();
+
             let mut nearest_hitbox_index = None;
             let mut min_bone_dist2 = f32::MAX;
 
@@ -642,18 +651,19 @@ impl Aimbot {
         &self,
         from: &dyn AimEntity,
         target: &dyn AimEntity,
-        local_origin: [f32; 3],
+        //local_origin: [f32; 3],
         view_angles: [f32; 3],
-        target_origin: [f32; 3],
-        target_vel: [f32; 3],
+        //target_origin: [f32; 3],
+        //target_vel: [f32; 3],
     ) -> (AimAngles, [f32; 3]) {
-        //let target_origin = target.get_position();
-        //let target_vel = target.get_abs_velocity();
-        //let local_origin = from.get_position();
+        let target_origin = target.get_position();
+        let target_vel = target.get_abs_velocity();
+        let local_origin = from.get_position();
         let view_origin = math::add(local_origin, from.get_view_offset());
+        let camera_origin = from.get_cam_pos();
         //let view_angles = from.get_view_angles();
         let sway_angles = from.get_sway_angles();
-        let distance = math::dist(view_origin, target_origin);
+        let distance = math::dist(camera_origin, target_origin);
         let delta_time = 1.0 / self.game_fps;
         let expect_headshot = self.is_headshot() && distance <= self.settings.headshot_dist;
 
@@ -747,8 +757,10 @@ impl Aimbot {
                     let distance_to_target =
                         math::dist(target_bone_position, local_camera_position);
                     let time_to_target = distance_to_target / bullet_speed;
-                    let target_pos_ahead =
-                        math::add(target_bone_position, math::muls(target_vel, time_to_target));
+                    let target_pos_ahead = math::add(
+                        target_bone_position,
+                        math::muls(target_vel, time_to_target * 0.5),
+                    );
 
                     aim_target = target_pos_ahead;
 
@@ -785,7 +797,7 @@ impl Aimbot {
             };
 
             let (calculated_angles_min, _) = fun_calc_angles(
-                view_origin,
+                camera_origin,
                 target_bone_position_min,
                 target_vel,
                 self.weapon_info.bullet_speed,
@@ -793,7 +805,7 @@ impl Aimbot {
                 delta_time,
             );
             let (calculated_angles_max, aim_pos) = fun_calc_angles(
-                view_origin,
+                camera_origin,
                 target_bone_position_max,
                 target_vel,
                 self.weapon_info.bullet_speed,
