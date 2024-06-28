@@ -528,8 +528,8 @@ fn build_aimbot_menu(
             &i18n_bundle,
             format!(" 3 - {}", i18n_msg!(i18n_bundle, MenuItemAimbotMode)),
             match settings.aimbot_settings.aim_mode {
-                0 => Span::from(i18n_msg!(i18n_bundle, MenuValueAimbotOff).to_string()),
-                1 => Span::styled(
+                0 | 8 => Span::from(i18n_msg!(i18n_bundle, MenuValueAimbotOff).to_string()),
+                1 | 9 => Span::styled(
                     i18n_msg!(i18n_bundle, MenuValueAimbotNoVisCheck).to_string(),
                     Style::default().fg(Color::Red),
                 ),
@@ -537,11 +537,15 @@ fn build_aimbot_menu(
                     i18n_msg!(i18n_bundle, MenuValueAimbotOn).to_string(),
                     Style::default().fg(Color::Green),
                 ),
-                4 | 5 => Span::styled(
+                10 | 11 => Span::styled(
+                    i18n_msg!(i18n_bundle, MenuValueAimbotOn).to_string(),
+                    Style::default().fg(Color::Blue),
+                ),
+                4 | 5 | 12 | 13 => Span::styled(
                     i18n_msg!(i18n_bundle, MenuValueAimbotAssist).to_string(),
                     Style::default().fg(Color::Red),
                 ),
-                6 | 7 => Span::styled(
+                6 | 7 | 14 | 15 => Span::styled(
                     i18n_msg!(i18n_bundle, MenuValueAimbotAssist).to_string(),
                     Style::default().fg(Color::Green),
                 ),
@@ -556,7 +560,7 @@ fn build_aimbot_menu(
             let i18n_bundle = get_fluent_bundle();
             let val = val.trim();
             if let Some(new_val) = val.parse::<u8>().ok() {
-                if vec![0, 1, 2, 3, 4, 5, 6, 7].contains(&new_val) {
+                if new_val < 16 {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.aim_mode = new_val.into();
                     return None;
@@ -643,7 +647,7 @@ fn build_aimbot_menu(
             format!(" 8 - {}", i18n_msg!(i18n_bundle, MenuItemChangeBoneAim)),
             Span::from(
                 if settings.aimbot_settings.bone_nearest {
-                    i18n_msg!(i18n_bundle, MenuValueBoneNearest)
+                    i18n_msg!(i18n_bundle, MenuValueBoneHitbox)
                 } else if settings.aimbot_settings.bone_auto {
                     i18n_msg!(i18n_bundle, MenuValueBoneAuto)
                 } else {
@@ -677,6 +681,7 @@ fn build_aimbot_menu(
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.bone = new_val.into();
                     settings.aimbot_settings.bone_auto = false;
+                    settings.aimbot_settings.bone_nearest = false;
                     return None;
                 }
                 return Some(i18n_msg!(i18n_bundle, InfoInvalidBoneValue).to_string());

@@ -44,15 +44,15 @@ impl Default for AimbotSettings {
     fn default() -> Self {
         Self {
             gamepad: false, // auto
-            aim_mode: 2,    // avo (aim assist 0x4, vis check 0x2, on/off 0x1)
+            aim_mode: 10,   // avo (experiment 0x8, aim assist 0x4, vis check 0x2, on/off 0x1)
             auto_shoot: true,
             ads_fov: 12.0,
             non_ads_fov: 50.0,
             auto_nade_aim: true,
             no_recoil: false,
             bone: 2,
-            bone_nearest: false,
-            bone_auto: true,
+            bone_nearest: true,
+            bone_auto: false,
             max_dist: 3800.0 * 40.0,
             aim_dist: 500.0 * 40.0,
             headshot_dist: 15.0 * 40.0,
@@ -211,6 +211,7 @@ pub trait AimEntity: Debug + Send + Sync {
     fn get_abs_velocity(&self) -> [f32; 3];
     fn get_bone_position_by_hitbox(&self, id: u32) -> [f32; 3];
     fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)>;
+    fn get_hitbox(&self) -> Vec<([f32; 3], ([f32; 3], [f32; 3]))>;
     fn get_position(&self) -> [f32; 3];
     fn get_recoil_angles(&self) -> [f32; 3];
     fn get_view_offset(&self) -> [f32; 3];
@@ -224,6 +225,12 @@ pub trait AimEntity: Debug + Send + Sync {
     fn is_knocked(&self) -> bool;
     fn is_player(&self) -> bool;
     fn is_visible(&self) -> bool;
+}
+
+struct HitScanReport {
+    hit: bool,
+    nearest_hitbox: Option<([f32; 3], ([f32; 3], [f32; 3]))>,
+    nearest_bone_pos: Option<[f32; 3]>,
 }
 
 impl Aimbot {
@@ -459,7 +466,7 @@ impl Aimbot {
                 self.settings.ads_fov
             } else {
                 self.settings.non_ads_fov
-            }
+            };
         }
 
         // Update aiming state
@@ -473,12 +480,12 @@ impl Aimbot {
             };
 
         // Update triggerbot state
-        self.triggerbot_ready = self.settings.auto_shoot && self.triggerbot_key_state > 0;
+        self.triggerbot_ready = self.triggerbot_key_state > 0;
 
         // Update target lock
         if !self.aiming
             || self.is_headshot()
-            || self.triggerbot_ready
+            || (self.triggerbot_ready && !self.settings.auto_shoot)
             || (self.settings.aim_mode & 0x4 != 0)
         {
             self.cancel_locking();
@@ -496,137 +503,233 @@ impl Aimbot {
     }
 
     #[instrument(skip_all)]
+    fn hit_scan(
+        &self,
+        view_origin: [f32; 3],
+        view_angles: [f32; 3],
+        target_origin: [f32; 3],
+        target_vel: [f32; 3],
+        target_hitboxes: Vec<([f32; 3], ([f32; 3], [f32; 3]))>,
+    ) -> HitScanReport {
+        let max_time = 2.0;
+        let time_step = 0.00005;
+        let radius_scale = 1.0;
+
+        let view_direction = math::qvec(view_angles);
+        let bone_origin = target_origin;
+
+        let hitbox_radius = |(bbmin, bbmax): ([f32; 3], [f32; 3])| -> f32 {
+            let size = math::sub(bbmax, bbmin);
+            let volume = math::dot(size, size);
+            f32::cbrt(volume / (4.0 / 3.0 * std::f32::consts::PI))
+        };
+
+        let hitpoints = {
+            let mut hitpoints = Vec::with_capacity(256);
+            if target_hitboxes.len() < 256 {
+                for (hit_pos, hb) in &target_hitboxes {
+                    let hit_radius = hitbox_radius(*hb);
+                    let bone_pos = math::add(bone_origin, *hit_pos);
+                    let radius = hit_radius * radius_scale;
+                    hitpoints.push((bone_pos, radius));
+                }
+            } else {
+                for i in 0..256 {
+                    let fi = i as i32 as f32 / 256.0 * target_hitboxes.len() as i32 as f32;
+                    let starti = fi.floor() as i32 as usize;
+                    let endi = fi.ceil() as i32 as usize;
+                    let t = fi.fract();
+
+                    let Some(start) = target_hitboxes.get(starti) else {
+                        break;
+                    };
+                    let Some(end) = target_hitboxes.get(endi) else {
+                        break;
+                    };
+
+                    let start_pos = math::add(bone_origin, start.0);
+                    let end_pos = math::add(bone_origin, end.0);
+
+                    let bone_pos = math::lerp(start_pos, end_pos, t);
+
+                    let start_radius = hitbox_radius(start.1);
+                    let end_radius = hitbox_radius(end.1);
+                    let radius = (start_radius + (end_radius - start_radius) * t) * radius_scale;
+
+                    hitpoints.push((bone_pos, radius));
+                }
+            }
+            hitpoints
+        };
+
+        let mut hit = false;
+        let mut nearest_hitbox = None;
+        let mut nearest_bone_pos = None;
+
+        // raycast
+        let mut min_bone_offset = f32::MAX;
+        for (bone_pos, radius) in &hitpoints {
+            let dist2 = math::dist2(
+                math::project(view_origin, view_direction, *bone_pos),
+                *bone_pos,
+            );
+            let offset = dist2 - radius * radius;
+
+            if offset < min_bone_offset {
+                nearest_bone_pos = Some(*bone_pos);
+                min_bone_offset = offset;
+            }
+        }
+
+        // projectile
+        if min_bone_offset < 40.0 * 40.0 {
+            let mut nearest_hitbox_index = None;
+            let mut min_bone_dist2 = f32::MAX;
+
+            let v0 = math::muls(view_direction, self.weapon_info.bullet_speed);
+            let g = self.weapon_info.bullet_gravity;
+
+            let mut time = 0.0;
+            while time < max_time {
+                let projectile_pos = [
+                    view_origin[0] + v0[0] * time,
+                    view_origin[1] + v0[1] * time,
+                    view_origin[2] + v0[2] * time - 0.5 * g * time * time,
+                ];
+                let equivalent_pos = math::sub(projectile_pos, math::muls(target_vel, time));
+                if math::dist2(equivalent_pos, bone_origin) < (2.0 * 40.0) * (2.0 * 40.0) {
+                    for (i, (hit_pos, (bbmin, bbmax))) in target_hitboxes.iter().enumerate() {
+                        let bone_pos = math::add(bone_origin, *hit_pos);
+                        let bone_dist2 = math::dist2(equivalent_pos, bone_pos);
+                        if bone_dist2 < min_bone_dist2 {
+                            nearest_hitbox_index = Some(i);
+                            min_bone_dist2 = bone_dist2;
+                        }
+                        let pos_offset = math::sub(equivalent_pos, bone_pos);
+                        if bbmin[0] < pos_offset[0]
+                            && pos_offset[0] < bbmax[0]
+                            && bbmin[1] < pos_offset[1]
+                            && pos_offset[1] < bbmax[1]
+                            && bbmin[2] < pos_offset[2]
+                            && pos_offset[2] < bbmax[2]
+                        {
+                            hit = true;
+                            break;
+                        }
+                    }
+                    if hit {
+                        break;
+                    }
+                }
+                time += time_step;
+            }
+            if let Some(hb) = nearest_hitbox_index.and_then(|i| target_hitboxes.get(i)) {
+                let (bone_pos, (bbmin, bbmax)) = hb;
+                let bone_pos = math::add(bone_origin, *bone_pos);
+                nearest_hitbox = Some((bone_pos, (*bbmin, *bbmax)));
+                nearest_bone_pos = Some(bone_pos);
+            }
+        }
+        HitScanReport {
+            hit,
+            nearest_hitbox,
+            nearest_bone_pos,
+        }
+    }
+
+    #[instrument(skip_all)]
     pub fn calc_best_aim(
         &self,
         from: &dyn AimEntity,
         target: &dyn AimEntity,
+        local_origin: [f32; 3],
+        view_angles: [f32; 3],
+        target_origin: [f32; 3],
+        target_vel: [f32; 3],
     ) -> (AimAngles, [f32; 3]) {
-        let view_angles = from.get_view_angles();
-        let local_camera = from.get_cam_pos();
+        //let target_origin = target.get_position();
+        //let target_vel = target.get_abs_velocity();
+        //let local_origin = from.get_position();
+        let view_origin = math::add(local_origin, from.get_view_offset());
+        //let view_angles = from.get_view_angles();
         let sway_angles = from.get_sway_angles();
-        let target_vel = target.get_abs_velocity();
-        let distance = math::dist(local_camera, target.get_position());
-        let local_origin = from.get_position();
-        let view_offset = from.get_view_offset();
-        let view_origin = math::add(local_origin, view_offset);
-
-        let target_bone_position_min: [f32; 3];
-        let target_bone_position_max: [f32; 3];
-
+        let distance = math::dist(view_origin, target_origin);
         let delta_time = 1.0 / self.game_fps;
+        let expect_headshot = self.is_headshot() && distance <= self.settings.headshot_dist;
 
-        let mut hitscan = false;
+        let hitscan = self.hit_scan(
+            view_origin,
+            view_angles,
+            target_origin,
+            target_vel,
+            target.get_hitbox(),
+        );
 
-        if self.is_headshot() && distance <= self.settings.headshot_dist {
-            target_bone_position_max = target.get_bone_position_by_hitbox(0);
-            target_bone_position_min = target_bone_position_max;
-        } else if self.settings.bone_nearest {
-            let max_time = 2.0;
-            let time_step = 0.00005;
-            let radius_scale = 1.0;
-
-            let bone_origin = target.get_position();
-            let hit_data = target.get_spine_hitbox();
-            let view_direction = math::qvec(view_angles);
-
-            let mut hitpoints = Vec::with_capacity(100);
-            for i in 0..100 {
-                let fi = i as i32 as f32 / 100.0 * hit_data.len() as i32 as f32;
-                let starti = fi.floor() as i32 as usize;
-                let endi = fi.ceil() as i32 as usize;
-                let t = fi.fract();
-
-                let Some(start) = hit_data.get(starti) else {
-                    break;
-                };
-                let Some(end) = hit_data.get(endi) else {
-                    break;
-                };
-
-                let start_pos = math::add(bone_origin, start.0);
-                let end_pos = math::add(bone_origin, end.0);
-
-                let bone_pos = math::lerp(start_pos, end_pos, t);
-                let radius = (start.1 + (end.1 - start.1) * t) * radius_scale;
-
-                hitpoints.push((bone_pos, radius));
-            }
-
-            let mut best_bone_pos = None;
-            let mut best_offset = f32::MAX;
-            // raycast
-            for (bone_pos, radius) in &hitpoints {
-                let dist2 = math::dist2(
-                    math::project(view_origin, view_direction, *bone_pos),
-                    *bone_pos,
+        let target_head_pos = target.get_bone_position_by_hitbox(0);
+        let (target_bone_position_min, target_bone_position_max): ([f32; 3], [f32; 3]) =
+            if expect_headshot {
+                (target_head_pos, target_head_pos)
+            } else if self.settings.bone_nearest {
+                let lowest_aim_pos = math::muls(
+                    math::add(target.get_bone_position_by_hitbox(3), target_origin),
+                    0.5,
                 );
-                let offset = dist2 - radius * radius;
-
-                if offset < best_offset {
-                    best_bone_pos = Some(*bone_pos);
-                    best_offset = offset;
-                }
-            }
-            // projectile
-            if best_offset < 40.0 * 40.0 {
-                let mut best_bone_pos2 = None;
-                let mut best_offset2 = f32::MAX;
-
-                let v0 = math::muls(view_direction, self.weapon_info.bullet_speed);
-                let g = self.weapon_info.bullet_gravity;
-
-                let mut time = 0.0;
-                while time < max_time {
-                    let projectile_pos = [
-                        view_origin[0] + v0[0] * time,
-                        view_origin[1] + v0[1] * time,
-                        view_origin[2] + v0[2] * time - 0.5 * g * time * time,
-                    ];
-                    let equivalent_pos = math::sub(projectile_pos, math::muls(target_vel, time));
-                    if math::dist2(equivalent_pos, bone_origin) < (2.0 * 40.0) * (2.0 * 40.0) {
-                        for (bone_pos, radius) in &hitpoints {
-                            let dist2 = math::dist2(equivalent_pos, *bone_pos);
-                            let offset = dist2 - radius * radius;
-
-                            if offset < best_offset {
-                                best_bone_pos2 = Some(*bone_pos);
-                                best_offset2 = offset;
-                            }
-                        }
-                        if best_offset2 < 0.0 {
-                            break;
-                        }
+                let best_hitbox = hitscan.nearest_hitbox.and_then(|hitbox| {
+                    let (bone_pos, (bbmin, bbmax)) = hitbox;
+                    if f32::min(bone_pos[2] + bbmin[2], bone_pos[2] + bbmax[2]) > lowest_aim_pos[2]
+                    {
+                        Some(hitbox)
+                    } else {
+                        None
                     }
-                    time += time_step;
+                });
+                let best_bone_pos = hitscan.nearest_bone_pos.and_then(|pos| {
+                    if pos[2] > lowest_aim_pos[2] {
+                        Some(pos)
+                    } else {
+                        None
+                    }
+                });
+                match (best_hitbox, best_bone_pos, hitscan.hit) {
+                    (Some(hitbox), _, false) => {
+                        let (bone_pos, (bbmin, bbmax)) = hitbox;
+                        let scale = if self.settings.auto_shoot && self.triggerbot_ready {
+                            0.4
+                        } else {
+                            0.9
+                        };
+                        let min = math::add(bone_pos, math::muls(bbmin, scale));
+                        let max = math::add(bone_pos, math::muls(bbmax, scale));
+                        (min, max)
+                    }
+                    (None, Some(best_bone_pos), false) => (best_bone_pos, best_bone_pos),
+                    _ => {
+                        let min = [
+                            target_head_pos[0],
+                            target_head_pos[1],
+                            target_head_pos[2] + 10.0,
+                        ];
+                        let max = if expect_headshot {
+                            target.get_bone_position_by_hitbox(1)
+                        } else {
+                            lowest_aim_pos
+                        };
+                        (min, max)
+                    }
                 }
-                if best_bone_pos2.is_some() {
-                    best_bone_pos = best_bone_pos2;
-                    best_offset = best_offset2;
-                }
-            }
-
-            if best_offset > 0.0 {
-                target_bone_position_max = best_bone_pos.unwrap_or(bone_origin);
-                target_bone_position_min = target_bone_position_max;
+            } else if self.settings.bone_auto {
+                (target_head_pos, target_origin)
             } else {
-                hitscan = true;
-                target_bone_position_max = target.get_position();
-                target_bone_position_min = target.get_bone_position_by_hitbox(0);
-            }
-        } else if self.settings.bone_auto {
-            target_bone_position_max = target.get_position();
-            target_bone_position_min = target.get_bone_position_by_hitbox(0);
-            // tracing::trace!(
-            //     ?target_bone_position_max,
-            //     ?target_bone_position_min,
-            //     "{}",
-            //     s!("711aac39-e83c-4788")
-            // );
-        } else {
-            target_bone_position_max =
-                target.get_bone_position_by_hitbox(self.settings.bone.try_into().unwrap());
-            target_bone_position_min = target_bone_position_max;
-        }
+                let fixed_bone_pos =
+                    target.get_bone_position_by_hitbox(self.settings.bone.try_into().unwrap());
+                (fixed_bone_pos, fixed_bone_pos)
+            };
+        // tracing::trace!(
+        //     ?target_bone_position_max,
+        //     ?target_bone_position_min,
+        //     "{}",
+        //     s!("711aac39-e83c-4788")
+        // );
 
         let aim_target: [f32; 3];
 
@@ -682,7 +785,7 @@ impl Aimbot {
             };
 
             let (calculated_angles_min, _) = fun_calc_angles(
-                local_camera,
+                view_origin,
                 target_bone_position_min,
                 target_vel,
                 self.weapon_info.bullet_speed,
@@ -690,7 +793,7 @@ impl Aimbot {
                 delta_time,
             );
             let (calculated_angles_max, aim_pos) = fun_calc_angles(
-                local_camera,
+                view_origin,
                 target_bone_position_max,
                 target_vel,
                 self.weapon_info.bullet_speed,
@@ -719,17 +822,26 @@ impl Aimbot {
             }
             //println!("{:.2},{:.2}  {:.2},{:.2}", delta_min[0], delta_min[1], delta_max[0], delta_max[1]);
 
+            let target_fov = calc_fov(&[0.0, 0.0, 0.0], &delta);
             let max_fov = {
+                let mut fov = self.max_fov;
+                if distance < 160.0 {
+                    fov += 30.0;
+                }
+                if distance < 80.0 {
+                    fov += 60.0;
+                }
                 let zoom_fov = self.weapon_info.weapon_zoom_fov;
                 if zoom_fov.is_normal() && (zoom_fov - 1.0).abs() > f32::EPSILON {
-                    self.max_fov * zoom_fov / 90.0
-                } else {
-                    self.max_fov
+                    fov *= zoom_fov / 90.0
                 }
-            } + if distance < 160.0 { 30.0 } else { 0.0 }
-                + if distance < 80.0 { 60.0 } else { 0.0 };
+                // When autofire is enabled, add up to an additional 30 fov to meet the requirement
+                if self.settings.auto_shoot && self.triggerbot_ready {
+                    fov = f32::max(f32::min(fov + 30.0, target_fov), fov);
+                }
+                fov
+            };
 
-            let target_fov = calc_fov(&[0.0, 0.0, 0.0], &delta);
             if target_fov > max_fov {
                 trace!(target_fov, ?delta, "ExceededFOVThreshold");
                 (AimAngles::default(), aim_target)
@@ -737,7 +849,7 @@ impl Aimbot {
                 (
                     AimAngles {
                         valid: true,
-                        hitscan,
+                        hitscan: hitscan.hit,
                         view_pitch: view_angles[0],
                         view_yew: view_angles[1],
                         delta_pitch: delta[0],
@@ -843,7 +955,7 @@ impl Aimbot {
             return 0;
         }
 
-        if if self.settings.bone_nearest {
+        if if self.settings.aim_mode & 0x8 != 0 {
             aim_angles.hitscan
         } else {
             lock_mod!().triggerbot_cross_hair_ready(
@@ -871,6 +983,8 @@ impl Aimbot {
 
         let smooth = if self.is_grenade() {
             self.settings.skynade_smooth
+        } else if self.triggerbot_ready && self.settings.auto_shoot {
+            f32::min(f32::max(40.0, self.settings.smooth / 2.0), 90.0)
         } else {
             self.settings.smooth
         } / smooth_factor;

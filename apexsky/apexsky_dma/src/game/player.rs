@@ -213,9 +213,23 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     }
 
     #[tracing::instrument]
+    fn get_hitbox(&self) -> Vec<([f32; 3], ([f32; 3], [f32; 3]))> {
+        self.studio
+            .hitboxes
+            .iter()
+            .filter_map(|bbox| {
+                self.bones.v.get(bbox.bone as usize).and_then(|matrix| {
+                    Some(([matrix[3], matrix[7], matrix[11]], (bbox.bbmin, bbox.bbmax)))
+                })
+            })
+            .collect()
+    }
+
+    #[tracing::instrument]
     fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)> {
         self.studio
-            .spine()
+            .hitboxes
+            .iter()
             .filter_map(|bbox| {
                 self.bones
                     .v
@@ -344,14 +358,37 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
     }
 
     #[tracing::instrument]
+    fn get_hitbox(&self) -> Vec<([f32; 3], ([f32; 3], [f32; 3]))> {
+        self.studio
+            .hitboxes
+            .iter()
+            .filter_map(|bbox| {
+                self.bones.v.get(bbox.bone as usize).and_then(|matrix| {
+                    Some(([matrix[3], matrix[7], matrix[11]], (bbox.bbmin, bbox.bbmax)))
+                })
+            })
+            .collect()
+    }
+
+    #[tracing::instrument]
     fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)> {
         self.studio
-            .spine()
+            .hitboxes
+            .iter()
             .filter_map(|bbox| {
-                self.bones
-                    .v
-                    .get(bbox.bone as usize)
-                    .and_then(|matrix| Some(([matrix[3], matrix[7], matrix[11]], bbox.radius())))
+                let hitboxes =
+                    self.bones.v.get(bbox.bone as usize).and_then(|matrix| {
+                        Some(([matrix[3], matrix[7], matrix[11]], bbox.radius()))
+                    });
+                // if bbox.group == sdk::HITGROUP_LEFT_LEG {
+                //     println!(
+                //         "left_leg hit={:?} bbox={:?}, len={}",
+                //         hitboxes,
+                //         bbox,
+                //         self.studio.hitboxes.len()
+                //     );
+                // }
+                hitboxes
             })
             .collect()
     }

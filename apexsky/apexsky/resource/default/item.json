@@ -428,6 +428,10 @@
         "model": "mdl/props/nessie/nessie_april_fools.rmdl"
     },
     {
+        "int": 309,
+        "model": "mdl/props/nessie/nessie_april_fools.rmdl"
+    },
+    {
         "int": 314,
         "model": "mdl/props/nessie/nessie_april_fools_large.rmdl"
     },

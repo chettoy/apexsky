@@ -116,7 +116,7 @@ pub async fn aimbot_loop(
             continue;
         }
         // Check local_player entity
-        let Some(local_entity) = state.get_entity(mem_aim_helper.lplayer_ptr).await else {
+        if state.read().local_player.is_none() {
             tracing::trace!("{}", s!("waiting for local player ready"));
             start_instant += Duration::from_millis(500);
             sleep_until(start_instant).await;
@@ -192,17 +192,14 @@ pub async fn aimbot_loop(
         let aiming = aimbot.is_aiming();
         //tracing::trace!(?aiming, "711aac39-e83c-4788");
 
-        let mut target_pos: Option<[f32; 3]> = None;
-        let mut target_aimentity: Option<Arc<dyn AimEntity>> = None;
-        let aim_result = {
-            let aim_entity_ptr = aimbot.get_aim_entity();
-            if aim_entity_ptr == 0 {
-                aimbot.cancel_locking();
-                AimAngles::default()
-            } else if let Some(target_entity) = state.get_entity(aim_entity_ptr).await {
-                target_aimentity = Some(target_entity.clone());
-                target_pos = Some(target_entity.get_position());
+        let aim_entity_ptr = aimbot.get_aim_entity();
+        let target_entity: Option<Arc<dyn AimEntity>> = state.get_entity(aim_entity_ptr).await;
+        let Some(local_entity) = state.get_entity(mem_aim_helper.lplayer_ptr).await else {
+            continue;
+        };
 
+        let (aim_result, target_pos): (AimAngles, Option<[f32; 3]>) =
+            if let Some(ref target_entity) = target_entity {
                 // // debug target entity
                 // if !target_entity.is_player() {
                 //     let is_visible = target_entity.is_visible();
@@ -210,11 +207,11 @@ pub async fn aimbot_loop(
                 // }
 
                 if !(aimbot.is_aiming() || aimbot.is_triggerbot_ready()) {
-                    AimAngles::default()
+                    (AimAngles::default(), Some(target_entity.get_position()))
                 } else if aimbot.get_gun_safety() {
                     trace!("{}", s!("711aac39-e83c-4788 safety on"));
                     //println!("{:?}", target_entity);
-                    AimAngles::default()
+                    (AimAngles::default(), Some(target_entity.get_position()))
                 } else if local_entity.is_knocked()
                     || !target_entity.is_alive()
                     || target_entity.is_knocked()
@@ -226,14 +223,25 @@ pub async fn aimbot_loop(
                         s!("711aac39-e83c-4788 not target")
                     );
                     aimbot.cancel_locking();
-                    AimAngles::default()
+                    (AimAngles::default(), Some(target_entity.get_position()))
                 } else {
                     trace!("{}", s!("711aac39-e83c-4788 calc best aim"));
-                    let (aim_angles, position) =
-                        aimbot.calc_best_aim(&*local_entity, &*target_entity);
+                    let info = MemAimHelper::read_aiming_info(
+                        &mem_aim_helper.mem,
+                        mem_aim_helper.lplayer_ptr,
+                        aim_entity_ptr,
+                    )
+                    .await?;
+                    let (aim_angles, position) = aimbot.calc_best_aim(
+                        local_entity.as_ref(),
+                        target_entity.as_ref(),
+                        info.local_origin,
+                        info.view_angles,
+                        info.target_origin,
+                        info.target_vel,
+                    );
                     trace!(?aim_angles, "{}", s!("711aac39-e83c-4788 best aim"));
-                    target_pos = Some(position);
-                    aim_angles
+                    (aim_angles, Some(position))
                 }
             } else {
                 //tracing::warn!(aim_entity_ptr, "{}", s!("targeted entity does not exist"));
@@ -243,9 +251,9 @@ pub async fn aimbot_loop(
                     s!("711aac39-e83c-4788 targeted entity does not exist")
                 );
                 aimbot.cancel_locking();
-                AimAngles::default()
-            }
-        };
+                (AimAngles::default(), None)
+            };
+
         if aiming {
             tracing::debug!(?aim_result, "711aac39-e83c-4788");
         }
@@ -258,7 +266,7 @@ pub async fn aimbot_loop(
         // Update Trigger Bot state
         // Ensure that the triggerbot is updated,
         // otherwise there may be issues with not canceling after firing.
-        aimbot.triggerbot_update(target_aimentity, &aim_result, aim_key_rx.borrow().attack_state);
+        aimbot.triggerbot_update(target_entity, &aim_result, aim_key_rx.borrow().attack_state);
         if aiming {
             tracing::debug!("711aac39-e83c-4788 trigger updated");
         }
@@ -355,19 +363,9 @@ pub async fn aimbot_loop(
         state.write().aimbot_state = Some((aimbot.clone(), loop_duration));
 
         // Read view_angles
-        let view_angles =
-            match MemAimHelper::read_viewangles(&access_tx, mem_aim_helper.lplayer_ptr).await {
-                Ok(v) => v,
-                Err(e) => {
-                    tracing::warn!(%e, "{}", s!("err read viewangles"));
-                    continue;
-                }
-            };
-        if !(view_angles[0].is_finite() && view_angles[1].is_finite() && view_angles[2].is_finite())
-        {
-            tracing::warn!(?view_angles, "{}", s!("got invalid view_angles"));
+        let Some(view_angles) = read_view_angles(&mem_aim_helper).await else {
             continue;
-        }
+        };
 
         // Calc delta_view_angles
         natural_delta_viewangles = prev_view_angles
@@ -389,4 +387,24 @@ pub async fn aimbot_loop(
     tracing::debug!("{}", s!("task end"));
 
     Ok(())
+}
+
+async fn read_view_angles(mem_aim_helper: &MemAimHelper) -> Option<[f32; 3]> {
+    let view_angles = match MemAimHelper::read_viewangles(
+        &mem_aim_helper.mem,
+        mem_aim_helper.lplayer_ptr,
+    )
+    .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!(%e, "{}", s!("err read viewangles"));
+            return None;
+        }
+    };
+    if !(view_angles[0].is_finite() && view_angles[1].is_finite() && view_angles[2].is_finite()) {
+        tracing::warn!(?view_angles, "{}", s!("got invalid view_angles"));
+        return None;
+    }
+    Some(view_angles)
 }

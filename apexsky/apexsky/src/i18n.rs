@@ -26,7 +26,7 @@ pub enum MessageId {
     InfoInvalidSmoothValue,
     MenuItemChangeBoneAim,
     MenuValueBoneAuto,
-    MenuValueBoneNearest,
+    MenuValueBoneHitbox,
     MenuValueBoneHead,
     MenuValueBoneNeck,
     MenuValueBoneChest,

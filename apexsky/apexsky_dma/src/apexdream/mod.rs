@@ -44,7 +44,7 @@ impl Instance {
             connected: false,
             tickcount: 0,
             local_entity: Default::default(),
-            full_bones: false,
+            full_bones: true,
         };
         Self {
             state: GameState::default(),

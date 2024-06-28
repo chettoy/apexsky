@@ -1,5 +1,5 @@
 hello-world = Hello, world!
-menu-value-enabled = 啓用
+menu-value-enabled = 啟用
 menu-value-disabled = 停用
 main-menu-title = 主選單
 menu-item-firing-range = 射擊場模式
@@ -14,7 +14,7 @@ info-invalid-smooth-value = 無效值。
     「平滑」值必須介於 50 到 500 之間。
 menu-item-change-bone-aim = 調整瞄準部位
 menu-value-bone-auto = 自動
-menu-value-bone-nearest = 首次擊中
+menu-value-bone-hitbox = 碰撞箱
 menu-value-bone-head = 頭部
 menu-value-bone-neck = 頸部
 menu-value-bone-chest = 胸部
@@ -23,6 +23,7 @@ menu-value-bone-unknown = 未知
 input-prompt-bone-value = 
     選擇瞄準部位:
         x => 自動
+        h => 碰撞箱
         0 => 頭部
         1 => 頸部
         2 => 胸部
@@ -80,9 +81,9 @@ info-weapon-model-glow =
     通常 => 彩色
     被隊友觀看時 => 綠色
     被別人觀看時 => 紅色
-menu-item-toggle-overlay = 繪製層
-menu-value-no-overlay = 無覆蓋層
-menu-value-external-overlay = 外部繪製層
+menu-item-toggle-overlay = ESP伺服器
+menu-value-no-overlay = 關閉
+menu-value-external-overlay = 啟用
 info-expecting-value-count = 期望 3 個值，但得到 {$getting} 個！
 info-cannot-parse-input-values = 此輸入無法解析！
 info-values-out-of-range = 值超出範圍！

@@ -293,11 +293,11 @@ pub async fn actions_loop(
 
             /* Hot Variables Update End */
 
-            if actions_tick % 2 == 0 {
-                // at least 30ms // don't change xD
-            } else if actions_tick % 30_000 == 0 {
+            if actions_tick % 30_000 == 0 {
                 actions_tick = 0;
-            } else {
+            }
+            if actions_tick % 2 != 0 {
+                // at least 30ms // don't change xD
                 continue;
             }
 
@@ -480,7 +480,7 @@ pub async fn actions_loop(
                     });
             });
 
-            if player_ready {
+            if actions_tick % 4 != 0 && player_ready {
                 trace_span!("Spectator check").in_scope(|| {
                     let Some((lplayer_ptr, lplayer_team)) =
                         shared_state.read().local_player.as_ref().map(|p| {

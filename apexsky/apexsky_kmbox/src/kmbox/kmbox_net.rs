@@ -240,6 +240,21 @@ impl KmboxNet {
         }
     }
 
+    async fn recv_packet_showpic(&self) -> Result<CmdHead, KmboxError> {
+        const LENGTH: usize = size_of::<CmdHead>() + 1024;
+        let mut buf: [u8; LENGTH] = [0; LENGTH];
+        match timeout(Duration::from_secs(10), self.socket.recv_from(&mut buf)).await {
+            Ok(r) => match r {
+                Ok((_number_of_bytes, _src_addr)) => {
+                    CmdHead::read_from(&buf[0..size_of::<CmdHead>()])
+                        .ok_or(KmboxError::AnyError(anyhow::anyhow!("recv head")))
+                }
+                Err(e) => Err(KmboxError::NetRx(e)),
+            },
+            Err(e) => Err(KmboxError::NetRxTimeout(e)),
+        }
+    }
+
     async fn send_packet(
         &mut self,
         cmd: Cmd,
@@ -330,7 +345,7 @@ impl KmboxNet {
                 }),
             )
             .await?;
-            self.check_rx_packet_head(self.recv_packet_head().await?)?;
+            self.check_rx_packet_head(self.recv_packet_showpic().await?)?;
         }
         Ok(())
     }
@@ -405,7 +420,7 @@ impl KmboxNet {
                 CmdBody::U16Buff(CmdDataU16 { buff: *data }),
             )
             .await?;
-            self.check_rx_packet_head(self.recv_packet_head().await?)?;
+            self.check_rx_packet_head(self.recv_packet_showpic().await?)?;
         }
 
         Ok(())
