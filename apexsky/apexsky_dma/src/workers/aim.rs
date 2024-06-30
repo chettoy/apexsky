@@ -11,7 +11,6 @@ use apexsky_dmalib::access::MemApi;
 use apexsky_kmbox::kmbox::{KmboxB, KmboxNet};
 use apexsky_proto::pb::apexlegends::{AimKeyState, AimTargetInfo};
 use obfstr::obfstr as s;
-use parking_lot::RwLock;
 use tokio::sync::watch;
 use tokio::time::{sleep, sleep_until, Instant};
 use tracing::{instrument, trace};
@@ -20,7 +19,7 @@ use crate::actuator::{
     AimActuator, AimbotAction, DeviceAimActuator, KmboxAimActuator, MemAimHelper, QmpAimActuator,
 };
 use crate::apexdream::base::math;
-use crate::SharedState;
+use crate::SharedStateWrapper;
 
 const ENABLE_MEM_AIM: bool = true;
 
@@ -31,7 +30,6 @@ pub trait ContextForAimbot {
     async fn get_game_fps(&self) -> f32;
     async fn get_held_id(&self) -> Option<i32>;
     async fn get_weapon_info(&self) -> Option<CurrentWeaponInfo>;
-    async fn is_world_ready(&self) -> bool;
     async fn update_aim_target_for_esp(&mut self, position: [f32; 3]);
 }
 
@@ -59,7 +57,7 @@ async fn create_aim_actuator_from_device(
 #[instrument(skip_all)]
 pub async fn aimbot_loop(
     mut active: watch::Receiver<bool>,
-    mut state: Arc<RwLock<SharedState>>,
+    mut state: SharedStateWrapper,
     access_tx: MemApi,
     mut aim_key_rx: watch::Receiver<AimKeyState>,
     mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
@@ -93,30 +91,29 @@ pub async fn aimbot_loop(
         start_instant = Instant::now();
 
         // Check game_attached and world_ready
-        if !state.is_world_ready().await {
+        if !state.is_world_ready() {
             tracing::trace!("{}", s!("waiting for world ready"));
             start_instant += Duration::from_millis(500);
             sleep_until(start_instant).await;
             continue;
         }
         // Check base_addr and local_player_ptr
-        {
-            let rlock = state.read();
-            mem_aim_helper.apex_base = rlock.game_baseaddr.unwrap_or(0);
-            mem_aim_helper.lplayer_ptr = rlock
-                .local_player
-                .as_ref()
-                .map(|e| e.get_entity().entity_ptr.into_raw())
-                .unwrap_or(0);
-        }
+        mem_aim_helper.apex_base = state.get_game_baseaddr().unwrap_or(0);
+        mem_aim_helper.lplayer_ptr = state.get_local_player_ptr().unwrap_or(0);
+
         if !mem_aim_helper.ready() {
             tracing::trace!("{}", s!("waiting for mem_aim_executer ready"));
             start_instant += Duration::from_millis(500);
             sleep_until(start_instant).await;
             continue;
         }
+
         // Check local_player entity
-        if state.read().local_player.is_none() {
+        if !state
+            .players
+            .read()
+            .contains_key(&mem_aim_helper.lplayer_ptr)
+        {
             tracing::trace!("{}", s!("waiting for local player ready"));
             start_instant += Duration::from_millis(500);
             sleep_until(start_instant).await;
@@ -157,6 +154,7 @@ pub async fn aimbot_loop(
             aimbot.update_attack_state(key_status.attack_button);
             aimbot.update_zoom_state(key_status.zoom_button);
             aimbot.update_triggerbot_key_state(key_status.triggerbot_hotkey);
+            aimbot.update_quick_looting_key_state(key_status.quick_looting_hotkey);
         }
 
         // Receive pre-selected targets and update it to aimbot
@@ -171,6 +169,8 @@ pub async fn aimbot_loop(
                     t.distance,
                     t.is_visible,
                     t.love_status == LoveStatus::Love as i32,
+                    t.is_npc,
+                    t.is_loot,
                     t.entity_ptr,
                 );
             });
@@ -355,10 +355,15 @@ pub async fn aimbot_loop(
                 4 => Some(false),
                 _ => None,
             },
+            force_use: match aimbot.poll_looting_action() {
+                5 => Some(true),
+                4 => Some(false),
+                _ => None,
+            },
         };
 
         // Update state for ESP
-        state.write().aimbot_state = Some((aimbot.clone(), loop_duration));
+        *state.aimbot_state.lock() = Some((aimbot.clone(), loop_duration));
 
         // Read view_angles
         let Some(view_angles) = read_view_angles(&mem_aim_helper).await else {

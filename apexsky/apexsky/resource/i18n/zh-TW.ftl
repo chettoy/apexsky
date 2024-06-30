@@ -107,6 +107,7 @@ hotkey-menu-title = 熱鍵選單
 hotkey-item-aimbot1 = Aimbot熱鍵1
 hotkey-item-aimbot2 = Aimbot熱鍵2
 hotkey-item-trigger-bot = 自動扳機熱鍵
+hotkey-item-quick-looting = 自動拾取熱鍵
 menu-item-key-codes = 按鍵代碼
 item-filter-menu-title = 物品選單
 info-invalid-keycode = 無效值。「{$item_label}」值必須介於 0 和 255 之間。

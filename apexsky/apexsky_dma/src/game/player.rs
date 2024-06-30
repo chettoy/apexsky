@@ -1,5 +1,7 @@
+use std::vec;
+
 use apexsky::aimbot::{get_unix_timestamp_in_millis, AimEntity};
-use apexsky_proto::pb::apexlegends::{Badge, GradeFlag, PlayerState};
+use apexsky_proto::pb::apexlegends::{Badge, GradeFlag, PlayerState, TreasureClue};
 use obfstr::obfstr as s;
 
 use crate::apexdream::sdk::ScriptNetVarName;
@@ -314,6 +316,10 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     fn is_visible(&self) -> bool {
         self.is_visible
     }
+
+    fn is_loot(&self) -> bool {
+        false
+    }
 }
 
 impl apexsky::aimbot::AimEntity for BaseNPCEntity {
@@ -447,5 +453,196 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
 
     fn is_visible(&self) -> bool {
         self.is_visible
+    }
+
+    fn is_loot(&self) -> bool {
+        false
+    }
+}
+
+impl AimEntity for GamePlayer {
+    fn get_entity_ptr(&self) -> u64 {
+        self.get_entity().get_entity_ptr()
+    }
+
+    fn get_view_angles(&self) -> [f32; 3] {
+        self.get_entity().get_view_angles()
+    }
+
+    fn get_cam_pos(&self) -> [f32; 3] {
+        self.get_entity().get_cam_pos()
+    }
+
+    fn get_sway_angles(&self) -> [f32; 3] {
+        self.get_entity().get_sway_angles()
+    }
+
+    fn get_abs_velocity(&self) -> [f32; 3] {
+        self.get_entity().get_abs_velocity()
+    }
+
+    fn get_bone_position_by_hitbox(&self, id: u32) -> [f32; 3] {
+        self.get_entity().get_bone_position_by_hitbox(id)
+    }
+
+    fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)> {
+        self.get_entity().get_spine_hitbox()
+    }
+
+    fn get_hitbox(&self) -> Vec<([f32; 3], ([f32; 3], [f32; 3]))> {
+        self.get_entity().get_hitbox()
+    }
+
+    fn get_position(&self) -> [f32; 3] {
+        self.get_entity().get_position()
+    }
+
+    fn get_recoil_angles(&self) -> [f32; 3] {
+        self.get_entity().get_recoil_angles()
+    }
+
+    fn get_view_offset(&self) -> [f32; 3] {
+        self.get_entity().get_view_offset()
+    }
+
+    fn get_team_num(&self) -> i32 {
+        self.get_entity().get_team_num()
+    }
+
+    fn get_health(&self) -> i32 {
+        self.get_entity().get_health()
+    }
+
+    fn get_shield_health(&self) -> i32 {
+        self.get_entity().get_shield_health()
+    }
+
+    fn get_max_health(&self) -> i32 {
+        self.get_entity().get_max_health()
+    }
+
+    fn get_max_shield_health(&self) -> i32 {
+        self.get_entity().get_max_shield_health()
+    }
+
+    fn get_visible_duration(&self) -> f64 {
+        self.get_entity().get_visible_duration()
+    }
+
+    fn is_alive(&self) -> bool {
+        self.get_entity().is_alive()
+    }
+
+    fn is_knocked(&self) -> bool {
+        self.get_entity().is_knocked()
+    }
+
+    fn is_player(&self) -> bool {
+        self.get_entity().is_player()
+    }
+
+    fn is_visible(&self) -> bool {
+        self.get_entity().is_visible()
+    }
+
+    fn is_loot(&self) -> bool {
+        self.get_entity().is_loot()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct QuickLooting(pub TreasureClue);
+
+impl AimEntity for QuickLooting {
+    fn get_entity_ptr(&self) -> u64 {
+        self.0.entity_handle
+    }
+
+    fn get_view_angles(&self) -> [f32; 3] {
+        Default::default()
+    }
+
+    fn get_cam_pos(&self) -> [f32; 3] {
+        self.get_position()
+    }
+
+    fn get_sway_angles(&self) -> [f32; 3] {
+        Default::default()
+    }
+
+    fn get_abs_velocity(&self) -> [f32; 3] {
+        Default::default()
+    }
+
+    fn get_bone_position_by_hitbox(&self, id: u32) -> [f32; 3] {
+        self.get_position()
+    }
+
+    fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)> {
+        vec![([0.0, 0.0, 0.0], 6.0)]
+    }
+
+    fn get_hitbox(&self) -> Vec<([f32; 3], ([f32; 3], [f32; 3]))> {
+        vec![([0.0, 0.0, 0.0], ([-6.0, -6.0, -6.0], [6.0, 6.0, 6.0]))]
+    }
+
+    fn get_position(&self) -> [f32; 3] {
+        self.0
+            .position
+            .clone()
+            .map(|pos| pos.into())
+            .unwrap_or_default()
+    }
+
+    fn get_recoil_angles(&self) -> [f32; 3] {
+        Default::default()
+    }
+
+    fn get_view_offset(&self) -> [f32; 3] {
+        Default::default()
+    }
+
+    fn get_team_num(&self) -> i32 {
+        Default::default()
+    }
+
+    fn get_health(&self) -> i32 {
+        Default::default()
+    }
+
+    fn get_shield_health(&self) -> i32 {
+        Default::default()
+    }
+
+    fn get_max_health(&self) -> i32 {
+        Default::default()
+    }
+
+    fn get_max_shield_health(&self) -> i32 {
+        Default::default()
+    }
+
+    fn get_visible_duration(&self) -> f64 {
+        200.0
+    }
+
+    fn is_alive(&self) -> bool {
+        true
+    }
+
+    fn is_knocked(&self) -> bool {
+        false
+    }
+
+    fn is_player(&self) -> bool {
+        false
+    }
+
+    fn is_visible(&self) -> bool {
+        true
+    }
+
+    fn is_loot(&self) -> bool {
+        true
     }
 }

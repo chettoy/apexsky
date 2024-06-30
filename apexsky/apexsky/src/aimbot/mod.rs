@@ -36,6 +36,7 @@ pub struct AimbotSettings {
     pub skynade_dist: f32,
     pub smooth: f32,
     pub skynade_smooth: f32,
+    pub looting_smooth: f32,
     pub recoil_smooth_x: f32,
     pub recoil_smooth_y: f32,
 }
@@ -59,6 +60,7 @@ impl Default for AimbotSettings {
             skynade_dist: 150.0 * 40.0,
             smooth: 200.0,
             skynade_smooth: 250.0 * 0.6667,
+            looting_smooth: 80.0,
             recoil_smooth_x: 30.0,
             recoil_smooth_y: 30.0,
         }
@@ -106,6 +108,9 @@ enum TriggerState {
     WaitTrigger = 1,
     Trigger = 2,
     WaitRelease = 3,
+    WaitTriggerLooting = 4,
+    TriggerLooting = 5,
+    WaitReleaseLooting = 6,
 }
 
 #[repr(C)]
@@ -160,6 +165,8 @@ pub struct Aimbot {
     triggerbot_state: TriggerState,
     triggerbot_trigger_time: u64,
     triggerbot_release_time: u64,
+    quick_looting_state: i32,
+    quick_looting_ready: bool,
 }
 
 impl Default for Aimbot {
@@ -188,6 +195,8 @@ impl Default for Aimbot {
             triggerbot_state: TriggerState::Idle,
             triggerbot_trigger_time: 0,
             triggerbot_release_time: 0,
+            quick_looting_state: 0,
+            quick_looting_ready: false,
         }
     }
 }
@@ -195,6 +204,7 @@ impl Default for Aimbot {
 pub trait TriggerBot {
     fn is_triggerbot_ready(&self) -> bool;
     fn poll_trigger_action(&mut self) -> i32;
+    fn poll_looting_action(&mut self) -> i32;
     fn triggerbot_update(
         &mut self,
         aim_entity: Option<Arc<dyn AimEntity>>,
@@ -225,6 +235,7 @@ pub trait AimEntity: Debug + Send + Sync {
     fn is_knocked(&self) -> bool;
     fn is_player(&self) -> bool;
     fn is_visible(&self) -> bool;
+    fn is_loot(&self) -> bool;
 }
 
 struct HitScanReport {
@@ -317,6 +328,11 @@ impl Aimbot {
     }
 
     #[tracing::instrument]
+    pub fn update_quick_looting_key_state(&mut self, quick_looting_key_state: i32) {
+        self.quick_looting_state = quick_looting_key_state;
+    }
+
+    #[tracing::instrument]
     pub fn update_attack_state(&mut self, attack_state: i32) {
         self.attack_state = attack_state;
     }
@@ -345,11 +361,20 @@ impl Aimbot {
     }
 
     #[tracing::instrument]
-    fn calc_target_score(&self, fov: f32, distance: f32, visible: bool) -> f32 {
+    fn calc_target_score(
+        &self,
+        fov: f32,
+        distance: f32,
+        visible: bool,
+        _is_npc: bool,
+        is_loot: bool,
+    ) -> f32 {
         // Reduce weight for invisible targets
         const VIS_WEIGHTS: f32 = 12.5;
         // Increase weight for targets that are too close
-        const CLOSE_WEIGHTS: f32 = 30.0 * 30.0 * 100.0; // equals to 30 fov
+        const CLOSE_WEIGHTS: f32 = 30.0 * 30.0 * 100.0; /* equals to 30 fov */
+        // Increase weight for loots
+        const LOOT_WEIGHTS: f32 = 30.0 * 30.0 * 100.0; /* equals to 30 fov */
 
         let score = (fov * fov) * 100.0
             + (distance * 0.025) * 10.0
@@ -358,7 +383,8 @@ impl Aimbot {
                 0.0
             } else {
                 CLOSE_WEIGHTS
-            });
+            })
+            + (if is_loot { 0.0 } else { LOOT_WEIGHTS });
         /*
          fov:dist:score
           1  10m  100
@@ -371,7 +397,8 @@ impl Aimbot {
 
     #[tracing::instrument]
     pub fn start_select_target(&mut self) {
-        self.target_score_max = self.calc_target_score(50.0, self.settings.aim_dist, false);
+        self.target_score_max =
+            self.calc_target_score(50.0, self.settings.aim_dist, false, false, false);
         self.tmp_aimentity = 0;
     }
 
@@ -382,13 +409,15 @@ impl Aimbot {
         distance: f32,
         visible: bool,
         love: bool,
+        is_npc: bool,
+        is_loot: bool,
         target_ptr: u64,
     ) {
         if !self.target_distance_check(distance) {
             return;
         }
 
-        let score = self.calc_target_score(fov, distance, visible);
+        let score = self.calc_target_score(fov, distance, visible, is_npc, is_loot);
 
         if score < self.target_score_max {
             self.target_score_max = score;
@@ -398,6 +427,7 @@ impl Aimbot {
 
         if self.aim_entity == target_ptr {
             self.love_aimentity = love;
+            self.quick_looting_ready = is_loot && self.quick_looting_state > 0;
 
             // vis check for shooting current aim entity
             if self.settings.aim_mode & 0x2 != 0 && !self.is_grenade() {
@@ -460,6 +490,9 @@ impl Aimbot {
 
             // Update aimbot fov for grenade
             self.max_fov = 999.9;
+        } else if self.quick_looting_ready {
+            // Update aimbot fov for quick looting
+            self.max_fov = 999.9;
         } else {
             // Update aimbot fov
             self.max_fov = if self.zoom_state > 0 {
@@ -471,7 +504,7 @@ impl Aimbot {
 
         // Update aiming state
         self.aiming = self.settings.aim_mode > 0
-            && if self.aim_key_state > 0 {
+            && if self.aim_key_state > 0 || self.quick_looting_ready {
                 true
             } else if self.settings.gamepad && (self.attack_state > 0 || self.zoom_state > 0) {
                 true
@@ -481,6 +514,11 @@ impl Aimbot {
 
         // Update triggerbot state
         self.triggerbot_ready = self.triggerbot_key_state > 0;
+
+        // Update quick looting state
+        if !(self.quick_looting_state > 0) {
+            self.quick_looting_ready = false;
+        }
 
         // Update target lock
         if !self.aiming
@@ -579,6 +617,14 @@ impl Aimbot {
                 nearest_bone_pos = Some(*bone_pos);
                 min_bone_offset = offset;
             }
+        }
+
+        if self.quick_looting_ready {
+            return HitScanReport {
+                hit: min_bone_offset < 0.0,
+                nearest_hitbox: None,
+                nearest_bone_pos: None,
+            };
         }
 
         // projectile
@@ -752,6 +798,13 @@ impl Aimbot {
                                    _delta_time: f32| {
                 let mut aim_target: [f32; 3] = target_bone_position;
                 let mut calculated_angles = Vec4::default();
+
+                if self.quick_looting_ready {
+                    return (
+                        calc_angle(&local_camera_position, &target_bone_position),
+                        aim_target,
+                    );
+                }
 
                 if bullet_speed > 1.0 {
                     let distance_to_target =
@@ -983,7 +1036,11 @@ impl Aimbot {
                 self.weapon_info.weapon_zoom_fov,
             ) > 0
         } {
-            let delay = if self.love_aimentity { 60..160 } else { 20..40 };
+            let delay = if self.love_aimentity {
+                60..600
+            } else {
+                20..200
+            };
             rand::thread_rng().gen_range(delay)
         } else {
             0
@@ -997,6 +1054,8 @@ impl Aimbot {
             self.settings.skynade_smooth
         } else if self.triggerbot_ready && self.settings.auto_shoot {
             f32::min(f32::max(40.0, self.settings.smooth / 2.0), 90.0)
+        } else if self.quick_looting_ready {
+            self.settings.looting_smooth
         } else {
             self.settings.smooth
         } / smooth_factor;
@@ -1022,7 +1081,7 @@ impl Aimbot {
 impl TriggerBot for Aimbot {
     #[tracing::instrument]
     fn is_triggerbot_ready(&self) -> bool {
-        self.triggerbot_ready && !self.is_grenade()
+        (self.triggerbot_ready && !self.is_grenade()) || self.quick_looting_ready
     }
 
     #[tracing::instrument]
@@ -1052,6 +1111,32 @@ impl TriggerBot for Aimbot {
     }
 
     #[tracing::instrument]
+    fn poll_looting_action(&mut self) -> i32 {
+        let now_ms = get_unix_timestamp_in_millis();
+        match self.triggerbot_state {
+            TriggerState::WaitTriggerLooting => {
+                if now_ms > self.triggerbot_trigger_time {
+                    self.triggerbot_state = TriggerState::TriggerLooting;
+                    //println!("looting press");
+                    5
+                } else {
+                    0
+                }
+            }
+            TriggerState::WaitReleaseLooting => {
+                if now_ms > self.triggerbot_release_time {
+                    self.triggerbot_state = TriggerState::Idle;
+                    //println!("looting release");
+                    4
+                } else {
+                    0
+                }
+            }
+            _ => 0,
+        }
+    }
+
+    #[tracing::instrument]
     fn triggerbot_update(
         &mut self,
         aim_entity: Option<Arc<dyn AimEntity>>,
@@ -1068,17 +1153,19 @@ impl TriggerBot for Aimbot {
             match self.triggerbot_state {
                 TriggerState::Idle => {
                     // Prepare for the next trigger.
-                    let delay = if (aim_entity
+                    let viz_time = (aim_entity
                         .map(|ent| ent.get_visible_duration())
                         .unwrap_or(0.0)
-                        * 1000.0) as u64
-                        > trigger_delay
-                    {
-                        0
+                        * 1000.0) as u64;
+                    let delay = if trigger_delay > viz_time {
+                        trigger_delay - viz_time
                     } else {
-                        trigger_delay
+                        0
                     };
-                    if self.get_weapon_id() == 2 && attack_pressed {
+                    if self.quick_looting_ready {
+                        self.triggerbot_trigger_time = now_ms + delay;
+                        self.triggerbot_state = TriggerState::WaitTriggerLooting;
+                    } else if self.get_weapon_id() == 2 && attack_pressed {
                         // Release the drawn bow.
                         self.triggerbot_release_time = now_ms + delay;
                         self.triggerbot_state = TriggerState::WaitRelease;
@@ -1107,6 +1194,13 @@ impl TriggerBot for Aimbot {
                         self.triggerbot_state = TriggerState::Trigger;
                     }
                 }
+                TriggerState::WaitTriggerLooting => (),
+                TriggerState::TriggerLooting => {
+                    // No long press for button_use
+                    self.triggerbot_release_time = now_ms + rand::thread_rng().gen_range(10..100);
+                    self.triggerbot_state = TriggerState::WaitReleaseLooting;
+                }
+                TriggerState::WaitReleaseLooting => (),
             }
         } else {
             match self.triggerbot_state {
@@ -1118,10 +1212,18 @@ impl TriggerBot for Aimbot {
                 }
                 TriggerState::Trigger => {
                     // It's time to release
-                    self.triggerbot_release_time = now_ms + rand::thread_rng().gen_range(0..100);
+                    self.triggerbot_release_time = now_ms + rand::thread_rng().gen_range(10..100);
                     self.triggerbot_state = TriggerState::WaitRelease;
                 }
                 TriggerState::WaitRelease => (),
+                TriggerState::WaitTriggerLooting => {
+                    self.triggerbot_state = TriggerState::Idle;
+                }
+                TriggerState::TriggerLooting => {
+                    self.triggerbot_release_time = now_ms + rand::thread_rng().gen_range(10..100);
+                    self.triggerbot_state = TriggerState::WaitReleaseLooting;
+                }
+                TriggerState::WaitReleaseLooting => (),
             }
         }
     }

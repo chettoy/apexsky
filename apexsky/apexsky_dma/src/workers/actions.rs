@@ -6,32 +6,40 @@ use apexsky::{
     love_players::LoveStatus,
     offsets::G_OFFSETS,
 };
-use apexsky_dmalib::access::{AccessType, MemApi, PendingAccessRequest, PendingMemRead, PendingMemWrite};
+use apexsky_dmalib::access::{
+    AccessType, MemApi, PendingAccessRequest, PendingMemRead, PendingMemWrite,
+};
 use apexsky_proto::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
 use ndarray::arr1;
-use obfstr::obfstr as s;
-//use apexsky::noobfstr as s;
-use parking_lot::RwLock;
-use std::collections::HashSet;
+//use obfstr::obfstr as s;
+use apexsky::noobfstr as s;
 use std::mem::size_of;
 use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashSet, sync::atomic::Ordering};
 use tokio::sync::watch;
 use tokio::time::{sleep, Instant};
-use tracing::{instrument, trace, trace_span};
 
-use crate::{apexdream::state::entities::Entity, workers::items::LootInt};
-use crate::apexdream::{
-    base::math,
-    sdk::HighlightBits,
-    state::entities::{BaseNPCEntity, LootEntity},
+use crate::{
+    apexdream::state::entities::Entity, game::player::QuickLooting, workers::items::LootInt,
+    SharedStateWrapper,
 };
-use crate::game::{data::*, player::GamePlayer};
-use crate::SharedState;
+use crate::{
+    apexdream::state::GameState,
+    game::{data::*, player::GamePlayer},
+};
+use crate::{
+    apexdream::{
+        base::math,
+        sdk::HighlightBits,
+        state::entities::{BaseNPCEntity, LootEntity},
+    },
+    PRINT_LATENCY,
+};
 
-#[instrument(skip_all)]
+#[tracing::instrument(skip_all)]
 pub async fn actions_loop(
     mut active: watch::Receiver<bool>,
-    shared_state: Arc<RwLock<SharedState>>,
+    shared_state: SharedStateWrapper,
     access_tx: MemApi,
     aim_key_tx: watch::Sender<AimKeyState>,
     aim_select_tx: watch::Sender<Vec<AimTargetInfo>>,
@@ -44,11 +52,10 @@ pub async fn actions_loop(
     let mut start_instant = Instant::now();
     let mut fps_checkpoint_instant = Instant::now();
     let mut last_checkpoint_frame: i32 = 0;
-    // let mut prev_lplayer_ptr: u64 = 0;
     let mut actions_tick: i64 = -1;
     let mut log_items: usize = 0;
-    let mut world_ready: bool = false;
-    let mut player_ready: bool = false;
+    let mut world_ready: bool;
+    let mut player_ready: bool;
 
     while *active.borrow_and_update() {
         sleep(Duration::from_secs(2)).await;
@@ -60,12 +67,12 @@ pub async fn actions_loop(
             .await?
         {
             Some(baseaddr) => {
-                if shared_state.read().game_baseaddr.is_none() {
-                    shared_state.write().game_baseaddr = Some(baseaddr);
-                }
+                shared_state
+                    .game_baseaddr
+                    .store(baseaddr, Ordering::Release);
             }
             None => {
-                shared_state.write().game_baseaddr = None;
+                shared_state.game_baseaddr.store(0, Ordering::Release);
                 continue;
             }
         }
@@ -73,17 +80,23 @@ pub async fn actions_loop(
         while *active.borrow_and_update() {
             sleep(Duration::from_millis(2)).await; // don't change xD
 
-            let loop_duration = start_instant.elapsed().as_millis();
+            let loop_duration = start_instant.elapsed().as_millis().try_into()?;
             start_instant = Instant::now();
 
-            let Some(apex_base) = AccessType::mem_baseaddr()
+            let apex_base = match AccessType::mem_baseaddr()
                 .with_priority(100)
                 .dispatch(&access_tx)
                 .await?
                 .await?
-            else {
-                shared_state.write().game_baseaddr = None;
-                break;
+            {
+                Some(addr) => {
+                    shared_state.game_baseaddr.store(addr, Ordering::Release);
+                    addr
+                }
+                None => {
+                    shared_state.game_baseaddr.store(0, Ordering::Release);
+                    break;
+                }
             };
             let mem = &access_tx;
 
@@ -102,7 +115,7 @@ pub async fn actions_loop(
                         };
                         let tick_start = Instant::now();
                         apexdream.tick_state(&mut api).await;
-                        tick_start.elapsed().as_millis()
+                        tick_start.elapsed().as_millis().try_into()?
                     },
                     apexdream.get_state(),
                     apexdream.is_newly_connected(),
@@ -110,7 +123,7 @@ pub async fn actions_loop(
             };
 
             if verbose {
-                trace!(loop_duration, tick_duration, ?apex_state.client, "{}", s!("game state update"));
+                tracing::trace!(loop_duration, tick_duration, ?apex_state.client, "{}", s!("game state update"));
             }
 
             // // Update spectator checker
@@ -156,47 +169,212 @@ pub async fn actions_loop(
             //     trace!(?g_settings);
             // }
 
-            trace_span!("Update client state").in_scope(|| {
+            // Update client state
+            {
                 world_ready = apex_state.is_in_game() && apex_state.local_player().is_some();
+                player_ready = world_ready
+                    && shared_state
+                        .players
+                        .read()
+                        .get(&shared_state.local_player_ptr.load(Ordering::Acquire))
+                        .is_some();
 
-                let mut wlock = shared_state.write();
+                shared_state
+                    .world_ready
+                    .store(world_ready, Ordering::Release);
+                shared_state
+                    .frame_count
+                    .store(apex_state.client.framecount, Ordering::Release);
+                shared_state
+                    .tick_num
+                    .store(actions_tick.try_into().unwrap(), Ordering::Release);
+                shared_state
+                    .tick_duration
+                    .store(tick_duration, Ordering::Release);
+                shared_state
+                    .actions_duration
+                    .store(loop_duration, Ordering::Release);
 
-                wlock.game_baseaddr = Some(apex_base);
-                wlock.world_ready = world_ready;
-                player_ready = world_ready && wlock.local_player.is_some();
-
-                wlock.frame_count = apex_state.client.framecount;
-                wlock.view_matrix = apex_state.client.view_matrix;
-                wlock.tick_num = actions_tick.try_into().unwrap();
-                wlock.update_time = apex_state.time;
-                wlock.update_duration = (loop_duration, tick_duration);
-
-                if !player_ready {
-                    wlock.spectator_list.clear();
-                    wlock.allied_spectator_list.clear();
+                {
+                    let mut lock = shared_state.game_fps.lock();
+                    if let Some(fps_update) = game_fps_update {
+                        tracing::trace!(fps_update);
+                        *lock = fps_update;
+                    } else if *lock < f32::EPSILON {
+                        *lock = g_settings.game_fps;
+                    }
                 }
+                *shared_state.update_time.lock() = apex_state.time;
+                *shared_state.view_matrix.lock() = apex_state.client.view_matrix;
 
-                if let Some(fps_update) = game_fps_update {
-                    wlock.game_fps = fps_update;
-                    trace!(fps_update);
-                } else if wlock.game_fps < f32::EPSILON {
-                    wlock.game_fps = g_settings.game_fps;
+                if PRINT_LATENCY {
+                    println!(
+                        "{}{:.1}",
+                        s!("actions data latency "),
+                        apexsky::aimbot::get_unix_timestamp_in_millis() as f64
+                            - apex_state.time * 1000.0
+                    );
                 }
 
                 if verbose {
-                    trace!(shared_state = ?wlock);
+                    tracing::trace!(?shared_state);
                 }
-            });
+            }
+
+            // Send key status to aimbot worker
+            aim_key_tx
+                .send(AimKeyState {
+                    aimbot_hotkey_1: if apex_state.is_button_down(g_settings.aimbot_hot_key_1) {
+                        g_settings.aimbot_hot_key_1
+                    } else {
+                        0
+                    },
+                    aimbot_hotkey_2: if apex_state.is_button_down(g_settings.aimbot_hot_key_2) {
+                        g_settings.aimbot_hot_key_2
+                    } else {
+                        0
+                    },
+                    attack_button: apex_state.buttons.in_attack.down[0],
+                    zoom_button: apex_state.buttons.in_zoom.down[0],
+                    triggerbot_hotkey: if apex_state.is_button_down(g_settings.trigger_bot_hot_key)
+                    {
+                        g_settings.trigger_bot_hot_key
+                    } else {
+                        0
+                    },
+                    attack_state: match apex_state.buttons.in_attack.state.try_into() {
+                        Ok(v) => v,
+                        Err(_) => {
+                            tracing::error!("{}", s!("err convert in_attack to i32"));
+                            continue;
+                        }
+                    },
+                    quick_looting_hotkey: if apex_state
+                        .is_button_down(g_settings.quick_looting_hot_key)
+                    {
+                        g_settings.quick_looting_hot_key
+                    } else {
+                        0
+                    },
+                })
+                .unwrap_or_else(|e| {
+                    tracing::error!(%e, ?aim_key_tx, "{}", s!("send key status"));
+                });
+
+            // Update entities
+            if world_ready {
+                let mut players = HashMap::new();
+                apex_state.players().for_each(|pl| {
+                    // FIXME: skip wrong entity
+                    if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 50 {
+                        return;
+                    }
+                    let game_player = GamePlayer::new(
+                        pl.clone(),
+                        apex_state,
+                        &mut G_STATE.lock().unwrap().config,
+                    );
+                    let entity_ptr = pl.entity_ptr.into_raw();
+                    let player = Arc::new(game_player);
+                    players.insert(entity_ptr, player);
+                });
+
+                let local_player_ptr: u64 = players
+                    .contains_key(&apex_state.client.local_player_ptr)
+                    .then_some(apex_state.client.local_player_ptr)
+                    .unwrap_or(0);
+                let view_player_ptr: u64 = apex_state
+                    .local_player()
+                    .map(|entity| entity.get_entity_ptr())
+                    .unwrap_or(0);
+
+                if actions_tick % 2 != 0 {
+                    let mut aim_entities = shared_state.aim_entities.write();
+                    for (k, v) in &players {
+                        aim_entities.insert(*k, v.clone());
+                    }
+                    *shared_state.players.write() = players;
+                } else {
+                    let mut npcs: HashMap<u64, Arc<dyn AimEntity>> = HashMap::new();
+                    apex_state
+                        .entities_as::<BaseNPCEntity>()
+                        .for_each(|entity| {
+                            npcs.insert(entity.entity_ptr.into_raw(), Arc::new(entity.clone()));
+                        });
+
+                    let mut treasure_clues: HashMap<u64, TreasureClue> = HashMap::new();
+                    if let Some(local_position) = players
+                        .get(&local_player_ptr)
+                        .map(|l| arr1(&l.get_entity().origin))
+                    {
+                        apex_state.entities_as::<LootEntity>().for_each(|entity| {
+                            let distance = (arr1(&entity.origin) - &local_position)
+                                .mapv(|x| x * x)
+                                .sum()
+                                .sqrt();
+                            let clue = TreasureClue {
+                                entity_handle: entity.entity_ptr.into_raw(),
+                                item_id: entity.custom_script_int,
+                                custom_item_id: (entity.custom_script_int as u64
+                                    | (entity.survival_property as u64) << 32),
+                                position: Some(entity.origin.into()),
+                                distance,
+                            };
+                            treasure_clues.insert(clue.entity_handle, clue);
+                        });
+                    }
+                    let loot_count = treasure_clues.len();
+                    tracing::trace!(loot_count, "{}", s!("loots updated"));
+
+                    let mut aim_entities: HashMap<u64, Arc<dyn AimEntity>> = HashMap::new();
+                    for (k, v) in &players {
+                        aim_entities.insert(*k, v.clone());
+                    }
+                    for (k, v) in &npcs {
+                        aim_entities.insert(*k, v.clone());
+                    }
+                    for (k, v) in &treasure_clues {
+                        if v.distance > 40.0 * 3.0 {
+                            continue;
+                        }
+                        aim_entities.insert(*k, Arc::new(QuickLooting(v.clone())));
+                    }
+                    let entity_count = aim_entities.len();
+                    tracing::trace!(entity_count, "{}", s!("AimEntities updated"));
+
+                    *shared_state.aim_entities.write() = aim_entities;
+                    *shared_state.npcs.write() = npcs;
+                    *shared_state.players.write() = players;
+                    *shared_state.treasure_clues.write() = treasure_clues;
+                }
+
+                shared_state
+                    .local_player_ptr
+                    .store(local_player_ptr, Ordering::Release);
+                shared_state
+                    .view_player_ptr
+                    .store(view_player_ptr, Ordering::Release);
+            } else {
+                shared_state.local_player_ptr.store(0, Ordering::Release);
+                shared_state.view_player_ptr.store(0, Ordering::Release);
+                shared_state.aim_entities.write().clear();
+                shared_state.npcs.write().clear();
+                shared_state.players.write().clear();
+                shared_state.treasure_clues.write().clear();
+            }
 
             // Log WeaponId
             if is_newly_connected {
                 tracing::info!(?apex_state.string_tables.weapon_names);
-                if apex_state.is_firing_range() && apex_state.string_tables.weapon_names.len() != WEAPON_LIST.len() {
+                if apex_state.is_firing_range()
+                    && apex_state.string_tables.weapon_names.len() != WEAPON_LIST.len()
+                {
                     match (|| -> anyhow::Result<()> {
                         use std::fs;
                         use std::io::Write;
 
-                        let weapons_json = serde_json::to_string(&apex_state.string_tables.weapon_names)?;
+                        let weapons_json =
+                            serde_json::to_string(&apex_state.string_tables.weapon_names)?;
                         let path = std::env::current_dir()?.join(s!("updated_weapon.json"));
                         let mut json_file = fs::OpenOptions::new()
                             .create(true)
@@ -216,79 +394,35 @@ pub async fn actions_loop(
                 }
             }
 
-            trace_span!("Send key status to aimbot worker").in_scope(|| {
-                aim_key_tx
-                    .send(AimKeyState {
-                        aimbot_hotkey_1: if apex_state.is_button_down(g_settings.aimbot_hot_key_1) {
-                            g_settings.aimbot_hot_key_1
-                        } else {
-                            0
-                        },
-                        aimbot_hotkey_2: if apex_state.is_button_down(g_settings.aimbot_hot_key_2) {
-                            g_settings.aimbot_hot_key_2
-                        } else {
-                            0
-                        },
-                        attack_button: apex_state.buttons.in_attack.down[0],
-                        zoom_button: apex_state.buttons.in_zoom.down[0],
-                        triggerbot_hotkey: if apex_state
-                            .is_button_down(g_settings.trigger_bot_hot_key)
-                        {
-                            g_settings.trigger_bot_hot_key
-                        } else {
-                            0
-                        },
-                        attack_state: match apex_state.buttons.in_attack.state.try_into() {
-                            Ok(v) => v,
-                            Err(_) => {
-                                tracing::error!("{}", s!("err convert in_attack to i32"));
-                                return;
-                            }
-                        },
-                    })
-                    .unwrap_or_else(|e| {
-                        tracing::error!(%e, ?aim_key_tx, "{}", s!("send key status"));
-                    });
-            });
+            // Log ItemId
+            if actions_tick % 40 == 0 && apex_state.is_firing_range() {
+                let loot_count = shared_state.treasure_clues.read().len();
+                if loot_count == 0 {
+                    tracing::debug!("{}", s!("wait items"));
+                } else if loot_count > log_items {
+                    // create new item list
+                    let item_namelist = apex_state
+                        .entities_as::<LootEntity>()
+                        .map(|entity| LootInt {
+                            int: entity.custom_script_int,
+                            model: entity.model_name.string.clone(),
+                        })
+                        .collect::<HashSet<LootInt>>();
+                    let mut item_namelist: Vec<LootInt> = item_namelist.into_iter().collect();
+                    item_namelist.sort_by(|a, b| a.int.cmp(&b.int));
+                    tracing::info!("{loot_count}{}", s!(" items sorted"));
+                    log_items = loot_count;
 
-            if player_ready {
-                trace_span!("Update view_player hot data").in_scope(|| {
-                    if let Some(value) = apex_state.local_player() {
-                        shared_state
-                            .write()
-                            .view_player
-                            .as_mut()
-                            .map(|view_player| view_player.update_buf_hotdata(value));
+                    match crate::workers::items::export_new_items(item_namelist) {
+                        Ok(()) => {
+                            tracing::info!("{}", s!("Exported to updated_item.json"));
+                        }
+                        Err(e) => {
+                            let treasure_clues = shared_state.treasure_clues.read().clone();
+                            tracing::warn!(%e, ?treasure_clues, "{loot_count}{}", s!(" items sorted"))
+                        }
                     }
-                });
-
-                trace_span!("Update entities hot data").in_scope(|| {
-                    let player_entities = apex_state.players();
-                    let local_player_ptr = apex_state.client.local_player_ptr;
-
-                    let mut players: HashMap<u64, GamePlayer> = shared_state.read().players.clone();
-                    let mut aim_entities = shared_state.read().aim_entities.clone();
-
-                    player_entities.for_each(|pl| {
-                        let entity_ptr = pl.entity_ptr.into_raw();
-                        if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 50 {
-                            players.remove(&entity_ptr);
-                            return;
-                        }
-                        aim_entities.insert(entity_ptr, Arc::new(pl.clone()));
-                        if let Some(player) = players.get_mut(&entity_ptr) {
-                            player.update_buf_hotdata(&pl);
-                        }
-                    });
-
-                    let local_player: Option<GamePlayer> = players.get(&local_player_ptr).cloned();
-
-                    let mut state_wlock = shared_state.write();
-
-                    state_wlock.local_player = local_player;
-                    state_wlock.players = players;
-                    state_wlock.aim_entities = aim_entities;
-                });
+                }
             }
 
             /* Hot Variables Update End */
@@ -303,7 +437,7 @@ pub async fn actions_loop(
 
             /* Cold Variables Update Start */
 
-            trace_span!("Update state in global settings").in_scope(|| {
+            tracing::trace_span!("Update state in global settings").in_scope(|| {
                 let firing_range_mode = apex_state.is_firing_range();
                 let g_state = &mut G_STATE.lock().unwrap();
                 if g_state.config.settings.firing_range != firing_range_mode {
@@ -317,188 +451,32 @@ pub async fn actions_loop(
                 }
             });
 
-            trace_span!("Update entities").in_scope(|| {
-                if world_ready {
-                    let view_player: Option<GamePlayer> = apex_state.local_player().map(|entity| {
-                        GamePlayer::new(
-                            entity.clone(),
-                            apex_state,
-                            &mut G_STATE.lock().unwrap().config,
-                        )
-                    });
+            // Send aim targets
+            aim_select_tx
+                .send(collect_aim_targets(
+                    shared_state.clone(),
+                    apex_state,
+                    &g_settings,
+                    items_glow_rx.clone(),
+                ))
+                .unwrap_or_else(|e| {
+                    tracing::error!(%e, ?aim_select_tx, "{}", s!("send aim targets"));
+                });
 
-                    let mut players: HashMap<u64, GamePlayer> = HashMap::new();
-                    let mut aim_entities: HashMap<u64, Arc<dyn AimEntity>> = HashMap::new();
-
-                    apex_state.players().for_each(|pl| {
-                        // FIXME: skip wrong entity
-                        if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 50 {
+            if actions_tick % 4 != 0 {
+                tracing::trace_span!("Spectator check").in_scope(|| {
+                    if player_ready {
+                        let Some(lplayer_ptr) = shared_state.get_local_player_ptr() else {
                             return;
-                        }
-                        let game_player = GamePlayer::new(
-                            pl.clone(),
-                            apex_state,
-                            &mut G_STATE.lock().unwrap().config,
-                        );
-                        players.insert(pl.entity_ptr.into_raw(), game_player);
-                        aim_entities.insert(pl.entity_ptr.into_raw(), Arc::new(pl.clone()));
-                    });
-                    apex_state
-                        .entities_as::<BaseNPCEntity>()
-                        .for_each(|entity| {
-                            aim_entities
-                                .insert(entity.entity_ptr.into_raw(), Arc::new(entity.clone()));
-                        });
-
-                    let player_count = players.len();
-                    let entity_count = aim_entities.len();
-                    tracing::trace!(player_count, entity_count, "{}", s!("AimEntities updated"));
-
-                    let local_player: Option<GamePlayer> =
-                        players.get(&apex_state.client.local_player_ptr).cloned();
-
-                    let mut state_wlock = shared_state.write();
-                    state_wlock.local_player = local_player;
-                    state_wlock.view_player = view_player;
-                    state_wlock.players = players;
-                    state_wlock.aim_entities = aim_entities;
-                } else {
-                    let mut state_wlock = shared_state.write();
-                    state_wlock.local_player = None;
-                    state_wlock.view_player = None;
-                    state_wlock.players.clear();
-                    state_wlock.aim_entities.clear();
-                }
-            });
-
-            trace_span!("Update loots").in_scope(|| {
-                if world_ready {
-                    let Some(local_position) = shared_state
-                        .read()
-                        .local_player
-                        .as_ref()
-                        .map(|l| arr1(&l.get_entity().origin))
-                    else {
-                        return;
-                    };
-
-                    let mut loots: Vec<TreasureClue> = Vec::new();
-
-                    apex_state.entities_as::<LootEntity>().for_each(|entity| {
-                        let distance = (arr1(&entity.origin) - &local_position)
-                            .mapv(|x| x * x)
-                            .sum()
-                            .sqrt();
-                        let clue = TreasureClue { 
-                            entity_handle: entity.entity_ptr.into_raw(),
-                            item_id: entity.custom_script_int,
-                            custom_item_id: (entity.custom_script_int as u64 | (entity.survival_property as u64) << 32),
-                            position: Some(entity.origin.into()),
-                            distance,
                         };
-                        loots.push(clue);
-                    });
-
-                    let loot_count = loots.len();
-                    tracing::trace!(loot_count, "{}", s!("loots updated"));
-
-                    if verbose {
-                        tracing::trace!(?apex_state.entity_list.entities, "{}", s!("entity_list"));
-                    }
-
-                    // Log ItemId
-                    if apex_state.is_firing_range() {
-                        if loot_count == 0 {
-                            tracing::debug!("{}", s!("wait items"));
-                        } else if loot_count > log_items {
-                            // create new item list
-                            let item_namelist = apex_state
-                                .entities_as::<LootEntity>()
-                                .map(|entity| LootInt {
-                                    int: entity.custom_script_int,
-                                    model: entity.model_name.string.clone(),
-                                })
-                                .collect::<HashSet<LootInt>>();
-                            let mut item_namelist: Vec<LootInt> = item_namelist.into_iter().collect();
-                            item_namelist.sort_by(|a, b| a.int.cmp(&b.int));
-                            tracing::info!("{loot_count}{}", s!(" items sorted"));
-                            log_items = loot_count;
-
-                            match crate::workers::items::export_new_items(item_namelist) {
-                                Ok(()) => {
-                                    tracing::info!("{}", s!("Exported to updated_item.json"));
-                                }
-                                Err(e) => {
-                                    tracing::warn!(%e, ?loots, "{loot_count}{}", s!(" items sorted"))
-                                }
-                            }
-                        }
-                    }
-
-                    shared_state.write().treasure_clues = loots;
-                } else {
-                    shared_state.write().treasure_clues.clear();
-                }
-            });
-
-            trace_span!("Targeting").in_scope(|| {
-                // Send aim targets
-                aim_select_tx
-                    .send(if player_ready {
-                        // Iterate over all targetable entities
-                        let mut aim_targets: Vec<AimTargetInfo> = {
-                            let state = shared_state.read();
-                            if let Some(lplayer) = state.local_player.as_ref() {
-                                state
-                                    .aim_entities
-                                    .values()
-                                    .filter_map(|entity| {
-                                        process_player(
-                                            lplayer,
-                                            entity.as_ref(),
-                                            &state,
-                                            &g_settings,
-                                        )
-                                    })
-                                    .collect()
-                            } else {
-                                vec![]
-                            }
+                        let players = shared_state.players.read().clone();
+                        let Some(local_player) = players.get(&lplayer_ptr) else {
+                            return;
                         };
-                        aim_targets.sort_by(|a, b| {
-                            a.distance.partial_cmp(&b.distance).unwrap_or_else(|| {
-                                tracing::error!(?a, ?b, "{}", s!("sort"));
-                                panic!()
-                            })
-                        });
-                        aim_targets
-                    } else {
-                        vec![]
-                    })
-                    .unwrap_or_else(|e| {
-                        tracing::error!(%e, ?aim_select_tx, "{}", s!("send aim targets"));
-                    });
-            });
-
-            if actions_tick % 4 != 0 && player_ready {
-                trace_span!("Spectator check").in_scope(|| {
-                    let Some((lplayer_ptr, lplayer_team)) =
-                        shared_state.read().local_player.as_ref().map(|p| {
-                            (
-                                p.get_entity().entity_ptr.into_raw(),
-                                p.get_buf().team_num,
-                            )
-                        })
-                    else {
-                        return;
-                    };
-
-                    let tdm_toggle = g_settings.tdm_toggle;
-                    let shared_state = shared_state.clone();
-                    {
-                        let players = shared_state.read().players.clone();
-                        let alter_local_team = shared_state.read().map_testing_local_team;
-
+                        let lplayer_team = local_player.get_buf().team_num;
+                        let alter_local_team =
+                            shared_state.map_testing_local_team.load(Ordering::Acquire);
+                        let tdm_toggle = g_settings.tdm_toggle;
                         let is_teammate = |team_num| {
                             teammate_check(team_num, lplayer_team, alter_local_team, tdm_toggle)
                         };
@@ -530,15 +508,15 @@ pub async fn actions_loop(
                                     .and_then(|observer_target| {
                                         let target_ptr = observer_target.entity_ptr.into_raw();
                                         if player_ptr == lplayer_ptr {
-                                            players.get(&target_ptr).map(|target_player|(target_ptr, target_player))
+                                            Some(target_ptr)
                                         } else if target_ptr == lplayer_ptr {
-                                            Some((player_ptr, player))
+                                            Some(player_ptr)
                                         } else {
                                             None
                                         }
                                     })
-                                    .and_then(|(item_ptr, item_player)| {
-                                        let player_buf = item_player.get_buf();
+                                    .and_then(|item_ptr| {
+                                        let player_buf = players.get(&item_ptr)?.get_buf();
                                         Some(SpectatorInfo {
                                             ptr: item_ptr,
                                             name: player_buf.player_name.clone(),
@@ -563,142 +541,136 @@ pub async fn actions_loop(
                         let (allied_spectators, spectators): (Vec<_>, Vec<_>) =
                             tmp_specs.into_iter().partition(|info| info.is_teammate);
 
+                        *shared_state.spectator_list.lock() = (allied_spectators, spectators);
+                        *shared_state.teammates.lock() = teammates;
+                    } else {
                         {
-                            let mut wlock = shared_state.write();
-                            wlock.allied_spectator_list = allied_spectators;
-                            wlock.spectator_list = spectators;
-                            wlock.teammates = teammates;
+                            let mut lock = shared_state.spectator_list.lock();
+                            lock.0.clear();
+                            lock.1.clear();
                         }
-                    };
+                        //shared_state.teammates.lock().clear();
+                    }
                 });
 
-                // Inject highlight settings
-                let highlight_injected = {
-                    let mut injected = shared_state.read().highlight_injected;
-                    if !injected {
-                        let glow_fix_i32 =
-                            AccessType::mem_read(apex_base + OFFSET_GLOW_FIX, size_of::<i32>(), 0)
-                                .dispatch(mem)
-                                .await?
-                                .recv_for::<i32>()
-                                .await?;
-                        let glow_fix_u8 =
-                            AccessType::mem_read(apex_base + OFFSET_GLOW_FIX, size_of::<u8>(), 0)
-                                .dispatch(mem)
-                                .await?
-                                .recv_for::<u8>()
-                                .await?;
-                        tracing::trace!(glow_fix_i32, glow_fix_u8);
-                    }
-                    if (g_settings.player_glow || g_settings.item_glow) && player_ready {
-                        match inject_highlight(mem, apex_state.client.framecount, &g_settings).await
-                        {
-                            Ok(_) => {
-                                shared_state.write().highlight_injected = true;
-                                injected = true;
-                            }
-                            Err(e) => {
-                                tracing::debug!(%e, ?e, "{}", s!("Inject highlight settings"));
+                if player_ready {
+                    // Inject highlight settings
+                    let highlight_injected = {
+                        let mut injected = shared_state.highlight_injected.load(Ordering::Acquire);
+                        if (g_settings.player_glow || g_settings.item_glow) && player_ready {
+                            match inject_highlight(mem, apex_state.client.framecount, &g_settings)
+                                .await
+                            {
+                                Ok(_) => {
+                                    shared_state
+                                        .highlight_injected
+                                        .store(true, Ordering::Release);
+                                    injected = true;
+                                }
+                                Err(e) => {
+                                    tracing::debug!(%e, ?e, "{}", s!("Inject highlight settings"));
+                                }
                             }
                         }
-                    }
-                    injected
-                };
+                        injected
+                    };
 
-                // Write Player Glow
-                if g_settings.player_glow
-                    && highlight_injected
-                    && aim_select_rx.has_changed().unwrap_or_else(|e| {
-                        tracing::error!(%e, ?aim_select_rx, "{}", s!("perform player glow"));
-                        false
-                    })
-                {
-                    let reqs = aim_select_rx
-                        .borrow_and_update()
-                        .iter()
-                        .map(|target| {
-                            let target_ptr = target.entity_ptr;
-                            let highlight_context_id = player_glow(
-                                target,
-                                apex_state.client.framecount,
-                                g_settings.game_fps,
-                                g_settings.player_glow_armor_color,
-                                g_settings.player_glow_love_user,
-                            );
-                            (
-                                AccessType::mem_write_typed::<u8>(
-                                    target_ptr + G_OFFSETS.entity_highlight_generic_context - 1,
-                                    &highlight_context_id,
-                                    0,
-                                ),
-                                AccessType::mem_write_typed::<i32>(
-                                    target_ptr + OFFSET_GLOW_VISIBLE_TYPE,
-                                    &2,
-                                    0,
-                                ),
-                                AccessType::mem_write_typed::<f32>(
-                                    target_ptr + OFFSET_GLOW_DISTANCE,
-                                    &8.0E+4,
-                                    0,
-                                ),
-                                AccessType::mem_write_typed::<i32>(
-                                    target_ptr + OFFSET_GLOW_FIX,
-                                    &0,
-                                    0,
-                                ),
-                            )
+                    // Write Player Glow
+                    if g_settings.player_glow
+                        && highlight_injected
+                        && aim_select_rx.has_changed().unwrap_or_else(|e| {
+                            tracing::error!(%e, ?aim_select_rx, "{}", s!("perform player glow"));
+                            false
                         })
-                        .collect::<Vec<_>>();
-                    for (
-                        req_write_glow_id,
-                        req_write_glow_type,
-                        req_write_glow_dist,
-                        req_write_glow_fix,
-                    ) in reqs
                     {
-                        let (r0, r1, r2, r3) = tokio::join!(
-                            req_write_glow_id.with_priority(0).dispatch(mem),
-                            req_write_glow_type.with_priority(0).dispatch(mem),
-                            req_write_glow_dist.with_priority(0).dispatch(mem),
-                            req_write_glow_fix.with_priority(0).dispatch(mem),
-                        );
-                        let (r0, r1, r2, r3) = (r0?, r1?, r2?, r3?);
-                        r0.spawn_err_handler();
-                        r1.spawn_err_handler();
-                        r2.spawn_err_handler();
-                        r3.spawn_err_handler();
+                        let reqs = aim_select_rx
+                            .borrow_and_update()
+                            .iter()
+                            .map(|target| {
+                                let target_ptr = target.entity_ptr;
+                                let highlight_context_id = player_glow(
+                                    target,
+                                    apex_state.client.framecount,
+                                    g_settings.game_fps,
+                                    g_settings.player_glow_armor_color,
+                                    g_settings.player_glow_love_user,
+                                );
+                                (
+                                    AccessType::mem_write_typed::<u8>(
+                                        target_ptr + G_OFFSETS.entity_highlight_generic_context - 1,
+                                        &highlight_context_id,
+                                        0,
+                                    ),
+                                    AccessType::mem_write_typed::<i32>(
+                                        target_ptr + OFFSET_GLOW_VISIBLE_TYPE,
+                                        &2,
+                                        0,
+                                    ),
+                                    AccessType::mem_write_typed::<f32>(
+                                        target_ptr + OFFSET_GLOW_DISTANCE,
+                                        &8.0E+4,
+                                        0,
+                                    ),
+                                    AccessType::mem_write_typed::<i32>(
+                                        target_ptr + OFFSET_GLOW_FIX,
+                                        &0,
+                                        0,
+                                    ),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        for (
+                            req_write_glow_id,
+                            req_write_glow_type,
+                            req_write_glow_dist,
+                            req_write_glow_fix,
+                        ) in reqs
+                        {
+                            let (r0, r1, r2, r3) = tokio::try_join!(
+                                req_write_glow_id.with_priority(0).dispatch(mem),
+                                req_write_glow_type.with_priority(0).dispatch(mem),
+                                req_write_glow_dist.with_priority(0).dispatch(mem),
+                                req_write_glow_fix.with_priority(0).dispatch(mem),
+                            )?;
+                            r0.spawn_err_handler();
+                            r1.spawn_err_handler();
+                            r2.spawn_err_handler();
+                            r3.spawn_err_handler();
+                        }
                     }
-                }
 
-                // Write Items Glow
-                if g_settings.item_glow
-                    && highlight_injected
-                    && items_glow_rx.has_changed().unwrap_or_else(|e| {
-                        tracing::error!(%e, ?items_glow_rx, "{}", s!("perform items glow"));
-                        false
-                    })
-                {
-                    let reqs = items_glow_rx
-                        .borrow_and_update()
-                        .iter()
-                        .map(|(ptr, ctx_id)| {
-                            AccessType::mem_write_typed(
-                                ptr + G_OFFSETS.entity_highlight_generic_context - 1,
-                                ctx_id,
-                                0,
-                            )
+                    // Write Items Glow
+                    if g_settings.item_glow
+                        && highlight_injected
+                        && items_glow_rx.has_changed().unwrap_or_else(|e| {
+                            tracing::error!(%e, ?items_glow_rx, "{}", s!("perform items glow"));
+                            false
                         })
-                        .collect::<Vec<_>>();
-                    for req in reqs {
-                        req.with_priority(0)
-                            .dispatch(mem)
-                            .await?
-                            .spawn_err_handler();
+                    {
+                        let reqs = items_glow_rx
+                            .borrow_and_update()
+                            .iter()
+                            .map(|(ptr, ctx_id)| {
+                                AccessType::mem_write_typed(
+                                    ptr + G_OFFSETS.entity_highlight_generic_context - 1,
+                                    ctx_id,
+                                    0,
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        for req in reqs {
+                            req.with_priority(0)
+                                .dispatch(mem)
+                                .await?
+                                .spawn_err_handler();
+                        }
                     }
-                }
 
-                // Weapon model glow
-                // Not planned
+                    // Weapon model glow
+                    // Not planned
+
+                    // println!("in_use state {}", apex_state.buttons.in_use.state);
+                }
             }
         }
     }
@@ -706,13 +678,94 @@ pub async fn actions_loop(
     Ok(())
 }
 
-#[instrument(skip_all)]
-fn process_player<'a>(
+#[tracing::instrument(skip_all)]
+fn collect_aim_targets(
+    state: SharedStateWrapper,
+    apex_state: &GameState,
+    g_settings: &Settings,
+    items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
+) -> Vec<AimTargetInfo> {
+    if !state.is_world_ready() {
+        return vec![];
+    }
+
+    let quick_looting = apex_state.is_button_down(g_settings.quick_looting_hot_key);
+
+    let aim_entities = state.aim_entities.read().clone();
+    let players = state.players.read().clone();
+    let treasure_clues = if quick_looting {
+        Some(state.treasure_clues.read().clone())
+    } else {
+        None
+    };
+
+    let Some(lplayer) = state
+        .get_local_player_ptr()
+        .and_then(|ptr| players.get(&ptr))
+    else {
+        return vec![];
+    };
+
+    let alter_local_team_id = state.map_testing_local_team.load(Ordering::Acquire);
+
+    // Iterate over all targetable entities
+    let mut aim_targets: Vec<AimTargetInfo> = aim_entities
+        .values()
+        .filter_map(|entity| {
+            process_player(
+                &lplayer,
+                entity.as_ref(),
+                &players,
+                alter_local_team_id,
+                g_settings,
+            )
+        })
+        .collect();
+
+    if let Some(loots) = treasure_clues {
+        aim_targets.extend(items_glow_rx.borrow().iter().filter_map(|(ptr, _)| {
+            let clue = loots.get(ptr)?;
+            let distance = clue.distance;
+            (distance < 40.0 * 2.5).then_some({
+                let target_entity = QuickLooting(clue.clone());
+                let fov = calculate_target_fov(lplayer.as_ref(), &target_entity);
+                AimTargetInfo {
+                    fov,
+                    distance,
+                    is_visible: target_entity.is_visible(),
+                    is_knocked: target_entity.is_knocked(),
+                    health_points: 1,
+                    love_status: LoveStatus::Normal as i32,
+                    is_kill_leader: false,
+                    entity_ptr: target_entity.get_entity_ptr(),
+                    is_npc: false,
+                    is_loot: target_entity.is_loot(),
+                }
+            })
+        }));
+    }
+
+    aim_targets.sort_by(|a, b| {
+        a.distance.partial_cmp(&b.distance).unwrap_or_else(|| {
+            tracing::error!(?a, ?b, "{}", s!("sort"));
+            panic!()
+        })
+    });
+    aim_targets
+}
+
+#[tracing::instrument(skip_all)]
+fn process_player(
     local_player: &GamePlayer,
     target_entity: &dyn AimEntity,
-    state: &SharedState,
+    players: &HashMap<u64, Arc<GamePlayer>>,
+    alter_local_team_id: i32,
     g_settings: &Settings,
 ) -> Option<AimTargetInfo> {
+    if target_entity.is_loot() {
+        return None;
+    }
+
     let lplayer_ptr = local_player.get_entity().get_entity_ptr();
     let target_ptr = target_entity.get_entity_ptr();
 
@@ -722,7 +775,7 @@ fn process_player<'a>(
     let is_teammate = teammate_check(
         entity_team,
         local_team,
-        state.map_testing_local_team,
+        alter_local_team_id,
         g_settings.tdm_toggle,
     );
     // trace!(target_ptr, entity_team, is_teammate);
@@ -776,7 +829,7 @@ fn process_player<'a>(
     }
 
     let target_player = target_entity.is_player().then(|| {
-        let Some(p) = state.players.get(&target_ptr) else {
+        let Some(p) = players.get(&target_ptr) else {
             tracing::error!(?target_ptr, "{}", s!("UNREACHABLE"));
             panic!();
         };
@@ -814,10 +867,11 @@ fn process_player<'a>(
         },
         entity_ptr: target_ptr,
         is_npc: target_player.is_none(),
+        is_loot: false,
     })
 }
 
-#[instrument(skip_all)]
+#[tracing::instrument(skip_all)]
 fn player_glow(
     target: &AimTargetInfo,
     frame_count: i32,
@@ -838,7 +892,7 @@ fn player_glow(
                     151..=175 => HIGHLIGHT_PLAYER_BLUE,
                     176..=200 => HIGHLIGHT_PLAYER_PURPLE,
                     201..=225 => HIGHLIGHT_PLAYER_RED,
-                    _ => HIGHLIGHT_PLAYER_BLACK
+                    _ => HIGHLIGHT_PLAYER_BLACK,
                 }
             } else {
                 HIGHLIGHT_PLAYER_NOTVIZ
@@ -873,7 +927,7 @@ fn player_glow(
     setting_index
 }
 
-#[instrument(skip_all)]
+#[tracing::instrument(skip_all)]
 async fn inject_highlight(
     mem: &MemApi,
     frame_count: i32,
@@ -976,7 +1030,8 @@ async fn inject_highlight(
             .await?
             .recv_for::<u64>()
             .await?;
-    let mut futs_write_highlight_settings: Vec<tokio::task::JoinHandle<anyhow::Result<()>>> = Vec::with_capacity(highlight_settings_inject.len());
+    let mut futs_write_highlight_settings: Vec<tokio::task::JoinHandle<anyhow::Result<()>>> =
+        Vec::with_capacity(highlight_settings_inject.len());
     for (context_id, &bits, color) in highlight_settings_inject {
         let context_offset = highlight_settings_ptr + 0x34 * context_id as u64;
         futs_write_highlight_settings.push(tokio::spawn({
@@ -1004,7 +1059,7 @@ async fn inject_highlight(
     Ok(())
 }
 
-#[instrument(skip_all)]
+#[tracing::instrument(skip_all)]
 fn calculate_target_fov(from: &dyn AimEntity, target: &dyn AimEntity) -> f32 {
     let view_angles = from.get_sway_angles();
     let local_camera = from.get_cam_pos();
@@ -1040,7 +1095,7 @@ fn teammate_check(
     if tdm_toggle {
         let ent_team = if entity_team % 2 == 1 { 1 } else { 2 };
         let loc_team = if local_team % 2 == 1 { 1 } else { 2 };
-        trace!(
+        tracing::trace!(
             target_team = ent_team,
             local_team = loc_team,
             "{}",

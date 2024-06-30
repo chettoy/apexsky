@@ -97,6 +97,18 @@ impl MemAimHelper {
         .await?
         .await?
     }
+
+    pub async fn write_use_button(
+        mem: &MemApi,
+        apex_base: u64,
+        force_use_state: i32,
+    ) -> anyhow::Result<()> {
+        AccessType::mem_write_typed::<i32>(apex_base + G_OFFSETS.in_use + 0x8, &force_use_state, 0)
+            .with_priority(50)
+            .dispatch(mem)
+            .await?
+            .await?
+    }
 }
 
 impl MemAimActuator<'_> {
@@ -107,46 +119,68 @@ impl MemAimActuator<'_> {
 
 impl AimActuator for MemAimActuator<'_> {
     async fn perform(&mut self, action: AimbotAction) -> anyhow::Result<()> {
-        if let Some(delta) = action.shift_angles {
-            // calc and check target view angles
-            let mut update_angles = math::add(self.view_angles, delta);
-            if update_angles[0].abs() > 360.0
-                || update_angles[1].abs() > 360.0
-                || update_angles[2].abs() > 360.0
-            {
-                tracing::warn!(?update_angles, "{}", s!("got invalid target view_angles"));
-                anyhow::bail!("{}", s!("got invalid target view_angles"))
-            }
-            normalize_angles(&mut update_angles);
+        tokio::try_join!(
+            async {
+                if let Some(delta) = action.shift_angles {
+                    // calc and check target view angles
+                    let mut update_angles = math::add(self.view_angles, delta);
+                    if update_angles[0].abs() > 360.0
+                        || update_angles[1].abs() > 360.0
+                        || update_angles[2].abs() > 360.0
+                    {
+                        tracing::warn!(?update_angles, "{}", s!("got invalid target view_angles"));
+                        anyhow::bail!("{}", s!("got invalid target view_angles"))
+                    }
+                    normalize_angles(&mut update_angles);
 
-            // write target view angles
-            if let Err(e) = MemAimHelper::write_viewangles(
-                &self.father.mem,
-                self.father.lplayer_ptr,
-                &update_angles,
-            )
-            .await
-            {
-                tracing::warn!(%e, "{}", s!("err write viewangles"));
-                anyhow::bail!("{}", s!("err write viewangles"));
+                    // write target view angles
+                    if let Err(e) = MemAimHelper::write_viewangles(
+                        &self.father.mem,
+                        self.father.lplayer_ptr,
+                        &update_angles,
+                    )
+                    .await
+                    {
+                        tracing::warn!(%e, "{}", s!("err write viewangles"));
+                        anyhow::bail!("{}", s!("err write viewangles"));
+                    }
+                    self.updated_viewangles = Some(update_angles);
+                }
+                Ok(())
+            },
+            async {
+                if let Some(trigger) = action.force_attack {
+                    let force_attack = if trigger { 5 } else { 4 };
+                    if let Err(e) = MemAimHelper::write_attack_button(
+                        &self.father.mem,
+                        self.father.apex_base,
+                        force_attack,
+                    )
+                    .await
+                    {
+                        tracing::warn!(%e, "{}", s!("err write force_attack"));
+                        anyhow::bail!("{}", s!("err write force_attack"));
+                    }
+                }
+                Ok(())
+            },
+            async {
+                if let Some(in_use) = action.force_use {
+                    let in_use_state = if in_use { 5 } else { 4 };
+                    if let Err(e) = MemAimHelper::write_use_button(
+                        &self.father.mem,
+                        self.father.apex_base,
+                        in_use_state,
+                    )
+                    .await
+                    {
+                        tracing::warn!(%e, "{}", s!("err write force_pickup"));
+                        anyhow::bail!("{}", s!("err write force_pickup"));
+                    }
+                }
+                Ok(())
             }
-            self.updated_viewangles = Some(update_angles);
-        }
-
-        if let Some(trigger) = action.force_attack {
-            let force_attack = if trigger { 5 } else { 4 };
-            if let Err(e) = MemAimHelper::write_attack_button(
-                &self.father.mem,
-                self.father.apex_base,
-                force_attack,
-            )
-            .await
-            {
-                tracing::warn!(%e, "{}", s!("err write force_attack"));
-                anyhow::bail!("{}", s!("err write force_attack"));
-            }
-        }
-
+        )?;
         Ok(())
     }
 }

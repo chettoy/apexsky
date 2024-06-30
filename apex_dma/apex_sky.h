@@ -19,6 +19,7 @@ typedef struct {
   float skynade_dist;
   float smooth;
   float skynade_smooth;
+  float looting_smooth;
   float recoil_smooth_x;
   float recoil_smooth_y;
 } aimbot_settings_t;
@@ -71,6 +72,8 @@ typedef struct {
   int triggerbot_state;
   uint64_t triggerbot_trigger_time;
   uint64_t triggerbot_release_time;
+  int32_t quick_looting_state;
+  bool quick_looting_ready;
 } aimbot_state_t;
 
 typedef struct {
@@ -228,6 +231,7 @@ typedef struct {
   int aimbot_hot_key_1;
   int aimbot_hot_key_2;
   int trigger_bot_hot_key;
+  int quick_looting_hot_key;
   bool loot_filled_toggle;
   bool player_filled_toggle;
   bool super_key_toggle;

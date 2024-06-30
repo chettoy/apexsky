@@ -223,7 +223,7 @@ pub extern "C" fn aimbot_add_select_target(
     love: bool,
     target_ptr: u64,
 ) {
-    aimbot_write!().add_select_target(fov, distance, visible, love, target_ptr)
+    aimbot_write!().add_select_target(fov, distance, visible, love, false, false, target_ptr)
 }
 
 #[no_mangle]

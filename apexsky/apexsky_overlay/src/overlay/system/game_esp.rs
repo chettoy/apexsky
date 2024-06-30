@@ -4,11 +4,12 @@ use std::sync::Arc;
 use bevy::prelude::*;
 use bevy_health_bar3d::prelude as hpbar;
 use instant::{Duration, Instant};
+use obfstr::obfstr as s;
 use parking_lot::Mutex;
 use url::Url;
 
 use crate::overlay::model::{Health, Mana, MyCameraMarker, MyOverlayState, TokioRuntime};
-use crate::overlay::DRY_RUN;
+use crate::overlay::{DRY_RUN, PRINT_LATENCY};
 use crate::pb::apexlegends::{
     AimEntityData, AimTargetInfo, AimTargetItem, EspData, EspDataOption, EspSettings, Loots,
     LoveStatusCode,
@@ -147,12 +148,10 @@ pub(crate) fn despawn_dead_targets(
 
 #[tracing::instrument(skip_all)]
 pub(crate) fn follow_game_state(
-    rt: Res<TokioRuntime>,
     time: Res<Time>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut overlay_state: ResMut<MyOverlayState>,
     esp_system: Option<ResMut<EspSystem>>,
     mut windows: Query<&mut Window>,
     mut query_camera: Query<
@@ -186,23 +185,6 @@ pub(crate) fn follow_game_state(
         ),
     >,
 ) {
-    let _enter = rt.0.enter();
-
-    // Reconnect EspSystem
-    if let Some(addr) = &mut overlay_state.override_esp_addr {
-        if !addr.record_retry() {
-            return;
-        }
-        if let Some(esp_system) = EspSystem::connect(addr.endpoint.clone()) {
-            commands.insert_resource(esp_system);
-            overlay_state.override_esp_addr = None;
-        } else {
-            if esp_system.is_some() {
-                commands.remove_resource::<EspSystem>();
-            }
-        }
-    }
-
     let Some(mut esp_system) = esp_system else {
         return;
     };
@@ -242,83 +224,13 @@ pub(crate) fn follow_game_state(
 
     let esp_data = &esp_system.esp_data;
 
-    let fetch = {
-        // Retrieve settings every 2 seconds
-        let update_settings = esp_system
-            .last_settings_fetch_time
-            .is_none_or(|t| t.elapsed().as_secs() >= 2);
-        // Retrieve loots data every 0.2 seconds
-        let update_loots = esp_data.data_timestamp > esp_system.esp_loots.data_timestamp + 0.2;
-
-        let mut client = esp_system.rpc_client.clone();
-        let store = esp_system.fresh_data.clone();
-
-        async move {
-            fn unwrap_resp<T>(
-                resp: std::result::Result<tonic::Response<T>, tonic::Status>,
-            ) -> Option<T> {
-                match resp {
-                    Ok(data) => Some(data.into_inner()),
-                    Err(e) => {
-                        tracing::error!(%e, ?e);
-                        None
-                    }
-                }
-            }
-
-            if DRY_RUN {
-                *store.lock() = Some(fresh_data);
-            } else {
-                let request_time = Instant::now();
-                let new_esp_settings = if update_settings {
-                    unwrap_resp(client.get_esp_settings(()).await)
-                } else {
-                    None
-                };
-                let new_esp_data = unwrap_resp(
-                    client
-                        .get_esp_data(EspDataOption {
-                            version: 0,
-                            full_aimbot_state: false,
-                            full_targets_list: false,
-                        })
-                        .await,
-                );
-                let new_esp_loots = if update_loots {
-                    unwrap_resp(
-                        client
-                            .get_loots(GetLootsRequest {
-                                version: 0,
-                                max_distance: 40.0 * 200.0,
-                                wish_list: vec![
-                                    194, 198, 199, 219, 222, 223, 247, 248, 252, 256, 267,
-                                ],
-                            })
-                            .await,
-                    )
-                } else {
-                    None
-                };
-                let response_time = Instant::now();
-                let fresh_data = EspFreshData {
-                    request_time,
-                    response_time,
-                    new_esp_data,
-                    new_esp_settings,
-                    new_esp_loots,
-                };
-                *store.lock() = Some(fresh_data);
-            }
-        }
-    };
-
-    #[cfg(feature = "web-wasm")]
-    wasm_bindgen_futures::spawn_local(fetch);
-    #[cfg(not(feature = "web-wasm"))]
-    {
-        let task_pool = bevy::tasks::AsyncComputeTaskPool::get();
-        let task = task_pool.spawn(fetch);
-        task.detach();
+    if PRINT_LATENCY {
+        println!(
+            "{}{:.1}",
+            s!("esp task data latency "),
+            crate::overlay::utils::get_unix_timestamp_in_millis() as f64
+                - esp_data.data_timestamp * 1000.0
+        );
     }
 
     let (cam_proj, cam_trans) = query_camera.single_mut();
@@ -376,10 +288,11 @@ pub(crate) fn follow_game_state(
         type Error = ();
         fn try_from(value: &AimTargetItem) -> Result<Self, Self::Error> {
             let convert = || {
+                let info = value.info.clone()?;
                 let data = value.data.clone()?;
                 let target_pos: [f32; 3] = data.head_position.clone()?.into();
                 Some(Self {
-                    info: value.info.clone()?,
+                    info,
                     data: Some(data.clone()),
                     point_pos: Vec3 {
                         x: -target_pos[1],
@@ -425,6 +338,7 @@ pub(crate) fn follow_game_state(
                         is_kill_leader: false,
                         entity_ptr: 0,
                         is_npc: true,
+                        is_loot: false,
                     },
                     data: None,
                     point_pos: Vec3 {
@@ -463,10 +377,19 @@ pub(crate) fn follow_game_state(
 
     // Create entities that do not yet exist
     targets.into_iter().for_each(|(ptr, target)| {
+        if target.info.is_loot {
+            return;
+        }
         commands.spawn((
             PbrBundle {
                 mesh: meshes.add(Sphere::new(6.0).mesh().uv(32, 18)),
-                material: materials.add(Color::ORANGE_RED),
+                material: materials.add(if target.info.is_loot {
+                    Color::GOLD
+                } else if target.info.is_npc {
+                    Color::ORANGE_RED
+                } else {
+                    Color::ORANGE_RED
+                }),
                 transform: Transform::from_translation(target.point_pos),
                 ..default()
             },
@@ -503,4 +426,120 @@ pub(crate) fn follow_game_state(
             // },
         ));
     });
+}
+
+#[tracing::instrument(skip_all)]
+pub(crate) fn request_game_state(
+    mut commands: Commands,
+    rt: Res<TokioRuntime>,
+    mut overlay_state: ResMut<MyOverlayState>,
+    esp_system: Option<Res<EspSystem>>,
+) {
+    let _enter = rt.0.enter();
+
+    // Reconnect EspSystem
+    if let Some(addr) = &mut overlay_state.override_esp_addr {
+        if !addr.record_retry() {
+            return;
+        }
+        if let Some(esp_system) = EspSystem::connect(addr.endpoint.clone()) {
+            commands.insert_resource(esp_system);
+            overlay_state.override_esp_addr = None;
+        } else {
+            if esp_system.is_some() {
+                commands.remove_resource::<EspSystem>();
+            }
+        }
+    }
+
+    let Some(esp_system) = esp_system else {
+        return;
+    };
+
+    let fetch = {
+        // Retrieve settings every 2 seconds
+        let update_settings = esp_system
+            .last_settings_fetch_time
+            .is_none_or(|t| t.elapsed().as_secs() >= 2);
+        // Retrieve loots data every 0.2 seconds
+        let update_loots =
+            esp_system.esp_data.data_timestamp > esp_system.esp_loots.data_timestamp + 0.2;
+
+        let mut client = esp_system.rpc_client.clone();
+        let store = esp_system.fresh_data.clone();
+
+        let wish_list = esp_system.esp_settings.desired_loots.clone();
+
+        async move {
+            fn unwrap_resp<T>(
+                resp: std::result::Result<tonic::Response<T>, tonic::Status>,
+            ) -> Option<T> {
+                match resp {
+                    Ok(data) => Some(data.into_inner()),
+                    Err(e) => {
+                        tracing::error!(%e, ?e);
+                        None
+                    }
+                }
+            }
+
+            if !DRY_RUN {
+                let request_time = Instant::now();
+                let new_esp_settings = if update_settings {
+                    unwrap_resp(client.get_esp_settings(()).await)
+                } else {
+                    None
+                };
+                let new_esp_data = unwrap_resp(
+                    client
+                        .get_esp_data(EspDataOption {
+                            version: 0,
+                            full_aimbot_state: false,
+                            full_targets_list: false,
+                        })
+                        .await,
+                );
+                if PRINT_LATENCY {
+                    if let Some(ref data) = new_esp_data {
+                        println!(
+                            "esp_client data latency {:.1}",
+                            crate::overlay::utils::get_unix_timestamp_in_millis() as f64
+                                - data.data_timestamp * 1000.0
+                        );
+                    }
+                }
+                let new_esp_loots = if update_loots {
+                    unwrap_resp(
+                        client
+                            .get_loots(GetLootsRequest {
+                                version: 0,
+                                max_distance: 40.0 * 200.0,
+                                wish_list,
+                            })
+                            .await,
+                    )
+                } else {
+                    None
+                };
+                let response_time = Instant::now();
+                let fresh_data = EspFreshData {
+                    request_time,
+                    response_time,
+                    new_esp_data,
+                    new_esp_settings,
+                    new_esp_loots,
+                };
+                *store.lock() = Some(fresh_data);
+            }
+        }
+    };
+
+    #[cfg(feature = "web-wasm")]
+    wasm_bindgen_futures::spawn_local(fetch);
+    #[cfg(not(feature = "web-wasm"))]
+    {
+        let task_pool = bevy::tasks::AsyncComputeTaskPool::get();
+        let task = task_pool.spawn(fetch);
+        task.detach();
+    }
 }

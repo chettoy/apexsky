@@ -1,21 +1,20 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use apexsky::{config::Settings, global_state::G_STATE};
 use apexsky_proto::pb::apexlegends::TreasureClue;
 use obfstr::obfstr as s;
-use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
 use tokio::time::{sleep_until, Instant};
 use tracing::instrument;
 
 use crate::game::data::*;
-use crate::SharedState;
+use crate::SharedStateWrapper;
 
 #[instrument]
 pub async fn items_loop(
     mut active: watch::Receiver<bool>,
-    shared_state: Arc<RwLock<SharedState>>,
+    shared_state: SharedStateWrapper,
     items_glow_tx: watch::Sender<Vec<(u64, u8)>>,
 ) -> anyhow::Result<()> {
     let mut start_instant = Instant::now();
@@ -27,22 +26,18 @@ pub async fn items_loop(
         sleep_until(start_instant).await;
         start_instant = Instant::now();
 
-        {
-            let state = shared_state.read();
-            if state.game_baseaddr.is_none() || !state.world_ready {
-                tracing::trace!("{}", s!("waiting for world ready"));
-                continue;
-            }
+        if shared_state.get_game_baseaddr().is_none() || !shared_state.is_world_ready() {
+            tracing::trace!("{}", s!("waiting for world ready"));
+            continue;
         }
 
         let g_settings = G_STATE.lock().unwrap().config.settings.clone();
+        let treasure_clues = shared_state.treasure_clues.read().clone();
 
-        let item_glow = shared_state
-            .read()
-            .treasure_clues
-            .iter()
+        let item_glow = treasure_clues
+            .into_values()
             .filter_map(|clue| {
-                process_loot(clue, &g_settings).map(|glow_ctx| (clue.entity_handle, glow_ctx))
+                process_loot(&clue, &g_settings).map(|glow_ctx| (clue.entity_handle, glow_ctx))
             })
             .collect();
 
@@ -66,10 +61,6 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
         //tracing::warn!(?clue, "{}", s!("unknown item id"));
         ItemId::Unknown
     });
-
-    if !g_settings.item_glow {
-        return None;
-    }
 
     if clue.distance > g_settings.aimbot_settings.aim_dist {
         return None;

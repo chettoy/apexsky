@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU64};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -11,7 +12,7 @@ use apexsky_proto::pb::apexlegends::{
     AimKeyState, AimTargetInfo, PlayerState, SpectatorInfo, TreasureClue,
 };
 use obfstr::obfstr as s;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use tokio::sync::{mpsc, watch};
 use tokio::task::{self, JoinHandle};
 use tokio::time::sleep;
@@ -31,35 +32,40 @@ mod context_impl;
 mod game;
 mod workers;
 
-#[derive(Debug, Default, Clone)]
+const PRINT_LATENCY: bool = false;
+
+#[derive(Debug, Default)]
 struct SharedState {
-    game_baseaddr: Option<u64>,
-    tick_num: u64,
-    update_time: f64,
-    update_duration: (u128, u128),
-    aim_target: [f32; 3],
-    view_matrix: [f32; 16],
-    highlight_injected: bool,
-    treasure_clues: Vec<TreasureClue>,
-    teammates: Vec<PlayerState>,
-    spectator_list: Vec<SpectatorInfo>,
-    allied_spectator_list: Vec<SpectatorInfo>,
-    map_testing_local_team: i32,
-    world_ready: bool,
-    frame_count: i32,
-    game_fps: f32,
-    players: HashMap<u64, GamePlayer>,
-    aim_entities: HashMap<u64, Arc<dyn AimEntity>>,
-    local_player: Option<GamePlayer>,
-    view_player: Option<GamePlayer>,
-    aimbot_state: Option<(Aimbot, Duration)>,
+    game_baseaddr: AtomicU64,
+    tick_num: AtomicU64,
+    update_time: Mutex<f64>,
+    tick_duration: AtomicU64,
+    actions_duration: AtomicU64,
+    aim_target: Mutex<[f32; 3]>,
+    view_matrix: Mutex<[f32; 16]>,
+    highlight_injected: AtomicBool,
+    teammates: Mutex<Vec<PlayerState>>,
+    spectator_list: Mutex<(Vec<SpectatorInfo>, Vec<SpectatorInfo>)>,
+    map_testing_local_team: AtomicI32,
+    world_ready: AtomicBool,
+    frame_count: AtomicI32,
+    game_fps: Mutex<f32>,
+    players: RwLock<HashMap<u64, Arc<GamePlayer>>>,
+    npcs: RwLock<HashMap<u64, Arc<dyn AimEntity>>>,
+    treasure_clues: RwLock<HashMap<u64, TreasureClue>>,
+    aim_entities: RwLock<HashMap<u64, Arc<dyn AimEntity>>>,
+    local_player_ptr: AtomicU64,
+    view_player_ptr: AtomicU64,
+    aimbot_state: Mutex<Option<(Aimbot, Duration)>>,
 }
+
+pub type SharedStateWrapper = Arc<SharedState>;
 
 #[derive(Debug)]
 struct State {
     active: bool,
     active_tx: watch::Sender<bool>,
-    shared_state: Arc<RwLock<SharedState>>,
+    shared_state: SharedStateWrapper,
     io_thread: Option<std::thread::JoinHandle<anyhow::Result<()>>>,
     actions_t: Option<JoinHandle<anyhow::Result<()>>>,
     aim_t: Option<JoinHandle<anyhow::Result<()>>>,
@@ -76,7 +82,7 @@ impl State {
         Self {
             active,
             active_tx,
-            shared_state: Arc::new(RwLock::new(SharedState::default())),
+            shared_state: Arc::new(SharedState::default()),
             io_thread: None,
             actions_t: None,
             aim_t: None,
@@ -320,7 +326,7 @@ fn main() {
 
     let args: Vec<String> = std::env::args().collect();
 
-    tracing::debug!(?args, "{}", s!("start c9OI8lMNlvrc"));
+    tracing::debug!(?args, "{}", s!("start PJbGRfJ0aZpx"));
     __load_settings();
 
     let mut state = State::new();
@@ -344,7 +350,7 @@ fn main() {
     rt.block_on(async move {
         loop {
             state
-                .toggle_tui_active(if state.shared_state.read().game_baseaddr.is_some() {
+                .toggle_tui_active(if state.shared_state.get_game_baseaddr().is_some() {
                     !debug_mode
                 } else {
                     false

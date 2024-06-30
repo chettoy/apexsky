@@ -108,6 +108,7 @@ hotkey-menu-title = 热键菜单
 hotkey-item-aimbot1 = 自动瞄准热键1
 hotkey-item-aimbot2 = 自动瞄准热键2
 hotkey-item-trigger-bot = 自动扳机热键
+hotkey-item-quick-looting = 自动拾取热键
 menu-item-key-codes = 键码表
 item-filter-menu-title = 物品选择菜单
 info-invalid-keycode = 值无效。"{$item_label}"值必须介于 0 和 255 之间。

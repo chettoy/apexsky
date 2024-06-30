@@ -20,6 +20,7 @@ mod ui;
 mod utils;
 
 const DRY_RUN: bool = false;
+const PRINT_LATENCY: bool = false;
 
 impl Default for EspServiceAddr {
     fn default() -> Self {
@@ -82,13 +83,20 @@ pub(crate) fn main() {
         .insert_resource(Msaa::Sample4)
         .add_systems(Startup, setup)
         .add_systems(Startup, system::navigator::setup_voice_navigator)
-        .add_systems(Update, ui::toggle_mouse_passthrough)
-        .add_systems(Update, ui::ui_system)
-        .add_systems(Update, system::game_esp::follow_game_state)
-        .add_systems(Update, system::game_esp::despawn_dead_targets)
         .add_systems(Update, system::navigator::update_voice_navigator)
         .add_systems(Update, system::sound::load_test_sound)
         .add_systems(Update, system::sound::update_sound_objects)
+        .add_systems(Update, system::game_esp::request_game_state)
+        .add_systems(
+            Update,
+            system::game_esp::follow_game_state.after(system::game_esp::request_game_state),
+        )
+        .add_systems(Update, system::game_esp::despawn_dead_targets)
+        .add_systems(Update, ui::toggle_mouse_passthrough)
+        .add_systems(
+            Update,
+            ui::ui_system.after(system::game_esp::follow_game_state),
+        )
         .run();
 }
 

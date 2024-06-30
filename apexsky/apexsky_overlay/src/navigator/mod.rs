@@ -1,4 +1,4 @@
-use fyrox_sound::algebra::{Point3, UnitQuaternion, Vector3};
+use fyrox_sound::algebra::{UnitQuaternion, Vector3};
 use instant::Instant;
 use ndarray::arr1;
 

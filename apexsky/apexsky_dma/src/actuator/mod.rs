@@ -13,6 +13,7 @@ use enum_dispatch::enum_dispatch;
 pub struct AimbotAction {
     pub shift_angles: Option<[f32; 3]>,
     pub force_attack: Option<bool>,
+    pub force_use: Option<bool>,
 }
 
 #[enum_dispatch]

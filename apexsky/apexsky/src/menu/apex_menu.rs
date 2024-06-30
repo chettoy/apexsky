@@ -1114,9 +1114,25 @@ fn build_hotkey_menu(
                 Some(text_invalid_keycode!(i18n_bundle, HotkeyItemTriggerBot))
             },
         )
+        .add_input_item(
+            menu_item_keycode(
+                format!("4 - {}", i18n_msg!(i18n_bundle, HotkeyItemQuickLooting)),
+                settings.quick_looting_hot_key,
+            ),
+            &prompt_text_keycode!(i18n_bundle, HotkeyItemQuickLooting),
+            |val| {
+                if let Some(keycode) = val.parse::<u16>().ok() {
+                    let settings = &mut lock_config!().settings;
+                    settings.quick_looting_hot_key = keycode as i32;
+                    return None;
+                }
+                let i18n_bundle = get_fluent_bundle();
+                Some(text_invalid_keycode!(i18n_bundle, HotkeyItemQuickLooting))
+            },
+        )
         .add_dummy_item()
         .add_item(
-            item_text(format!("4 - {}", i18n_msg!(i18n_bundle, MenuItemKeyCodes))),
+            item_text(format!("9 - {}", i18n_msg!(i18n_bundle, MenuItemKeyCodes))),
             |handler: &mut TerminalMenu, _| {
                 handler.nav_menu(MenuLevel::KeyCodesMenu);
                 None

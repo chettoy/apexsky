@@ -104,6 +104,7 @@ message EspSettings {
   bool show_aim_target = 11;
   Vec3 glow_color_viz = 12;
   Vec3 glow_color_notviz = 13;
+  repeated int32 desired_loots = 14;
 }
 
 message EspData {

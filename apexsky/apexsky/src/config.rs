@@ -196,6 +196,7 @@ pub struct Settings {
     pub aimbot_hot_key_1: i32,
     pub aimbot_hot_key_2: i32,
     pub trigger_bot_hot_key: i32,
+    pub quick_looting_hot_key: i32,
     pub loot_filled_toggle: bool,
     pub player_filled_toggle: bool,
     pub super_key_toggle: bool,
@@ -439,6 +440,7 @@ impl Default for Settings {
             // Done with Gamepad or Keyboard config
             // triggerbot?
             trigger_bot_hot_key: 81,
+            quick_looting_hot_key: 79,
             // Terminal Stuff
             loot_filled_toggle: true,
             player_filled_toggle: true,
