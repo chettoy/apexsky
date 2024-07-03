@@ -141,7 +141,7 @@ pub fn io_thread(
         HashMap<usize, Vec<MemReadRequest>>,
         HashMap<usize, Vec<MemWriteRequest>>,
     ) = (HashMap::new(), HashMap::new());
-    let mut start_instant = Instant::now();
+    let mut start_instant;
     let mut next_flush_instant = Instant::now();
 
     let mut mem_os = create_os_instance(mem_connector.clone())

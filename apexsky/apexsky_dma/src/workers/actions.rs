@@ -245,7 +245,8 @@ pub async fn actions_loop(
                     attack_state: match apex_state.buttons.in_attack.state.try_into() {
                         Ok(v) => v,
                         Err(_) => {
-                            tracing::error!("{}", s!("err convert in_attack to i32"));
+                            tracing::error!(?apex_state.buttons.in_attack.state,
+                                            "{}", s!("err convert in_attack to i32"));
                             continue;
                         }
                     },
