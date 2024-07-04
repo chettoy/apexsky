@@ -16,8 +16,9 @@ pub async fn control_loop(
     while *active.borrow_and_update() {
         sleep(Duration::from_millis(100)).await;
         let spectator_count = { shared_state.spectator_list.lock().1.len() };
+        let spectator_count: i32 = spectator_count.try_into()?;
         if spectator_count > 0 {
-            kbd_backlight_blink(spectator_count.try_into().unwrap());
+            tokio::task::spawn_blocking(move || kbd_backlight_blink(spectator_count)).await?;
             sleep(Duration::from_secs(10) - Duration::from_millis(100)).await;
         }
     }

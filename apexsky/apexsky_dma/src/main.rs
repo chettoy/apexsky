@@ -315,6 +315,8 @@ fn main() {
         s!("rolling.log"),
     ));
     init_logger(non_blocking, true);
+    #[cfg(target_os = "linux")]
+    fix_log_permission();
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -398,7 +400,7 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| {
             EnvFilter::try_new(s!(
-                "apexsky_dma=warn,apexsky=warn,apexsky_dmalib=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::workers::items=info,apexsky_dma::apexdream=warn"
+                "apexsky_dma=info,apexsky=warn,apexsky_dmalib=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::workers::items=info,apexsky_dma::apexdream=warn"
             ))
         })
         .unwrap();
@@ -434,4 +436,50 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
         tracing::subscriber::set_global_default(subscriber)
     }
     .expect(s!("setting default subscriber failed"));
+}
+
+#[cfg(target_os = "linux")]
+fn fix_log_permission() {
+    use nix::unistd::{Gid, Uid};
+    use std::fs;
+    use std::os::unix::fs::{chown, MetadataExt};
+    use users::{get_current_uid, get_user_by_uid};
+
+    let current_uid = get_current_uid();
+
+    if current_uid == 0 {
+        let original_user_uid = Uid::from_raw(
+            std::env::var(s!("SUDO_UID"))
+                .expect(s!("Faild to read SUDO_UID"))
+                .parse::<u32>()
+                .expect(s!("Invalid UID")),
+        );
+        let original_user_gid = Gid::from_raw(
+            std::env::var(s!("SUDO_GID"))
+                .expect(s!("Faild to read SUDO_GID"))
+                .parse::<u32>()
+                .expect(s!("Invalid GID")),
+        );
+
+        let original_user =
+            get_user_by_uid(original_user_uid.into()).expect(s!("Failed to get original user"));
+
+        let metadata = fs::metadata(s!("log")).expect(s!("Failed to get metadata of log folder"));
+        let current_file_uid = Uid::from_raw(metadata.uid());
+        let current_file_gid = Gid::from_raw(metadata.gid());
+
+        if current_file_uid != original_user_uid || current_file_gid != original_user_gid {
+            tracing::info!(
+                "{}{:?}",
+                s!("Changing ownership of 'log' folder to user: "),
+                original_user.name()
+            );
+            chown(
+                s!("log"),
+                Some(original_user_uid.into()),
+                Some(original_user_gid.into()),
+            )
+            .expect(s!("Failed to change ownership of log folder"));
+        }
+    }
 }

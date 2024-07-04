@@ -235,7 +235,7 @@ pub fn export_new_items(loots: Vec<LootInt>) -> anyhow::Result<()> {
         };
         if *model != item.model {
             modify = true;
-            tracing::info!(?item, "{}", s!("loot model changed"));
+            //tracing::info!(?item, "{}", s!("loot model changed"));
         }
     }
 
