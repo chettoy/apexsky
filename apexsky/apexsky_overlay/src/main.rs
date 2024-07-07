@@ -5,7 +5,7 @@ mod overlay;
 mod pb;
 
 fn main() {
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     if users::get_current_uid() == 0 {
         println!("{}", obfstr::obfstr!("Do NOT run it with root privileges!"));
         return;

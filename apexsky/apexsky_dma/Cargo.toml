@@ -37,7 +37,7 @@ tonic-web = "0.11.0"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }
 tracing-appender = "0.2.3"
-users = "0.11.0"
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.29.0"
+users = "0.11.0"
