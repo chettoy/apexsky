@@ -23,7 +23,6 @@ indexmap = "2.2.6"
 intptr = { version = "0.1.6", features = ["dataview_1", "serde"] }
 named_constants = "0.2.0"
 ndarray = "0.15.6"
-nix = "0.29.0"
 obfstr = "0.4.3"
 once_cell = "1.19.0"
 parking_lot = { version = "0.12.3", features = ["nightly", "deadlock_detection"] }
@@ -39,3 +38,6 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }
 tracing-appender = "0.2.3"
 users = "0.11.0"
+
+[target.'cfg(unix)'.dependencies]
+nix = "0.29.0"

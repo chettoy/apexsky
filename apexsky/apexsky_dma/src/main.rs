@@ -315,7 +315,7 @@ fn main() {
         s!("rolling.log"),
     ));
     init_logger(non_blocking, true);
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     fix_log_permission();
 
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -400,7 +400,7 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| {
             EnvFilter::try_new(s!(
-                "apexsky_dma=info,apexsky=warn,apexsky_dmalib=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::workers::items=info,apexsky_dma::apexdream=warn"
+                "apexsky_dma=warn,apexsky=warn,apexsky_dmalib=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::workers::items=info,apexsky_dma::apexdream=warn"
             ))
         })
         .unwrap();
@@ -438,7 +438,7 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
     .expect(s!("setting default subscriber failed"));
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 fn fix_log_permission() {
     use nix::unistd::{Gid, Uid};
     use std::fs;
@@ -469,7 +469,7 @@ fn fix_log_permission() {
         let current_file_gid = Gid::from_raw(metadata.gid());
 
         if current_file_uid != original_user_uid || current_file_gid != original_user_gid {
-            tracing::info!(
+            tracing::warn!(
                 "{}{:?}",
                 s!("Changing ownership of 'log' folder to user: "),
                 original_user.name()
