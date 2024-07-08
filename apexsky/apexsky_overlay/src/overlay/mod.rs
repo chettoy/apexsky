@@ -1,9 +1,8 @@
-//use bevy::audio::{SpatialScale, Volume};
-use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
-use bevy::prelude::*;
 use bevy::window::CompositeAlphaMode;
 #[cfg(feature = "native")]
 use bevy::window::{WindowLevel, WindowMode};
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_health_bar3d::prelude as hpbar;
 use model::{MyOverlayState, TokioRuntime};
@@ -33,29 +32,38 @@ pub(crate) fn main() {
         .register_type::<model::Health>()
         .register_type::<model::Mana>()
         .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    #[cfg(feature = "native")]
-                    mode: WindowMode::BorderlessFullscreen,
-                    // Setting `transparent` allows the `ClearColor`'s alpha value to take effect
-                    #[cfg(feature = "native")]
-                    transparent: true,
-                    #[cfg(feature = "native")]
-                    focused: true,
-                    #[cfg(feature = "native")]
-                    window_level: WindowLevel::AlwaysOnTop,
-                    // Disabling window decorations to make it feel more like a widget than a window
-                    #[cfg(feature = "native")]
-                    decorations: false,
-                    #[cfg(target_os = "macos")]
-                    composite_alpha_mode: CompositeAlphaMode::PostMultiplied,
-                    #[cfg(target_os = "linux")]
-                    composite_alpha_mode: CompositeAlphaMode::PreMultiplied,
-                    title: embedded::S_TITLE.to_owned(),
+            DefaultPlugins
+                // .set(RenderPlugin {
+                //     render_creation: WgpuSettings {
+                //         backends: Some(Backends::GL),
+                //         ..Default::default()
+                //     }
+                //     .into(),
+                //     ..Default::default()
+                // })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        #[cfg(feature = "native")]
+                        mode: WindowMode::BorderlessFullscreen,
+                        // Setting `transparent` allows the `ClearColor`'s alpha value to take effect
+                        #[cfg(feature = "native")]
+                        transparent: true,
+                        #[cfg(feature = "native")]
+                        focused: true,
+                        #[cfg(feature = "native")]
+                        window_level: WindowLevel::AlwaysOnTop,
+                        // Disabling window decorations to make it feel more like a widget than a window
+                        #[cfg(feature = "native")]
+                        decorations: false,
+                        #[cfg(target_os = "macos")]
+                        composite_alpha_mode: CompositeAlphaMode::PostMultiplied,
+                        #[cfg(target_os = "linux")]
+                        composite_alpha_mode: CompositeAlphaMode::PreMultiplied,
+                        title: embedded::S_TITLE.to_owned(),
+                        ..default()
+                    }),
                     ..default()
                 }),
-                ..default()
-            }),
             embedded::EmbeddedAssetPlugin,
             FrameTimeDiagnosticsPlugin,
             EguiPlugin,

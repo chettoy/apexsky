@@ -3,7 +3,7 @@ use std::time::Duration;
 use apexsky::global_state::G_STATE;
 use apexsky_proto::pb::apexlegends::{
     AimEntityData, AimTargetItem, AimTargetList, AimbotState, EspData, EspDataOption, EspSettings,
-    EspVisualsFlag, Loots, Matrix4x4, Players, SpectatorList,
+    EspVisualsFlag, GSettings, Loots, Matrix4x4, Players, SpectatorList,
 };
 use apexsky_proto::pb::esp_service::esp_service_server::{EspService, EspServiceServer};
 use apexsky_proto::pb::esp_service::{
@@ -309,6 +309,20 @@ impl EspService for MyEspService {
                     .into(),
                 ),
                 desired_loots: vec![194, 198, 199, 219, 222, 223, 247, 248, 252, 256, 267],
+            }
+        };
+        Ok(Response::new(reply))
+    }
+
+    async fn get_global_settings(
+        &self,
+        _request: Request<()>,
+    ) -> Result<Response<GSettings>, Status> {
+        let reply = {
+            let g_settings = G_STATE.lock().unwrap().config.settings.clone();
+            GSettings {
+                ver_stamp: 0,
+                serialized_data: serde_json::to_string(&g_settings).ok(),
             }
         };
         Ok(Response::new(reply))

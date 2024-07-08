@@ -107,6 +107,11 @@ message EspSettings {
   repeated int32 desired_loots = 14;
 }
 
+message GSettings {
+  uint64 ver_stamp = 1;
+  optional string serialized_data = 2;
+}
+
 message EspData {
   bool ready = 1;
   bool in_game = 2;

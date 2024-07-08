@@ -17,6 +17,7 @@ service EspService {
   rpc GetLoots (GetLootsRequest) returns (com.chettoy.apexsky.apexlegends.Loots) {}
   rpc GetEspData (com.chettoy.apexsky.apexlegends.EspDataOption) returns (com.chettoy.apexsky.apexlegends.EspData) {}
   rpc GetEspSettings (google.protobuf.Empty) returns (com.chettoy.apexsky.apexlegends.EspSettings) {}
+  rpc GetGlobalSettings (google.protobuf.Empty) returns (com.chettoy.apexsky.apexlegends.GSettings) {}
 }
 
 message GetPlayersRequest {
