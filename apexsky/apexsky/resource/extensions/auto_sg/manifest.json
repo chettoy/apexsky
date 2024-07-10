@@ -1,0 +1,37 @@
+{
+    "manifest_version": 0,
+    "package_name": "com.chettoy.apexsky.autosg",
+    "version_code": 1,
+    "version": "0.1.0",
+    "label": "Auto SG",
+    "description": "Auto SG extension",
+    "icons": {},
+    "components": [
+        {
+            "service": "worker.js",
+            "type": "module"
+        }
+    ],
+    "permissions": [
+        {
+            "name": "com.chettoy.ACCESS_GAME_WORLD",
+            "value": ""
+        },
+        {
+            "name": "com.chettoy.ACCESS_GAME_INPUT",
+            "value": ""
+        },
+        {
+            "name": "com.chettoy.ACCESS_GAME_MEMORY",
+            "value": ""
+        },
+        {
+            "name": "com.chettoy.ACCESS_GLOBAL_SETTINGS",
+            "value": ""
+        },
+        {
+            "name": "com.chettoy.MODIFY_MEMORY",
+            "value": ""
+        }
+    ]
+}

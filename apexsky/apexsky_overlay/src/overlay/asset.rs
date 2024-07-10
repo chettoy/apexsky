@@ -1,9 +1,8 @@
-use bevy::utils::thiserror;
 use bevy::{
     asset::{io::Reader, ron, AssetLoader, AsyncReadExt, LoadContext},
     prelude::*,
     reflect::TypePath,
-    utils::BoxedFuture,
+    utils::{BoxedFuture, ConditionalSendFuture},
 };
 use serde::Deserialize;
 use thiserror::Error;
@@ -38,7 +37,10 @@ impl AssetLoader for CustomAssetLoader {
         reader: &'a mut Reader,
         _settings: &'a (),
         _load_context: &'a mut LoadContext,
-    ) -> BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
+    ) -> impl ConditionalSendFuture
+           + std::future::Future<
+        Output = Result<<Self as AssetLoader>::Asset, <Self as AssetLoader>::Error>,
+    > {
         Box::pin(async move {
             let mut bytes = Vec::new();
             reader.read_to_end(&mut bytes).await?;
@@ -79,7 +81,10 @@ impl AssetLoader for BlobAssetLoader {
         reader: &'a mut Reader,
         _settings: &'a (),
         _load_context: &'a mut LoadContext,
-    ) -> BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
+    ) -> impl ConditionalSendFuture
+           + std::future::Future<
+        Output = Result<<Self as AssetLoader>::Asset, <Self as AssetLoader>::Error>,
+    > {
         Box::pin(async move {
             debug!("Loading Blob...");
             let mut bytes = Vec::new();

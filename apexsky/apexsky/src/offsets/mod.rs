@@ -1,7 +1,7 @@
 use crate::lock_mod;
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
-use skyapex_sdk::module::CustomOffsets;
+pub use skyapex_sdk::module::CustomOffsets;
 
 pub static G_OFFSETS: Lazy<CustomOffsets> = Lazy::new(|| import_offsets());
 

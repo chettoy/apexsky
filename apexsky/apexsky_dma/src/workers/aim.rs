@@ -26,8 +26,6 @@ const ENABLE_MEM_AIM: bool = true;
 pub trait ContextForAimbot {
     async fn get_aimbot_settings(&self) -> Option<AimbotSettings>;
     async fn get_entity(&self, target_ptr: u64) -> Option<Arc<dyn AimEntity>>;
-    async fn get_frame_count(&self) -> u32;
-    async fn get_game_fps(&self) -> f32;
     async fn get_held_id(&self) -> Option<i32>;
     async fn get_weapon_info(&self) -> Option<CurrentWeaponInfo>;
     async fn update_aim_target_for_esp(&mut self, position: [f32; 3]);
@@ -179,7 +177,7 @@ pub async fn aimbot_loop(
 
         // Update aimbot settings
         // Lower update frequency to reduce cpu usage
-        if state.get_frame_count().await % 30 == 0 {
+        if state.get_frame_count() % 30 == 0 {
             if let Some(aimbot_settings) = state.get_aimbot_settings().await {
                 aimbot.settings(aimbot_settings);
                 trace!("{}", s!("aimbot_settings reload"));
@@ -187,7 +185,7 @@ pub async fn aimbot_loop(
         }
 
         // Update Aimbot state
-        aimbot.update(mem_aim_helper.lplayer_ptr, state.get_game_fps().await);
+        aimbot.update(mem_aim_helper.lplayer_ptr, state.get_game_fps());
 
         let aiming = aimbot.is_aiming();
         //tracing::trace!(?aiming, "711aac39-e83c-4788");

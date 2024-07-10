@@ -6,9 +6,9 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 async-trait = "0.1.80"
-bevy = { version = "0.13.2", features = ["wayland"] }
-bevy_async_task = "0.1.1"
-bevy_egui = "0.27.1"
+bevy = { version = "0.14.0", features = ["wayland"] }
+bevy_async_task = "0.2.0"
+bevy_egui = "0.28.0"
 bevy_health_bar3d = "3.2.1"
 chrono = "0.4.38"
 #console-subscriber = "0.1.5"
@@ -19,12 +19,13 @@ instant = "0.1.13"
 ndarray = "0.15.6"
 obfstr = "0.4.3"
 once_cell = "1.19.0"
-parking_lot = { version = "0.12.3", features = ["arc_lock", "nightly"] }
-prost = "0.12.6"
+parking_lot = { version = "0.12.3", features = ["nightly"] }
+prost = "0.13.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
+thiserror = "1.0.61"
 tokio = { version = "1.38.0", features = ["rt", "macros"] }
-tonic = { version = "0.11.0", default-features = false, features = ["prost", "codegen", "channel"] }
+tonic = { version = "0.12.0", default-features = false, features = ["prost", "codegen", "channel"] }
 tonic-web-wasm-client = { version = "0.5.1", optional = true }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }
@@ -37,7 +38,7 @@ wasm-bindgen-futures = { version = "0.4.42", optional = true }
 users = "0.11.0"
 
 [build-dependencies]
-tonic-build = "0.11.0"
+tonic-build = "0.12.0"
 
 [features]
 default = ["native"]

@@ -510,8 +510,8 @@ impl AccessRequest for PriorityAccess {
 
     async fn dispatch(self, api: &MemApi) -> anyhow::Result<()> {
         api.send(self).await.map_err(|e| {
-            tracing::error!(%e, ?e);
-            e.into()
+            let e: anyhow::Error = e.into();
+            e.context(format!("{}", s!("Failed to dispatch access request")))
         })
     }
 }

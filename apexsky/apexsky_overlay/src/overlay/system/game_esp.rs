@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use bevy::color::palettes;
 use bevy::prelude::*;
 use bevy_health_bar3d::prelude as hpbar;
 use instant::{Duration, Instant};
@@ -380,15 +381,19 @@ pub(crate) fn follow_game_state(
         if target.info.is_loot {
             return;
         }
+        let base_color = if target.info.is_loot {
+            palettes::css::GOLD
+        } else if target.info.is_npc {
+            palettes::css::ORANGE_RED
+        } else {
+            palettes::css::ORANGE_RED
+        };
         commands.spawn((
             PbrBundle {
                 mesh: meshes.add(Sphere::new(6.0).mesh().uv(32, 18)),
-                material: materials.add(if target.info.is_loot {
-                    Color::GOLD
-                } else if target.info.is_npc {
-                    Color::ORANGE_RED
-                } else {
-                    Color::ORANGE_RED
+                material: materials.add(StandardMaterial {
+                    base_color: Color::Srgba(base_color),
+                    ..Default::default()
                 }),
                 transform: Transform::from_translation(target.point_pos),
                 ..default()

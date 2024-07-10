@@ -23,6 +23,7 @@ rustflags = [
   "-Clink-arg=-fuse-ld=lld", # Use LLD Linker
   "-Zshare-generics=y",      # (Nightly) Make the current crate share its generic instantiations
   "-Zthreads=0",             # (Nightly) Use improved multithreading with the recommended amount of threads.
+  "-Zmacro-backtrace",
 ]
 
 # NOTE: you must install [Mach-O LLD Port](https://lld.llvm.org/MachO/index.html) on mac. you can easily do this by installing llvm which includes lld with the "brew" package manager:

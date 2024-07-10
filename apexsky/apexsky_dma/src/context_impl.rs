@@ -60,6 +60,20 @@ impl SharedState {
     pub fn is_world_ready(&self) -> bool {
         self.world_ready.load(std::sync::atomic::Ordering::Acquire)
     }
+
+    #[instrument]
+    pub fn get_frame_count(&self) -> u32 {
+        let frame_count = self.frame_count.load(std::sync::atomic::Ordering::Acquire);
+        frame_count.try_into().unwrap_or_else(|e| {
+            tracing::error!(%e, ?e, frame_count);
+            0
+        })
+    }
+
+    #[instrument]
+    pub fn get_game_fps(&self) -> f32 {
+        self.game_fps.lock().to_owned()
+    }
 }
 
 impl ContextForAimbot for SharedStateWrapper {
@@ -77,20 +91,6 @@ impl ContextForAimbot for SharedStateWrapper {
     #[instrument]
     async fn get_entity(&self, target_ptr: u64) -> Option<Arc<dyn AimEntity>> {
         self.aim_entities.read().get(&target_ptr).cloned()
-    }
-
-    #[instrument]
-    async fn get_frame_count(&self) -> u32 {
-        let frame_count = self.frame_count.load(std::sync::atomic::Ordering::Acquire);
-        frame_count.try_into().unwrap_or_else(|e| {
-            tracing::error!(%e, ?e, frame_count);
-            0
-        })
-    }
-
-    #[instrument]
-    async fn get_game_fps(&self) -> f32 {
-        self.game_fps.lock().to_owned()
     }
 
     #[instrument]

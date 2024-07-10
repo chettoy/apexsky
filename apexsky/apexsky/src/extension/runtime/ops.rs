@@ -9,7 +9,10 @@ pub(super) async fn op_read_file(#[string] path: String) -> Result<String, AnyEr
 
 #[op2(async)]
 #[string]
-pub(super) async fn op_write_file(#[string] path: String, #[string] contents: String) -> Result<(), AnyError> {
+pub(super) async fn op_write_file(
+    #[string] path: String,
+    #[string] contents: String,
+) -> Result<(), AnyError> {
     tokio::fs::write(path, contents).await?;
     Ok(())
 }

@@ -16,12 +16,12 @@ use apexsky::noobfstr as s;
 use std::mem::size_of;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use std::{collections::HashSet, sync::atomic::Ordering};
-use tokio::sync::watch;
+use tokio::sync::{mpsc, watch};
 use tokio::time::{sleep, Instant};
 
 use crate::{
-    apexdream::state::entities::Entity, game::player::QuickLooting, workers::items::LootInt,
-    SharedStateWrapper,
+    apexdream::state::entities::Entity, game::player::QuickLooting, usermod_thr::UserModEvent,
+    workers::items::LootInt, SharedStateWrapper,
 };
 use crate::{
     apexdream::state::GameState,
@@ -43,10 +43,17 @@ pub async fn actions_loop(
     access_tx: MemApi,
     aim_key_tx: watch::Sender<AimKeyState>,
     aim_select_tx: watch::Sender<Vec<AimTargetInfo>>,
+    usermod_event_tx: mpsc::UnboundedSender<UserModEvent>,
     mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
     mut items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
 ) -> anyhow::Result<()> {
     tracing::debug!("{}", s!("task start"));
+
+    let usermod_send_event = |event: UserModEvent| {
+        if let Err(e) = usermod_event_tx.send(event) {
+            tracing::error!(%e, "{}", s!("usermod_send_event"));
+        };
+    };
 
     let mut apexdream = crate::apexdream::Instance::new();
     let mut start_instant = Instant::now();
@@ -70,6 +77,7 @@ pub async fn actions_loop(
                 shared_state
                     .game_baseaddr
                     .store(baseaddr, Ordering::Release);
+                usermod_send_event(UserModEvent::GameAttached);
             }
             None => {
                 shared_state.game_baseaddr.store(0, Ordering::Release);
@@ -95,6 +103,7 @@ pub async fn actions_loop(
                 }
                 None => {
                     shared_state.game_baseaddr.store(0, Ordering::Release);
+                    usermod_send_event(UserModEvent::GameUnattached);
                     break;
                 }
             };
@@ -425,6 +434,8 @@ pub async fn actions_loop(
                     }
                 }
             }
+
+            usermod_send_event(UserModEvent::ActionTick);
 
             /* Hot Variables Update End */
 

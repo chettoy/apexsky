@@ -18,16 +18,11 @@ use tonic::codec::CompressionEncoding;
 use tonic::{transport::Server, Request, Response, Status};
 use tracing::instrument;
 
-use crate::{SharedStateWrapper, TaskChannels, PRINT_LATENCY};
-
-#[derive(Debug)]
-pub struct MyEspService {
-    state: SharedStateWrapper,
-    channels: TaskChannels,
-}
+use crate::api_impl::GameApiHandle;
+use crate::PRINT_LATENCY;
 
 #[tonic::async_trait]
-impl EspService for MyEspService {
+impl EspService for GameApiHandle {
     async fn unary_echo(
         &self,
         request: Request<EchoRequest>,
@@ -332,8 +327,7 @@ impl EspService for MyEspService {
 #[instrument(skip_all)]
 pub async fn esp_loop(
     mut active: watch::Receiver<bool>,
-    state: SharedStateWrapper,
-    channels: TaskChannels,
+    game_api: GameApiHandle,
 ) -> anyhow::Result<()> {
     tracing::debug!("{}", s!("task start"));
 
@@ -394,14 +388,11 @@ pub async fn esp_loop(
             } else {
                 // Start server
                 let config = G_STATE.lock().unwrap().config.esp_service.clone();
-                let service = EspServiceServer::new(MyEspService {
-                    state: state.clone(),
-                    channels: channels.clone(),
-                })
-                .accept_compressed(CompressionEncoding::Zstd)
-                .accept_compressed(CompressionEncoding::Gzip)
-                .send_compressed(CompressionEncoding::Zstd)
-                .send_compressed(CompressionEncoding::Gzip);
+                let service = EspServiceServer::new(game_api.clone())
+                    .accept_compressed(CompressionEncoding::Zstd)
+                    .accept_compressed(CompressionEncoding::Gzip)
+                    .send_compressed(CompressionEncoding::Zstd)
+                    .send_compressed(CompressionEncoding::Gzip);
                 let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
                 let task = tokio::spawn(
                     Server::builder()

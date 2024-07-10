@@ -1,8 +1,8 @@
-use bevy::window::CompositeAlphaMode;
-#[cfg(feature = "native")]
-use bevy::window::{WindowLevel, WindowMode};
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
+#[cfg(feature = "native")]
+use bevy::window::{WindowLevel, WindowMode};
+use bevy::{color::palettes, window::CompositeAlphaMode};
 use bevy_egui::EguiPlugin;
 use bevy_health_bar3d::prelude as hpbar;
 use model::{MyOverlayState, TokioRuntime};
@@ -74,13 +74,14 @@ pub(crate) fn main() {
         .init_asset_loader::<BlobAssetLoader>()
         .insert_resource(
             hpbar::ColorScheme::<model::Health>::new()
-                .foreground_color(hpbar::ForegroundColor::Static(Color::GREEN))
-                .background_color(Color::RED),
+                .foreground_color(hpbar::ForegroundColor::Static(Color::Srgba(
+                    palettes::css::GREEN,
+                )))
+                .background_color(Color::Srgba(palettes::css::RED)),
         )
-        .insert_resource(
-            hpbar::ColorScheme::<model::Mana>::new()
-                .foreground_color(hpbar::ForegroundColor::Static(Color::BISQUE)),
-        )
+        .insert_resource(hpbar::ColorScheme::<model::Mana>::new().foreground_color(
+            hpbar::ForegroundColor::Static(Color::Srgba(palettes::css::BISQUE)),
+        ))
         .init_resource::<TokioRuntime>()
         .init_resource::<MyOverlayState>()
         .init_resource::<ui::UiState>()
@@ -128,7 +129,10 @@ fn setup(
             // left ear indicator
             parent.spawn(PbrBundle {
                 mesh: meshes.add(Cuboid::new(0.2, 0.2, 0.2)),
-                material: materials.add(Color::RED),
+                material: materials.add(StandardMaterial {
+                    base_color: Color::Srgba(palettes::css::RED),
+                    ..default()
+                }),
                 transform: Transform::from_translation(listener.left_ear_offset),
                 ..default()
             });
@@ -136,7 +140,10 @@ fn setup(
             // right ear indicator
             parent.spawn(PbrBundle {
                 mesh: meshes.add(Cuboid::new(0.2, 0.2, 0.2)),
-                material: materials.add(Color::GREEN),
+                material: materials.add(StandardMaterial {
+                    base_color: Color::Srgba(palettes::css::GREEN),
+                    ..default()
+                }),
                 transform: Transform::from_translation(listener.right_ear_offset),
                 ..default()
             });

@@ -28,8 +28,10 @@ pub use apexsky::noobfstr;
 
 mod actuator;
 mod apexdream;
+mod api_impl;
 mod context_impl;
 mod game;
+mod usermod_thr;
 mod workers;
 
 const PRINT_LATENCY: bool = false;
@@ -59,7 +61,7 @@ struct SharedState {
     aimbot_state: Mutex<Option<(Aimbot, Duration)>>,
 }
 
-pub type SharedStateWrapper = Arc<SharedState>;
+pub(crate) type SharedStateWrapper = Arc<SharedState>;
 
 #[derive(Debug)]
 struct State {
@@ -73,6 +75,7 @@ struct State {
     esp_t: Option<JoinHandle<anyhow::Result<()>>>,
     items_t: Option<JoinHandle<anyhow::Result<()>>>,
     terminal_task: Option<JoinHandle<()>>,
+    usermod_thread: Option<JoinHandle<anyhow::Result<()>>>,
 }
 
 impl State {
@@ -90,6 +93,7 @@ impl State {
             esp_t: None,
             items_t: None,
             terminal_task: None,
+            usermod_thread: None,
         }
     }
 
@@ -126,7 +130,7 @@ impl State {
 }
 
 #[derive(Debug, Clone)]
-struct TaskChannels {
+pub(crate) struct TaskChannels {
     pub(crate) aim_key_rx: watch::Receiver<AimKeyState>,
     pub(crate) aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
     pub(crate) items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
@@ -153,6 +157,17 @@ impl TaskManager for State {
         let (aim_key_tx, aim_key_rx) = watch::channel(AimKeyState::default());
         let (aim_select_tx, aim_select_rx) = watch::channel(vec![]);
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
+        let (usermod_tx, usermod_rx) = mpsc::unbounded_channel();
+
+        let game_api = api_impl::GameApiHandle {
+            state: self.shared_state.clone(),
+            channels: TaskChannels {
+                aim_key_rx: aim_key_rx.clone(),
+                aim_select_rx: aim_select_rx.clone(),
+                items_glow_rx: items_glow_rx.clone(),
+            },
+            access_tx: access_tx.clone(),
+        };
 
         self.io_thread = Some({
             let active_rx = self.active_tx.subscribe();
@@ -172,12 +187,25 @@ impl TaskManager for State {
                 }
             })
         });
+        self.usermod_thread = Some({
+            let game_api = game_api.clone();
+            task::spawn_blocking(move || {
+                let rt = tokio::runtime::Handle::current();
+                rt.block_on(async {
+                    let local = tokio::task::LocalSet::new();
+                    local
+                        .run_until(usermod_thr::usermod_thread(game_api, usermod_rx))
+                        .await
+                })
+            })
+        });
         self.actions_t = Some(task::spawn(actions_loop(
             self.active_tx.subscribe(),
             self.shared_state.clone(),
             access_tx.clone(),
             aim_key_tx,
             aim_select_tx,
+            usermod_tx,
             aim_select_rx.clone(),
             items_glow_rx.clone(),
         )));
@@ -194,12 +222,7 @@ impl TaskManager for State {
         )));
         self.esp_t = Some(task::spawn(esp_loop(
             self.active_tx.subscribe(),
-            self.shared_state.clone(),
-            TaskChannels {
-                aim_key_rx,
-                aim_select_rx,
-                items_glow_rx,
-            },
+            game_api.clone(),
         )));
         self.items_t = Some(task::spawn(items_loop(
             self.active_tx.subscribe(),
@@ -223,6 +246,9 @@ impl TaskManager for State {
             handle.await.ok();
         }
         if let Some(handle) = self.items_t.take() {
+            handle.await.ok();
+        }
+        if let Some(handle) = self.usermod_thread.take() {
             handle.await.ok();
         }
         if let Some(handle) = self.io_thread.take() {
@@ -301,6 +327,7 @@ impl TaskManager for State {
             }
         }
         check_thread(&mut self.io_thread, s!("io_thread"));
+        check_task(&mut self.usermod_thread, s!("usermod_thread")).await;
         check_task(&mut self.actions_t, s!("actions_t")).await;
         check_task(&mut self.aim_t, s!("aim_t")).await;
         check_task(&mut self.control_t, s!("control_t")).await;
