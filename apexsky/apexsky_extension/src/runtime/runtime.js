@@ -24,8 +24,13 @@ const runtime = {
                 const message = await ops.op_poll_message();
 
                 // Call handler to handle the message
-                const result = await apexsky.runtime.core.msgHandler(message);
-                ops.op_message_callback(result);
+                try {
+                    const result = await apexsky.runtime.core.msgHandler(message);
+                    ops.op_message_callback(result);
+                } catch (e) {
+                    console.error("Error handle messages:", e);
+                }
+
             }
         }
     },
@@ -89,6 +94,9 @@ const apexsky = {
         getViewPlayerPtr: () => {
             return ops.op_game_view_player_ptr();
         },
+        getCachedPlayer: (ptr) => {
+            return ops.op_game_cached_player(ptr);
+        }
     },
     mem: {
         getGameBaseaddr: () => {

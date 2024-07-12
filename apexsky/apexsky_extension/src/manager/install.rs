@@ -1,29 +1,24 @@
-mod manifest;
-mod runtime;
-
 use anyhow::Context;
 use obfstr::obfstr as s;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 
-use manifest::{Manifest, ManifestDoc};
-pub use runtime::game_api::{GameApi, OpMemReadItem};
-pub use runtime::{ExtensionError, ExtensionMessage, ExtensionRuntime};
+use crate::manifest::ManifestDoc;
+use crate::Manifest;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UserMod {
-    manifest: Manifest,
-    source: String,
+    pub package_name: String,
+    pub manifest: Manifest,
+    pub source: String,
 }
 
 #[derive(Default)]
-pub struct UserModManager {
+pub struct InstallManager {
     installed: HashMap<String, UserMod>,
-    instances: HashMap<String, ExtensionRuntime>,
 }
 
-impl UserModManager {
+impl InstallManager {
     pub async fn pack(&mut self, out: PathBuf, manifest_path: PathBuf) -> anyhow::Result<()> {
         use async_compression::tokio::write::ZstdEncoder;
         use std::io::BufReader;
@@ -130,52 +125,26 @@ impl UserModManager {
 
         let package_name = manifest.get_package_name().to_owned();
 
-        self.installed
-            .insert(package_name.clone(), UserMod { manifest, source });
+        self.installed.insert(
+            package_name.clone(),
+            UserMod {
+                package_name: package_name.clone(),
+                manifest,
+                source,
+            },
+        );
 
         Ok(package_name)
     }
 
-    pub fn load(&mut self, package_name: &str, game_api: Arc<dyn GameApi>) -> anyhow::Result<()> {
-        if self.instances.contains_key(package_name) {
-            anyhow::bail!(
-                "{}{}{}",
-                s!("Package "),
-                package_name,
-                s!(" already loaded.")
-            );
-        }
-        let Some(package) = self.installed.get(package_name) else {
-            anyhow::bail!("{}{}{}", s!("Package "), package_name, s!(" not exists."));
-        };
-        let usermod = ExtensionRuntime::new(
-            package.manifest.to_owned(),
-            package.source.to_owned(),
-            Some(game_api),
-        )?;
-        self.instances.insert(package_name.to_owned(), usermod);
-        Ok(())
+    pub fn get_installed<'a>(&'a self, package_name: &str) -> Option<&UserMod> {
+        self.installed.get(package_name)
     }
-
-    pub fn get_instance_mut<'a>(&'a mut self, package_name: &str) -> Option<&mut ExtensionRuntime> {
-        self.instances.get_mut(package_name)
-    }
-}
-
-#[tokio::test]
-async fn test_pack_usermod() {
-    let mut mgr = UserModManager::default();
-    mgr.pack(
-        "./auto_sg.spk".into(),
-        "./resource/extensions/auto_sg/manifest.json".into(),
-    )
-    .await
-    .unwrap();
 }
 
 #[tokio::test]
 async fn test_parse_usermod_package() {
-    let mut mgr = UserModManager::default();
+    let mut mgr = InstallManager::default();
     let package_name = mgr.install("./auto_sg.spk".into()).await.unwrap();
     println!("{} installed", package_name);
 }

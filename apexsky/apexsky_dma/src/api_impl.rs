@@ -1,9 +1,6 @@
-use apexsky::{
-    extension::{GameApi, OpMemReadItem},
-    global_state::G_STATE,
-    offsets::G_OFFSETS,
-};
+use apexsky::{global_state::G_STATE, offsets::G_OFFSETS};
 use apexsky_dmalib::access::{AccessType, MemApi, PendingAccessRequest, PendingMemRead};
+use apexsky_extension::{GameApi, OpMemReadItem};
 use async_trait::async_trait;
 
 use crate::{SharedStateWrapper, TaskChannels};
@@ -97,6 +94,12 @@ impl GameApi for GameApiHandle {
         self.state.get_view_player_ptr()
     }
 
+    fn game_cached_player(&self, ptr: u64) -> Option<serde_json::Value> {
+        self.state
+            .read_cached_player(&ptr)
+            .map(|pl| serde_json::to_value(pl.get_buf()).unwrap())
+    }
+
     fn game_is_ready(&self) -> bool {
         self.mem_game_baseaddr().is_some()
     }
@@ -109,15 +112,18 @@ impl GameApi for GameApiHandle {
         self.state.get_game_fps()
     }
 
-    fn game_get_offsets(&self) -> apexsky::offsets::CustomOffsets {
-        G_OFFSETS.clone()
+    fn game_get_offsets(&self) -> serde_json::Value {
+        serde_json::to_value(&*G_OFFSETS).unwrap()
     }
 
-    fn config_get_global_settings(&self) -> apexsky::config::Settings {
-        G_STATE.lock().unwrap().config.settings.clone()
+    fn config_get_global_settings(&self) -> serde_json::Value {
+        let val = G_STATE.lock().unwrap().config.settings.clone();
+        serde_json::to_value(val).unwrap()
     }
 
-    fn config_update_global_settings(&self, new_val: apexsky::config::Settings) {
+    fn config_update_global_settings(&self, new_val: serde_json::Value) -> anyhow::Result<()> {
+        let new_val = serde_json::from_value(new_val)?;
         G_STATE.lock().unwrap().config.settings = new_val;
+        Ok(())
     }
 }

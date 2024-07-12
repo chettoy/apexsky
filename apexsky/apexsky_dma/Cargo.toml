@@ -7,8 +7,10 @@ edition = "2021"
 anyhow = "1.0"
 apexsky = { path = "../apexsky" }
 apexsky_dmalib = { path = "../apexsky_dmalib" }
+apexsky_extension = { path = "../apexsky_extension" }
 apexsky_kmbox = { path = "../apexsky_kmbox" }
 apexsky_proto = { path = "../apexsky_proto" }
+async-channel = "2.3.1"
 async-trait = "0.1.80"
 bitset-core = "0.1.1"
 chrono = "0.4.38"

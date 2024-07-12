@@ -1,6 +1,6 @@
 {
     "manifest_version": 0,
-    "package_name": "com.chettoy.example",
+    "package_name": "com.chettoy.apexsky.example",
     "version_code": 1,
     "version": "0.1.0",
     "label": "Example Extension",
@@ -18,6 +18,10 @@
     "permissions": [
         {
             "name": "com.chettoy.ACCESS_GAME_INPUT",
+            "value": ""
+        },
+        {
+            "name": "com.chettoy.ACCESS_GLOBAL_SETTINGS",
             "value": ""
         },
         {

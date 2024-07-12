@@ -1,6 +1,6 @@
 pub(super) mod game_api;
 mod ops;
-mod permission;
+pub(super) mod permission;
 
 use std::time::Duration;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
@@ -32,7 +32,7 @@ extension!(
     op_set_timeout
   ],
   esm_entry_point = "ext:apexsky_extension/runtime.js",
-  esm = [ dir "src/extension/runtime", "runtime.js" ],
+  esm = [ dir "src/runtime", "runtime.js" ],
   options = {
     manifest: Manifest,
     perms: Box<RuntimePermission>,
@@ -244,9 +244,7 @@ pub enum ExtensionError {
 
 pub struct ExtensionRuntime {
     js_runtime: JsRuntime,
-    manifest: Manifest,
     msg_tx: async_channel::Sender<ExtensionMessage>,
-    name: String,
     source_string: String,
 }
 
@@ -254,13 +252,15 @@ impl ExtensionRuntime {
     pub fn new(
         manifest: Manifest,
         source_string: String,
+        msg_channel: (
+            async_channel::Sender<ExtensionMessage>,
+            async_channel::Receiver<ExtensionMessage>,
+        ),
         game_api: Option<game_api::GameApiInstance>,
     ) -> Result<Self, ExtensionError> {
         let perms: Box<RuntimePermission> = Box::new(manifest.get_permissions().into());
-        let name = format!("<usermod:{}>", manifest.get_package_name());
 
-        let (msg_tx, msg_rx) = async_channel::bounded(1024);
-
+        let (msg_tx, msg_rx) = msg_channel;
         let apexsky_ext = {
             let mut ext =
                 apexsky_extension::init_ops_and_esm(manifest.clone(), perms.clone(), msg_rx);
@@ -311,6 +311,7 @@ impl ExtensionRuntime {
                         "op_game_local_player_ptr" => perms.game_world_access,
                         "op_game_view_player_ptr" => perms.game_world_access,
                         "op_game_is_world_ready" => perms.game_world_access,
+                        "op_game_cached_player" => perms.game_world_access,
                         _ => true,
                     };
                     if on {
@@ -335,9 +336,7 @@ impl ExtensionRuntime {
 
         Ok(Self {
             js_runtime,
-            manifest,
             msg_tx,
-            name,
             source_string,
         })
     }
@@ -379,7 +378,10 @@ impl ExtensionRuntime {
 
     pub async fn run_loop(&mut self) -> Result<(), ExtensionError> {
         self.js_runtime
-            .run_event_loop(PollEventLoopOptions::default())
+            .run_event_loop(PollEventLoopOptions {
+                wait_for_inspector: true,
+                pump_v8_message_loop: true,
+            })
             .await
             .map_err(ExtensionError::RuntimeError)?;
         Ok(())
@@ -392,11 +394,17 @@ impl ExtensionRuntime {
 
 #[tokio::test]
 async fn test_execute_script() {
-    let example_manifest = include_str!("../../../resource/extensions/example/manifest.json");
-    let example_source = include_str!("../../../resource/extensions/example/worker.js");
+    let example_manifest = include_str!("../../extensions/example/manifest.json");
+    let example_source = include_str!("../../extensions/example/worker.js");
     let manifest: Manifest =
         Manifest::new(serde_json::from_str(&example_manifest).unwrap()).unwrap();
-    let mut instance = ExtensionRuntime::new(manifest, example_source.to_string(), None).unwrap();
+    let mut instance = ExtensionRuntime::new(
+        manifest,
+        example_source.to_string(),
+        async_channel::unbounded(),
+        None,
+    )
+    .unwrap();
     let callback_value = instance.execute().await.unwrap();
     println!("callback: {:?}", callback_value);
     match tokio::time::timeout(std::time::Duration::from_secs(1), instance.run_loop()).await {

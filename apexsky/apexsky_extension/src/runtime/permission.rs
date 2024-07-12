@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::extension::manifest::PermissionField;
+use crate::manifest::PermissionField;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RuntimePermission {

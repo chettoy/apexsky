@@ -3,6 +3,7 @@ fn main() {
         .build_client(true)
         .build_server(true)
         .out_dir("src/pb")
+        .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .compile(
             &[
                 "proto/com/chettoy/apexsky/apexlegends/aimbot.proto",

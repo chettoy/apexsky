@@ -170,7 +170,7 @@ pub enum PermissionField {
 
 #[test]
 fn test_parse_manifest() {
-    let test_str = include_str!("../../resource/extensions/example/manifest.json");
+    let test_str = include_str!("../extensions/example/manifest.json");
     let manifest: Manifest = Manifest::new(serde_json::from_str(test_str).unwrap()).unwrap();
     println!("{:?}", manifest);
 }

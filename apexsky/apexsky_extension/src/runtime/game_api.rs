@@ -8,16 +8,16 @@ use deno_core::*;
 use serde::{Deserialize, Serialize};
 
 #[async_trait]
-pub trait GameApi {
+pub trait GameApi: Send + Sync {
     // config
-    fn config_get_global_settings(&self) -> crate::config::Settings;
-    fn config_update_global_settings(&self, new_val: crate::config::Settings);
+    fn config_get_global_settings(&self) -> serde_json::Value;
+    fn config_update_global_settings(&self, new_val: serde_json::Value) -> anyhow::Result<()>;
 
     // game gernal
     fn game_is_ready(&self) -> bool;
     fn game_frame_count(&self) -> u32;
     fn game_get_fps(&self) -> f32;
-    fn game_get_offsets(&self) -> skyapex_sdk::module::CustomOffsets;
+    fn game_get_offsets(&self) -> serde_json::Value;
 
     // memory
     fn mem_game_baseaddr(&self) -> Option<u64>;
@@ -34,6 +34,7 @@ pub trait GameApi {
     fn game_is_world_ready(&self) -> bool;
     fn game_local_player_ptr(&self) -> Option<u64>;
     fn game_view_player_ptr(&self) -> Option<u64>;
+    fn game_cached_player(&self, ptr: u64) -> Option<serde_json::Value>;
 }
 
 pub type GameApiInstance = Arc<dyn GameApi>;
@@ -66,6 +67,7 @@ extension!(
     op_game_local_player_ptr,
     op_game_view_player_ptr,
     op_game_is_world_ready,
+    op_game_cached_player,
   ],
   options = {
     game_api: GameApiInstance,
@@ -78,18 +80,18 @@ extension!(
 
 #[op2]
 #[serde]
-fn op_config_get_global_settings(state: &OpState) -> Result<crate::config::Settings, AnyError> {
+fn op_config_get_global_settings(state: &OpState) -> Result<serde_json::Value, AnyError> {
     let api = state.borrow::<GameApiInstance>();
     Ok(api.config_get_global_settings())
 }
 
 #[op2]
 fn op_config_update_global_settings(
-    #[serde] new_val: crate::config::Settings,
+    #[serde] new_val: serde_json::Value,
     state: &OpState,
 ) -> Result<(), AnyError> {
     let api = state.borrow::<GameApiInstance>();
-    api.config_update_global_settings(new_val);
+    api.config_update_global_settings(new_val)?;
     Ok(())
 }
 
@@ -107,7 +109,7 @@ fn op_game_get_fps(state: &OpState) -> Result<f32, AnyError> {
 
 #[op2]
 #[serde]
-fn op_game_get_offsets(state: &OpState) -> Result<skyapex_sdk::module::CustomOffsets, AnyError> {
+fn op_game_get_offsets(state: &OpState) -> Result<serde_json::Value, AnyError> {
     let api = state.borrow::<GameApiInstance>();
     Ok(api.game_get_offsets())
 }
@@ -206,4 +208,28 @@ fn op_game_view_player_ptr(state: &OpState) -> Result<u64, AnyError> {
 fn op_game_is_world_ready(state: &OpState) -> Result<bool, AnyError> {
     let api = state.borrow::<GameApiInstance>();
     Ok(api.game_is_world_ready())
+}
+
+#[op2]
+#[serde]
+fn op_game_cached_player(
+    #[bigint] ptr: u64,
+    state: &OpState,
+) -> Result<serde_json::Value, AnyError> {
+    let api = state.borrow::<GameApiInstance>();
+    if let Some(mut val) = api.game_cached_player(ptr) {
+        // fix big number
+        if let Some(obj) = val.as_object_mut() {
+            for v in obj.values_mut() {
+                if let Some(num) = v.as_u64() {
+                    if num > 2 << 52 - 1 {
+                        *v = serde_json::Value::String(num.to_string());
+                    }
+                }
+            }
+        }
+        Ok(val)
+    } else {
+        Ok(serde_json::Value::Null)
+    }
 }

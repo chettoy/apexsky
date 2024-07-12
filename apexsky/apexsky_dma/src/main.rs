@@ -75,7 +75,7 @@ struct State {
     esp_t: Option<JoinHandle<anyhow::Result<()>>>,
     items_t: Option<JoinHandle<anyhow::Result<()>>>,
     terminal_task: Option<JoinHandle<()>>,
-    usermod_thread: Option<JoinHandle<anyhow::Result<()>>>,
+    usermod_t: Option<JoinHandle<anyhow::Result<()>>>,
 }
 
 impl State {
@@ -93,7 +93,7 @@ impl State {
             esp_t: None,
             items_t: None,
             terminal_task: None,
-            usermod_thread: None,
+            usermod_t: None,
         }
     }
 
@@ -187,18 +187,10 @@ impl TaskManager for State {
                 }
             })
         });
-        self.usermod_thread = Some({
-            let game_api = game_api.clone();
-            task::spawn_blocking(move || {
-                let rt = tokio::runtime::Handle::current();
-                rt.block_on(async {
-                    let local = tokio::task::LocalSet::new();
-                    local
-                        .run_until(usermod_thr::usermod_thread(game_api, usermod_rx))
-                        .await
-                })
-            })
-        });
+        self.usermod_t = Some(task::spawn(usermod_thr::usermod_loop(
+            Arc::new(game_api.clone()),
+            usermod_rx,
+        )));
         self.actions_t = Some(task::spawn(actions_loop(
             self.active_tx.subscribe(),
             self.shared_state.clone(),
@@ -248,7 +240,7 @@ impl TaskManager for State {
         if let Some(handle) = self.items_t.take() {
             handle.await.ok();
         }
-        if let Some(handle) = self.usermod_thread.take() {
+        if let Some(handle) = self.usermod_t.take() {
             handle.await.ok();
         }
         if let Some(handle) = self.io_thread.take() {
@@ -327,7 +319,7 @@ impl TaskManager for State {
             }
         }
         check_thread(&mut self.io_thread, s!("io_thread"));
-        check_task(&mut self.usermod_thread, s!("usermod_thread")).await;
+        check_task(&mut self.usermod_t, s!("usermod_thread")).await;
         check_task(&mut self.actions_t, s!("actions_t")).await;
         check_task(&mut self.aim_t, s!("aim_t")).await;
         check_task(&mut self.control_t, s!("control_t")).await;
@@ -427,7 +419,7 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| {
             EnvFilter::try_new(s!(
-                "apexsky_dma=warn,apexsky=warn,apexsky_dmalib=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::workers::items=info,apexsky_dma::apexdream=warn"
+                "apexsky_dma=warn,apexsky=warn,apexsky_dmalib=info,apexsky_extension=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::workers::items=info,apexsky_dma::apexdream=warn"
             ))
         })
         .unwrap();

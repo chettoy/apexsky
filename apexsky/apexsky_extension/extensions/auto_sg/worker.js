@@ -1,6 +1,6 @@
 const { globalSettings } = apexsky.config;
 const { getGameBaseaddr, memReadAll, memReadI32, memReadF32, memWriteI32 } = apexsky.mem;
-const { getFrameCount, getGameFps, getGameOffsets, getLocalPlayerPtr, isWorldReady } = apexsky.game;
+const { getFrameCount, getGameFps, getGameOffsets, getLocalPlayerPtr, getCachedPlayer, isWorldReady } = apexsky.game;
 
 const offsets = getGameOffsets();
 
@@ -15,10 +15,21 @@ async function action() {
         return;
     }
 
-    let g_settings = globalSettings();
-
     const baseaddr = getGameBaseaddr();
     const lplayer = getLocalPlayerPtr();
+
+    let local_player = getCachedPlayer(lplayer);
+    if (!local_player) {
+        return;
+    }
+
+    // const [jump_state, world_time, traversal_start_time, traversal_progress, is_grpple_actived] = await Promise.all([
+    //     memReadI32(baseaddr + offsets.in_jump),
+    //     memReadF32(lplayer + offsets.cplayer_timebase),
+    //     memReadF32(lplayer + offsets.cplayer_traversal_starttime),
+    //     memReadF32(lplayer + offsets.cplayer_traversal_progress),
+    //     memReadI32(lplayer + offsets.player_grapple_active),
+    // ]);
 
     const [jump_state, world_time, traversal_start_time, traversal_progress, is_grpple_actived] = await memReadAll([
         { "type": "i32", "addr": (baseaddr + offsets.in_jump) },
@@ -27,6 +38,8 @@ async function action() {
         { "type": "f32", "addr": (lplayer + offsets.cplayer_traversal_progress) },
         { "type": "i32", "addr": (lplayer + offsets.player_grapple_active) },
     ]);
+
+    let g_settings = globalSettings();
 
     if (g_settings.super_key_toggle) {
         /** SuperGlide

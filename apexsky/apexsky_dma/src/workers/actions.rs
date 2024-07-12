@@ -20,8 +20,11 @@ use tokio::sync::{mpsc, watch};
 use tokio::time::{sleep, Instant};
 
 use crate::{
-    apexdream::state::entities::Entity, game::player::QuickLooting, usermod_thr::UserModEvent,
-    workers::items::LootInt, SharedStateWrapper,
+    apexdream::state::entities::Entity,
+    game::player::QuickLooting,
+    usermod_thr::{ActionTickData, UserModEvent},
+    workers::items::LootInt,
+    SharedStateWrapper,
 };
 use crate::{
     apexdream::state::GameState,
@@ -435,7 +438,9 @@ pub async fn actions_loop(
                 }
             }
 
-            usermod_send_event(UserModEvent::ActionTick);
+            usermod_send_event(UserModEvent::ActionTick(ActionTickData {
+                input_state: apex_state.input_system.button_state,
+            }));
 
             /* Hot Variables Update End */
 

@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "apexsky",
-    "apexsky_dma", "apexsky_dmalib", "apexsky_kmbox",
+    "apexsky_dma", "apexsky_dmalib", "apexsky_extension", "apexsky_kmbox",
     "apexsky_overlay", "apexsky_proto",
 ]
 default-members = ["apexsky_dma"]
