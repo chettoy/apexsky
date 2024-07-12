@@ -58,7 +58,15 @@ pub(crate) fn main() {
                         #[cfg(target_os = "macos")]
                         composite_alpha_mode: CompositeAlphaMode::PostMultiplied,
                         #[cfg(target_os = "linux")]
-                        composite_alpha_mode: CompositeAlphaMode::PreMultiplied,
+                        composite_alpha_mode: {
+                            let args: Vec<String> = std::env::args().collect();
+                            if args.len() == 2 && args.get(1).is_some_and(|arg1| arg1 == s!("fixa"))
+                            {
+                                CompositeAlphaMode::Auto
+                            } else {
+                                CompositeAlphaMode::PreMultiplied
+                            }
+                        },
                         title: embedded::S_TITLE.to_owned(),
                         ..default()
                     }),
@@ -75,7 +83,7 @@ pub(crate) fn main() {
         .insert_resource(
             hpbar::ColorScheme::<model::Health>::new()
                 .foreground_color(hpbar::ForegroundColor::Static(Color::Srgba(
-                    palettes::css::GREEN,
+                    palettes::css::LIGHT_GREEN,
                 )))
                 .background_color(Color::Srgba(palettes::css::RED)),
         )

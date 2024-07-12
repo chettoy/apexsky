@@ -57,13 +57,26 @@ pub(super) fn mini_map_radar(
         return;
     }
 
+    let radar_rect_size = {
+        let screen_size_default = (1920.0_f32.powi(2) + 1080.0_f32.powi(2)).sqrt();
+        let radar_rect_default: f32 = 250.0;
+
+        let egui::Vec2 {
+            x: screen_width,
+            y: screen_height,
+        } = ctx.screen_rect().size();
+
+        let screen_size = (screen_width.powi(2) + screen_height.powi(2)).sqrt();
+        radar_rect_default * (screen_size / screen_size_default)
+    };
+
     egui::Window::new(s!("Radar"))
         .resizable(false)
         .title_bar(true)
         .movable(true)
         .frame(egui::Frame::none())
         .default_pos((45.0, 45.0))
-        .fixed_size((250.0, 250.0))
+        .fixed_size((radar_rect_size, radar_rect_size))
         .show(ctx, |ui| {
             let draw_rect = ui.clip_rect();
             let mid_radar = pos2(
