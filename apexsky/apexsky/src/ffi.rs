@@ -52,7 +52,7 @@ pub extern "C" fn save_settings() -> bool {
 
 #[no_mangle]
 pub extern "C" fn run_tui_menu() {
-    crate::menu::main().unwrap_or_else(|e| {
+    crate::menu::main(crate::menu::apex_menu::MenuLevel::MainMenu.into()).unwrap_or_else(|e| {
         println!("{}", e);
     });
 }

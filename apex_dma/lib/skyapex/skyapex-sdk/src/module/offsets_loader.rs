@@ -117,6 +117,7 @@ import_custom_offsets!({
     cplayer_wall_run_clear_time,
     player_viewangles,
     player_consumables,
+    player_traversal_release_time,
     player_observer_state,
     player_ovserver_target,
     player_platform_uid,

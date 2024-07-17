@@ -12,6 +12,7 @@ use apexsky_proto::pb::apexlegends::{
     AimKeyState, AimTargetInfo, PlayerState, SpectatorInfo, TreasureClue,
 };
 use obfstr::obfstr as s;
+use once_cell::sync::Lazy;
 use parking_lot::{Mutex, RwLock};
 use tokio::sync::{mpsc, watch};
 use tokio::task::{self, JoinHandle};
@@ -21,6 +22,7 @@ use tracing_appender::non_blocking::NonBlocking;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::EnvFilter;
+use usermod_thr::UserModEvent;
 
 use crate::game::player::GamePlayer;
 
@@ -31,10 +33,14 @@ mod apexdream;
 mod api_impl;
 mod context_impl;
 mod game;
+mod menu;
 mod usermod_thr;
 mod workers;
 
 const PRINT_LATENCY: bool = false;
+
+pub(crate) static USERMOD_TX: Lazy<RwLock<Option<mpsc::UnboundedSender<UserModEvent>>>> =
+    Lazy::new(|| RwLock::new(None));
 
 #[derive(Debug, Default)]
 struct SharedState {
@@ -113,7 +119,7 @@ impl State {
         if active {
             if self.terminal_task.is_none() {
                 let tui_task = task::spawn_blocking(|| {
-                    apexsky::menu::main()
+                    apexsky::menu::main(menu::CustomMenuLevel::ApexskyMenu.into())
                         .unwrap_or_else(|e| tracing::error!(%e, ?e, "{}", s!("menu::main()")))
                 });
                 self.terminal_task = Some(tui_task);
@@ -158,6 +164,7 @@ impl TaskManager for State {
         let (aim_select_tx, aim_select_rx) = watch::channel(vec![]);
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
         let (usermod_tx, usermod_rx) = mpsc::unbounded_channel();
+        let usermod_tx = USERMOD_TX.write().insert(usermod_tx).clone();
 
         let game_api = api_impl::GameApiHandle {
             state: self.shared_state.clone(),
@@ -197,7 +204,7 @@ impl TaskManager for State {
             access_tx.clone(),
             aim_key_tx,
             aim_select_tx,
-            usermod_tx,
+            usermod_tx.clone(),
             aim_select_rx.clone(),
             items_glow_rx.clone(),
         )));
@@ -205,6 +212,7 @@ impl TaskManager for State {
             self.active_tx.subscribe(),
             self.shared_state.clone(),
             access_tx.clone(),
+            usermod_tx.clone(),
             aim_key_rx.clone(),
             aim_select_rx.clone(),
         )));
@@ -354,7 +362,7 @@ fn main() {
 
     if args.len() == 2 {
         if args[1] == s!("menu") {
-            apexsky::menu::main().unwrap();
+            apexsky::menu::main(menu::CustomMenuLevel::ApexskyMenu.into()).unwrap();
             return;
         }
     }

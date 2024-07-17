@@ -52,6 +52,7 @@ pub async fn actions_loop(
 ) -> anyhow::Result<()> {
     tracing::debug!("{}", s!("task start"));
 
+    
     let usermod_send_event = |event: UserModEvent| {
         if let Err(e) = usermod_event_tx.send(event) {
             tracing::error!(%e, "{}", s!("usermod_send_event"));

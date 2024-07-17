@@ -563,7 +563,7 @@ void ProcessPlayer(Entity &LPlayer, Entity &target, uint64_t entitylist,
   // printf("Target Team: %i\n", entity_team);
 
   if (target.is_player && (!target.isAlive() || !LPlayer.isAlive())) {
-    // Update yew to spec checker
+    // Update yaw to spec checker
     tick_yaw(target.ptr, target.GetYaw());
     // Exclude self from list when watching others
     if (target.ptr != LPlayer.ptr && is_spec(target.ptr)) {
@@ -704,7 +704,7 @@ void DoActions() {
           prev_lplayer_ptr = LocalPlayer;
           init_spec_checker(LocalPlayer);
         }
-        // Update local entity yew
+        // Update local entity yaw
         tick_yaw(LocalPlayer, LPlayer.GetYaw());
       }
 

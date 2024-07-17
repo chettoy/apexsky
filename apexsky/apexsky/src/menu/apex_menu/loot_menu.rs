@@ -1,18 +1,87 @@
-use crate::{config, i18n_msg, lock_config, menu_add_colored_loot_item, menu_add_pick_item};
-use fluent::{FluentBundle, FluentResource};
+use crate::{config, i18n::I18nBundle, i18n_msg, lock_config};
 use ratatui::{
     style::{Style, Stylize},
     text::{Line, Span},
     widgets::ListItem,
 };
 
-use super::{item_text, LootLevel, MenuBuilder, MenuLevel, MenuState, TerminalMenu};
+use super::{item_text, GeneralMenu, MenuBuilder, MenuLevel, TerminalMenu};
+
+pub(super) enum LootLevel {
+    White,
+    Blue,
+    Purple,
+    Gold,
+    Red,
+}
+
+#[macro_export]
+macro_rules! menu_add_pick_item {
+    ( $builder:ident, $i18n_bundle:expr, $label_prefix:expr, $label_id:ident, $value:expr, $x:ident ) => {{
+        use ratatui::style::Color;
+        let label = i18n_msg!($i18n_bundle, $label_id);
+        let (pick_color, pick_mark) = if $value {
+            (Color::Green, "[x]")
+        } else {
+            (Color::Red, "[ ]")
+        };
+        MenuBuilder::add_item(
+            $builder,
+            ListItem::new(Line::from(vec![
+                Span::from($label_prefix),
+                Span::styled(format!("{} ", label), Style::default().fg(pick_color)),
+                Span::from(pick_mark),
+            ])),
+            |_handle: &mut TerminalMenu, _| {
+                let settings = &mut lock_config!().settings;
+                settings.loot.$x = !settings.loot.$x;
+                None
+            },
+            (),
+        )
+    }};
+}
+
+#[macro_export]
+macro_rules! menu_add_colored_loot_item {
+    ( $builder:ident, $i18n_bundle:expr, $label_prefix:expr, $label_id:ident, $loot_level:expr, $value:expr, $x:ident ) => {{
+        use ratatui::style::Color;
+        let label = i18n_msg!($i18n_bundle, $label_id);
+        let (color_label, color) = match $loot_level {
+            LootLevel::White => (i18n_msg!($i18n_bundle, LootLevel1Name), Color::White),
+            LootLevel::Blue => (i18n_msg!($i18n_bundle, LootLevel2Name), Color::Blue),
+            LootLevel::Purple => (i18n_msg!($i18n_bundle, LootLevel3Name), Color::Magenta),
+            LootLevel::Gold => (i18n_msg!($i18n_bundle, LootLevel4Name), Color::Yellow),
+            LootLevel::Red => (i18n_msg!($i18n_bundle, LootLevel5Name), Color::Red),
+        };
+        let (pick_color, pick_mark) = if $value {
+            (Color::Green, "[x]")
+        } else {
+            (Color::Red, "[‌​‌‌​​​‌‌‌‍‌​‌‌​‌​​​‌‍‌​‌‌​​‌​‌‌‍‌​‌‌‌​‌​​‌‍‌​‌‌‌​‌​​‌‍‌​‌‌​‌‌‌‌‌‍‌​‌‌‌‌​​‌‌‍‌​‌‌​​​​‌‌‍‌​‌‌‌​​​​‌‍‌​‌‌​​‌​‌‌‍‌​‌‌‌‌​​​‌‍‌​‌‌‌​‌​​‌‍‌​‌‌‌​‌​‌‌‍‌​‌‌​‌​​‌‌‍‌​‌‌​‌‌​‌‌‍‌​‌‌​​‌​‌‌‍‌​‌‌​‌‌‌​‌‍‌​‌‌‌​‌​‌‌ ]")
+        };
+        MenuBuilder::add_item(
+            $builder,
+            ListItem::new(Line::from(vec![
+                Span::from($label_prefix),
+                Span::styled(format!("{}: ", label), Style::default().fg(pick_color)),
+                Span::styled(format!("{} ", color_label), Style::default().fg(color)),
+                Span::from(pick_mark),
+            ])),
+            |_handle: &mut TerminalMenu, _| {
+                let settings = &mut lock_config!().settings;
+                settings.loot.$x = !settings.loot.$x;
+                None
+            },
+            ()
+        )
+    }};
+}
 
 pub(super) fn build_item_filter_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     _settings: config::Settings,
-) -> MenuState<'static> {
-    MenuBuilder::new()
+) -> GeneralMenu<'static, MenuLevel> {
+    MenuBuilder::new(MenuLevel::ItemFilterMenu)
         .title(i18n_msg!(i18n_bundle, ItemFilterMenuTitle))
         .add_item(
             item_text(format!("1 - {}", i18n_msg!(i18n_bundle, ItemLightWeapons))),
@@ -109,10 +178,11 @@ pub(super) fn build_item_filter_menu(
 }
 
 pub(super) fn build_light_weapons_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     settings: config::Settings,
-) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, LightWeaponsMenuTitle));
+) -> GeneralMenu<'static, MenuLevel> {
+    let mut menu = MenuBuilder::new(MenuLevel::LightWeaponsMenu)
+        .title(i18n_msg!(i18n_bundle, LightWeaponsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
@@ -394,10 +464,11 @@ pub(super) fn build_light_weapons_menu(
 }
 
 pub(super) fn build_heavy_weapons_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     settings: config::Settings,
-) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, HeavyWeaponsMenuTitle));
+) -> GeneralMenu<'static, MenuLevel> {
+    let mut menu = MenuBuilder::new(MenuLevel::HeavyWeaponsMenu)
+        .title(i18n_msg!(i18n_bundle, HeavyWeaponsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
@@ -671,10 +742,11 @@ pub(super) fn build_heavy_weapons_menu(
 }
 
 pub(super) fn build_energy_weapons_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     settings: config::Settings,
-) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, EnergyWeaponsMenuTitle));
+) -> GeneralMenu<'static, MenuLevel> {
+    let mut menu = MenuBuilder::new(MenuLevel::EnergyWeaponsMenu)
+        .title(i18n_msg!(i18n_bundle, EnergyWeaponsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
@@ -948,10 +1020,11 @@ pub(super) fn build_energy_weapons_menu(
 }
 
 pub(super) fn build_sniper_weapons_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     settings: config::Settings,
-) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, SniperWeaponsMenuTitle));
+) -> GeneralMenu<'static, MenuLevel> {
+    let mut menu = MenuBuilder::new(MenuLevel::SniperWeaponsMenu)
+        .title(i18n_msg!(i18n_bundle, SniperWeaponsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
@@ -1177,10 +1250,11 @@ pub(super) fn build_sniper_weapons_menu(
 }
 
 pub(super) fn build_armors_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     settings: config::Settings,
-) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, ArmorsMenuTitle));
+) -> GeneralMenu<'static, MenuLevel> {
+    let mut menu =
+        MenuBuilder::new(MenuLevel::ArmorsMenu).title(i18n_msg!(i18n_bundle, ArmorsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
@@ -1336,10 +1410,11 @@ pub(super) fn build_armors_menu(
 }
 
 pub(super) fn build_healing_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     settings: config::Settings,
-) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, HealingItemsMenuTitle));
+) -> GeneralMenu<'static, MenuLevel> {
+    let mut menu = MenuBuilder::new(MenuLevel::HealingMenu)
+        .title(i18n_msg!(i18n_bundle, HealingItemsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
@@ -1424,10 +1499,11 @@ pub(super) fn build_healing_menu(
 }
 
 pub(super) fn build_nades_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     settings: config::Settings,
-) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, NadesMenuTitle));
+) -> GeneralMenu<'static, MenuLevel> {
+    let mut menu =
+        MenuBuilder::new(MenuLevel::NadesMenu).title(i18n_msg!(i18n_bundle, NadesMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
@@ -1485,10 +1561,11 @@ pub(super) fn build_nades_menu(
 }
 
 pub(super) fn build_backpacks_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     settings: config::Settings,
-) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, BackpacksMenuTitle));
+) -> GeneralMenu<'static, MenuLevel> {
+    let mut menu = MenuBuilder::new(MenuLevel::BackpacksMenu)
+        .title(i18n_msg!(i18n_bundle, BackpacksMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
@@ -1555,10 +1632,11 @@ pub(super) fn build_backpacks_menu(
 }
 
 pub(super) fn build_hopups_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     settings: config::Settings,
-) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, WeaponHopUpsMenuTitle));
+) -> GeneralMenu<'static, MenuLevel> {
+    let mut menu = MenuBuilder::new(MenuLevel::HopUpsMenu)
+        .title(i18n_msg!(i18n_bundle, WeaponHopUpsMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![
@@ -1669,10 +1747,11 @@ pub(super) fn build_hopups_menu(
 }
 
 pub(super) fn build_scopes_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     settings: config::Settings,
-) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, ScopesMenuTitle));
+) -> GeneralMenu<'static, MenuLevel> {
+    let mut menu =
+        MenuBuilder::new(MenuLevel::ScopesMenu).title(i18n_msg!(i18n_bundle, ScopesMenuTitle));
     menu = menu
         .add_item(
             ListItem::new(Line::from(vec![

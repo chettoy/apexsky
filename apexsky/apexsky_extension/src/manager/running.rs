@@ -1,13 +1,17 @@
 use std::{collections::HashMap, sync::Arc};
 
 use obfstr::obfstr as s;
-use tokio::sync::{mpsc, oneshot};
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
+};
 
 use crate::{ExtensionMessage, ExtensionRuntime, GameApi, UserMod};
 
 struct NewUserModTask {
     usermod: UserMod,
     create_result_tx: oneshot::Sender<CreateTaskResult>,
+    join_handle_tx: oneshot::Sender<JoinHandle<anyhow::Result<()>>>,
 }
 
 pub struct CreateTaskResult {
@@ -15,9 +19,15 @@ pub struct CreateTaskResult {
     pub msg_tx: async_channel::Sender<ExtensionMessage>,
 }
 
+pub struct TaskContext {
+    pub return_value: Option<serde_json::Value>,
+    pub msg_tx: async_channel::Sender<ExtensionMessage>,
+    pub join_handle: JoinHandle<anyhow::Result<()>>,
+}
+
 pub struct RunningManager {
     run_tx: mpsc::UnboundedSender<NewUserModTask>,
-    running: HashMap<String, CreateTaskResult>,
+    running: HashMap<String, TaskContext>,
 }
 
 impl RunningManager {
@@ -27,13 +37,18 @@ impl RunningManager {
             .build()
             .unwrap();
 
-        let (run_tx, mut run_rx) = mpsc::unbounded_channel();
+        let (run_tx, mut run_rx) = mpsc::unbounded_channel::<NewUserModTask>();
 
         tokio::task::spawn_blocking(move || {
             let local = tokio::task::LocalSet::new();
             local.spawn_local(async move {
                 while let Some(new_task) = run_rx.recv().await {
-                    tokio::task::spawn_local(usermod_thread(new_task, Arc::clone(&game_api)));
+                    let handle = tokio::task::spawn_local(usermod_thread(
+                        new_task.usermod,
+                        new_task.create_result_tx,
+                        Arc::clone(&game_api),
+                    ));
+                    let _ = new_task.join_handle_tx.send(handle);
                 }
             });
             rt.block_on(local);
@@ -45,18 +60,21 @@ impl RunningManager {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(package_name = installed.package_name))]
     pub async fn start(&mut self, installed: UserMod) -> anyhow::Result<()> {
         // Read package info
         let package_name = installed.package_name.to_owned();
 
         // Create task
-        let (tx, rx) = oneshot::channel();
+        let (create_result_tx, create_result_rx) = oneshot::channel();
+        let (join_handle_tx, join_handle_rx) = oneshot::channel();
         self.run_tx.send(NewUserModTask {
             usermod: installed,
-            create_result_tx: tx,
+            create_result_tx,
+            join_handle_tx,
         })?;
-        let create_result = rx.await?;
+        let create_result = create_result_rx.await?;
+        let join_handle = join_handle_rx.await?;
         tracing::info!(
             "{}{}{}{:?}",
             s!("<package:"),
@@ -66,26 +84,44 @@ impl RunningManager {
         );
 
         // Save context
-        self.running.insert(package_name, create_result);
+        self.running.insert(
+            package_name,
+            TaskContext {
+                return_value: create_result.return_value,
+                msg_tx: create_result.msg_tx,
+                join_handle,
+            },
+        );
 
         Ok(())
     }
 
-    pub fn get_running<'a>(&'a self) -> &HashMap<String, CreateTaskResult> {
+    #[tracing::instrument(skip_all)]
+    pub async fn stop(&mut self, package_name: &str) -> anyhow::Result<()> {
+        let Some(ctx) = self.running.remove(package_name) else {
+            return Ok(());
+        };
+
+        if ctx.join_handle.is_finished() {
+            return Ok(());
+        }
+
+        ctx.join_handle.abort();
+
+        Ok(())
+    }
+
+    pub fn get_running<'a>(&'a self) -> &HashMap<String, TaskContext> {
         &self.running
     }
 }
 
-#[tracing::instrument(skip_all, fields(package_name = new_task.usermod.package_name))]
+#[tracing::instrument(skip_all, fields(package_name = usermod.package_name))]
 pub(crate) async fn usermod_thread(
-    new_task: NewUserModTask,
+    usermod: UserMod,
+    create_result_tx: oneshot::Sender<CreateTaskResult>,
     game_api: Arc<dyn GameApi>,
 ) -> anyhow::Result<()> {
-    let NewUserModTask {
-        usermod,
-        create_result_tx,
-    } = new_task;
-
     let (msg_tx, msg_rx) = async_channel::bounded(1024);
 
     // Create instance

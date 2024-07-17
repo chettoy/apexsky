@@ -1,5 +1,5 @@
-mod install;
+mod package;
 mod running;
 
-pub use install::*;
+pub use package::*;
 pub use running::*;

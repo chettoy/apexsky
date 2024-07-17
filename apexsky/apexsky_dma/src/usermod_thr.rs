@@ -2,8 +2,12 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use apexsky::{
+    aimbot::{AimAngles, Aimbot},
+    global_state::G_STATE,
+};
 use apexsky_extension::{
-    ExtensionMessage, GameApi, InstallManager, RunningManager, RuntimePermission,
+    ExtensionMessage, GameApi, PackageManager, RunningManager, RuntimePermission,
 };
 use bitset_core::BitSet;
 use indexmap::IndexMap;
@@ -15,10 +19,12 @@ use tokio::{
 };
 
 pub(crate) enum UserModEvent {
-    InstallPackage(PathBuf, oneshot::Sender<anyhow::Result<()>>),
+    HotLoadPackage(PathBuf, Option<String>, oneshot::Sender<anyhow::Result<()>>),
+    KillPackage(String, oneshot::Sender<anyhow::Result<()>>),
     GameAttached,
     GameUnattached,
     ActionTick(ActionTickData),
+    AimbotTick(Aimbot, AimAngles),
 }
 
 pub(crate) struct ActionTickData {
@@ -27,12 +33,19 @@ pub(crate) struct ActionTickData {
 
 #[derive(Debug, Default, Deserialize)]
 struct GuestOptions {
+    watch_aimbot: Option<bool>,
     watch_input: Option<Vec<i32>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 struct ActionTickPayload {
     input: Option<IndexMap<i32, bool>>,
+}
+
+#[derive(Debug, Default, Serialize)]
+struct AimbotTickPayload {
+    aimbot: Option<Aimbot>,
+    aim_result: Option<AimAngles>,
 }
 
 struct RunningCtx {
@@ -44,33 +57,66 @@ pub(crate) async fn usermod_loop(
     game_api: Arc<dyn GameApi>,
     mut event_rx: mpsc::UnboundedReceiver<UserModEvent>,
 ) -> anyhow::Result<()> {
-    let mut install_mgr = InstallManager::default();
+    let mut install_mgr = PackageManager::default();
     let mut running_mgr = RunningManager::new(game_api);
 
     let mut running_ctx = HashMap::new();
 
-    // Install auto_sg
-    if let Err(e) = run_a_package(
-        &mut install_mgr,
-        &mut running_mgr,
-        &mut running_ctx,
-        s!("./auto_sg.spk").into(),
-    )
-    .await
+    // Load and install packages
     {
-        tracing::warn!(%e, "{}", s!("auto_sg.spk not installed"));
+        let install_list = G_STATE.lock().unwrap().config.dlc.install.clone();
+        let current_dir = std::env::current_dir()?;
+        let dlc_dir = current_dir.join("dlc");
+        for entry in std::fs::read_dir(dlc_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if !path.is_file() {
+                continue;
+            }
+            if let Some(file_ext) = path.extension() {
+                if file_ext != "spk" {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+
+            let Some(package_name) = install_mgr.install(path, None).await.ok() else {
+                continue;
+            };
+            let Some(installed) = install_mgr.get_installed(&package_name) else {
+                continue;
+            };
+
+            let Some(install_item) = install_list.get(&package_name) else {
+                install_mgr.remove(&package_name);
+                continue;
+            };
+            if installed.checksum != install_item.checksum {
+                install_mgr.remove(&package_name);
+                tracing::warn!(?install_item, "{}{}", package_name, s!(" not installed"));
+                continue;
+            }
+        }
     }
 
-    // Install example
-    if let Err(e) = run_a_package(
-        &mut install_mgr,
-        &mut running_mgr,
-        &mut running_ctx,
-        s!("./example.spk").into(),
-    )
-    .await
+    // Run installed packages
     {
-        tracing::warn!(%e, "{}", s!("example.spk not installed"));
+        let installed_package_names: Vec<String> =
+            install_mgr.get_all_installed().keys().cloned().collect();
+        for package_name in installed_package_names {
+            if let Err(e) = run_a_package(
+                &mut install_mgr,
+                &mut running_mgr,
+                &mut running_ctx,
+                package_name.to_owned(),
+            )
+            .await
+            {
+                tracing::warn!(%e, "{}{}", package_name, s!(" not running"));
+            }
+        }
     }
 
     // Run message loop
@@ -85,11 +131,20 @@ pub(crate) async fn usermod_loop(
         {
             let mut callback_rx = None;
             let msg = match event {
-                UserModEvent::InstallPackage(path, result_tx) => {
-                    let r =
-                        run_a_package(&mut install_mgr, &mut running_mgr, &mut running_ctx, path)
-                            .await;
+                UserModEvent::HotLoadPackage(path, checksum, result_tx) => {
+                    let package_name = install_mgr.install(path, checksum).await?;
+                    let r = run_a_package(
+                        &mut install_mgr,
+                        &mut running_mgr,
+                        &mut running_ctx,
+                        package_name,
+                    )
+                    .await;
                     let _ = result_tx.send(r);
+                    break;
+                }
+                UserModEvent::KillPackage(package_name, result_tx) => {
+                    let _ = result_tx.send(running_mgr.stop(&package_name).await);
                     break;
                 }
                 UserModEvent::GameAttached => {
@@ -104,6 +159,23 @@ pub(crate) async fn usermod_loop(
                     ExtensionMessage::new_with_data(
                         String::from("action_tick"),
                         Some(generate_tick_payload(data, guest_options)),
+                        Some(tx),
+                    )?
+                }
+                UserModEvent::AimbotTick(ref aimbot, ref aim_result) => {
+                    let (tx, rx) = oneshot::channel();
+                    callback_rx = Some(rx);
+                    let data = if guest_options.watch_aimbot == Some(true) {
+                        AimbotTickPayload {
+                            aimbot: Some(aimbot.clone()),
+                            aim_result: Some(aim_result.clone()),
+                        }
+                    } else {
+                        AimbotTickPayload::default()
+                    };
+                    ExtensionMessage::new_with_data(
+                        String::from("aimbot_tick"),
+                        Some(data),
                         Some(tx),
                     )?
                 }
@@ -125,13 +197,11 @@ pub(crate) async fn usermod_loop(
 
 #[tracing::instrument(skip_all, fields(path))]
 async fn run_a_package(
-    install_mgr: &mut InstallManager,
+    install_mgr: &mut PackageManager,
     running_mgr: &mut RunningManager,
     running_ctx: &mut HashMap<String, RunningCtx>,
-    path: PathBuf,
+    package_name: String,
 ) -> anyhow::Result<()> {
-    let package_name = install_mgr.install(path).await?;
-
     if running_mgr.get_running().contains_key(&package_name) {
         anyhow::bail!("{}", s!("Already running"));
     }
@@ -155,6 +225,10 @@ async fn run_a_package(
                 .clone()
                 .map(|v| {
                     let mut options: GuestOptions = serde_json::from_value(v).unwrap_or_default();
+                    if options.watch_aimbot == Some(true) && !permissions.game_world_access {
+                        options.watch_aimbot = None;
+                        tracing::warn!("{}", s!("No permission to watch aimbot"));
+                    }
                     if options.watch_input.is_some() && !permissions.game_input_access {
                         options.watch_input = None;
                         tracing::warn!("{}", s!("No permission to watch game input"));

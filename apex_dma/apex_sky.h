@@ -28,13 +28,13 @@ typedef struct {
   bool valid;
   bool hitscan;
   float view_pitch;
-  float view_yew;
+  float view_yaw;
   float delta_pitch;
-  float delta_yew;
+  float delta_yaw;
   float delta_pitch_min;
   float delta_pitch_max;
-  float delta_yew_min;
-  float delta_yew_max;
+  float delta_yaw_min;
+  float delta_yaw_max;
   float distance;
 } aim_angles_t;
 
@@ -373,6 +373,7 @@ typedef struct {
   uintptr_t cplayer_wall_run_clear_time;
   uintptr_t player_viewangles;
   uintptr_t player_consumables;
+  uintptr_t player_traversal_release_time;
   uintptr_t player_observer_state;
   uintptr_t player_ovserver_target;
   uintptr_t player_platform_uid;

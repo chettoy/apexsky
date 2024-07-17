@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -161,6 +162,7 @@ pub struct Config {
     pub(crate) love_player: Vec<LovePlayer>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub(crate) hate_player: Vec<LovePlayer>,
+    pub dlc: DlcConfig,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -180,6 +182,16 @@ pub struct DeviceConfig {
     pub use_kmbox_b: bool,
     pub qemu_qmp_addr: String,
     pub use_qemu_qmp: bool,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, Default)]
+pub struct DlcConfig {
+    pub install: IndexMap<String, InstalledDlcItem>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct InstalledDlcItem {
+    pub checksum: String,
 }
 
 #[repr(C)]

@@ -1,13 +1,14 @@
-mod apex_menu;
+pub mod apex_menu;
+pub mod apexsky_menu;
 
-use crossterm::event::{self, Event, KeyCode};
+use crossterm::event::{self, Event, KeyCode, MouseEvent};
 use ratatui::{prelude::*, widgets::*};
 use std::time::{Duration, SystemTime};
 use unicode_width::UnicodeWidthChar;
 
 use crate::global_state::G_STATE;
 
-use self::apex_menu::TerminalMenu;
+use self::apexsky_menu::TerminalMenu;
 
 // ANCHOR: model
 #[derive(Debug)]
@@ -35,32 +36,32 @@ enum RunningState {
 // ANCHOR: message
 #[derive(PartialEq)]
 enum Message {
-    Up,
-    Down,
     Back,
     Enter,
-    Jump(u32),
-    Reset,
-    Quit,
+    Mouse(MouseEvent),
+    Press(KeyCode),
     Input(char),
     Delete,
 }
 // ANCHOR_END: message
 
 // ANCHOR: main
-pub fn main() -> anyhow::Result<()> {
+pub fn main(default_memu: Box<dyn apexsky_menu::MenuState>) -> anyhow::Result<()> {
     tui::install_panic_hook();
     let mut terminal = tui::init_terminal()?;
-    let mut apex_menu = apex_menu::TerminalMenu::new(Model {
-        counter: 0,
-        running_state: RunningState::default(),
-        key_input: String::new(),
-        input_callback: None,
-        input_buf: String::new(),
-        dialog_text: String::new(),
-        jump_buf: String::new(),
-        jump_time: 0,
-    });
+    let mut apex_menu = apexsky_menu::TerminalMenu::new(
+        Model {
+            counter: 0,
+            running_state: RunningState::default(),
+            key_input: String::new(),
+            input_callback: None,
+            input_buf: String::new(),
+            dialog_text: String::new(),
+            jump_buf: String::new(),
+            jump_time: 0,
+        },
+        default_memu,
+    );
 
     G_STATE.lock().unwrap().terminal_t = true;
     while apex_menu.app_model().running_state != RunningState::Done {
@@ -89,7 +90,7 @@ pub fn main() -> anyhow::Result<()> {
         }
     }
 
-    tui::restore_terminal()?;
+    tui::restore_terminal(&mut terminal)?;
     Ok(())
 }
 // ANCHOR_END: main
@@ -120,37 +121,23 @@ fn view(apex_menu: &mut TerminalMenu, f: &mut Frame) {
 /// but you might need it as your project evolves
 fn handle_event(model: &Model) -> anyhow::Result<Option<Message>> {
     if event::poll(Duration::from_millis(20))? {
-        if let Event::Key(key) = event::read()? {
+        let ev = event::read()?;
+        if let Event::Key(key) = ev {
             if key.kind == event::KeyEventKind::Press {
-                if model.running_state == RunningState::Editing {
-                    return Ok(handle_editing(key));
+                if model.running_state == RunningState::Running {
+                    return Ok(Some(Message::Press(key.code)));
                 } else {
-                    return Ok(handle_key(key));
+                    return Ok(handle_dialog_or_edit(key));
                 }
             }
+        } else if let Event::Mouse(mouse) = ev {
+            return Ok(Some(Message::Mouse(mouse)));
         }
     }
     Ok(None)
 }
 
-fn handle_key(key: event::KeyEvent) -> Option<Message> {
-    match key.code {
-        KeyCode::Up => Some(Message::Up),
-        KeyCode::Down => Some(Message::Down),
-        KeyCode::Tab => Some(Message::Down),
-        KeyCode::Enter => Some(Message::Enter),
-        KeyCode::Esc => Some(Message::Back),
-        KeyCode::Char('h') => Some(Message::Back),
-        KeyCode::Char('j') => Some(Message::Down),
-        KeyCode::Char('k') => Some(Message::Up),
-        KeyCode::Char('l') => Some(Message::Enter),
-        KeyCode::Char('q') => Some(Message::Quit),
-        KeyCode::Char(ch) => ch.to_digit(10).and_then(|c| Some(Message::Jump(c))),
-        _ => None,
-    }
-}
-
-fn handle_editing(key: event::KeyEvent) -> Option<Message> {
+fn handle_dialog_or_edit(key: event::KeyEvent) -> Option<Message> {
     match key.code {
         KeyCode::Enter => Some(Message::Enter),
         KeyCode::Esc => Some(Message::Back),
@@ -165,13 +152,6 @@ fn handle_editing(key: event::KeyEvent) -> Option<Message> {
 fn update(apex_menu: &mut TerminalMenu, msg: Message) -> Option<Message> {
     let model = apex_menu.app_model_mut();
     match msg {
-        Message::Reset => model.counter = 0,
-        Message::Quit => {
-            // You can handle cleanup and exit here
-            model.running_state = RunningState::Done;
-        }
-        Message::Up => apex_menu.nav_up(),
-        Message::Down => apex_menu.nav_down(),
         Message::Back => match model.running_state {
             RunningState::Editing => {
                 model.running_state = RunningState::Running;
@@ -182,8 +162,7 @@ fn update(apex_menu: &mut TerminalMenu, msg: Message) -> Option<Message> {
                 model.running_state = RunningState::Running;
                 model.dialog_text.clear();
             }
-            RunningState::Running => apex_menu.nav_back(),
-            RunningState::Done => (),
+            _ => (),
         },
         Message::Enter => match model.running_state {
             RunningState::Editing => {
@@ -202,23 +181,15 @@ fn update(apex_menu: &mut TerminalMenu, msg: Message) -> Option<Message> {
                 model.running_state = RunningState::Running;
                 model.dialog_text.clear();
             }
-            RunningState::Running => apex_menu.nav_enter(),
-            RunningState::Done => (),
+            _ => (),
         },
-        Message::Jump(i) => {
-            let now = time();
-            if now - model.jump_time > 600 {
-                model.jump_buf.clear();
+        Message::Mouse(mouse) => {
+            if model.running_state == RunningState::Running {
+                apex_menu.nav_mouse(mouse);
             }
-            model.jump_time = now;
-            if model.jump_buf.len() + 1 > 2 {
-                model.jump_buf.clear();
-            }
-            model
-                .jump_buf
-                .insert(model.jump_buf.len(), char::from_digit(i, 10).unwrap());
-            let num = model.jump_buf.parse::<usize>().unwrap();
-            apex_menu.nav_jump(num);
+        }
+        Message::Press(keycode) => {
+            apex_menu.nav_press(keycode);
         }
         Message::Input(c) => {
             model.input_buf.insert(model.input_buf.len(), c);
@@ -356,7 +327,7 @@ fn dialog_render(f: &mut Frame, dialog_text: &String) {
     f.render_widget(text, area);
 }
 
-fn time() -> u128 {
+pub fn time() -> u128 {
     SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -365,30 +336,42 @@ fn time() -> u128 {
 
 pub mod tui {
     use crossterm::{
+        event::{DisableMouseCapture, EnableMouseCapture},
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-        ExecutableCommand,
     };
     use ratatui::prelude::*;
-    use std::{io::stdout, panic};
+    use std::{
+        io::{stdout, Stdout},
+        panic,
+    };
 
-    pub fn init_terminal() -> anyhow::Result<Terminal<impl Backend>> {
+    pub fn init_terminal() -> anyhow::Result<Terminal<CrosstermBackend<Stdout>>> {
         enable_raw_mode()?;
-        stdout().execute(EnterAlternateScreen)?;
-        let terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+        let mut stdout = std::io::stdout();
+        crossterm::execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+        let backend = CrosstermBackend::new(stdout);
+        let terminal = Terminal::new(backend)?;
         Ok(terminal)
     }
 
-    pub fn restore_terminal() -> anyhow::Result<()> {
-        stdout().execute(LeaveAlternateScreen)?;
+    pub fn restore_terminal(
+        terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+    ) -> anyhow::Result<()> {
         disable_raw_mode()?;
+        crossterm::execute!(
+            terminal.backend_mut(),
+            LeaveAlternateScreen,
+            DisableMouseCapture
+        )?;
+        terminal.show_cursor()?;
         Ok(())
     }
 
     pub fn install_panic_hook() {
         let original_hook = panic::take_hook();
         panic::set_hook(Box::new(move |panic_info| {
-            stdout().execute(LeaveAlternateScreen).unwrap();
             disable_raw_mode().unwrap();
+            crossterm::execute!(stdout(), LeaveAlternateScreen, DisableMouseCapture).unwrap();
             original_hook(panic_info);
         }));
     }

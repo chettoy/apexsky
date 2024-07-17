@@ -1,4 +1,4 @@
-use apexsky_extension::InstallManager;
+use apexsky_extension::PackageManager;
 
 #[tokio::main]
 async fn main() {
@@ -16,7 +16,7 @@ async fn main() {
         return usage();
     };
 
-    let mut mgr = InstallManager::default();
+    let mut mgr = PackageManager::default();
 
     if let Err(e) = mgr.pack(out_path.into(), manifest_path.into()).await {
         println!("{:?}", e);

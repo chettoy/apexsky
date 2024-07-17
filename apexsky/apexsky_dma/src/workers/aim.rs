@@ -11,7 +11,7 @@ use apexsky_dmalib::access::MemApi;
 use apexsky_kmbox::kmbox::{KmboxB, KmboxNet};
 use apexsky_proto::pb::apexlegends::{AimKeyState, AimTargetInfo};
 use obfstr::obfstr as s;
-use tokio::sync::watch;
+use tokio::sync::{mpsc, watch};
 use tokio::time::{sleep, sleep_until, Instant};
 use tracing::{instrument, trace};
 
@@ -19,6 +19,7 @@ use crate::actuator::{
     AimActuator, AimbotAction, DeviceAimActuator, KmboxAimActuator, MemAimHelper, QmpAimActuator,
 };
 use crate::apexdream::base::math;
+use crate::usermod_thr::UserModEvent;
 use crate::SharedStateWrapper;
 
 const ENABLE_MEM_AIM: bool = true;
@@ -57,10 +58,17 @@ pub async fn aimbot_loop(
     mut active: watch::Receiver<bool>,
     mut state: SharedStateWrapper,
     access_tx: MemApi,
+    usermod_event_tx: mpsc::UnboundedSender<UserModEvent>,
     mut aim_key_rx: watch::Receiver<AimKeyState>,
     mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
 ) -> anyhow::Result<()> {
     tracing::debug!("{}", s!("task start"));
+
+    let usermod_send_event = |event: UserModEvent| {
+        if let Err(e) = usermod_event_tx.send(event) {
+            tracing::error!(%e, "{}", s!("usermod_send_event"));
+        };
+    };
 
     let mut start_instant = Instant::now();
     let mut aimbot = Aimbot::default();
@@ -227,14 +235,10 @@ pub async fn aimbot_loop(
                     let Some(view_angles) = read_view_angles(&mem_aim_helper).await else {
                         continue;
                     };
-                    //let info = read_aiming_info(&mem_aim_helper, target_entity.as_ref()).await?;
                     let (aim_angles, position) = aimbot.calc_best_aim(
                         local_entity.as_ref(),
                         target_entity.as_ref(),
-                        //info.local_origin,
                         view_angles,
-                        //info.target_origin,
-                        //info.target_vel,
                     );
                     trace!(?aim_angles, "{}", s!("711aac39-e83c-4788 best aim"));
                     (aim_angles, Some(position))
@@ -362,6 +366,9 @@ pub async fn aimbot_loop(
 
         // Update state for ESP
         *state.aimbot_state.lock() = Some((aimbot.clone(), loop_duration));
+
+        // Update state for UserMod
+        usermod_send_event(UserModEvent::AimbotTick(aimbot.clone(), aim_result));
 
         // Read view_angles
         let Some(view_angles) = read_view_angles(&mem_aim_helper).await else {

@@ -1,40 +1,41 @@
-use crate::{
-    config, global_state::G_CONTEXT, i18n::get_fluent_bundle, i18n_msg, i18n_msg_format,
-    lock_config, menu_add_toggle_item,
-};
-use fluent::{FluentArgs, FluentBundle, FluentResource};
+use fluent::FluentArgs;
 use ratatui::{
     style::{Style, Stylize},
     text::Span,
 };
 
-use super::{
-    format_item, item_dummy, item_enabled, item_text, MenuBuilder, MenuLevel, MenuState,
-    TerminalMenu,
+use crate::menu::apexsky_menu::general_menu::{
+    format_item, item_dummy, item_enabled, item_text, GeneralMenu, MenuBuilder,
 };
+use crate::menu::TerminalMenu;
+use crate::{
+    config, global_state::G_CONTEXT, i18n_msg, i18n_msg_format, lock_config, menu_add_toggle_item,
+};
+use crate::{i18n::I18nBundle, menu::apex_menu::MenuLevel};
 
 pub(super) fn build_main_menu(
-    i18n_bundle: FluentBundle<FluentResource>,
+    i18n_bundle: &I18nBundle,
     settings: config::Settings,
-) -> MenuState<'static> {
-    let mut menu = MenuBuilder::new().title(i18n_msg!(i18n_bundle, MainMenuTitle));
+) -> GeneralMenu<'static, MenuLevel> {
+    let mut menu =
+        MenuBuilder::new(MenuLevel::MainMenu).title(i18n_msg!(i18n_bundle, MainMenuTitle));
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!(" 1 - {}", i18n_msg!(i18n_bundle, MenuItemFiringRange)),
         settings.firing_range,
         firing_range
     );
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!(" 2 - {}", i18n_msg!(i18n_bundle, MenuItemTdmToggle)),
         settings.tdm_toggle,
         tdm_toggle
     );
     menu = menu.skip_id().add_item(
         item_enabled(
-            &i18n_bundle,
+            i18n_bundle,
             format!(" 4 - {}", i18n_msg!(i18n_bundle, MenuItemGamepad)),
             settings.aimbot_settings.gamepad,
         ),
@@ -47,14 +48,14 @@ pub(super) fn build_main_menu(
     );
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!(" 5 - {}", i18n_msg!(i18n_bundle, MenuItemItemGlow)),
         settings.item_glow,
         item_glow
     );
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!(" 6 - {}", i18n_msg!(i18n_bundle, MenuItemPlayerGlow)),
         settings.player_glow,
         player_glow
@@ -81,7 +82,7 @@ pub(super) fn build_main_menu(
         )
         .add_item(
             item_enabled(
-                &i18n_bundle,
+                i18n_bundle,
                 format!(" 9 - {}", i18n_msg!(i18n_bundle, MenuItemLootGlowFilled)),
                 settings.loot_filled_toggle,
             ),
@@ -95,7 +96,7 @@ pub(super) fn build_main_menu(
         )
         .add_item(
             item_enabled(
-                &i18n_bundle,
+                i18n_bundle,
                 format!("10 - {}", i18n_msg!(i18n_bundle, MenuItemPlayerGlowFilled)),
                 settings.player_filled_toggle,
             ),
@@ -115,7 +116,7 @@ pub(super) fn build_main_menu(
             )),
             &i18n_msg!(i18n_bundle, InputPromptPlayerOutlines),
             |val| {
-                let i18n_bundle = get_fluent_bundle();
+                let i18n_bundle = &I18nBundle::new();
                 if let Some(new_val) = val.parse::<u8>().ok() {
                     let settings = &mut lock_config!().settings;
                     settings.player_glow_outline_size = new_val; //[0, 255]
@@ -142,7 +143,7 @@ pub(super) fn build_main_menu(
         .skip_id();
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!(
             "14 - {}",
             i18n_msg!(i18n_bundle, MenuItemPlayerArmorGlowColor)
@@ -152,7 +153,7 @@ pub(super) fn build_main_menu(
     );
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!(
             "15 - {}",
             i18n_msg!(i18n_bundle, MenuItemFavoritePlayerGlow)
@@ -174,7 +175,7 @@ pub(super) fn build_main_menu(
         )
         .add_input_item(
             format_item(
-                &i18n_bundle,
+                i18n_bundle,
                 format!("17 - {}", i18n_msg!(i18n_bundle, MenuItemSetFpsPredict)),
                 Span::from(if settings.calc_game_fps {
                     i18n_msg!(i18n_bundle, MenuValueCalcFps).to_string()
@@ -208,7 +209,7 @@ pub(super) fn build_main_menu(
                 if config.settings.load_settings {
                     None
                 } else {
-                    let i18n_bundle = get_fluent_bundle();
+                    let i18n_bundle = &I18nBundle::new();
                     Some(i18n_msg!(i18n_bundle, HelloWorld).to_string())
                 }
             },
@@ -217,7 +218,7 @@ pub(super) fn build_main_menu(
         .skip_id();
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!("20 - {}", i18n_msg!(i18n_bundle, MenuItemDeathBoxes)),
         settings.deathbox,
         deathbox
@@ -230,7 +231,7 @@ pub(super) fn build_main_menu(
                 i18n_msg!(i18n_bundle, MenuItemSaveSettings)
             )),
             |_, _| {
-                let i18n_bundle = get_fluent_bundle();
+                let i18n_bundle = &I18nBundle::new();
                 Some(
                     if crate::save_settings() {
                         i18n_msg!(i18n_bundle, InfoSaved)
@@ -248,10 +249,9 @@ pub(super) fn build_main_menu(
                 i18n_msg!(i18n_bundle, MenuItemLoadSettings)
             )),
             |_, _| {
-                let i18n_bundle = get_fluent_bundle();
+                let i18n_bundle = &I18nBundle::new();
                 let mut result = i18n_msg!(i18n_bundle, InfoLoaded).to_string();
                 let config_state = crate::config::get_configuration().unwrap_or_else(|e| {
-                    let i18n_bundle = get_fluent_bundle();
                     result = format!("{}\n{}", e, i18n_msg!(i18n_bundle, InfoFallbackConfig));
                     crate::config::Config::default()
                 });
@@ -263,21 +263,21 @@ pub(super) fn build_main_menu(
         .add_dummy_item();
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!("23 - {}", i18n_msg!(i18n_bundle, MenuItemSuperGlide)),
         settings.super_key_toggle,
         super_key_toggle
     );
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!("24 - {}", i18n_msg!(i18n_bundle, MenuItemSuperGrpple)),
         settings.super_grpple,
         super_grpple
     );
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!("25 - {}", i18n_msg!(i18n_bundle, MenuItemAutoTapstrafe)),
         settings.auto_tapstrafe,
         auto_tapstrafe
@@ -285,14 +285,14 @@ pub(super) fn build_main_menu(
     .skip_id();
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!("27 - {}", i18n_msg!(i18n_bundle, MenuItemToggleOnevone)),
         settings.onevone,
         onevone
     );
     menu = menu.add_item(
         item_enabled(
-            &i18n_bundle,
+            i18n_bundle,
             format!("28 - {}", i18n_msg!(i18n_bundle, MenuItemWeaponModelGlow)),
             settings.weapon_model_glow,
         ),
@@ -300,7 +300,7 @@ pub(super) fn build_main_menu(
             let settings = &mut lock_config!().settings;
             settings.weapon_model_glow = !settings.weapon_model_glow;
             if settings.weapon_model_glow {
-                let i18n_bundle = get_fluent_bundle();
+                let i18n_bundle = &I18nBundle::new();
                 Some(i18n_msg!(i18n_bundle, InfoWeaponModelGlow).to_string())
             } else {
                 None
@@ -310,7 +310,7 @@ pub(super) fn build_main_menu(
     );
     menu = menu.add_item(
         item_enabled(
-            &i18n_bundle,
+            i18n_bundle,
             format!("29 - {}", i18n_msg!(i18n_bundle, MenuItemKbdBacklightCtrl)),
             settings.kbd_backlight_control,
         ),
@@ -328,7 +328,7 @@ pub(super) fn build_main_menu(
     );
     menu = menu_add_toggle_item!(
         menu,
-        &i18n_bundle,
+        i18n_bundle,
         format!("30 - {}", i18n_msg!(i18n_bundle, MenuItemBigMapFeat)),
         settings.map_radar_testing,
         map_radar_testing
@@ -347,7 +347,7 @@ pub(super) fn build_main_menu(
         )
         .add_item(
             format_item(
-                &i18n_bundle,
+                i18n_bundle,
                 format!("32 - {}", i18n_msg!(i18n_bundle, MenuItemToggleOverlay)),
                 if settings.no_overlay {
                     Span::from(i18n_msg!(i18n_bundle, MenuValueNoOverlay).to_string())

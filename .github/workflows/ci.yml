@@ -83,11 +83,14 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
         echo "sha_short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-    - name: Build Player
+    - name: Build
       run: cd apexsky && cargo build --release --target ${{ matrix.target }}
 
     - name: Build Overlay
       run: cd apexsky/apexsky_overlay && cargo build --release --target ${{ matrix.target }}
+
+    - name: Build Packer
+      run: cd apexsky/apexsky_extension && cargo build --bin apexsky_extension_packer --release --target ${{ matrix.target }}
 
     # - name: Test
     #   working-directory: ${{ steps.strings.outputs.build-output-dir }}
@@ -111,5 +114,6 @@ jobs:
         path: |
           apexsky/target/${{ matrix.target }}/release/${{ matrix.bin-prefix }}apexsky_dma${{ matrix.bin-ext }}
           apexsky/target/${{ matrix.target }}/release/${{ matrix.bin-prefix }}apexsky_overlay${{ matrix.bin-ext }}
+          apexsky/target/${{ matrix.target }}/release/${{ matrix.bin-prefix }}apexsky_extension_packer${{ matrix.bin-ext }}
         retention-days: 5
 

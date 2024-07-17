@@ -1,11 +1,15 @@
 {
     "manifest_version": 0,
     "package_name": "com.chettoy.apexsky.autosg",
-    "version_code": 1,
-    "version": "0.1.0",
+    "version_code": 2,
+    "version": "0.1.1",
     "label": "Auto SG",
     "description": "Auto SG extension",
     "icons": {},
+    "target_api": {
+        "runtime": 0,
+        "game": "apexlegends"
+    },
     "components": [
         {
             "service": "worker.js",

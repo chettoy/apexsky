@@ -1,6 +1,9 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
+const MANIFEST_VERSION: i32 = 0;
+const RUNTIME_API_VERSION: i32 = 0;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ManifestDoc {
     manifest_version: i32,
@@ -10,6 +13,7 @@ pub struct ManifestDoc {
     label: String,
     description: String,
     icons: IndexMap<u16, String>,
+    target_api: Option<TargetApiVersion>,
     components: Vec<Components>,
     permissions: Vec<PermissionField>,
 }
@@ -22,7 +26,7 @@ impl Manifest {
         use anyhow::bail;
         use obfstr::obfstr as s;
 
-        if manifest.manifest_version != 0 {
+        if manifest.manifest_version != MANIFEST_VERSION {
             bail!("{}", s!("Invalid manifest_version"));
         }
         if manifest.package_name.is_empty()
@@ -36,6 +40,11 @@ impl Manifest {
         }
         if manifest.version.len() > 255 {
             bail!("{}", s!("Invalid version"));
+        }
+        if let Some(api_version) = &manifest.target_api {
+            if api_version.runtime != RUNTIME_API_VERSION {
+                bail!("{}", s!("Unsupported api version"));
+            }
         }
         for comp in &manifest.components {
             if let Some(t) = &comp.r#type {
@@ -123,6 +132,12 @@ impl Manifest {
             .find(|&comp| comp.r#type.as_ref().is_some_and(|t| t == "module"))
             .map(|comp| comp.service.to_owned())
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TargetApiVersion {
+    runtime: i32,
+    game: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
