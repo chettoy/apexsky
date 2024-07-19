@@ -501,6 +501,7 @@ pub(crate) fn request_game_state(
                             version: 0,
                             full_aimbot_state: false,
                             full_targets_list: false,
+                            sync: true,
                         })
                         .await,
                 );

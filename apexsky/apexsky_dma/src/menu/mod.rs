@@ -12,6 +12,8 @@ use apexsky::{
     },
 };
 use crossterm::event::{KeyCode, MouseEvent};
+use dlc_list::Data;
+use obfstr::obfstr as s;
 use tokio::sync::oneshot;
 
 use crate::{usermod_thr::UserModEvent, USERMOD_TX};
@@ -147,28 +149,9 @@ impl MenuState for DlcMenu {
                 KeyCode::Char('e') => {
                     if let Some(data) = self.table.get_current_mut() {
                         if data.is_installed() {
-                            G_STATE
-                                .lock()
-                                .unwrap()
-                                .config
-                                .dlc
-                                .install
-                                .shift_remove(data.package_name());
-                            if apexsky::save_settings() {
-                                data.set_installed(false);
-                                if let Some(tx) = USERMOD_TX.read().clone() {
-                                    let (callback_tx, _callback_rx) = oneshot::channel();
-                                    let _ = tx.send(UserModEvent::KillPackage(
-                                        data.package_name().to_owned(),
-                                        callback_tx,
-                                    ));
-                                }
+                            if let Some(dialog_text) = uninstall(data) {
+                                alert(ctx.app_model_mut(), dialog_text);
                             }
-                            let i18n_bundle = &I18nBundle::new();
-                            alert(
-                                ctx.app_model_mut(),
-                                i18n_msg!(i18n_bundle, InfoDlcUninstallSuccess).to_string(),
-                            );
                         } else {
                             self.install_view = Some(install_view::InstallView::new(data.clone()));
                         }
@@ -187,32 +170,15 @@ impl MenuState for DlcMenu {
 
     fn nav_enter(&mut self, ctx: &mut apexsky::menu::apexsky_menu::TerminalMenu) {
         if let Some(install_view) = self.install_view.as_mut() {
-            if let Some(data) = self.table.get_current_mut() {
-                if install_view.get_data().package_name() == data.package_name() {
-                    G_STATE.lock().unwrap().config.dlc.install.insert(
-                        data.package_name().to_owned(),
-                        InstalledDlcItem {
-                            checksum: data.checksum().to_owned(),
-                        },
-                    );
-                    self.install_view = None;
-                    if apexsky::save_settings() {
-                        data.set_installed(true);
-                        if let Some(tx) = USERMOD_TX.read().clone() {
-                            let (callback_tx, _callback_rx) = oneshot::channel();
-                            let _ = tx.send(UserModEvent::HotLoadPackage(
-                                data.file_path().to_owned(),
-                                Some(data.checksum().to_owned()),
-                                callback_tx,
-                            ));
-                        }
-                    }
-                    let i18n_bundle = &I18nBundle::new();
-                    alert(
-                        ctx.app_model_mut(),
-                        i18n_msg!(i18n_bundle, InfoDlcInstallSuccess).to_string(),
-                    );
-                }
+            let Some(data) = self.table.get_current_mut() else {
+                return;
+            };
+            if install_view.get_data().package_name() != data.package_name() {
+                return;
+            }
+            self.install_view = None;
+            if let Some(dialog_text) = install(data) {
+                alert(ctx.app_model_mut(), dialog_text);
             }
         } else {
             self.table.next_color();
@@ -249,4 +215,113 @@ impl DlcMenu {
     pub fn build() -> Box<Self> {
         Box::new(Self::new())
     }
+}
+
+fn install(data: &mut Data) -> Option<String> {
+    let i18n_bundle = &I18nBundle::new();
+    G_STATE.lock().unwrap().config.dlc.install.insert(
+        data.package_name().to_owned(),
+        InstalledDlcItem {
+            checksum: data.checksum().to_owned(),
+        },
+    );
+    if apexsky::save_settings() {
+        data.set_installed(true);
+        let Some(tx) = USERMOD_TX.read().clone() else {
+            return Some(i18n_msg!(i18n_bundle, InfoDlcInstallSuccess).to_string());
+        };
+        let (callback_tx, callback_rx) = oneshot::channel();
+        if let Err(e) = tx.send(UserModEvent::HotLoadPackage(
+            data.file_path().to_owned(),
+            Some(data.checksum().to_owned()),
+            Some(callback_tx),
+        )) {
+            return Some(format!(
+                "{}\n{:?}",
+                i18n_msg!(i18n_bundle, InfoDlcInstallSuccess),
+                e
+            ));
+        }
+        let ret = match callback_rx.blocking_recv() {
+            Ok(r) => r,
+            Err(e) => {
+                return Some(format!(
+                    "{}\n{}{:?}{}",
+                    i18n_msg!(i18n_bundle, InfoDlcInstallSuccess),
+                    s!("callback err: "),
+                    e,
+                    e.to_string()
+                ));
+            }
+        };
+        match ret {
+            Ok(_) => {
+                return Some(format!(
+                    "{}\n{}",
+                    i18n_msg!(i18n_bundle, InfoDlcInstallSuccess),
+                    i18n_msg!(i18n_bundle, LabelDlcRunning)
+                ));
+            }
+            Err(e) => {
+                return Some(format!(
+                    "{}\n{:?}",
+                    i18n_msg!(i18n_bundle, InfoDlcInstallSuccess),
+                    e
+                ));
+            }
+        }
+    }
+    Some(i18n_msg!(i18n_bundle, InfoDlcInstallSuccess).to_string())
+}
+
+fn uninstall(data: &mut Data) -> Option<String> {
+    let i18n_bundle = &I18nBundle::new();
+    G_STATE
+        .lock()
+        .unwrap()
+        .config
+        .dlc
+        .install
+        .shift_remove(data.package_name());
+    if apexsky::save_settings() {
+        data.set_installed(false);
+        if let Some(tx) = USERMOD_TX.read().clone() {
+            let (callback_tx, callback_rx) = oneshot::channel();
+            if let Err(e) = tx.send(UserModEvent::KillPackage(
+                data.package_name().to_owned(),
+                Some(callback_tx),
+            )) {
+                return Some(format!(
+                    "{}\n{}\n{:?}",
+                    i18n_msg!(i18n_bundle, InfoDlcUninstallSuccess),
+                    i18n_msg!(i18n_bundle, LabelDlcRunning),
+                    e
+                ));
+            }
+            let ret = match callback_rx.blocking_recv() {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::error!(%e, ?e);
+                    return Some(e.to_string());
+                }
+            };
+            match ret {
+                Ok(_) => {
+                    return Some(format!(
+                        "{}\n{}",
+                        i18n_msg!(i18n_bundle, InfoDlcUninstallSuccess),
+                        i18n_msg!(i18n_bundle, LabelDlcStopped)
+                    ));
+                }
+                Err(e) => {
+                    return Some(format!(
+                        "{}\n{:?}",
+                        i18n_msg!(i18n_bundle, InfoDlcUninstallSuccess),
+                        e
+                    ));
+                }
+            }
+        }
+    }
+    Some(i18n_msg!(i18n_bundle, InfoDlcUninstallSuccess).to_string())
 }

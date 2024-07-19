@@ -69,6 +69,9 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
     let select = &g_settings.loot;
 
     match item_id {
+        // DeathBox
+        ItemId::DeathBox if g_settings.deathbox => Some(HIGHLIGHT_DEATH_BOX),
+
         // Backpacks
         ItemId::LightBackpack if select.lightbackpack => Some(HIGHLIGHT_LOOT_WHITE),
         ItemId::MedBackpack if select.medbackpack => Some(HIGHLIGHT_LOOT_BLUE),

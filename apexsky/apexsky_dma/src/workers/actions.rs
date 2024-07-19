@@ -20,7 +20,7 @@ use tokio::sync::{mpsc, watch};
 use tokio::time::{sleep, Instant};
 
 use crate::{
-    apexdream::state::entities::Entity,
+    apexdream::state::entities::{DeathboxEntity, Entity, PlayerEntity},
     game::player::QuickLooting,
     usermod_thr::{ActionTickData, UserModEvent},
     workers::items::LootInt,
@@ -46,13 +46,13 @@ pub async fn actions_loop(
     access_tx: MemApi,
     aim_key_tx: watch::Sender<AimKeyState>,
     aim_select_tx: watch::Sender<Vec<AimTargetInfo>>,
+    update_time_tx: watch::Sender<f64>,
     usermod_event_tx: mpsc::UnboundedSender<UserModEvent>,
     mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
     mut items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
 ) -> anyhow::Result<()> {
     tracing::debug!("{}", s!("task start"));
 
-    
     let usermod_send_event = |event: UserModEvent| {
         if let Err(e) = usermod_event_tx.send(event) {
             tracing::error!(%e, "{}", s!("usermod_send_event"));
@@ -217,7 +217,6 @@ pub async fn actions_loop(
                         *lock = g_settings.game_fps;
                     }
                 }
-                *shared_state.update_time.lock() = apex_state.time;
                 *shared_state.view_matrix.lock() = apex_state.client.view_matrix;
 
                 if PRINT_LATENCY {
@@ -278,11 +277,11 @@ pub async fn actions_loop(
             // Update entities
             if world_ready {
                 let mut players = HashMap::new();
-                apex_state.players().for_each(|pl| {
+                apex_state.entities_as::<PlayerEntity>().for_each(|pl| {
                     // FIXME: skip wrong entity
-                    if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 50 {
-                        return;
-                    }
+                    // if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 50 {
+                    //     return;
+                    // }
                     let game_player = GamePlayer::new(
                         pl.clone(),
                         apex_state,
@@ -336,6 +335,22 @@ pub async fn actions_loop(
                             };
                             treasure_clues.insert(clue.entity_handle, clue);
                         });
+                        apex_state
+                            .entities_as::<DeathboxEntity>()
+                            .for_each(|entity| {
+                                let distance = (arr1(&entity.origin) - &local_position)
+                                    .mapv(|x| x * x)
+                                    .sum()
+                                    .sqrt();
+                                let clue = TreasureClue {
+                                    entity_handle: entity.entity_ptr.into_raw(),
+                                    item_id: -1,
+                                    custom_item_id: ItemId::DeathBox as u64,
+                                    position: Some(entity.origin.into()),
+                                    distance,
+                                };
+                                treasure_clues.insert(clue.entity_handle, clue);
+                            });
                     }
                     let loot_count = treasure_clues.len();
                     tracing::trace!(loot_count, "{}", s!("loots updated"));
@@ -376,6 +391,14 @@ pub async fn actions_loop(
                 shared_state.players.write().clear();
                 shared_state.treasure_clues.write().clear();
             }
+
+            if let Err(e) = update_time_tx.send(apex_state.time) {
+                tracing::error!(%e, ?e, "{}", s!("send update time"));
+            }
+
+            usermod_send_event(UserModEvent::ActionTick(ActionTickData {
+                input_state: apex_state.input_system.button_state,
+            }));
 
             // Log WeaponId
             if is_newly_connected {
@@ -438,10 +461,6 @@ pub async fn actions_loop(
                     }
                 }
             }
-
-            usermod_send_event(UserModEvent::ActionTick(ActionTickData {
-                input_state: apex_state.input_system.button_state,
-            }));
 
             /* Hot Variables Update End */
 

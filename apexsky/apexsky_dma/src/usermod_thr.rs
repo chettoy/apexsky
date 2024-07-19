@@ -19,8 +19,12 @@ use tokio::{
 };
 
 pub(crate) enum UserModEvent {
-    HotLoadPackage(PathBuf, Option<String>, oneshot::Sender<anyhow::Result<()>>),
-    KillPackage(String, oneshot::Sender<anyhow::Result<()>>),
+    HotLoadPackage(
+        PathBuf,
+        Option<String>,
+        Option<oneshot::Sender<anyhow::Result<()>>>,
+    ),
+    KillPackage(String, Option<oneshot::Sender<anyhow::Result<()>>>),
     GameAttached,
     GameUnattached,
     ActionTick(ActionTickData),
@@ -63,42 +67,8 @@ pub(crate) async fn usermod_loop(
     let mut running_ctx = HashMap::new();
 
     // Load and install packages
-    {
-        let install_list = G_STATE.lock().unwrap().config.dlc.install.clone();
-        let current_dir = std::env::current_dir()?;
-        let dlc_dir = current_dir.join("dlc");
-        for entry in std::fs::read_dir(dlc_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            if !path.is_file() {
-                continue;
-            }
-            if let Some(file_ext) = path.extension() {
-                if file_ext != "spk" {
-                    continue;
-                }
-            } else {
-                continue;
-            }
-
-            let Some(package_name) = install_mgr.install(path, None).await.ok() else {
-                continue;
-            };
-            let Some(installed) = install_mgr.get_installed(&package_name) else {
-                continue;
-            };
-
-            let Some(install_item) = install_list.get(&package_name) else {
-                install_mgr.remove(&package_name);
-                continue;
-            };
-            if installed.checksum != install_item.checksum {
-                install_mgr.remove(&package_name);
-                tracing::warn!(?install_item, "{}{}", package_name, s!(" not installed"));
-                continue;
-            }
-        }
+    if let Err(e) = install_packages(&mut install_mgr).await {
+        tracing::warn!(%e);
     }
 
     // Run installed packages
@@ -124,6 +94,45 @@ pub(crate) async fn usermod_loop(
         let Some(event) = event_rx.recv().await else {
             break;
         };
+
+        match event {
+            UserModEvent::HotLoadPackage(path, checksum, result_tx) => {
+                tracing::info!("{}{}", s!("hot load "), path.to_string_lossy());
+                match install_mgr.install(path, checksum).await {
+                    Ok(package_name) => {
+                        let r = run_a_package(
+                            &mut install_mgr,
+                            &mut running_mgr,
+                            &mut running_ctx,
+                            package_name.clone(),
+                        )
+                        .await;
+                        if r.is_ok() {
+                            tracing::info!("{}{}", s!("hot loaded "), package_name);
+                        }
+                        if let Some(result_tx) = result_tx {
+                            let _ = result_tx.send(r);
+                        }
+                    }
+                    Err(e) => {
+                        if let Some(result_tx) = result_tx {
+                            let _ = result_tx.send(Err(e.into()));
+                        }
+                    }
+                }
+                continue;
+            }
+            UserModEvent::KillPackage(package_name, result_tx) => {
+                running_ctx.remove(&package_name);
+                let ret = running_mgr.stop(&package_name).await;
+                if let Some(result_tx) = result_tx {
+                    let _ = result_tx.send(ret);
+                }
+                continue;
+            }
+            _ => (),
+        }
+
         for RunningCtx {
             guest_options,
             msg_tx,
@@ -131,22 +140,6 @@ pub(crate) async fn usermod_loop(
         {
             let mut callback_rx = None;
             let msg = match event {
-                UserModEvent::HotLoadPackage(path, checksum, result_tx) => {
-                    let package_name = install_mgr.install(path, checksum).await?;
-                    let r = run_a_package(
-                        &mut install_mgr,
-                        &mut running_mgr,
-                        &mut running_ctx,
-                        package_name,
-                    )
-                    .await;
-                    let _ = result_tx.send(r);
-                    break;
-                }
-                UserModEvent::KillPackage(package_name, result_tx) => {
-                    let _ = result_tx.send(running_mgr.stop(&package_name).await);
-                    break;
-                }
                 UserModEvent::GameAttached => {
                     ExtensionMessage::new(String::from("game_attached"), None)
                 }
@@ -179,6 +172,7 @@ pub(crate) async fn usermod_loop(
                         Some(tx),
                     )?
                 }
+                _ => break,
             };
             msg_tx.send(msg).await?;
             if let Some(rx) = callback_rx {
@@ -192,6 +186,45 @@ pub(crate) async fn usermod_loop(
 
     tracing::warn!("{}", s!("usermod_task finished"));
 
+    Ok(())
+}
+
+async fn install_packages(install_mgr: &mut PackageManager) -> anyhow::Result<()> {
+    let install_list = G_STATE.lock().unwrap().config.dlc.install.clone();
+    let current_dir = std::env::current_dir()?;
+    let dlc_dir = current_dir.join("dlc");
+    for entry in std::fs::read_dir(dlc_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if !path.is_file() {
+            continue;
+        }
+        if let Some(file_ext) = path.extension() {
+            if file_ext != "spk" {
+                continue;
+            }
+        } else {
+            continue;
+        }
+
+        let Some(package_name) = install_mgr.install(path, None).await.ok() else {
+            continue;
+        };
+        let Some(installed) = install_mgr.get_installed(&package_name) else {
+            continue;
+        };
+
+        let Some(install_item) = install_list.get(&package_name) else {
+            install_mgr.remove(&package_name);
+            continue;
+        };
+        if installed.checksum != install_item.checksum {
+            install_mgr.remove(&package_name);
+            tracing::warn!(?install_item, "{}{}", package_name, s!(" not installed"));
+            continue;
+        }
+    }
     Ok(())
 }
 

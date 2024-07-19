@@ -30,7 +30,7 @@ named_constants = "0.2.0"
 ndarray = "0.15.6"
 obfstr = "0.4.3"
 once_cell = "1.19.0"
-parking_lot = { version = "0.12.3", features = ["nightly"] }
+parking_lot = { version = "0.12.3", features = ["nightly", "deadlock_detection"] }
 prost = "0.13.1"
 qapi = { version = "0.14.0", features = ["qmp", "async-tokio-all"] }
 rand = "0.8.5"

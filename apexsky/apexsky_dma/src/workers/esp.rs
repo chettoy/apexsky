@@ -40,7 +40,7 @@ impl EspService for GameApiHandle {
     ) -> Result<Response<Players>, Status> {
         let reply = {
             let players = self.state.players.read().clone();
-            let data_timestamp = self.state.update_time.lock().to_owned();
+            let data_timestamp = self.channels.update_time_rx.borrow().to_owned();
             Players {
                 version: 0,
                 players: players
@@ -62,7 +62,7 @@ impl EspService for GameApiHandle {
         let filter_id = !req.wish_list.is_empty();
         let reply = {
             let treasure_clues = self.state.treasure_clues.read().clone().into_values();
-            let data_timestamp = self.state.update_time.lock().to_owned();
+            let data_timestamp = self.channels.update_time_rx.borrow().to_owned();
             Loots {
                 version: 0,
                 loots: match (filter_dist, filter_id) {
@@ -92,6 +92,17 @@ impl EspService for GameApiHandle {
     ) -> Result<Response<EspData>, Status> {
         let op = request.into_inner();
 
+        let update_time = {
+            let mut rx = self.channels.update_time_rx.clone();
+            if op.sync {
+                if let Err(e) = rx.changed().await {
+                    tracing::error!(%e, ?e);
+                }
+            }
+            let x = rx.borrow().to_owned();
+            x
+        };
+
         let reply = {
             let state = &self.state;
             let aim_entities = state.aim_entities.read().clone();
@@ -101,7 +112,6 @@ impl EspService for GameApiHandle {
             let players = state.players.read().clone();
             let spectators = state.spectator_list.lock().clone();
             let teammates = state.teammates.lock().clone();
-            let update_time = self.state.update_time.lock().to_owned();
             let view_matrix = state.view_matrix.lock().to_vec();
 
             if PRINT_LATENCY {
@@ -303,7 +313,7 @@ impl EspService for GameApiHandle {
                     ]
                     .into(),
                 ),
-                desired_loots: vec![194, 198, 199, 219, 222, 223, 247, 248, 252, 256, 267],
+                desired_loots: vec![-1, 194, 198, 199, 219, 222, 223, 247, 248, 252, 256, 267],
             }
         };
         Ok(Response::new(reply))

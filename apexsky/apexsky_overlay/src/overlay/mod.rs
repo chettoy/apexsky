@@ -92,6 +92,7 @@ pub(crate) fn main() {
         ))
         .init_resource::<TokioRuntime>()
         .init_resource::<MyOverlayState>()
+        .init_resource::<ui::UiPersistance>()
         .init_resource::<ui::UiState>()
         .init_resource::<system::sound::SoundSystem>()
         .init_non_send_resource::<system::sound::SoundBufRes>()
@@ -197,7 +198,22 @@ fn setup(
     if cfg!(feature = "web-wasm") {
         overlay_state.black_background = true;
         commands.insert_resource(ClearColor(Color::BLACK));
-    } else {
+    }
+    if cfg!(feature = "native") {
         overlay_state.user_gesture = true;
+
+        match ui::UiPersistance::load_persistance() {
+            Ok(saved_ui_state) => {
+                commands.insert_resource(saved_ui_state);
+            }
+            Err(e) => match e.downcast::<std::io::Error>() {
+                Ok(e) => {
+                    if e.kind() != std::io::ErrorKind::NotFound {
+                        tracing::error!(%e, ?e)
+                    }
+                }
+                Err(e) => tracing::error!(%e, ?e),
+            },
+        }
     }
 }

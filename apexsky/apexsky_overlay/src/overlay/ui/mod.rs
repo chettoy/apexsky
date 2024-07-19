@@ -4,7 +4,11 @@ use bevy::prelude::*;
 use bevy_egui::egui::pos2;
 use bevy_egui::egui::Align2;
 use bevy_egui::{egui, EguiContexts};
+use instant::Instant;
 use obfstr::obfstr as s;
+use once_cell::sync::Lazy;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::overlay::ui::mini_map::mini_map_radar;
 use crate::overlay::ui::mini_map::RadarTarget;
@@ -24,6 +28,9 @@ use super::MyOverlayState;
 
 mod mini_map;
 
+static ID_HELLO_WINDOW: Lazy<egui::Id> = Lazy::new(|| egui::Id::new(s!("#hello_window")));
+static ID_RADAR_WINDOW: Lazy<egui::Id> = Lazy::new(|| egui::Id::new(s!("#radar_window")));
+
 // A simple system to handle some keyboard input and toggle on/off the hittest.
 pub fn toggle_mouse_passthrough(
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -33,6 +40,85 @@ pub fn toggle_mouse_passthrough(
     {
         let mut window = windows.single_mut();
         window.cursor.hit_test = keyboard_input.pressed(KeyCode::Insert);
+    }
+}
+
+#[derive(Debug, Resource, Serialize, Deserialize, Default)]
+pub(crate) struct UiPersistance {
+    hello_position: Option<(f32, f32)>,
+    radar_position: Option<(f32, f32)>,
+    #[serde(skip)]
+    change_time: Option<Instant>,
+}
+
+impl UiPersistance {
+    #[cfg(feature = "native")]
+    fn file_path() -> anyhow::Result<std::path::PathBuf> {
+        let current_dir = std::env::current_dir()?;
+        Ok(current_dir.join(s!("./overlay-ui.json")))
+    }
+
+    #[cfg(feature = "native")]
+    pub(crate) fn load_persistance() -> anyhow::Result<Self> {
+        use std::fs::File;
+        use std::io::BufReader;
+
+        let file = File::open(Self::file_path()?)?;
+        let reader = BufReader::new(file);
+        let saved: Self = serde_json::from_reader(reader)?;
+        Ok(Self {
+            hello_position: saved.hello_position,
+            radar_position: saved.radar_position,
+            change_time: None,
+        })
+    }
+    pub(crate) fn update(&mut self, mem: &egui::Memory) {
+        if let Some(rect_hello) = mem.area_rect(*ID_HELLO_WINDOW) {
+            let pos = rect_hello.left_top();
+            if self
+                .hello_position
+                .is_none_or(|(x, y)| x != pos.x || y != pos.y)
+            {
+                self.hello_position = Some((pos.x, pos.y));
+                self.change_time = Some(Instant::now());
+            }
+        }
+        if let Some(rect_radar) = mem.area_rect(*ID_RADAR_WINDOW) {
+            let pos = rect_radar.left_top();
+            if self
+                .radar_position
+                .is_none_or(|(x, y)| x != pos.x || y != pos.y)
+            {
+                self.radar_position = Some((pos.x, pos.y));
+                self.change_time = Some(Instant::now());
+            }
+        }
+        if let Some(change_time) = self.change_time {
+            if change_time.elapsed().as_millis() > 500 {
+                if let Err(e) = self.persistance() {
+                    tracing::error!(%e, ?e);
+                }
+                self.change_time = None;
+            }
+        }
+    }
+    #[cfg(feature = "native")]
+    fn persistance(&self) -> anyhow::Result<()> {
+        use std::fs;
+        use std::io::Write;
+
+        let mut persistance_write = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(Self::file_path()?)?;
+        let data = serde_json::to_string(self)?;
+        write!(persistance_write, "{}", data)?;
+        Ok(())
+    }
+    #[cfg(not(feature = "native"))]
+    fn persistance(&self) -> anyhow::Result<()> {
+        Ok(())
     }
 }
 
@@ -63,6 +149,7 @@ pub fn ui_system(
     mut commands: Commands,
     mut contexts: EguiContexts,
     mut overlay_state: ResMut<MyOverlayState>,
+    mut ui_persistance: ResMut<UiPersistance>,
     mut ui_state: ResMut<UiState>,
     esp_system: Option<Res<EspSystem>>,
     time: Res<Time>,
@@ -228,8 +315,9 @@ pub fn ui_system(
     };
 
     let _show = egui::Window::new(s!("Hello, world!"))
+        .id(*ID_HELLO_WINDOW)
         .auto_sized()
-        .default_pos(pos2(1600.0, 320.0))
+        .default_pos(ui_persistance.hello_position.unwrap_or((1600.0, 320.0)))
         .frame(egui::Frame {
             inner_margin: egui::Margin::same(8.0),
             outer_margin: egui::Margin::ZERO,
@@ -514,7 +602,16 @@ pub fn ui_system(
                         team_id: player_buf.team_num,
                     })
                     .collect();
-                mini_map_radar(ctx, base_pos, base_yaw, radar_targets, 5., 1.);
+                let default_position = ui_persistance.radar_position.unwrap_or((45.0, 45.0));
+                mini_map_radar(
+                    ctx,
+                    base_pos,
+                    base_yaw,
+                    radar_targets,
+                    default_position,
+                    5.,
+                    1.,
+                );
             }
         }
     }
@@ -522,6 +619,8 @@ pub fn ui_system(
     let now = get_unix_timestamp_in_millis() as f64;
     overlay_state.data_latency =
         now - esp_system.map(|v| v.esp_data.data_timestamp).unwrap_or(0.0) * 1000.0;
+
+    ctx.memory(|mem| ui_persistance.update(mem));
 }
 
 fn info_bar_ui(

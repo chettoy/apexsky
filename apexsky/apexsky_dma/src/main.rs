@@ -46,7 +46,6 @@ pub(crate) static USERMOD_TX: Lazy<RwLock<Option<mpsc::UnboundedSender<UserModEv
 struct SharedState {
     game_baseaddr: AtomicU64,
     tick_num: AtomicU64,
-    update_time: Mutex<f64>,
     tick_duration: AtomicU64,
     actions_duration: AtomicU64,
     aim_target: Mutex<[f32; 3]>,
@@ -140,6 +139,7 @@ pub(crate) struct TaskChannels {
     pub(crate) aim_key_rx: watch::Receiver<AimKeyState>,
     pub(crate) aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
     pub(crate) items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
+    pub(crate) update_time_rx: watch::Receiver<f64>,
 }
 
 trait TaskManager {
@@ -163,6 +163,7 @@ impl TaskManager for State {
         let (aim_key_tx, aim_key_rx) = watch::channel(AimKeyState::default());
         let (aim_select_tx, aim_select_rx) = watch::channel(vec![]);
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
+        let (update_time_tx, update_time_rx) = watch::channel(0.0);
         let (usermod_tx, usermod_rx) = mpsc::unbounded_channel();
         let usermod_tx = USERMOD_TX.write().insert(usermod_tx).clone();
 
@@ -172,6 +173,7 @@ impl TaskManager for State {
                 aim_key_rx: aim_key_rx.clone(),
                 aim_select_rx: aim_select_rx.clone(),
                 items_glow_rx: items_glow_rx.clone(),
+                update_time_rx: update_time_rx.clone(),
             },
             access_tx: access_tx.clone(),
         };
@@ -204,6 +206,7 @@ impl TaskManager for State {
             access_tx.clone(),
             aim_key_tx,
             aim_select_tx,
+            update_time_tx,
             usermod_tx.clone(),
             aim_select_rx.clone(),
             items_glow_rx.clone(),
@@ -374,6 +377,24 @@ fn main() {
         debug_mode = true;
     }
 
+    // Create a background thread which checks for deadlocks every 10s
+    rt.spawn_blocking(|| loop {
+        std::thread::sleep(Duration::from_secs(10));
+        let deadlocks = parking_lot::deadlock::check_deadlock();
+        if deadlocks.is_empty() {
+            continue;
+        }
+
+        tracing::warn!("{} deadlocks detected", deadlocks.len());
+        for (i, threads) in deadlocks.iter().enumerate() {
+            tracing::warn!("Deadlock #{}", i);
+            for t in threads {
+                tracing::warn!("Thread Id {:#?}", t.thread_id());
+                tracing::warn!("{:#?}", t.backtrace());
+            }
+        }
+    });
+
     rt.block_on(state.start_tasks());
 
     rt.block_on(async move {
@@ -427,7 +448,7 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| {
             EnvFilter::try_new(s!(
-                "apexsky_dma=warn,apexsky=warn,apexsky_dmalib=info,apexsky_extension=info,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::workers::items=info,apexsky_dma::apexdream=warn"
+                "apexsky_dma=warn,apexsky=warn,apexsky_dmalib=info,apexsky_extension=info,apexsky_dma::actuator=info,apexsky_dma::usermod_thr=warn,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::workers::items=info,apexsky_dma::apexdream=warn"
             ))
         })
         .unwrap();

@@ -641,6 +641,13 @@ impl Entity for PlayerEntity {
                 }
                 yaw
             };
+            if self.eadp_uid < 1 || self.team_num < 0 || self.team_num > 50 {
+                tracing::warn!(
+                    self.model_name.string,
+                    "{}",
+                    s!("invalid player entity update")
+                );
+            }
         }
     }
     fn post(&mut self, _api: &Api, ctx: &UpdateContext, _state: &GameState) {

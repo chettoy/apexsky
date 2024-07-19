@@ -88,6 +88,7 @@ message EspDataOption {
   int32 version = 1;
   bool full_aimbot_state = 2;
   bool full_targets_list = 3;
+  bool sync = 4;
 }
 
 message EspSettings {

@@ -207,6 +207,7 @@ define_item_id!(
         ShieldUpgrade3_1 = 52776987629977800,
         ShieldUpgrade4 = 429496729796,
         ShieldUpgrade5 = 536870912201,
+        DeathBox = 999999999999999998,
         Unknown = 999999999999999999,
     }
 );
