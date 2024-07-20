@@ -252,7 +252,7 @@ input-prompt-aimbot-mode =
     '自瞄模式' 的新值： 
         0 => 关闭
         1 => 无可见检查开启
-        2 => 开启`
+        2 => 开启
         4 => 辅助瞄准
 menu-item-aim-dist = 自瞄最大距离
 input-prompt-aim-dist = '自瞄最大距离' 的新值：
