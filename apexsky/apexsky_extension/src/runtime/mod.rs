@@ -129,16 +129,6 @@ pub(super) fn op_message_callback(
 #[derive(Clone)]
 struct SourceMapStore(Rc<RefCell<HashMap<String, Vec<u8>>>>);
 
-impl SourceMapGetter for SourceMapStore {
-    fn get_source_map(&self, specifier: &str) -> Option<Vec<u8>> {
-        self.0.borrow().get(specifier).cloned()
-    }
-
-    fn get_source_line(&self, _file_name: &str, _line_number: usize) -> Option<String> {
-        None
-    }
-}
-
 struct TypescriptModuleLoader {
     source_maps: SourceMapStore,
 }

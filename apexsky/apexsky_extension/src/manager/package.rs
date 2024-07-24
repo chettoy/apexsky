@@ -72,7 +72,7 @@ impl PackageManager {
             let minify_fn2 = |code_buf: &[u8]| -> anyhow::Result<Vec<u8>> {
                 use oxc::allocator::Allocator;
                 use oxc::codegen::WhitespaceRemover;
-                use oxc::minifier::{ManglerBuilder, Minifier, MinifierOptions, RemoveDeadCode};
+                use oxc::minifier::{Minifier, MinifierOptions, RemoveDeadCode};
                 use oxc::parser::Parser;
                 let allocator = Allocator::default();
                 let ret = Parser::new(
@@ -84,14 +84,14 @@ impl PackageManager {
                 .parse();
                 let program = allocator.alloc(ret.program);
                 RemoveDeadCode::new(&allocator).build(program);
-                Minifier::new(MinifierOptions {
+                let ret = Minifier::new(MinifierOptions {
                     mangle: true,
                     ..MinifierOptions::default()
                 })
                 .build(&allocator, program);
-                let _mangler = ManglerBuilder.build(program);
 
                 let code_out = WhitespaceRemover::new()
+                    .with_mangler(ret.mangler)
                     .build(program)
                     .source_text
                     .as_bytes()

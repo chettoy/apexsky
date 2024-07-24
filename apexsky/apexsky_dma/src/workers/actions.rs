@@ -1062,7 +1062,7 @@ async fn inject_highlight(
         return Ok(());
     };
     let highlight_settings_ptr =
-        AccessType::mem_read(base + OFFSET_HIGHLIGHT_SETTINGS, size_of::<u64>(), 0)
+        AccessType::mem_read(base + G_OFFSETS.highlight_settings, size_of::<u64>(), 0)
             .dispatch(mem)
             .await?
             .recv_for::<u64>()

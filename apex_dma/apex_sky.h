@@ -314,6 +314,7 @@ typedef struct {
   uintptr_t input_system;
   uintptr_t input_button_state;
   uintptr_t name_list;
+  uintptr_t highlight_settings;
   uintptr_t network_var_table_ptr;
   uintptr_t network_var_table_len;
   uintptr_t host_map;

@@ -78,6 +78,7 @@ async fn main() -> anyhow::Result<()> {
                 version: 0,
                 full_aimbot_state: false,
                 full_targets_list: false,
+                sync: false,
             })
             .await?
             .into_inner();

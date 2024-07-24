@@ -33,11 +33,10 @@ macro_rules! define_item_id {
 }
 
 /*
- * GameVersion=v3.0.74.20
+ * GameVersion=v3.0.75.30
  */
 pub const OFFSET_YAW: u64 = 0x224c - 0x8;
-pub const OFFSET_SPECTATOR_LIST: u64 = 0x1ef9c58;
-pub const OFFSET_HIGHLIGHT_SETTINGS: u64 = 0xb0d8ff0;
+pub const OFFSET_SPECTATOR_LIST: u64 = 0x1efae58;
 //pub const OFFSET_GLOW_CONTEXT_ID: u64 = 0x29c;
 pub const OFFSET_GLOW_VISIBLE_TYPE: u64 = 0x26c;
 pub const OFFSET_GLOW_DISTANCE: u64 = 0x264;

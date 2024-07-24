@@ -377,23 +377,23 @@ fn main() {
         debug_mode = true;
     }
 
-    // Create a background thread which checks for deadlocks every 10s
-    rt.spawn_blocking(|| loop {
-        std::thread::sleep(Duration::from_secs(10));
-        let deadlocks = parking_lot::deadlock::check_deadlock();
-        if deadlocks.is_empty() {
-            continue;
-        }
+    // // Create a background thread which checks for deadlocks every 10s
+    // rt.spawn_blocking(|| loop {
+    //     std::thread::sleep(Duration::from_secs(10));
+    //     let deadlocks = parking_lot::deadlock::check_deadlock();
+    //     if deadlocks.is_empty() {
+    //         continue;
+    //     }
 
-        tracing::warn!("{} deadlocks detected", deadlocks.len());
-        for (i, threads) in deadlocks.iter().enumerate() {
-            tracing::warn!("Deadlock #{}", i);
-            for t in threads {
-                tracing::warn!("Thread Id {:#?}", t.thread_id());
-                tracing::warn!("{:#?}", t.backtrace());
-            }
-        }
-    });
+    //     tracing::warn!("{} deadlocks detected", deadlocks.len());
+    //     for (i, threads) in deadlocks.iter().enumerate() {
+    //         tracing::warn!("Deadlock #{}", i);
+    //         for t in threads {
+    //             tracing::warn!("Thread Id {:#?}", t.thread_id());
+    //             tracing::warn!("{:#?}", t.backtrace());
+    //         }
+    //     }
+    // });
 
     rt.block_on(state.start_tasks());
 

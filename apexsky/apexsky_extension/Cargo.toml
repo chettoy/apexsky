@@ -14,20 +14,20 @@ path = "src/bin.rs"
 [dependencies]
 anyhow = "1.0"
 async-channel = "2.3.1"
-async-compression = { version = "0.4.11", features = ["zstdmt", "tokio"] }
+async-compression = { version = "0.4.12", features = ["zstdmt", "tokio"] }
 async-trait = "0.1.81"
 deno_ast = { version = "0.40.0", features = ["transpiling"] }
-deno_core = "0.294.0"
+deno_core = "0.297.0"
 hex = "0.4.3"
 indexmap = { version = "2.2.6", features = ["serde"] }
 minify-js = "0.6.0"
 obfstr = "0.4.3"
-oxc = { version = "0.20.0", features = ["codegen", "minifier"] }
+oxc = { version = "0.22.0", features = ["codegen", "minifier"] }
 reqwest = { version = "0.12.5", default-features = false, features = ["charset", "http2", "macos-system-configuration", "json", "rustls-tls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 sha2 = "0.10.8"
 tar = "0.4.41"
-thiserror = "1.0.61"
-tokio = { version = "1.38.0", features = ["full"] }
+thiserror = "1.0.63"
+tokio = { version = "1.39.1", features = ["full"] }
 tracing = "0.1.40"

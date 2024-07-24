@@ -58,6 +58,7 @@ import_custom_offsets!({
     input_system,
     input_button_state,
     name_list,
+    highlight_settings,
     network_var_table_ptr,
     network_var_table_len,
     host_map,

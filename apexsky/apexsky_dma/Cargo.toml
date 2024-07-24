@@ -19,7 +19,7 @@ crossbeam-skiplist = "0.1.3"
 crossterm = "0.27.0"
 dataview = "1.0.1"
 enum_dispatch = "0.3.13"
-fakeit = "1.2.0"
+fakeit = "1.3.0"
 futures-util = "0.3.30"
 hex = "0.4.3"
 include-flate = "0.3.0"
@@ -30,16 +30,16 @@ named_constants = "0.2.0"
 ndarray = "0.15.6"
 obfstr = "0.4.3"
 once_cell = "1.19.0"
-parking_lot = { version = "0.12.3", features = ["nightly", "deadlock_detection"] }
+parking_lot = { version = "0.12.3", features = ["nightly"] }
 prost = "0.13.1"
 qapi = { version = "0.14.0", features = ["qmp", "async-tokio-all"] }
 rand = "0.8.5"
-ratatui-image = "1.0.3"
+ratatui-image = "1.0.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
-tokio = { version = "1.38.0", features = ["full"] }
-tonic = { version = "0.12.0", features = ["zstd", "gzip"] }
-tonic-web = "0.12.0"
+tokio = { version = "1.39.1", features = ["full"] }
+tonic = { version = "0.12.1", features = ["zstd", "gzip"] }
+tonic-web = "0.12.1"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }
 tracing-appender = "0.2.3"
