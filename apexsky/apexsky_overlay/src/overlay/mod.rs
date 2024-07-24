@@ -200,8 +200,9 @@ fn setup(
         commands.insert_resource(ClearColor(Color::BLACK));
     }
     if cfg!(feature = "native") {
-        overlay_state.user_gesture = true;
+        //overlay_state.user_gesture = true;
 
+        #[cfg(feature = "native")]
         match ui::UiPersistance::load_persistance() {
             Ok(saved_ui_state) => {
                 commands.insert_resource(saved_ui_state);

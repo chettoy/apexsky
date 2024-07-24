@@ -56,7 +56,7 @@ pub fn update_voice_navigator(
     use crate::navigator::message::AsSonicMessage;
 
     if let Some(ref esp_system) = esp_system {
-        let mut new_msg = navigator_system.instance.tick(&esp_system.esp_data);
+        let mut new_msg = navigator_system.instance.tick(esp_system.get_esp_data());
         navigator_system.messages.append(&mut new_msg);
     }
 

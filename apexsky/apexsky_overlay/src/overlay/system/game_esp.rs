@@ -13,7 +13,7 @@ use crate::overlay::model::{Health, Mana, MyCameraMarker, MyOverlayState, TokioR
 use crate::overlay::{DRY_RUN, PRINT_LATENCY};
 use crate::pb::apexlegends::{
     AimEntityData, AimTargetInfo, AimTargetItem, EspData, EspDataOption, EspSettings, Loots,
-    LoveStatusCode,
+    LoveStatusCode, PlayerState,
 };
 use crate::pb::esp_service::esp_service_client::EspServiceClient;
 use crate::pb::esp_service::GetLootsRequest;
@@ -41,8 +41,8 @@ impl EspServiceAddr {
         })
     }
 
-    pub(crate) fn get_addr(&self) -> String {
-        self.endpoint.clone()
+    pub(crate) fn get_addr(&self) -> &str {
+        &self.endpoint
     }
 
     pub(crate) fn record_retry(&mut self) -> bool {
@@ -92,21 +92,61 @@ struct EspFreshData {
 
 #[derive(Resource)]
 pub(crate) struct EspSystem {
-    pub(crate) server_endpoint: String,
+    server_endpoint: String,
     rpc_client: EspClient,
-    pub(crate) connect_time: Instant,
-    pub(crate) esp_data: EspData,
-    pub(crate) esp_settings: EspSettings,
-    pub(crate) esp_loots: Loots,
+    connect_time: Instant,
+    esp_data: EspData,
+    esp_settings: EspSettings,
+    esp_loots: Loots,
     fresh_data: Arc<Mutex<Option<EspFreshData>>>,
-    pub(crate) update_latency: f64,
-    pub(crate) target_count: usize,
+    update_latency: f64,
+    target_count: usize,
     last_settings_fetch_time: Option<Instant>,
     pub(crate) last_data_response_time: Option<Instant>,
     pub(crate) last_data_traffic_time: Option<Duration>,
+    view_teammate_index: Option<usize>,
 }
 
 impl EspSystem {
+    pub(crate) fn get_endpoint(&self) -> &str {
+        &self.server_endpoint
+    }
+    pub(crate) fn get_connect_time(&self) -> Instant {
+        self.connect_time
+    }
+    pub(crate) fn get_esp_data(&self) -> &EspData {
+        &self.esp_data
+    }
+    pub(crate) fn get_esp_settings(&self) -> &EspSettings {
+        &self.esp_settings
+    }
+    pub(crate) fn get_esp_loots(&self) -> &Loots {
+        &self.esp_loots
+    }
+    pub(crate) fn get_update_latency(&self) -> f64 {
+        self.update_latency
+    }
+    pub(crate) fn get_target_count(&self) -> usize {
+        self.target_count
+    }
+    pub(crate) fn get_view_player(&self) -> Option<&PlayerState> {
+        if let Some(teammate_index) = self.view_teammate_index {
+            self.esp_data
+                .teammates
+                .as_ref()?
+                .players
+                .get(teammate_index)
+        } else {
+            self.esp_data.view_player.as_ref()
+        }
+    }
+    pub(crate) fn set_view_teammate(&mut self, teammate_index: Option<usize>) {
+        self.view_teammate_index = teammate_index;
+    }
+    pub(crate) fn get_view_teammate(&self) -> Option<usize> {
+        self.view_teammate_index
+    }
+
     fn connect(server_url: String) -> Option<Self> {
         let now = Instant::now();
         Some(Self {
@@ -128,6 +168,7 @@ impl EspSystem {
             last_settings_fetch_time: None,
             last_data_response_time: None,
             last_data_traffic_time: None,
+            view_teammate_index: None,
         })
     }
 }
@@ -219,6 +260,10 @@ pub(crate) fn follow_game_state(
         esp_system.last_data_traffic_time = esp_system
             .last_data_response_time
             .and_then(|resp_time| Some(resp_time - fresh_data.request_time));
+
+        if esp_system.get_view_player().is_none() && esp_system.esp_data.view_player.is_some() {
+            esp_system.set_view_teammate(None);
+        }
     }
 
     esp_system.update_latency = time.delta_seconds_f64() * 1000.0;
@@ -247,7 +292,7 @@ pub(crate) fn follow_game_state(
     }
     .to_radians();
 
-    let _cam_matrix = esp_data.view_player.as_ref().map(|view_player| {
+    let _cam_matrix = esp_system.get_view_player().map(|view_player| {
         let cam_origin: [f32; 3] = view_player.camera_origin.clone().unwrap().into();
         let cam_angles: [f32; 3] = view_player.camera_angles.clone().unwrap().into();
 

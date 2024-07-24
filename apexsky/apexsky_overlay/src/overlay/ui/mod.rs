@@ -151,7 +151,7 @@ pub fn ui_system(
     mut overlay_state: ResMut<MyOverlayState>,
     mut ui_persistance: ResMut<UiPersistance>,
     mut ui_state: ResMut<UiState>,
-    esp_system: Option<Res<EspSystem>>,
+    mut esp_system: Option<ResMut<EspSystem>>,
     time: Res<Time>,
     diagnostics: Res<DiagnosticsStore>,
     blobs: Res<Assets<Blob>>,
@@ -185,7 +185,12 @@ pub fn ui_system(
 
     let (allied_spectators, spectators): (Vec<_>, Vec<_>) = esp_system
         .as_ref()
-        .and_then(|v| v.esp_data.spectators.clone().map(|list| list.elements))
+        .and_then(|v| {
+            v.get_esp_data()
+                .spectators
+                .clone()
+                .map(|list| list.elements)
+        })
         .unwrap_or(vec![])
         .into_iter()
         .partition(|info| info.is_teammate);
@@ -211,7 +216,9 @@ pub fn ui_system(
             },
             game_fps: format!(
                 "{:.1}",
-                esp_system.map(|v| v.esp_data.game_fps).unwrap_or_default()
+                esp_system
+                    .map(|v| v.get_esp_data().game_fps)
+                    .unwrap_or_default()
             ),
             latency: format!(
                 "{}{}{:.0}{}{:.0}{}",
@@ -227,7 +234,7 @@ pub fn ui_system(
             ),
             loop_duration: esp_system
                 .map(|v| {
-                    let data = &v.esp_data;
+                    let data = v.get_esp_data();
                     format!(
                         "{: >4}{}{: >4}{}",
                         data.duration_tick,
@@ -238,11 +245,11 @@ pub fn ui_system(
                 })
                 .unwrap_or_default(),
             target_count: esp_system
-                .map(|v| v.target_count)
+                .map(|v| v.get_target_count())
                 .unwrap_or_default()
                 .to_string(),
             local_position: esp_system
-                .and_then(|v| v.esp_data.local_player.as_ref())
+                .and_then(|v| v.get_view_player())
                 .and_then(|pl| pl.origin.clone())
                 .map(|pos| {
                     format!(
@@ -257,7 +264,7 @@ pub fn ui_system(
                 })
                 .unwrap_or_default(),
             local_angles: esp_system
-                .and_then(|v| v.esp_data.local_player.as_ref())
+                .and_then(|v| v.get_view_player())
                 .and_then(|pl| pl.view_angles.clone())
                 .map(|angle| {
                     format!(
@@ -272,12 +279,12 @@ pub fn ui_system(
                 })
                 .unwrap_or_default(),
             local_yaw: esp_system
-                .and_then(|v| v.esp_data.local_player.as_ref())
+                .and_then(|v| v.get_view_player())
                 .map(|pl| pl.yaw)
                 .map(|yaw| format!("{}{:.2}", s!("yaw="), yaw))
                 .unwrap_or_default(),
             local_held: esp_system
-                .and_then(|v| v.esp_data.aimbot.as_ref())
+                .and_then(|v| v.get_esp_data().aimbot.as_ref())
                 .map(|aimbot| {
                     format!(
                         "{}{}{}{}",
@@ -289,7 +296,7 @@ pub fn ui_system(
                 })
                 .unwrap_or_default(),
             aim_position: esp_system
-                .and_then(|v| v.esp_data.aimbot.as_ref())
+                .and_then(|v| v.get_esp_data().aimbot.as_ref())
                 .map(|aimbot| aimbot.target_position.as_ref())
                 .flatten()
                 .map(|aim_target| {
@@ -308,7 +315,7 @@ pub fn ui_system(
             spectator_list: spectators,
             allied_spectator_name,
             teammates_info: esp_system
-                .and_then(|v| v.esp_data.teammates.clone())
+                .and_then(|v| v.get_esp_data().teammates.clone())
                 .map(|dt| dt.players)
                 .unwrap_or_default(),
         }
@@ -373,15 +380,35 @@ pub fn ui_system(
                         ui.label(s!("no teammates"));
                     }
 
-                    for teammate in dialog_esp.teammates_info.iter() {
+                    let view_teammate_index =
+                        esp_system.as_ref().and_then(|v| v.get_view_teammate());
+                    for (teammate_index, teammate) in dialog_esp.teammates_info.iter().enumerate() {
                         ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
-                            let name = teammate.player_name.to_owned();
+                            let name_text = {
+                                let name = teammate.player_name.to_owned();
+                                if dialog_esp.allied_spectator_name.contains(&name) {
+                                    egui::RichText::new(name).strong().color(Color32::GREEN)
+                                } else {
+                                    egui::RichText::new(name).strong()
+                                }
+                            };
                             ui.label(format!("{} - ", teammate.team_member_index));
-                            ui.label(if dialog_esp.allied_spectator_name.contains(&name) {
-                                egui::RichText::new(name).strong().color(Color32::GREEN)
+
+                            if Some(teammate_index) == view_teammate_index {
+                                ui.label(name_text);
+                                if ui.add(egui::Button::new(s!("👓"))).clicked() {
+                                    if let Some(v) = esp_system.as_mut() {
+                                        v.set_view_teammate(None);
+                                    }
+                                }
                             } else {
-                                egui::RichText::new(name).strong()
-                            });
+                                if ui.add(egui::Button::new(name_text)).clicked() {
+                                    if let Some(v) = esp_system.as_mut() {
+                                        v.set_view_teammate(Some(teammate_index));
+                                    }
+                                }
+                            }
+
                             ui.add_space(5.0);
                             ui.label(teammate.damage_dealt.to_string());
                             ui.add_space(5.0);
@@ -446,11 +473,11 @@ pub fn ui_system(
                                 return Color32::LIGHT_YELLOW;
                             }
                             // Not attached to game: blue
-                            if !esp_system.esp_data.ready {
+                            if !esp_system.get_esp_data().ready {
                                 return Color32::LIGHT_BLUE;
                             }
                             // Not in game: green
-                            if !esp_system.esp_data.in_game {
+                            if !esp_system.get_esp_data().in_game {
                                 return Color32::LIGHT_GREEN;
                             }
                             // in game: green blink
@@ -473,8 +500,9 @@ pub fn ui_system(
                             .override_esp_addr
                             .as_ref()
                             .map(|addr| addr.get_addr())
-                            .or(esp_system.as_ref().map(|v| v.server_endpoint.clone()))
-                            .unwrap_or(EspServiceAddr::default().get_addr());
+                            .or(esp_system.as_ref().map(|v| v.get_endpoint()))
+                            .unwrap_or(EspServiceAddr::default().get_addr())
+                            .to_owned();
                         ui_state.input_addr_valid =
                             EspServiceAddr::from_str(&ui_state.input_esp_addr);
                     } else {
@@ -482,7 +510,7 @@ pub fn ui_system(
                         if let Some(valid_input) = &ui_state.input_addr_valid {
                             if esp_system
                                 .as_ref()
-                                .is_none_or(|v| v.server_endpoint != valid_input.get_addr())
+                                .is_none_or(|v| v.get_endpoint() != valid_input.get_addr())
                             {
                                 overlay_state.override_esp_addr = ui_state.input_addr_valid.clone();
                             }
@@ -552,9 +580,10 @@ pub fn ui_system(
         });
 
     if let Some(ref esp_system_connected) = esp_system {
-        let esp_settings = &esp_system_connected.esp_settings;
-        let esp_data = &esp_system_connected.esp_data;
-        let esp_loots = &esp_system_connected.esp_loots;
+        let esp_settings = esp_system_connected.get_esp_settings();
+        let esp_data = esp_system_connected.get_esp_data();
+        let esp_loots = esp_system_connected.get_esp_loots();
+        let view_player = esp_system_connected.get_view_player();
 
         let panel_frame = egui::Frame {
             fill: Color32::TRANSPARENT, //ctx.style().visuals.window_fill(),
@@ -565,13 +594,13 @@ pub fn ui_system(
         };
 
         CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
-            esp_2d_ui(ui, &esp_data, &esp_settings, &esp_loots);
-            info_bar_ui(ui, &esp_data, spectators_count, allied_spectators_count);
+            esp_2d_ui(ui, esp_data, esp_settings, esp_loots, view_player);
+            info_bar_ui(ui, esp_data, spectators_count, allied_spectators_count);
         });
 
         // Radar Stuff
         if esp_data.in_game && esp_settings.mini_map_radar {
-            if let Some((base_pos, base_yaw)) = esp_data.view_player.as_ref().map(|pl| {
+            if let Some((base_pos, base_yaw)) = view_player.map(|pl| {
                 (
                     pl.origin.clone().unwrap().into(),
                     pl.view_angles.as_ref().map(|v| v.y).unwrap_or(pl.yaw),
@@ -617,8 +646,11 @@ pub fn ui_system(
     }
 
     let now = get_unix_timestamp_in_millis() as f64;
-    overlay_state.data_latency =
-        now - esp_system.map(|v| v.esp_data.data_timestamp).unwrap_or(0.0) * 1000.0;
+    overlay_state.data_latency = now
+        - esp_system
+            .map(|v| v.get_esp_data().data_timestamp)
+            .unwrap_or(0.0)
+            * 1000.0;
 
     ctx.memory(|mem| ui_persistance.update(mem));
 }
@@ -746,7 +778,13 @@ fn info_bar_ui(
     });
 }
 
-fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings, esp_loots: &Loots) {
+fn esp_2d_ui(
+    ui: &mut egui::Ui,
+    esp_data: &EspData,
+    esp_settings: &EspSettings,
+    esp_loots: &Loots,
+    view_player: Option<&PlayerState>,
+) {
     use egui::{Color32, Rect};
 
     if !esp_data.in_game {
@@ -778,11 +816,12 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings, 
                 None
             }
         })() {
-            let bs = world_to_screen(&aim_pos, &view_matrix, screen_width, screen_height)
-                .unwrap_or(Vec2 {
+            let bs = world_to_screen(aim_pos, &view_matrix, screen_width, screen_height).unwrap_or(
+                Vec2 {
                     x: screen_width / 2.0,
                     y: screen_height / 2.0,
-                });
+                },
+            );
 
             const INDICATOR_RADIUS: f32 = 10.0;
 
@@ -815,9 +854,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings, 
 
     if !esp_loots.loots.is_empty() {
         if let Some(bs_local) = world_to_screen(
-            &esp_data
-                .view_player
-                .as_ref()
+            view_player
                 .and_then(|p| p.origin.clone())
                 .unwrap_or_default()
                 .into(),
@@ -830,7 +867,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings, 
                     continue;
                 };
                 let Some(bs_loot) =
-                    world_to_screen(&position.into(), &view_matrix, screen_width, screen_height)
+                    world_to_screen(position.into(), &view_matrix, screen_width, screen_height)
                 else {
                     continue;
                 };
@@ -887,7 +924,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings, 
             let head_position = player_data.head_position.clone().unwrap();
             let bottom_position = player_data.origin.clone().unwrap();
             let Some(head_screen_pos) = world_to_screen(
-                &head_position.into(),
+                head_position.into(),
                 &view_matrix,
                 screen_width,
                 screen_height,
@@ -895,7 +932,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings, 
                 return;
             };
             let Some(bottom_screen_pos) = world_to_screen(
-                &bottom_position.into(),
+                bottom_position.into(),
                 &view_matrix,
                 screen_width,
                 screen_height,
@@ -1018,7 +1055,7 @@ fn esp_2d_ui(ui: &mut egui::Ui, esp_data: &EspData, esp_settings: &EspSettings, 
 }
 
 pub fn world_to_screen(
-    from: &[f32; 3],
+    from: [f32; 3],
     view_matrix: &[f32; 16],
     screen_width: f32,
     screen_height: f32,
