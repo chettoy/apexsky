@@ -72,9 +72,11 @@ pub async fn aimbot_loop(
 
     let mut start_instant = Instant::now();
     let mut aimbot = Aimbot::default();
+    let mut assist_score = 0;
     let mut natural_delta_viewangles: [f32; 3] = [0.0, 0.0, 0.0];
     let mut prev_recoil_angle: [f32; 3] = [0.0, 0.0, 0.0];
     let mut prev_view_angles: Option<[f32; 3]> = None;
+    let mut prev_aim_target_id: u64 = 0;
     let mut mem_aim_helper = MemAimHelper {
         mem: access_tx.clone(),
         apex_base: 0,
@@ -286,23 +288,72 @@ pub async fn aimbot_loop(
                 let natural_delta = natural_delta_viewangles;
                 //println!("{:?}", natural_delta);
 
-                fn check(natural_delta: f32, smoothed_delta: f32) -> f32 {
+                #[inline]
+                fn check(natural_delta: f32, smoothed_delta: f32, score: &mut i32) -> f32 {
                     if !natural_delta.is_normal() {
                         return 0.0;
                     }
-                    if (smoothed_delta.signum() * natural_delta.signum()).is_sign_positive() {
-                        smoothed_delta.abs().min(natural_delta.abs() * 7.0)
+
+                    let err = (smoothed_delta.signum() * natural_delta.signum()).is_sign_negative();
+
+                    if err {
+                        *score -= 4;
+                    } else {
+                        *score += 4;
+                    }
+
+                    let score_abs = {
+                        let abs = score.abs();
+                        if abs > 100 {
+                            *score = score.signum() * 100;
+                            100
+                        } else {
+                            abs
+                        }
+                    };
+
+                    if !err {
+                        let max_accelerate_x = if *score > 0 {
+                            score_abs as f32 / 2.0
+                        } else {
+                            20.0
+                        };
+                        smoothed_delta
+                            .abs()
+                            .min(natural_delta.abs() * max_accelerate_x)
                             * smoothed_delta.signum()
                     } else {
-                        smoothed_delta.abs().min(natural_delta.abs() * 0.7)
+                        let max_decelerate_x = if *score > 50 {
+                            score_abs as f32 / 2.0
+                        } else {
+                            0.0
+                        };
+                        smoothed_delta
+                            .abs()
+                            .min(natural_delta.abs() * max_decelerate_x)
                             * smoothed_delta.signum()
                     }
                 }
+
+                if aim_entity_ptr != prev_aim_target_id {
+                    assist_score = 0;
+                    prev_aim_target_id = aim_entity_ptr;
+                }
+
                 let assist_delta = [
-                    check(natural_delta[0], smoothed_delta_angles[0]),
-                    check(natural_delta[1], smoothed_delta_angles[1]),
+                    check(
+                        natural_delta[0],
+                        smoothed_delta_angles[0],
+                        &mut assist_score,
+                    ),
+                    check(
+                        natural_delta[1],
+                        smoothed_delta_angles[1],
+                        &mut assist_score,
+                    ),
                     smoothed_delta_angles[2],
                 ];
+                //println!("{assist_score:?}");
                 if assist_delta[0].is_normal() || assist_delta[1].is_normal() {
                     shift_angles = Some(assist_delta);
                 }
