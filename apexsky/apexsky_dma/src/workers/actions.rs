@@ -65,6 +65,7 @@ pub async fn actions_loop(
     let mut last_checkpoint_frame: i32 = 0;
     let mut actions_tick: i64 = -1;
     let mut log_items: usize = 0;
+    let mut log_players: usize = 0;
     let mut world_ready: bool;
     let mut player_ready: bool;
 
@@ -108,6 +109,7 @@ pub async fn actions_loop(
                 None => {
                     shared_state.game_baseaddr.store(0, Ordering::Release);
                     usermod_send_event(UserModEvent::GameUnattached);
+                    tracing::warn!("{}", s!("Unattached to the game"));
                     break;
                 }
             };
@@ -279,9 +281,9 @@ pub async fn actions_loop(
                 let mut players = HashMap::new();
                 apex_state.entities_as::<PlayerEntity>().for_each(|pl| {
                     // FIXME: skip wrong entity
-                    // if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 50 {
-                    //     return;
-                    // }
+                    if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 10000 {
+                        return;
+                    }
                     let game_player = GamePlayer::new(
                         pl.clone(),
                         apex_state,
@@ -428,6 +430,28 @@ pub async fn actions_loop(
                             tracing::warn!(%e, ?e);
                         }
                     }
+                }
+            }
+
+            // Log Players
+            if actions_tick % 40 == 0 && !apex_state.is_firing_range() {
+                let players = shared_state.players.read().clone();
+                let player_count = players.len();
+                if player_count == 0 {
+                    tracing::debug!("{}", s!("wait players"));
+                } else if player_count > log_players {
+                    let mut player_list: Vec<(u32, String)> = players
+                        .values()
+                        .map(|entity| {
+                            (
+                                entity.get_entity().index,
+                                entity.get_buf().player_name.to_owned(),
+                            )
+                        })
+                        .collect();
+                    player_list.sort_by(|a, b| a.0.cmp(&b.0));
+                    tracing::info!(?player_list, "{player_count}{}", s!(" players sorted"));
+                    log_players = player_count;
                 }
             }
 

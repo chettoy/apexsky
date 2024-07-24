@@ -61,7 +61,8 @@ impl TryFrom<i32> for LoveStatus {
 }
 
 static DEFAULT_LOVE_PLAYER: Lazy<Vec<LovePlayer>> = Lazy::new(default_love);
-static PLAYERS: Lazy<Mutex<HashMap<u64, CPlayerInfo>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+static UID_PLAYERS: Lazy<Mutex<HashMap<u64, CPlayerInfo>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 #[tracing::instrument]
 fn default_love() -> Vec<LovePlayer> {
@@ -81,6 +82,13 @@ pub fn check_my_heart(
     name: &str,
     entity_ptr: u64,
 ) -> LoveStatus {
+    let cache = UID_PLAYERS.lock().unwrap().get(&puid).cloned();
+    if let Some(cache) = cache {
+        if cache.entity_ptr == entity_ptr && cache.name == name {
+            return cache.love_status;
+        }
+    }
+
     let mut update_name: IndexMap<u64, String> = IndexMap::new();
     let mut fold_item = |acc: bool, x: &LovePlayer| {
         if let Some(x_uid) = x.uid {
@@ -154,9 +162,9 @@ pub fn check_my_heart(
 
     trace!(love_status = love_status as i32);
 
-    let mut players_map = PLAYERS.lock().unwrap();
+    let mut players_map = UID_PLAYERS.lock().unwrap();
     players_map.insert(
-        entity_ptr,
+        puid,
         CPlayerInfo {
             entity_ptr,
             name: name.to_string(),
@@ -168,8 +176,8 @@ pub fn check_my_heart(
     love_status
 }
 
-pub(crate) fn get_players() -> HashMap<u64, CPlayerInfo> {
-    PLAYERS.lock().unwrap().clone()
+pub(crate) fn get_uid_players_map() -> HashMap<u64, CPlayerInfo> {
+    UID_PLAYERS.lock().unwrap().clone()
 }
 
 // FFI

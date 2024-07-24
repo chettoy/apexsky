@@ -642,8 +642,10 @@ impl Entity for PlayerEntity {
                 yaw
             };
             if self.eadp_uid < 1 || self.team_num < 0 || self.team_num > 50 {
-                tracing::warn!(
+                tracing::debug!(
                     self.model_name.string,
+                    self.eadp_uid,
+                    self.team_num,
                     "{}",
                     s!("invalid player entity update")
                 );

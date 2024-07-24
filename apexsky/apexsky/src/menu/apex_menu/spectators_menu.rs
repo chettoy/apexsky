@@ -1,10 +1,9 @@
-use crate::{config, i18n::I18nBundle, i18n_msg, lock_config, lock_mod, love_players::LovePlayer};
+use crate::{config, i18n::I18nBundle, i18n_msg, lock_config, love_players::LovePlayer};
 use ratatui::{
     style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::ListItem,
 };
-use skyapex_sdk::module::SpecCheck;
 
 use super::{item_text, GeneralMenu, MenuBuilder, MenuLevel, TerminalMenu};
 
@@ -41,18 +40,19 @@ pub(super) fn build_spectators_menu(
         .add_item(item_text("🔁"), |_, _| None, ())
         .add_dummy_item();
 
-    let specs = {
-        let mut players = crate::love_players::get_players();
-        let mut skyapex_mod = lock_mod!();
-        players.retain(|target_ptr, _info| skyapex_mod.is_spec(*target_ptr));
-        players
-    };
+    // let specs = {
+    //     let mut players = crate::love_players::get_players();
+    //     let mut skyapex_mod = lock_mod!();
+    //     players.retain(|target_ptr, _info| skyapex_mod.is_spec(*target_ptr));
+    //     players
+    // };
+    let specs = crate::love_players::get_uid_players_map();
 
     let list = &lock_config!().hate_player;
-    for (_, spec) in specs {
+    for (uid, spec) in specs {
         let selected = list.iter().fold(false, |acc: bool, x: &LovePlayer| {
             if let Some(x_uid) = x.uid {
-                if x_uid == spec.uid {
+                if x_uid == uid {
                     return true;
                 }
             }
