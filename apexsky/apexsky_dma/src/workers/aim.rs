@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -73,7 +74,7 @@ pub async fn aimbot_loop(
     let mut start_instant = Instant::now();
     let mut aimbot = Aimbot::default();
     let mut assist_score = 0;
-    let mut natural_delta_viewangles: [f32; 3] = [0.0, 0.0, 0.0];
+    let mut natural_delta_viewangles: VecDeque<[f32; 3]> = VecDeque::with_capacity(20);
     let mut prev_recoil_angle: [f32; 3] = [0.0, 0.0, 0.0];
     let mut prev_view_angles: Option<[f32; 3]> = None;
     let mut prev_aim_target_id: u64 = 0;
@@ -285,24 +286,41 @@ pub async fn aimbot_loop(
             let smoothed_delta_angles = math::sub(smoothed_angles, view_angles);
 
             if aimbot_settings.aim_mode & 0x4 != 0 && !aimbot.is_grenade() {
-                let natural_delta = natural_delta_viewangles;
+                let natural_viewangle_vel = {
+                    let arr = natural_delta_viewangles.clone();
+                    let arr_len = arr.len() as usize;
+                    let all_sum_values = arr
+                        .into_iter()
+                        .reduce(|acc, e| math::add(acc, e))
+                        .unwrap_or_default();
+                    let mean = math::muls(all_sum_values, 1.0 / arr_len as f32);
+                    mean
+                };
+
                 //println!("{:?}", natural_delta);
 
                 #[inline]
-                fn check(natural_delta: f32, smoothed_delta: f32, score: &mut i32) -> f32 {
-                    if !natural_delta.is_normal() {
+                fn check(natural_viewangle_vel: f32, smoothed_delta: f32, score: &mut i32) -> f32 {
+                    //println!("{natural_viewangle_vel:?} {score:?}");
+
+                    if !natural_viewangle_vel.is_normal() {
                         return 0.0;
                     }
 
-                    let err = (smoothed_delta.signum() * natural_delta.signum()).is_sign_negative();
+                    let bingo = (smoothed_delta.signum() * natural_viewangle_vel.signum())
+                        .is_sign_positive();
 
-                    if err {
-                        *score -= 4;
+                    if bingo {
+                        //println!("bingo");
+                        if *score < 0 {
+                            *score = 0;
+                        }
+                        *score += (natural_viewangle_vel * 1000.0).round().abs() as i32;
                     } else {
-                        *score += 4;
+                        *score -= (natural_viewangle_vel * 1000.0).round().abs() as i32;
                     }
 
-                    let score_abs = {
+                    let _score_abs = {
                         let abs = score.abs();
                         if abs > 100 {
                             *score = score.signum() * 100;
@@ -312,26 +330,24 @@ pub async fn aimbot_loop(
                         }
                     };
 
-                    if !err {
-                        let max_accelerate_x = if *score > 0 {
-                            score_abs as f32 / 2.0
+                    if *score > 0 {
+                        if bingo {
+                            let max_accel_x = 40.0; //score_abs as f32 / 4.0;
+                            smoothed_delta.signum()
+                                * f32::min(
+                                    smoothed_delta.abs(),
+                                    natural_viewangle_vel.abs() * max_accel_x,
+                                )
                         } else {
-                            20.0
-                        };
-                        smoothed_delta
-                            .abs()
-                            .min(natural_delta.abs() * max_accelerate_x)
-                            * smoothed_delta.signum()
+                            let max_decel_x = 20.0; //score_abs as f32 / 2.0;
+                            smoothed_delta.signum()
+                                * f32::min(
+                                    smoothed_delta.abs(),
+                                    natural_viewangle_vel.abs() * max_decel_x,
+                                )
+                        }
                     } else {
-                        let max_decelerate_x = if *score > 50 {
-                            score_abs as f32 / 2.0
-                        } else {
-                            0.0
-                        };
-                        smoothed_delta
-                            .abs()
-                            .min(natural_delta.abs() * max_decelerate_x)
-                            * smoothed_delta.signum()
+                        0.0
                     }
                 }
 
@@ -342,12 +358,12 @@ pub async fn aimbot_loop(
 
                 let assist_delta = [
                     check(
-                        natural_delta[0],
+                        natural_viewangle_vel[0],
                         smoothed_delta_angles[0],
                         &mut assist_score,
                     ),
                     check(
-                        natural_delta[1],
+                        natural_viewangle_vel[1],
                         smoothed_delta_angles[1],
                         &mut assist_score,
                     ),
@@ -427,9 +443,14 @@ pub async fn aimbot_loop(
         };
 
         // Calc delta_view_angles
-        natural_delta_viewangles = prev_view_angles
-            .map(|prev| math::sub(view_angles, prev))
-            .unwrap_or([0.0, 0.0, 0.0]);
+        if natural_delta_viewangles.len() >= 20 {
+            natural_delta_viewangles.pop_front();
+        }
+        natural_delta_viewangles.push_back(
+            prev_view_angles
+                .map(|prev| math::sub(view_angles, prev))
+                .unwrap_or([0.0, 0.0, 0.0]),
+        );
 
         // Perform aimbot action
         if let Some(ref mut actuator) = aim_actuator {

@@ -17,7 +17,7 @@ async-channel = "2.3.1"
 async-compression = { version = "0.4.12", features = ["zstdmt", "tokio"] }
 async-trait = "0.1.81"
 deno_ast = { version = "0.40.0", features = ["transpiling"] }
-deno_core = "0.297.0"
+deno_core = "0.298.0"
 hex = "0.4.3"
 indexmap = { version = "2.2.6", features = ["serde"] }
 minify-js = "0.6.0"
