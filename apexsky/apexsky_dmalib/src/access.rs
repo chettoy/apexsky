@@ -4,7 +4,7 @@ use std::thread::{sleep, sleep_until};
 use std::time::{Duration, Instant};
 
 use obfstr::obfstr as s;
-use tokio::sync::{mpsc, oneshot, watch};
+use tokio::sync::{oneshot, watch};
 use tracing::instrument;
 
 use crate::mem::{
@@ -14,7 +14,11 @@ use crate::mem::{
 use crate::mem::{MemConnector, MemOsImpl};
 use crate::AccessError;
 
-pub type MemApi = mpsc::Sender<PriorityAccess>;
+pub type MemApi = crossbeam_channel::Sender<PriorityAccess>;
+
+pub fn create_api() -> (MemApi, crossbeam_channel::Receiver<PriorityAccess>) {
+    crossbeam_channel::bounded::<PriorityAccess>(0x2000)
+}
 
 #[derive(Debug)]
 pub struct PriorityAccess {
@@ -130,7 +134,7 @@ impl AccessType {
 #[instrument(skip_all)]
 pub fn io_thread(
     active: watch::Receiver<bool>,
-    mut access_rx: mpsc::Receiver<PriorityAccess>,
+    access_rx: crossbeam_channel::Receiver<PriorityAccess>,
     mem_connector: crate::mem::MemConnector,
 ) -> Result<(), AccessError> {
     tracing::debug!("{}", s!("task start"));
@@ -174,8 +178,8 @@ pub fn io_thread(
                     },
                     Err(e) => {
                         match e {
-                            mpsc::error::TryRecvError::Empty => (),
-                            mpsc::error::TryRecvError::Disconnected => {
+                            crossbeam_channel::TryRecvError::Empty => (),
+                            crossbeam_channel::TryRecvError::Disconnected => {
                                 tracing::error!(%e, ?e);
                             }
                         }
@@ -223,37 +227,77 @@ pub fn io_thread(
                 break;
             }
 
+            #[inline(always)]
+            fn push_req(
+                req: PriorityAccess,
+                priority_queue: &mut BinaryHeap<PriorityAccess>,
+                scatter_map: &mut (
+                    HashMap<usize, Vec<MemReadRequest>>,
+                    HashMap<usize, Vec<MemWriteRequest>>,
+                ),
+                mem: &mut MemProcImpl,
+            ) {
+                let preempt = req.priority > 0xf;
+                priority_queue.push(req);
+                if preempt {
+                    execute_requests(0x10, priority_queue, scatter_map, mem);
+                }
+            }
+
             loop {
+                // match access_rx.recv_deadline(next_flush_instant) {
+                //     Ok(req) => push_req(req, &mut priority_queue, &mut scatter_map, &mut mem),
+                //     Err(e) => match e {
+                //         crossbeam_channel::RecvTimeoutError::Timeout => {
+                //             execute_requests(0, &mut priority_queue, &mut scatter_map, &mut mem);
+                //             next_flush_instant = start_instant + Duration::from_millis(1);
+                //             break;
+                //         }
+                //         crossbeam_channel::RecvTimeoutError::Disconnected => {
+                //             tracing::error!(%e, ?e);
+                //             execute_requests(0, &mut priority_queue, &mut scatter_map, &mut mem);
+                //             break;
+                //         }
+                //     },
+                // }
+
                 match access_rx.try_recv() {
-                    Ok(req) => {
-                        let preempt = req.priority > 0xf;
-                        priority_queue.push(req);
-                        if preempt {
-                            execute_requests(0x10, &mut priority_queue, &mut scatter_map, &mut mem);
-                        }
-                    }
+                    Ok(req) => push_req(req, &mut priority_queue, &mut scatter_map, &mut mem),
                     Err(e) => {
                         match e {
-                            mpsc::error::TryRecvError::Empty => {
-                                let now = Instant::now();
-                                if now < next_flush_instant {
+                            crossbeam_channel::TryRecvError::Empty => {
+                                if Instant::now() < next_flush_instant {
                                     // Execute higher priority requests first
-                                    execute_requests(
-                                        1,
-                                        &mut priority_queue,
-                                        &mut scatter_map,
-                                        &mut mem,
-                                    );
+                                    if priority_queue.peek().is_some_and(|req| req.priority >= 1) {
+                                        execute_requests(
+                                            1,
+                                            &mut priority_queue,
+                                            &mut scatter_map,
+                                            &mut mem,
+                                        );
+                                    }
                                     // Wait until next flush instant
-                                    sleep_until(next_flush_instant);
-                                    // Flush on next free time
+                                    if let Ok(req) = access_rx.recv_deadline(next_flush_instant) {
+                                        push_req(
+                                            req,
+                                            &mut priority_queue,
+                                            &mut scatter_map,
+                                            &mut mem,
+                                        );
+                                    }
                                     continue;
-                                } else {
-                                    next_flush_instant = now + Duration::from_millis(1);
-                                    // Flush requests
                                 }
+
+                                let now = Instant::now();
+                                assert!(now >= next_flush_instant);
+                                next_flush_instant = start_instant + Duration::from_millis(1);
+                                if next_flush_instant < now {
+                                    next_flush_instant = now + Duration::from_millis(1);
+                                }
+                                assert!(now < next_flush_instant);
+                                // Flush requests
                             }
-                            mpsc::error::TryRecvError::Disconnected => {
+                            crossbeam_channel::TryRecvError::Disconnected => {
                                 tracing::error!(%e, ?e);
                             }
                         }
@@ -509,7 +553,7 @@ impl AccessRequest for PriorityAccess {
     }
 
     async fn dispatch(self, api: &MemApi) -> anyhow::Result<()> {
-        api.send(self).await.map_err(|e| {
+        api.send(self).map_err(|e| {
             let e: anyhow::Error = e.into();
             e.context(format!("{}", s!("Failed to dispatch access request")))
         })

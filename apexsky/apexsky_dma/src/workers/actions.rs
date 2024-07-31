@@ -20,7 +20,7 @@ use tokio::sync::{mpsc, watch};
 use tokio::time::{sleep, Instant};
 
 use crate::{
-    apexdream::state::entities::{DeathboxEntity, Entity, PlayerEntity},
+    apexdream::state::entities::{DeathboxEntity, Entity},
     game::player::QuickLooting,
     usermod_thr::{ActionTickData, UserModEvent},
     workers::items::LootInt,
@@ -279,7 +279,7 @@ pub async fn actions_loop(
             // Update entities
             if world_ready {
                 let mut players = HashMap::new();
-                apex_state.entities_as::<PlayerEntity>().for_each(|pl| {
+                apex_state.players().for_each(|pl| {
                     // FIXME: skip wrong entity
                     if pl.eadp_uid == 0 || pl.team_num < 0 || pl.team_num > 10000 {
                         return;

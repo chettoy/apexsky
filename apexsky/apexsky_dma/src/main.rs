@@ -159,7 +159,7 @@ impl TaskManager for State {
 
         self.set_active(true);
 
-        let (access_tx, access_rx) = mpsc::channel(0x2000);
+        let (access_tx, access_rx) = apexsky_dmalib::access::create_api();
         let (aim_key_tx, aim_key_rx) = watch::channel(AimKeyState::default());
         let (aim_select_tx, aim_select_rx) = watch::channel(vec![]);
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);

@@ -456,6 +456,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "crossbeam-channel",
  "dataview 1.0.1",
  "enum_dispatch",
  "memflow",

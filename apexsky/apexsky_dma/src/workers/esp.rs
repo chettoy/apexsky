@@ -181,7 +181,11 @@ impl EspService for GameApiHandle {
                     .frame_count
                     .load(std::sync::atomic::Ordering::Acquire)
                     .try_into()
-                    .unwrap(),
+                    .unwrap_or_else(|e| {
+                        let v = state.frame_count.load(std::sync::atomic::Ordering::Acquire);
+                        tracing::error!(?e, ?v);
+                        0
+                    }),
                 view_matrix: Some(Matrix4x4 {
                     elements: view_matrix,
                 }),

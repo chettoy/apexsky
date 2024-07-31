@@ -193,7 +193,7 @@ impl super::MemOs for MemflowOs {
                             .unwrap();
                         if dtb > 0x1000 * 500 {
                             let progress = dtb / 0x1000;
-                            if progress % 20000 == 0 {
+                            if progress % 200000 == 0 {
                                 tracing::info!(?progress);
                             }
                         }
