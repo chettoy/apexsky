@@ -94,6 +94,7 @@ pub(crate) fn main() {
         .init_resource::<MyOverlayState>()
         .init_resource::<ui::UiPersistance>()
         .init_resource::<ui::UiState>()
+        .init_resource::<system::game_esp::ShowEntityBall>()
         .init_resource::<system::sound::SoundSystem>()
         .init_non_send_resource::<system::sound::SoundBufRes>()
         .init_resource::<system::navigator::NavigatorSystem>()

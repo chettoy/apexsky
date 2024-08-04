@@ -14,6 +14,7 @@ enum EspVisualsFlag {
   HEALTH_BAR = 0x08;
   NAME = 0x10;
   DAMAGE = 0x20;
+  BONE = 0x40;
 }
 
 message Matrix4x4 {
@@ -55,11 +56,22 @@ message AimEntityData {
   bool is_visible = 18;
 }
 
+message AimTargetHitbox {
+  int32 bone = 1;
+  int32 group = 2;
+  Vec3 bbmin = 3;
+  Vec3 bbmax = 4;
+  Vec3 bone_origin = 5;
+  int32 bone_parent = 6;
+  float radius = 7;
+}
+
 message AimTargetItem {
   uint64 id = 1;
   AimTargetInfo info = 2;
   AimEntityData data = 3;
   optional PlayerState player_data = 4;
+  repeated AimTargetHitbox hitboxes = 5;
 }
 
 message AimTargetList {

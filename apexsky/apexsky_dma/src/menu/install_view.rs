@@ -4,9 +4,9 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     prelude::*,
     style::{Color, Style, Stylize},
-    terminal::Frame,
     text::Line,
     widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState},
+    Frame,
 };
 
 use super::dlc_list::Data;

@@ -213,6 +213,16 @@ pub trait TriggerBot {
     );
 }
 
+pub struct HitboxData {
+    pub bone: i32,
+    pub group: i32,
+    pub bbmin: [f32; 3],
+    pub bbmax: [f32; 3],
+    pub bone_origin: [f32; 3],
+    pub bone_parent: i32,
+    pub radius: f32,
+}
+
 pub trait AimEntity: Debug + Send + Sync {
     fn get_entity_ptr(&self) -> u64;
     fn get_view_angles(&self) -> [f32; 3];
@@ -220,7 +230,7 @@ pub trait AimEntity: Debug + Send + Sync {
     fn get_sway_angles(&self) -> [f32; 3];
     fn get_abs_velocity(&self) -> [f32; 3];
     fn get_bone_position_by_hitbox(&self, id: u32) -> [f32; 3];
-    fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)>;
+    fn get_bones_data(&self) -> Vec<HitboxData>;
     fn get_hitbox(&self) -> Vec<([f32; 3], ([f32; 3], [f32; 3]))>;
     fn get_position(&self) -> [f32; 3];
     fn get_recoil_angles(&self) -> [f32; 3];

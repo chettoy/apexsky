@@ -139,6 +139,7 @@ pub fn io_thread(
 ) -> Result<(), AccessError> {
     tracing::debug!("{}", s!("task start"));
 
+    let mut speed_test_done = false;
     let mut accessible: bool = false;
     let mut priority_queue: BinaryHeap<PriorityAccess> = BinaryHeap::new();
     let mut scatter_map: (
@@ -204,14 +205,17 @@ pub fn io_thread(
 
         // Found and ready
         if !accessible {
-            println!("{}", s!("Apex process found"));
+            tracing::info!("{}", s!("Apex process found"));
             println!("{}{:x}", s!("Base: 0x"), mem.get_proc_baseaddr());
 
-            tracing::debug!("{}", s!("speed_test"));
-            mem.speed_test();
-            println!("{}", s!("Press enter to continue.."));
-            tracing::debug!("{}", s!("press to continue"));
-            let _ = std::io::stdin().read_line(&mut String::new());
+            if !speed_test_done {
+                tracing::debug!("{}", s!("speed_test"));
+                mem.speed_test();
+                println!("{}", s!("Press enter to continue.."));
+                tracing::debug!("{}", s!("press to continue"));
+                let _ = std::io::stdin().read_line(&mut String::new());
+                speed_test_done = true;
+            }
 
             accessible = true;
         }

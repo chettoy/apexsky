@@ -10,12 +10,12 @@ use apexsky_extension::{Manifest, PackageManager};
 use ratatui::{
     layout::{Constraint, Layout, Margin, Rect},
     style::{self, Color, Modifier, Style, Stylize},
-    terminal::Frame,
     text::{Line, Text},
     widgets::{
         Block, BorderType, Cell, HighlightSpacing, Paragraph, Row, Scrollbar, ScrollbarOrientation,
         ScrollbarState, Table, TableState,
     },
+    Frame,
 };
 use style::palette::tailwind;
 

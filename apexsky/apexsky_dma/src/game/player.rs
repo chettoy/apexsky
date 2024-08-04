@@ -1,6 +1,6 @@
 use std::vec;
 
-use apexsky::aimbot::{get_unix_timestamp_in_millis, AimEntity};
+use apexsky::aimbot::{get_unix_timestamp_in_millis, AimEntity, HitboxData};
 use apexsky_proto::pb::apexlegends::{Badge, GradeFlag, PlayerState, TreasureClue};
 use obfstr::obfstr as s;
 
@@ -228,15 +228,56 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     }
 
     #[tracing::instrument]
-    fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)> {
+    fn get_bones_data(&self) -> Vec<HitboxData> {
+        // self.studio
+        //     .hitboxes
+        //     .iter()
+        //     .filter_map(|bbox| {
+        //         self.bones.v.get(bbox.bone as usize).and_then(|matrix| {
+        //             Some(HitboxData {
+        //                 bone: bbox.bone as i32,
+        //                 group: bbox.group as i32,
+        //                 bbmin: bbox.bbmin,
+        //                 bbmax: bbox.bbmax,
+        //                 bone_origin: [matrix[3], matrix[7], matrix[11]],
+        //                 bone_parent: self.studio.bones.get(bbox.bone as usize)?.parent as i32 - 1,
+        //                 radius: bbox.radius(),
+        //             })
+        //         })
+        //     })
+        //     .collect()
         self.studio
-            .hitboxes
+            .bones
             .iter()
-            .filter_map(|bbox| {
-                self.bones
-                    .v
-                    .get(bbox.bone as usize)
-                    .and_then(|matrix| Some(([matrix[3], matrix[7], matrix[11]], bbox.radius())))
+            .enumerate()
+            .filter_map(|(bone, bbone)| {
+                let matrix = self.bones.v.get(bone)?;
+                if let Some(bbox) = self
+                    .studio
+                    .hb_lookup
+                    .get(bone)
+                    .and_then(|&hitbox_idx| self.studio.hitboxes.get(hitbox_idx as usize))
+                {
+                    Some(HitboxData {
+                        bone: bone.try_into().unwrap(),
+                        group: bbox.group as i32,
+                        bbmin: bbox.bbmin,
+                        bbmax: bbox.bbmax,
+                        bone_origin: [matrix[3], matrix[7], matrix[11]],
+                        bone_parent: bbone.parent as i32 - 1,
+                        radius: bbox.radius(),
+                    })
+                } else {
+                    Some(HitboxData {
+                        bone: bone.try_into().unwrap(),
+                        group: sdk::HITGROUP_GENERIC as i32,
+                        bbmin: [0.0, 0.0, 0.0],
+                        bbmax: [0.0, 0.0, 0.0],
+                        bone_origin: [matrix[3], matrix[7], matrix[11]],
+                        bone_parent: bbone.parent as i32 - 1,
+                        radius: 0.0,
+                    })
+                }
             })
             .collect()
     }
@@ -377,24 +418,39 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
     }
 
     #[tracing::instrument]
-    fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)> {
+    fn get_bones_data(&self) -> Vec<HitboxData> {
         self.studio
-            .hitboxes
+            .bones
             .iter()
-            .filter_map(|bbox| {
-                let hitboxes =
-                    self.bones.v.get(bbox.bone as usize).and_then(|matrix| {
-                        Some(([matrix[3], matrix[7], matrix[11]], bbox.radius()))
-                    });
-                // if bbox.group == sdk::HITGROUP_LEFT_LEG {
-                //     println!(
-                //         "left_leg hit={:?} bbox={:?}, len={}",
-                //         hitboxes,
-                //         bbox,
-                //         self.studio.hitboxes.len()
-                //     );
-                // }
-                hitboxes
+            .enumerate()
+            .filter_map(|(bone, bbone)| {
+                let matrix = self.bones.v.get(bone)?;
+                if let Some(bbox) = self
+                    .studio
+                    .hb_lookup
+                    .get(bone)
+                    .and_then(|&hitbox_idx| self.studio.hitboxes.get(hitbox_idx as usize))
+                {
+                    Some(HitboxData {
+                        bone: bone.try_into().unwrap(),
+                        group: bbox.group as i32,
+                        bbmin: bbox.bbmin,
+                        bbmax: bbox.bbmax,
+                        bone_origin: [matrix[3], matrix[7], matrix[11]],
+                        bone_parent: bbone.parent as i32 - 1,
+                        radius: bbox.radius(),
+                    })
+                } else {
+                    Some(HitboxData {
+                        bone: bone.try_into().unwrap(),
+                        group: sdk::HITGROUP_GENERIC as i32,
+                        bbmin: [0.0, 0.0, 0.0],
+                        bbmax: [0.0, 0.0, 0.0],
+                        bone_origin: [matrix[3], matrix[7], matrix[11]],
+                        bone_parent: bbone.parent as i32 - 1,
+                        radius: 0.0,
+                    })
+                }
             })
             .collect()
     }
@@ -485,8 +541,8 @@ impl AimEntity for GamePlayer {
         self.get_entity().get_bone_position_by_hitbox(id)
     }
 
-    fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)> {
-        self.get_entity().get_spine_hitbox()
+    fn get_bones_data(&self) -> Vec<HitboxData> {
+        self.get_entity().get_bones_data()
     }
 
     fn get_hitbox(&self) -> Vec<([f32; 3], ([f32; 3], [f32; 3]))> {
@@ -574,12 +630,20 @@ impl AimEntity for QuickLooting {
         Default::default()
     }
 
-    fn get_bone_position_by_hitbox(&self, id: u32) -> [f32; 3] {
+    fn get_bone_position_by_hitbox(&self, _id: u32) -> [f32; 3] {
         self.get_position()
     }
 
-    fn get_spine_hitbox(&self) -> Vec<([f32; 3], f32)> {
-        vec![([0.0, 0.0, 0.0], 6.0)]
+    fn get_bones_data(&self) -> Vec<HitboxData> {
+        vec![HitboxData {
+            bone: 0,
+            group: 0,
+            bbmin: [-6.0, -6.0, -6.0],
+            bbmax: [6.0, 6.0, 6.0],
+            bone_origin: [0.0, 0.0, 0.0],
+            bone_parent: 0,
+            radius: f32::sqrt(6.0 * 6.0 * 3.0),
+        }]
     }
 
     fn get_hitbox(&self) -> Vec<([f32; 3], ([f32; 3], [f32; 3]))> {

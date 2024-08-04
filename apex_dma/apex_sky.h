@@ -77,6 +77,7 @@ typedef struct {
 } aimbot_state_t;
 
 typedef struct {
+  bool bone;
   bool box;
   bool line;
   bool distance;

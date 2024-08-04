@@ -187,7 +187,7 @@ impl StudioModel {
             if count >= self.bones.len() {
                 return None;
             }
-            let parent = self.bones.get(bone as usize)?.parent as u16;
+            let parent = self.bones.get(bone as usize)?.parent;
             // if bone == parent {
             // 	return None;
             // }

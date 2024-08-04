@@ -9,6 +9,7 @@ use crate::{aimbot::AimbotSettings, love_players::LovePlayer};
 #[repr(C)]
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct EspVisuals {
+    pub bone: bool,
     pub r#box: bool,
     pub line: bool,
     pub distance: bool,
@@ -257,11 +258,12 @@ pub struct Settings {
 impl Default for EspVisuals {
     fn default() -> Self {
         Self {
+            bone: true,
             r#box: true,
             line: false,
             distance: false,
-            health_bar: false,
-            shield_bar: false,
+            health_bar: true,
+            shield_bar: true,
             name: false,
             damage: true,
         }
@@ -468,7 +470,7 @@ impl Default for Settings {
             player_glow_love_user: true,
             weapon_model_glow: false,
             kbd_backlight_control: false,
-            deathbox: false,
+            deathbox: true,
             esp: true,
             esp_visuals: EspVisuals::default(),
             mini_map_radar: true,
@@ -482,7 +484,7 @@ impl Default for Settings {
             map_radar_testing: false,
             show_aim_target: true,
             game_fps: 75.0,       // Game FPS for aim prediction
-            calc_game_fps: false, // Automatic calculation of game fps
+            calc_game_fps: true, // Automatic calculation of game fps
             firing_range: false,
             // Player Glow Color and Brightness.
             // inside fill

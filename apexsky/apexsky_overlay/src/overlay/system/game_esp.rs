@@ -173,6 +173,14 @@ impl EspSystem {
     }
 }
 
+#[derive(Resource)]
+pub(crate) struct ShowEntityBall(pub(crate) bool);
+impl Default for ShowEntityBall {
+    fn default() -> Self {
+        Self(true)
+    }
+}
+
 #[derive(Component, Default)]
 pub(crate) struct AimTargetEntity {
     pub(crate) ptr: u64,
@@ -194,6 +202,7 @@ pub(crate) fn follow_game_state(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    show_entity_ball: Res<ShowEntityBall>,
     esp_system: Option<ResMut<EspSystem>>,
     mut windows: Query<&mut Window>,
     mut query_camera: Query<
@@ -355,8 +364,10 @@ pub(crate) fn follow_game_state(
         }
     }
 
+    let esp_data_ready = esp_data.ready;
+
     // Get target entities
-    let mut targets: HashMap<u64, UpdateTarget> = if esp_data.ready {
+    let mut targets: HashMap<u64, UpdateTarget> = if esp_data_ready {
         esp_data
             .targets
             .as_ref()
@@ -433,20 +444,30 @@ pub(crate) fn follow_game_state(
         } else {
             palettes::css::ORANGE_RED
         };
-        commands.spawn((
-            PbrBundle {
-                mesh: meshes.add(Sphere::new(6.0).mesh().uv(32, 18)),
-                material: materials.add(StandardMaterial {
-                    base_color: Color::Srgba(base_color),
-                    ..Default::default()
-                }),
-                transform: Transform::from_translation(target.point_pos),
-                ..default()
+        let mut spawn_cmd = commands.spawn((
+            if show_entity_ball.0 {
+                PbrBundle {
+                    mesh: meshes.add(Sphere::new(6.0).mesh().uv(32, 18)),
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::Srgba(base_color),
+                        ..Default::default()
+                    }),
+                    transform: Transform::from_translation(target.point_pos),
+                    ..default()
+                }
+            } else {
+                PbrBundle {
+                    transform: Transform::from_translation(target.point_pos),
+                    ..default()
+                }
             },
             AimTargetEntity {
                 ptr,
                 data: target.data,
             },
+        ));
+        //if esp_system.esp_settings.esp_visuals & EspVisualsFlag::HealthBar as i32 != 0 {
+        spawn_cmd.insert((
             Health {
                 max: target.max_health,
                 current: target.health,
@@ -467,14 +488,8 @@ pub(crate) fn follow_game_state(
                 orientation: hpbar::BarOrientation::Vertical,
                 ..default()
             },
-            // AudioBundle {
-            //     source: overlay_state.sound_handle.to_owned(),
-            //     settings: PlaybackSettings::LOOP
-            //         .with_spatial(true)
-            //         .with_spatial_scale(SpatialScale::new(1.0 / 40.0))
-            //         .with_volume(Volume::new(0.6)),
-            // },
         ));
+        //}
     });
 }
 

@@ -2,8 +2,9 @@ use std::time::Duration;
 
 use apexsky::global_state::G_STATE;
 use apexsky_proto::pb::apexlegends::{
-    AimEntityData, AimTargetItem, AimTargetList, AimbotState, EspData, EspDataOption, EspSettings,
-    EspVisualsFlag, GSettings, Loots, Matrix4x4, Players, SpectatorList,
+    AimEntityData, AimTargetHitbox, AimTargetItem, AimTargetList, AimbotState, EspData,
+    EspDataOption, EspSettings, EspVisualsFlag, GSettings, Loots, Matrix4x4, Players,
+    SpectatorList,
 };
 use apexsky_proto::pb::esp_service::esp_service_server::{EspService, EspServiceServer};
 use apexsky_proto::pb::esp_service::{
@@ -36,7 +37,7 @@ impl EspService for GameApiHandle {
 
     async fn get_players(
         &self,
-        request: Request<GetPlayersRequest>,
+        _request: Request<GetPlayersRequest>,
     ) -> Result<Response<Players>, Status> {
         let reply = {
             let players = self.state.players.read().clone();
@@ -169,6 +170,23 @@ impl EspService for GameApiHandle {
                                 .get(&target_info.entity_ptr)
                                 .map(|pl| pl.get_buf().clone())
                         },
+                        hitboxes: if entity.is_visible() || target_info.distance < 40.0 * 5.0 {
+                            entity
+                                .get_bones_data()
+                                .into_iter()
+                                .map(|hb| AimTargetHitbox {
+                                    bone: hb.bone,
+                                    group: hb.group,
+                                    bbmin: Some(hb.bbmin.into()),
+                                    bbmax: Some(hb.bbmax.into()),
+                                    bone_origin: Some(hb.bone_origin.into()),
+                                    bone_parent: hb.bone_parent,
+                                    radius: hb.radius,
+                                })
+                                .collect()
+                        } else {
+                            vec![]
+                        },
                     })
                 })
                 .collect();
@@ -199,7 +217,14 @@ impl EspService for GameApiHandle {
                         None
                     },
                     loop_duration: duration.as_millis().try_into().unwrap(),
-                    target_position: Some(aim_target.into()),
+                    target_position: if !(aim_target[0] == 0.0
+                        && aim_target[1] == 0.0
+                        && aim_target[2] == 0.0)
+                    {
+                        Some(aim_target.into())
+                    } else {
+                        None
+                    },
                     aim_mode: state.get_settings().aim_mode,
                     aiming: state.is_aiming(),
                     gun_safety: state.get_gun_safety(),
@@ -270,7 +295,11 @@ impl EspService for GameApiHandle {
                 debug_mode: g_settings.debug_mode,
                 esp_visuals: {
                     let v = &g_settings.esp_visuals;
-                    (if v.r#box {
+                    (if v.bone {
+                        EspVisualsFlag::Bone.into()
+                    } else {
+                        0
+                    }) + (if v.r#box {
                         EspVisualsFlag::Box.into()
                     } else {
                         0
