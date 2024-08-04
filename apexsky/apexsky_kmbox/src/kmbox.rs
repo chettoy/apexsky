@@ -8,8 +8,6 @@ pub use kmbox_net::{KmboxNet, SoftMouse};
 
 #[derive(thiserror::Error, Debug)]
 pub enum KmboxError {
-    #[error("KmboxErr: serialport error")]
-    SerialPort(#[from] tokio_serial::Error),
     #[error("KmboxErr: serialport io error")]
     SerialPortIO(io::Error),
     #[error("KmboxErr: failed to create socket")]

@@ -11,12 +11,10 @@ pub use offsets_loader::*;
 pub use spectators::*;
 pub use utils::*;
 
-use anyhow::Ok;
 use obfstr::obfstr as s;
 #[cfg(feature = "wasmedge")]
 use wasmedge_sdk::{
-    config::{CommonConfigOptions, ConfigBuilder, HostRegistrationConfigOptions},
-    params, Vm, VmBuilder, WasmValue,
+    params, plugin::PluginManager, wasi::WasiModule, AsInstance, Module, Store, Vm, WasmValue,
 };
 #[cfg(feature = "wasmer")]
 use wasmer::{Instance, Module, Store, Value};
@@ -30,15 +28,16 @@ use wasmer_wasix::{
     virtual_net, PluggableRuntime, WasiEnv,
 };
 
+#[cfg(feature = "wasmedge")]
+pub struct Skyapex {
+    inner: SkyapexWasmedge<'static>,
+}
+
+#[cfg(feature = "wasmer")]
 #[derive(Debug)]
 pub struct Skyapex {
-    #[cfg(feature = "wasmedge")]
-    vm: Vm,
-    #[cfg(feature = "wasmer")]
     store: Store,
-    #[cfg(feature = "wasmer")]
     instance: Instance,
-    #[cfg(feature = "wasmer")]
     _runtime: PluggableRuntime,
 }
 
@@ -53,6 +52,106 @@ static S_PATH_HOST: Lazy<String> = Lazy::new(|| s!("/mnt/host").to_string());
 static S_PATH_MNT: Lazy<String> = Lazy::new(|| s!("/mnt").to_string());
 static S_PATH_TMP: Lazy<String> = Lazy::new(|| s!("/tmp").to_string());
 static S_SKYAPEX: Lazy<String> = Lazy::new(|| s!("skyapex").to_string());
+
+#[cfg(feature = "wasmedge")]
+pub struct SkyapexWasmedge<'a> {
+    // _leaked_wasi: std::sync::Mutex<Option<*mut WasiModule>>,
+    // _leaked_wasi_nn: std::sync::Mutex<Option<*mut Option<wasmedge_sdk::Instance>>>,
+    vm: Vm<'a, wasmedge_sdk::Instance>,
+}
+
+// impl<'a> Drop for SkyapexWasmedge<'a> {
+//     fn drop(&mut self) {
+//         if let Some(ptr) = self._leaked_wasi.lock().unwrap().take() {
+//             unsafe { drop(Box::from_raw(ptr)) }
+//         }
+//         if let Some(ptr) = self._leaked_wasi_nn.lock().unwrap().take() {
+//             unsafe { drop(Box::from_raw(ptr)) }
+//         }
+//     }
+// }
+
+#[cfg(feature = "wasmedge")]
+impl<'a> SkyapexWasmedge<'a> {
+    pub fn load(module_name: &str, module_bytes: Vec<u8>) -> anyhow::Result<Self> {
+        use std::collections::HashMap;
+        use wasmedge_sdk::config::{
+            CommonConfigOptions, ConfigBuilder, RuntimeConfigOptions, StatisticsConfigOptions,
+        };
+
+        let common_options = CommonConfigOptions::default()
+            .bulk_memory_operations(true)
+            .multi_value(true)
+            .mutable_globals(true)
+            .non_trap_conversions(true)
+            .reference_types(true)
+            .sign_extension_operators(true)
+            .simd(true);
+
+        let stat_options = StatisticsConfigOptions::default()
+            .count_instructions(true)
+            .measure_cost(true)
+            .measure_time(true);
+
+        let runtime_options = RuntimeConfigOptions::default();
+
+        let config = ConfigBuilder::new(common_options)
+            .with_statistics_config(stat_options)
+            .with_runtime_config(runtime_options)
+            .build()?;
+
+        PluginManager::load(None)?;
+
+        let mut instances = HashMap::new();
+
+        let args: Vec<String> = std::env::args().collect();
+        let envs: Vec<String> = std::env::vars()
+            .map(|(key, value)| format!("{}={}", key, value))
+            .collect();
+        let preopens: Vec<String> = vec![
+            s!("/").to_string(),
+            S_PATH_TMP.to_owned(),
+            S_PATH_MNT.to_owned(),
+            format!("{}{}", &*S_PATH_HOST, s!(":.")),
+        ];
+
+        let wasi = WasiModule::create(
+            Some(args.iter().map(String::as_str).collect()),
+            Some(envs.iter().map(String::as_str).collect()),
+            Some(preopens.iter().map(String::as_str).collect()),
+        )?;
+        let ptr_wasi = Box::into_raw(Box::new(wasi));
+        let leaked_wasi = unsafe { &mut *ptr_wasi };
+
+        let wasi_nn = PluginManager::load_plugin_wasi_nn().ok();
+        let ptr_wasi_nn = Box::into_raw(Box::new(wasi_nn));
+        let leaked_wasi_nn = unsafe { &mut *ptr_wasi_nn };
+
+        instances.insert(
+            leaked_wasi.name().unwrap().to_string(),
+            leaked_wasi.as_mut(),
+        );
+        if let Some(wasi_nn) = leaked_wasi_nn {
+            instances.insert(wasi_nn.name().unwrap().to_string(), wasi_nn);
+        }
+
+        let store = Store::new(Some(&config), instances)?;
+
+        let mut vm = Vm::new(store);
+
+        let module = Module::from_bytes(Some(&config), module_bytes)?;
+
+        vm.register_module(Some(module_name), module)?;
+
+        vm.run_func(Some(module_name), &*S_LOAD, params!())?;
+
+        Ok(Self {
+            // _leaked_wasi: std::sync::Mutex::new(Some(ptr_wasi)),
+            // _leaked_wasi_nn: std::sync::Mutex::new(Some(ptr_wasi_nn)),
+            vm,
+        })
+    }
+}
 
 impl Skyapex {
     pub fn load() -> anyhow::Result<Self> {
@@ -69,33 +168,9 @@ impl Skyapex {
         let mod_bytes = wat::parse_str(SKYAPEX_WAT.as_str())?;
         #[cfg(feature = "wasmedge")]
         {
-            let config = ConfigBuilder::new(CommonConfigOptions::default())
-                .with_host_registration_config(HostRegistrationConfigOptions::default().wasi(true))
-                .build()?;
-            let mut vm = VmBuilder::new()
-                .with_config(config)
-                // .with_plugin_wasi_nn()
-                .build()?
-                .register_module_from_bytes(&*S_SKYAPEX, mod_bytes)?;
-            let args: Vec<String> = std::env::args().collect();
-            let envs: Vec<String> = std::env::vars()
-                .map(|(key, value)| format!("{}={}", key, value))
-                .collect();
-            let preopens = vec![
-                s!("/").to_string(),
-                S_PATH_TMP.to_owned(),
-                S_PATH_MNT.to_owned(),
-                format!("{}{}", &*S_PATH_HOST, s!(":.")),
-            ];
-            let wasi_module = vm.wasi_module_mut().expect(s!("Not found wasi module"));
-            wasi_module.initialize(
-                Some(args.iter().map(String::as_str).collect()),
-                Some(envs.iter().map(String::as_str).collect()),
-                Some(preopens.iter().map(String::as_str).collect()),
-            );
-            vm.run_func(Some(&*S_SKYAPEX), &*S_LOAD, params!())?;
-
-            Ok(Skyapex { vm })
+            Ok(Self {
+                inner: SkyapexWasmedge::load(&*S_SKYAPEX, mod_bytes)?,
+            })
         }
         #[cfg(feature = "wasmer")]
         {
@@ -181,8 +256,16 @@ impl Skyapex {
         // Write the string into the lineary memory
         #[cfg(feature = "wasmedge")]
         {
-            let mut memory = self.vm.named_module_mut(&*S_SKYAPEX)?.memory(&*S_MEMORY)?;
-            memory.write(data, new_ptr as u32)?;
+            let (module_instance, _executor) = self
+                .inner
+                .vm
+                .store_mut()
+                .get_named_wasm_and_executor(&*S_SKYAPEX)
+                .ok_or(anyhow::anyhow!(s!("err get named wasm").to_string()))?;
+            let mut memory = module_instance.get_memory_mut(&*S_MEMORY)?;
+            memory
+                .write(new_ptr as usize, data)
+                .ok_or(anyhow::anyhow!(s!("err write wasm memory").to_string()))?;
         }
         #[cfg(feature = "wasmer")]
         {
@@ -196,11 +279,11 @@ impl Skyapex {
 
     #[cfg(feature = "wasmedge")]
     fn run_func(
-        &self,
+        &mut self,
         func_name: impl AsRef<str>,
         args: impl IntoIterator<Item = WasmValue>,
     ) -> anyhow::Result<Vec<WasmValue>> {
-        let res = self.vm.run_func(Some(&*S_SKYAPEX), func_name, args)?;
+        let res = self.inner.vm.run_func(Some(&*S_SKYAPEX), func_name, args)?;
         Ok(res)
     }
     #[cfg(feature = "wasmer")]

@@ -1,28 +1,33 @@
+use std::fmt::Debug;
+
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio_serial::{SerialPortBuilderExt, SerialStream};
+use serial2_tokio::SerialPort;
 
 use super::KmboxError;
 
-#[derive(Debug)]
 pub struct KmboxB {
-    serial: SerialStream,
+    serial: SerialPort,
+}
+
+impl Debug for KmboxB {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KmboxB")
+            .field("serial(..)", &self.serial.get_configuration())
+            .finish()
+    }
 }
 
 impl KmboxB {
     pub fn print_serial_ports() {
-        let ports = tokio_serial::available_ports().unwrap_or_default();
+        let ports = SerialPort::available_ports().unwrap_or_default();
         for p in ports {
-            println!("{}", p.port_name);
+            println!("{}", p.to_string_lossy());
         }
     }
 
     pub async fn init(serial_port: &str, baud_rate: u32) -> Result<Self, KmboxError> {
-        let mut port = tokio_serial::new(serial_port, baud_rate).open_native_async()?;
-
-        #[cfg(unix)]
-        port.set_exclusive(false)?;
+        let port = SerialPort::open(serial_port, baud_rate).map_err(KmboxError::SerialPortIO)?;
 
         let mut instance = Self { serial: port };
         instance.execute_command(s!("km.version()")).await?;

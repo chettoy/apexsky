@@ -294,7 +294,7 @@ pub fn io_thread(
                                 if next_flush_instant < now {
                                     next_flush_instant = now + Duration::from_millis(1);
                                 }
-                                assert!(now < next_flush_instant);
+                                assert!(now <= next_flush_instant);
                                 // Flush requests
                             }
                             crossbeam_channel::TryRecvError::Disconnected => {

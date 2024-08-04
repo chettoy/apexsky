@@ -496,17 +496,15 @@ fn fix_log_permission() {
     let current_uid = get_current_uid();
 
     if current_uid == 0 {
-        let original_user_uid = Uid::from_raw(
-            std::env::var(s!("SUDO_UID"))
-                .expect(s!("Faild to read SUDO_UID"))
-                .parse::<u32>()
-                .expect(s!("Invalid UID")),
-        );
+        let original_user_uid = match std::env::var(s!("SUDO_UID")) {
+            Ok(var) => Uid::from_raw(var.parse::<u32>().expect(s!("Invalid SUDO_UID"))),
+            Err(_) => return,
+        };
         let original_user_gid = Gid::from_raw(
             std::env::var(s!("SUDO_GID"))
                 .expect(s!("Faild to read SUDO_GID"))
                 .parse::<u32>()
-                .expect(s!("Invalid GID")),
+                .expect(s!("Invalid SUDO_GID")),
         );
 
         let original_user =

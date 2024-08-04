@@ -524,7 +524,7 @@ pub async fn actions_loop(
                     tracing::error!(%e, ?aim_select_tx, "{}", s!("send aim targets"));
                 });
 
-            if actions_tick % 4 != 0 {
+            if actions_tick % 4 == 0 {
                 tracing::trace_span!("Spectator check").in_scope(|| {
                     if player_ready {
                         let Some(lplayer_ptr) = shared_state.get_local_player_ptr() else {

@@ -10,7 +10,7 @@ buttplug = "8.0.0"
 chrono = "0.4.38"
 prost = "0.13.1"
 rand = "0.8.5"
-tokio = { version = "1.39.1", features = ["full"] }
+tokio = { version = "1.39.2", features = ["full"] }
 tonic = { version = "0.12.1", features = ["zstd"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }

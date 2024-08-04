@@ -332,14 +332,14 @@ pub async fn aimbot_loop(
 
                     if *score > 0 {
                         if bingo {
-                            let max_accel_x = 40.0; //score_abs as f32 / 4.0;
+                            let max_accel_x = 40.0;
                             smoothed_delta.signum()
                                 * f32::min(
                                     smoothed_delta.abs(),
                                     natural_viewangle_vel.abs() * max_accel_x,
                                 )
                         } else {
-                            let max_decel_x = 20.0; //score_abs as f32 / 2.0;
+                            let max_decel_x = 20.0;
                             smoothed_delta.signum()
                                 * f32::min(
                                     smoothed_delta.abs(),
