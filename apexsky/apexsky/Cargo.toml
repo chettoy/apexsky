@@ -18,6 +18,7 @@ ratatui = { version = "0.28.0-alpha.1", features = ["all-widgets", "serde"] }
 crossterm = "0.28.1"
 anyhow = "1.0"
 fluent = "0.16.1"
+futures = "0.3.30"
 unic-langid = "0.9.5"
 strum = { version = "0.26.3", features = ["derive"] }
 strum_macros = "0.26.4"

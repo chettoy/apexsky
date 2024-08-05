@@ -12,10 +12,12 @@ pub use spectators::*;
 pub use utils::*;
 
 use obfstr::obfstr as s;
+
 #[cfg(feature = "wasmedge")]
 use wasmedge_sdk::{
     params, plugin::PluginManager, wasi::WasiModule, AsInstance, Module, Store, Vm, WasmValue,
 };
+
 #[cfg(feature = "wasmer")]
 use wasmer::{Instance, Module, Store, Value};
 #[cfg(feature = "wasmer")]
@@ -28,6 +30,13 @@ use wasmer_wasix::{
     virtual_net, PluggableRuntime, WasiEnv,
 };
 
+#[cfg(feature = "wasmtime")]
+use wasmtime::{Config, Engine, Instance, Linker, Module, Store, Val};
+#[cfg(feature = "wasmtime")]
+use wasmtime_wasi::preview1::{self, WasiP1Ctx};
+#[cfg(feature = "wasmtime")]
+use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder};
+
 #[cfg(feature = "wasmedge")]
 pub struct Skyapex {
     inner: SkyapexWasmedge<'static>,
@@ -39,6 +48,17 @@ pub struct Skyapex {
     store: Store,
     instance: Instance,
     _runtime: PluggableRuntime,
+}
+
+#[cfg(feature = "wasmtime")]
+pub struct Skyapex {
+    config: Config,
+    engine: Engine,
+    linker: Linker<WasiP1Ctx>,
+    store: Store<WasiP1Ctx>,
+    module: Module,
+    instance: Instance,
+    runtime: tokio::runtime::Runtime,
 }
 
 #[skyapex_impl]
@@ -155,15 +175,6 @@ impl<'a> SkyapexWasmedge<'a> {
 
 impl Skyapex {
     pub fn load() -> anyhow::Result<Self> {
-        // {
-        //     ctrlc::set_handler(|| {
-        //         use super::Utils;
-        //         crate::lock_mod!().clean_up();
-        //         std::process::exit(0);
-        //     })
-        //     .unwrap();
-        // }
-
         include_flate::flate!(static SKYAPEX_WAT: str from "mod/skyapex.wat");
         let mod_bytes = wat::parse_str(SKYAPEX_WAT.as_str())?;
         #[cfg(feature = "wasmedge")]
@@ -245,6 +256,98 @@ impl Skyapex {
                 _runtime: runtime,
             })
         }
+        #[cfg(feature = "wasmtime")]
+        {
+            async fn load(
+                mod_bytes: Vec<u8>,
+            ) -> anyhow::Result<(
+                Config,
+                Engine,
+                Linker<WasiP1Ctx>,
+                Store<WasiP1Ctx>,
+                Module,
+                Instance,
+            )> {
+                // Construct the wasm engine with async support enabled.
+                let mut config = Config::new();
+                config.async_support(true);
+                let engine = Engine::new(&config)?;
+
+                // Add the WASI preview1 API to the linker (will be implemented in terms of
+                // the preview2 API)
+                let mut linker: Linker<WasiP1Ctx> = Linker::new(&engine);
+                preview1::add_to_linker_async(&mut linker, |t| t)?;
+
+                // Add capabilities (e.g. filesystem access) to the WASI preview2 context
+                // here. Here only stdio is inherited, but see docs of `WasiCtxBuilder` for
+                // more.
+                let wasi_ctx = WasiCtxBuilder::new()
+                    .allow_ip_name_lookup(true)
+                    .inherit_args()
+                    .inherit_env()
+                    .inherit_network()
+                    .inherit_stderr()
+                    .inherit_stdin()
+                    .inherit_stdio()
+                    .preopened_dir("/", "/", DirPerms::READ, FilePerms::READ)?
+                    .preopened_dir(
+                        std::env::temp_dir(),
+                        &*S_PATH_TMP,
+                        DirPerms::all(),
+                        FilePerms::all(),
+                    )?
+                    .preopened_dir("..", &*S_PATH_MNT, DirPerms::all(), FilePerms::all())?
+                    .preopened_dir(
+                        std::env::current_dir()?.to_path_buf(),
+                        &*S_PATH_HOST,
+                        DirPerms::all(),
+                        FilePerms::all(),
+                    )?
+                    .build_p1();
+
+                let mut store = Store::new(&engine, wasi_ctx);
+
+                let module = Module::from_binary(&engine, &mod_bytes)?;
+
+                // Instantiate module
+                let instance = linker.instantiate_async(&mut store, &module).await?;
+                linker.instance(&mut store, &*S_SKYAPEX, instance.clone())?;
+
+                // // Instantiate module
+                // let linker = linker
+                //     .module_async(&mut store, &*S_SKYAPEX, &module)
+                //     .await?;
+
+                // // Invoke the WASI program default function.
+                // let func = linker
+                //     .get_default(&mut store, &*S_SKYAPEX)?
+                //     .typed::<(), ()>(&store)?;
+                // func.call_async(&mut store, ()).await?;
+
+                let func = instance.get_typed_func::<(), ()>(&mut store, &*S_LOAD)?;
+                func.call_async(&mut store, ()).await?;
+
+                Ok((config, engine, linker, store, module, instance))
+            }
+
+            tokio::task::block_in_place(|| {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap();
+                runtime.block_on(load(mod_bytes)).map(
+                    |(config, engine, linker, store, module, instance)| Self {
+                        config,
+                        engine,
+                        linker,
+                        store,
+                        module,
+                        instance,
+                        runtime,
+                    },
+                )
+            })
+        }
     }
 
     pub fn pass_string(&mut self, data: String) -> anyhow::Result<i32> {
@@ -273,6 +376,14 @@ impl Skyapex {
             let mem_view = memory.view(&self.store);
             mem_view.write(new_ptr as u64, data)?;
         }
+        #[cfg(feature = "wasmtime")]
+        {
+            let memory = self
+                .instance
+                .get_memory(&mut self.store, &*S_MEMORY)
+                .ok_or(anyhow::anyhow!(s!("err get wasm memory").to_string()))?;
+            memory.write(&mut self.store, new_ptr as usize, data)?;
+        }
 
         Ok(new_ptr)
     }
@@ -295,5 +406,44 @@ impl Skyapex {
         let func = self.instance.exports.get_function(func_name.as_ref())?;
         let res = func.call(&mut self.store, args)?;
         Ok(res)
+    }
+    // #[cfg(feature = "wasmtime")]
+    // fn run_func(
+    //     &mut self,
+    //     func_name: impl AsRef<str>,
+    //     args: &[Val],
+    //     results: &mut [Val],
+    // ) -> anyhow::Result<()> {
+    //     let Some(func) = self.instance.get_func(&mut self.store, func_name.as_ref()) else {
+    //         anyhow::bail!("`{}`{}", func_name.as_ref(), " not a function");
+    //     };
+
+    //     tokio::task::block_in_place(|| {
+    //         self.runtime
+    //             .block_on(func.call_async(&mut self.store, args, results))
+    //     })?;
+
+    //     Ok(())
+    // }
+    #[cfg(feature = "wasmtime")]
+    fn run_func_typed<Params, Results>(
+        &mut self,
+        func_name: impl AsRef<str>,
+        args: Params,
+    ) -> anyhow::Result<Results>
+    where
+        Params: wasmtime::WasmParams,
+        Results: wasmtime::WasmResults,
+    {
+        let func = self
+            .instance
+            .get_typed_func::<Params, Results>(&mut self.store, func_name.as_ref())?;
+
+        let ret = tokio::task::block_in_place(|| {
+            self.runtime
+                .block_on(func.call_async(&mut self.store, args))
+        })?;
+
+        Ok(ret)
     }
 }

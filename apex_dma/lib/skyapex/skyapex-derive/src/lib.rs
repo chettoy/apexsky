@@ -77,12 +77,22 @@ pub fn skyapex_impl(
 
             let arg_names: Vec<&Ident> = arg_list.keys().cloned().collect();
             let arg_names: Punctuated<&Ident, Comma> = Punctuated::from_iter(arg_names.into_iter());
-            // let arg_types: Vec<&Ident> = arg_list.values().cloned().collect();
-            // let arg_types: Punctuated<&Ident, Comma> = Punctuated::from_iter(arg_types.into_iter());
+            let arg_types: Vec<&Ident> = arg_list.values().cloned().collect();
+            let arg_types: Punctuated<&Ident, Comma> = Punctuated::from_iter(arg_types.into_iter());
+            let params = if arg_names.len() == 1 {
+                quote! {#arg_names}
+            } else {
+                quote! {(#arg_names)}
+            };
+            let params_type = if arg_types.len() == 1 {
+                quote! {#arg_types}
+            } else {
+                quote! {(#arg_types)}
+            };
 
             let args_wasmer: TokenStream = arg_list
-                .into_iter()
-                .map(|(name, typ)| {
+                .iter()
+                .map(|(&name, &typ)| {
                     let value_enum = match typ.to_string().as_str() {
                         "i32" => quote!(Value::I32(#name),),
                         "i64" => quote!(Value::I64(#name),),
@@ -96,10 +106,26 @@ pub fn skyapex_impl(
                 })
                 .collect();
 
-            // let rettype = match ret_type {
-            //     Some(t) => quote!(#t),
-            //     None => quote!(()),
-            // };
+            // let args_wasmtime: TokenStream = arg_list
+            //     .iter()
+            //     .map(|(&name, &typ)| {
+            //         let value_enum = match typ.to_string().as_str() {
+            //             "i32" => quote!(Val::I32(#name),),
+            //             "i64" => quote!(Val::I64(#name),),
+            //             "f32" => quote!(Val::F32(#name.to_bits()),),
+            //             "f64" => quote!(Val::F64(#name),),
+            //             "u128" => quote!(Val::V128(#name),),
+            //             "i128" => quote!(Val::V128(#name as u128),),
+            //             _ => panic!("Unsupported type wasmtime::Val::?({})", typ),
+            //         };
+            //         value_enum
+            //     })
+            //     .collect();
+
+            let rettype = match ret_type {
+                Some(t) => quote!(#t),
+                None => quote!(()),
+            };
             let conv_ret_wasmedge = match ret_type {
                 Some(t) => {
                     let conv_fn = Ident::new(&format!("to_{}", t), t.span());
@@ -114,6 +140,13 @@ pub fn skyapex_impl(
                 }
                 None => quote!(;),
             };
+            // let conv_ret_wasmtime = match ret_type {
+            //     Some(t) => {
+            //         let conv_fn = Ident::new(&format!("unwrap_{}", t), t.span());
+            //         quote!([0].#conv_fn())
+            //     }
+            //     None => quote!(;),
+            // };
 
             let signature = &m.sig;
             methods.extend(quote! {
@@ -132,8 +165,13 @@ pub fn skyapex_impl(
                         use wasmer::Value;
                         self.run_func(stringify!(#method_name), &[#args_wasmer]).unwrap()#conv_ret_wasmer
                     }
+                    #[cfg(feature = "wasmtime")]
+                    {
+                        self.run_func_typed::<#params_type, #rettype>(stringify!(#method_name), #params).unwrap()
+                    }
                 }
             });
+            //panic!("{}", methods.to_string());
         }
     }
     quote! {
