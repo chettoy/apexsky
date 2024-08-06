@@ -255,7 +255,7 @@ impl Entity for WeaponXEntity {
 }
 impl crate::apexdream::base::solver::ProjectileWeapon for WeaponXEntity {
     fn projectile_speed(&self) -> f32 {
-        if self.weapon_name == sdk::WeaponName::BOCEK {
+        if self.weapon_name == sdk::WeaponName::BOCEK_BOW {
             //return if self.projectile_scale == 1.5 { 28000.0 } else { 10000.0 };
             let charge_level = self.last_charge_level as f32;
             return if self.projectile_scale == 1.5 {
@@ -275,10 +275,10 @@ impl crate::apexdream::base::solver::ProjectileWeapon for WeaponXEntity {
         match self.weapon_name {
             W::SENTINEL => Some(sdk::projectiles::SENTINEL),
             W::KRABER => Some(sdk::projectiles::KRABER),
-            W::BOCEK => Some(sdk::projectiles::BOCEK),
+            W::BOCEK_BOW => Some(sdk::projectiles::BOCEK),
             W::R301 => Some(sdk::projectiles::R301),
             W::G7_SCOUT => Some(sdk::projectiles::G7_SCOUT),
-            W::REPEATER => Some(sdk::projectiles::REPEATER),
+            W::_3030_REPEATER => Some(sdk::projectiles::REPEATER),
             W::LONGBOW => Some(sdk::projectiles::LONGBOW),
             W::FLATLINE => Some(sdk::projectiles::FLATLINE),
             W::WINGMAN => Some(sdk::projectiles::WINGMAN),

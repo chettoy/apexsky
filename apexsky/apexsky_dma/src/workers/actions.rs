@@ -346,8 +346,8 @@ pub async fn actions_loop(
                                     .sqrt();
                                 let clue = TreasureClue {
                                     entity_handle: entity.entity_ptr.into_raw(),
-                                    item_id: -1,
-                                    custom_item_id: ItemId::DeathBox as u64,
+                                    item_id: ItemId::ApexskyItemDeathBox.0,
+                                    custom_item_id: 0,
                                     position: Some(entity.origin.into()),
                                     distance,
                                 };

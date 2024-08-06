@@ -20,6 +20,7 @@ use tonic::{transport::Server, Request, Response, Status};
 use tracing::instrument;
 
 use crate::api_impl::GameApiHandle;
+use crate::game::data::ItemId;
 use crate::PRINT_LATENCY;
 
 #[tonic::async_trait]
@@ -201,7 +202,7 @@ impl EspService for GameApiHandle {
                     .try_into()
                     .unwrap_or_else(|e| {
                         let v = state.frame_count.load(std::sync::atomic::Ordering::Acquire);
-                        tracing::error!(?e, ?v);
+                        tracing::debug!(?e, ?v);
                         0
                     }),
                 view_matrix: Some(Matrix4x4 {
@@ -346,7 +347,22 @@ impl EspService for GameApiHandle {
                     ]
                     .into(),
                 ),
-                desired_loots: vec![-1, 194, 198, 199, 219, 222, 223, 247, 248, 252, 256, 267],
+                desired_loots: vec![
+                    ItemId::ApexskyItemDeathBox.0,
+                    ItemId::ShieldBatteryLarge.0,
+                    ItemId::ShieldUpgradeHead3.0,
+                    ItemId::ShieldUpgradeHead4.0,
+                    ItemId::ShieldDown4.0,
+                    ItemId::HeavyBackpack.0,
+                    ItemId::GoldBackpack.0,
+                    ItemId::LightAmmoMag3.0,
+                    ItemId::LightAmmoMag4.0,
+                    ItemId::HeavyAmmoMag4.0,
+                    ItemId::EnergyAmmoMag3.0,
+                    ItemId::EnergyAmmoMag4.0,
+                    ItemId::StockRegular3.0,
+                    ItemId::TurboCharger.0,
+                ],
             }
         };
         Ok(Response::new(reply))

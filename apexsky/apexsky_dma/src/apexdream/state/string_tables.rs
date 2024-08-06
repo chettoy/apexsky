@@ -166,7 +166,7 @@ impl GameState {
     }
     pub fn weapon_is_charged(&self, weapon_name_index: i32) -> bool {
         match self.weapon_name(weapon_name_index) {
-            sdk::WeaponName::BOCEK => true,
+            sdk::WeaponName::BOCEK_BOW => true,
             sdk::WeaponName::THERMITE_GRENADE => true,
             sdk::WeaponName::FRAG_GRENADE => true,
             sdk::WeaponName::ARC_STAR => true,

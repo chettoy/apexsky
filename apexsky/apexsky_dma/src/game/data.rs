@@ -1,59 +1,28 @@
 use std::collections::HashMap;
 
+use named_constants::named_constants;
 use once_cell::sync::Lazy;
 
 use crate::workers::items::LootInt;
 
-macro_rules! define_item_id {
-    ($(#[$attr:meta])* $vis:vis enum $name:ident {
-        $($variant:ident = $value:expr),*,
-    }) => {
-        $(#[$attr])*
-        $vis enum $name {
-            $($variant = $value),*,
-        }
-
-        impl TryFrom<u64> for $name {
-            type Error = ();
-
-            fn try_from(value: u64) -> Result<Self, Self::Error> {
-                match value {
-                    $($value => Ok(Self::$variant),)*
-                    _ => Err(()),
-                }
-            }
-        }
-
-        impl Into<u64> for $name {
-            fn into(self) -> u64 {
-                self as u64
-            }
-        }
-    };
-}
-
 /*
- * GameVersion=v3.0.75.30
+ * GameVersion=v3.0.76.22
  */
-pub const OFFSET_YAW: u64 = 0x224c - 0x8;
-pub const OFFSET_SPECTATOR_LIST: u64 = 0x1efae58;
+pub const OFFSET_YAW: u64 = 0x223c - 0x8;
+pub const OFFSET_SPECTATOR_LIST: u64 = 0x1f16e28;
 //pub const OFFSET_GLOW_CONTEXT_ID: u64 = 0x29c;
 pub const OFFSET_GLOW_VISIBLE_TYPE: u64 = 0x26c;
 pub const OFFSET_GLOW_DISTANCE: u64 = 0x264;
 pub const OFFSET_GLOW_FIX: u64 = 0x278;
 
-#[repr(C)]
 #[allow(dead_code)]
+#[repr(C)]
 pub enum WeaponId {
     R301 = 0,
     Sentinel = 1,
     Bow = 2,
     R2R5 = 3,
     Rampage = 6,
-    SheilaStationary = 10,
-    Sheila = 56,
-    Melee,
-    SnipersMark = 76,
     Alternator = 84,
     Re45 = 85,
     ChargeRifle = 87,
@@ -71,145 +40,139 @@ pub enum WeaponId {
     Prowler = 107,
     Peacekeeper = 109,
     R99 = 110,
-    P2020 = 111,
-    Spitfire = 112,
-    TripleTake = 113,
-    Wingman = 114,
-    Volt = 116,
-    _3030Repeater = 117,
-    CarSmg = 118,
-    Nemesis = 119,
-    Hands = 120,
-    ThrowingKnife = 173,
-    GrenadeThermite = 174,
-    GrenadeFrag = 175,
-    GrenadeArcStar = 176,
+    R99Crate = 111,
+    P2020 = 112,
+    Spitfire = 113,
+    TripleTake = 114,
+    Wingman = 115,
+    WingmanCrate = 116,
+    Volt = 117,
+    _3030Repeater = 118,
+    CarSmg = 119,
+    Nemesis = 120,
+    Hands = 121,
+    ThrowingKnife = 176,
+    GrenadeThermite = 177,
+    GrenadeFrag = 178,
+    GrenadeArcStar = 179,
     Max,
 }
 
-define_item_id!(
-    #[repr(C)]
-    #[allow(dead_code)]
-    pub enum ItemId {
-        WeaponKraber = 1,
-        WeaponMastiff = 2,
-        WeaponLStar = 7,
-        WeaponHavoc = 13,
-        WeaponDevotion = 19,
-        WeaponTripleTake = 24,
-        WeaponFlatline = 29,
-        WeaponHemlock = 34,
-        WeaponG7Scout = 40,
-        WeaponAlternator = 45,
-        WeaponR99 = 50,
-        WeaponProwler = 55,
-        WeaponVolt = 61,
-        WeaponLongbow = 66,
-        WeaponChargeRifle = 71,
-        WeaponSpitfire = 76,
-        WeaponR301 = 81,
-        WeaponEva8 = 87,
-        WeaponPeacekeeper = 92,
-        WeaponMozambique = 97,
-        WeaponWingman = 106,
-        WeaponP2020 = 112,
-        WeaponRE45 = 117,
-        WeaponSentinel = 123,
-        WeaponBow = 128,
-        Weapon3030Repeater = 130,
-        WeaponNemesis = 136,
-        LightAmmo = 141,
-        EnergyAmmo = 142,
-        ShotgunAmmo = 143,
-        HeavyAmmo = 144,
-        SniperAmmo = 145,
-        WeaponRampage = 147,
-        WeaponCARSMG = 152,
-        Accelerant = 190,
-        Phoenix = 191,
-        HealthLarge = 192,
-        HealthSmall = 193,
-        ShieldBatteryLarge = 194,
-        ShieldBatterySmall = 195,
-        ShieldUpgradeHead1 = 196,
-        ShieldUpgradeHead2 = 197,
-        ShieldUpgradeHead3 = 198,
-        ShieldUpgradeHead4 = 199,
-        ArmorCore1 = 211,
-        ArmorCore2 = 212,
-        ArmorCore3 = 213,
-        ArmorCore4 = 214,
-        ShieldDown1 = 216,
-        ShieldDown2 = 217,
-        ShieldDown3 = 218,
-        ShieldDown4 = 219,
-        LightBackpack = 220,
-        MedBackpack = 221,
-        HeavyBackpack = 222,
-        GoldBackpack = 223,
-        ThrowingKnife = 224,
-        GrenadeThermite = 225,
-        GrenadeFrag = 226,
-        GrenadeArcStar = 227,
-        Optic1xHCOG = 228,
-        Optic2xHCOG = 229,
-        OpticHolo1x = 230,
-        OpticHolo1x2x = 231,
-        OpticThreat = 232,
-        Optic3xHCOG = 233,
-        Optic2x4x = 234,
-        OpticSniper6x = 235,
-        OpticSniper4x8x = 236,
-        OpticSniperThreat = 237,
-        Suppressor1 = 238,
-        Suppressor2 = 239,
-        Suppressor3 = 240,
-        LaserSight1 = 242,
-        LaserSight2 = 243,
-        LaserSight3 = 244,
-        LightAmmoMag1 = 245,
-        LightAmmoMag2 = 246,
-        LightAmmoMag3 = 247,
-        LightAmmoMag4 = 248,
-        HeavyAmmoMag1 = 249,
-        HeavyAmmoMag2 = 250,
-        HeavyAmmoMag3 = 251,
-        HeavyAmmoMag4 = 252,
-        EnergyAmmoMag1 = 253,
-        EnergyAmmoMag2 = 254,
-        EnergyAmmoMag3 = 255,
-        EnergyAmmoMag4 = 256,
-        SniperAmmoMag1 = 257,
-        SniperAmmoMag2 = 258,
-        SniperAmmoMag3 = 259,
-        SniperAmmoMag4 = 260,
-        ShotgunBolt1 = 261,
-        ShotgunBolt2 = 262,
-        ShotgunBolt3 = 263,
-        ShotgunBolt4 = 264,
-        StockRegular1 = 265,
-        StockRegular2 = 266,
-        StockRegular3 = 267,
-        StockSniper1 = 268,
-        StockSniper2 = 269,
-        StockSniper3 = 270,
-        TurboCharger = 271,
-        SkullPiecer = 273,
-        DisruptorRounds = 276,
-        HammerPoint = 277,
-        BoostedLoader = 999999999,
-        ShieldUpgrade1_0 = 214748364993,
-        ShieldUpgrade1_1 = 14073963583897798,
-        ShieldUpgrade2_0 = 322122547394,
-        ShieldUpgrade2_1 = 21110945375846599,
-        ShieldUpgrade3_0 = 429496729795,
-        ShieldUpgrade3_1 = 52776987629977800,
-        ShieldUpgrade4 = 429496729796,
-        ShieldUpgrade5 = 536870912201,
-        DeathBox = 999999999999999998,
-        Unknown = 999999999999999999,
-    }
-);
+#[allow(dead_code)]
+#[named_constants]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+#[repr(i32)]
+pub enum ItemId {
+    ApexskyItemDeathBox = -1,
+    None = 0,
+    WeaponKraber = 1,
+    WeaponMastiff = 2,
+    WeaponLStar = 7,
+    WeaponHavoc = 13,
+    WeaponDevotion = 19,
+    WeaponTripleTake = 24,
+    WeaponFlatline = 29,
+    WeaponHemlock = 34,
+    WeaponG7Scout = 40,
+    WeaponAlternator = 45,
+    WeaponR99 = 50,
+    WeaponProwler = 56,
+    WeaponVolt = 62,
+    WeaponLongbow = 67,
+    WeaponChargeRifle = 72,
+    WeaponSpitfire = 77,
+    WeaponR301 = 82,
+    WeaponEva8 = 87,
+    WeaponPeacekeeper = 93,
+    WeaponMozambique = 98,
+    WeaponWingman = 111,
+    WeaponP2020 = 117,
+    WeaponRE45 = 126,
+    WeaponSentinel = 132,
+    WeaponBow = 137,
+    Weapon3030Repeater = 139,
+    WeaponNemesis = 145,
+    LightAmmo = 150,
+    EnergyAmmo = 151,
+    ShotgunAmmo = 152,
+    HeavyAmmo = 153,
+    SniperAmmo = 154,
+    WeaponRampage = 156,
+    WeaponCARSMG = 161,
+    Accelerant = 199,
+    Phoenix = 200,
+    HealthLarge = 201,
+    HealthSmall = 202,
+    ShieldBatteryLarge = 203,
+    ShieldBatterySmall = 204,
+    ShieldUpgradeHead1 = 205,
+    ShieldUpgradeHead2 = 206,
+    ShieldUpgradeHead3 = 207,
+    ShieldUpgradeHead4 = 208,
+    ArmorCore1 = 220,
+    ArmorCore2 = 221,
+    ArmorCore3 = 222,
+    ArmorCore4 = 223,
+    ShieldDown1 = 225,
+    ShieldDown2 = 226,
+    ShieldDown3 = 227,
+    ShieldDown4 = 228,
+    LightBackpack = 229,
+    MedBackpack = 230,
+    HeavyBackpack = 231,
+    GoldBackpack = 232,
+    ThrowingKnife = 233,
+    GrenadeThermite = 234,
+    GrenadeFrag = 235,
+    GrenadeArcStar = 236,
+    Optic1xHCOG = 237,
+    Optic2xHCOG = 238,
+    OpticHolo1x = 239,
+    OpticHolo1x2x = 240,
+    OpticThreat = 241,
+    Optic3xHCOG = 242,
+    Optic2x4x = 243,
+    OpticSniper6x = 244,
+    OpticSniper4x8x = 245,
+    OpticSniperThreat = 246,
+    Suppressor1 = 247,
+    Suppressor2 = 248,
+    Suppressor3 = 249,
+    LaserSight1 = 251,
+    LaserSight2 = 252,
+    LaserSight3 = 253,
+    LightAmmoMag1 = 254,
+    LightAmmoMag2 = 255,
+    LightAmmoMag3 = 256,
+    LightAmmoMag4 = 257,
+    HeavyAmmoMag1 = 258,
+    HeavyAmmoMag2 = 259,
+    HeavyAmmoMag3 = 260,
+    HeavyAmmoMag4 = 261,
+    EnergyAmmoMag1 = 262,
+    EnergyAmmoMag2 = 263,
+    EnergyAmmoMag3 = 264,
+    EnergyAmmoMag4 = 265,
+    SniperAmmoMag1 = 266,
+    SniperAmmoMag2 = 267,
+    SniperAmmoMag3 = 268,
+    SniperAmmoMag4 = 269,
+    ShotgunBolt1 = 270,
+    ShotgunBolt2 = 271,
+    ShotgunBolt3 = 272,
+    ShotgunBolt4 = 273,
+    StockRegular1 = 274,
+    StockRegular2 = 275,
+    StockRegular3 = 276,
+    StockSniper1 = 277,
+    StockSniper2 = 278,
+    StockSniper3 = 279,
+    TurboCharger = 280,
+    SkullPiecer = 282,
+    DisruptorRounds = 286,
+    HammerPoint = 294,
+    BoostedLoader = 295,
+}
 
 pub const HIGHLIGHT_LOOT_GOLD: u8 = 71;
 pub const HIGHLIGHT_LOOT_RED: u8 = 72;

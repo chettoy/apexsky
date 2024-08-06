@@ -57,20 +57,15 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
         return None;
     }
 
-    let item_id = ItemId::try_from(clue.custom_item_id).unwrap_or_else(|_e| {
-        //tracing::warn!(?clue, "{}", s!("unknown item id"));
-        ItemId::Unknown
-    });
-
     if clue.distance > g_settings.aimbot_settings.aim_dist {
         return None;
     }
 
     let select = &g_settings.loot;
 
-    match item_id {
+    match ItemId(clue.item_id) {
         // DeathBox
-        ItemId::DeathBox if g_settings.deathbox => Some(HIGHLIGHT_DEATH_BOX),
+        ItemId::ApexskyItemDeathBox if g_settings.deathbox => Some(HIGHLIGHT_DEATH_BOX),
 
         // Backpacks
         ItemId::LightBackpack if select.lightbackpack => Some(HIGHLIGHT_LOOT_WHITE),
@@ -79,25 +74,10 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
         ItemId::GoldBackpack if select.goldbackpack => Some(HIGHLIGHT_LOOT_GOLD),
 
         // Shields
-        ItemId::ShieldUpgrade1_0 | ItemId::ShieldUpgrade1_1 if select.shieldupgrade1 => {
-            Some(HIGHLIGHT_LOOT_WHITE)
-        }
-        ItemId::ShieldUpgrade2_0 | ItemId::ShieldUpgrade2_1 | ItemId::ArmorCore1
-            if select.shieldupgrade2 =>
-        {
-            Some(HIGHLIGHT_LOOT_BLUE)
-        }
-        ItemId::ShieldUpgrade3_0 | ItemId::ShieldUpgrade3_1 | ItemId::ArmorCore2
-            if select.shieldupgrade3 =>
-        {
-            Some(HIGHLIGHT_LOOT_PURPLE)
-        }
-        ItemId::ShieldUpgrade4 | ItemId::ArmorCore3 if select.shieldupgrade4 => {
-            Some(HIGHLIGHT_LOOT_GOLD)
-        }
-        ItemId::ShieldUpgrade5 | ItemId::ArmorCore4 if select.shieldupgrade5 => {
-            Some(HIGHLIGHT_LOOT_RED)
-        }
+        ItemId::ArmorCore1 if select.shieldupgrade1 => Some(HIGHLIGHT_LOOT_WHITE),
+        ItemId::ArmorCore2 if select.shieldupgrade2 => Some(HIGHLIGHT_LOOT_BLUE),
+        ItemId::ArmorCore3 if select.shieldupgrade3 => Some(HIGHLIGHT_LOOT_PURPLE),
+        ItemId::ArmorCore4 if select.shieldupgrade5 => Some(HIGHLIGHT_LOOT_RED),
         ItemId::ShieldUpgradeHead1 if select.shieldupgradehead1 => Some(HIGHLIGHT_LOOT_WHITE),
         ItemId::ShieldUpgradeHead2 if select.shieldupgradehead2 => Some(HIGHLIGHT_LOOT_BLUE),
         ItemId::ShieldUpgradeHead3 if select.shieldupgradehead3 => Some(HIGHLIGHT_LOOT_PURPLE),

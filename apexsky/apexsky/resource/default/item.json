@@ -44,27 +44,27 @@
         "model": "mdl/weapons/r97/w_r97.rmdl"
     },
     {
-        "int": 55,
+        "int": 56,
         "model": "mdl/weapons/prowler_smg/w_prowler_smg_deco.rmdl"
     },
     {
-        "int": 61,
+        "int": 62,
         "model": "mdl/techart/mshop/weapons/class/smg/volt/volt_lgnd_v22_queensguard_w.rmdl"
     },
     {
-        "int": 66,
+        "int": 67,
         "model": "mdl/weapons/rspn101_dmr/w_rspn101_dmr_deco.rmdl"
     },
     {
-        "int": 71,
+        "int": 72,
         "model": "mdl/weapons/defender/w_defender.rmdl"
     },
     {
-        "int": 76,
+        "int": 77,
         "model": "mdl/weapons/lmg_hemlok/w_lmg_hemlok.rmdl"
     },
     {
-        "int": 81,
+        "int": 82,
         "model": "mdl/content/r2/models/weapons/rspn101/dmx/r301_lgnd_v21_monsters_w.rmdl"
     },
     {
@@ -72,371 +72,367 @@
         "model": "mdl/techart/mshop/weapons/class/shotgun/eva8/eva8_lgnd_v22_magicwitch_w.rmdl"
     },
     {
-        "int": 92,
+        "int": 93,
         "model": "mdl/weapons/peacekeeper/w_peacekeeper.rmdl"
     },
     {
-        "int": 97,
+        "int": 98,
         "model": "mdl/weapons/pstl_sa3/w_pstl_sa3_legendary_01.rmdl"
     },
     {
-        "int": 106,
+        "int": 111,
         "model": "mdl/weapons/b3wing/w_b3wing.rmdl"
     },
     {
-        "int": 112,
+        "int": 117,
         "model": "mdl/weapons/p2011/w_p2011.rmdl"
     },
     {
-        "int": 117,
+        "int": 126,
         "model": "mdl/weapons/p2011_auto/w_p2011_auto_legendary_03.rmdl"
     },
     {
-        "int": 123,
+        "int": 132,
         "model": "mdl/weapons/sentinel/w_sentinel.rmdl"
     },
     {
-        "int": 128,
+        "int": 137,
         "model": "mdl/weapons/compound_bow/w_compound_bow.rmdl"
     },
     {
-        "int": 130,
+        "int": 139,
         "model": "mdl/weapons/3030repeater/w_3030repeater_supersonic.rmdl"
     },
     {
-        "int": 136,
+        "int": 145,
         "model": "mdl/techart/mshop/weapons/class/assault/nemesis/nemesis_lgnd_v22_racer_w.rmdl"
     },
     {
-        "int": 141,
+        "int": 150,
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_sc.rmdl"
     },
     {
-        "int": 142,
+        "int": 151,
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_nrg.rmdl"
     },
     {
-        "int": 143,
+        "int": 152,
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_shg.rmdl"
     },
     {
-        "int": 144,
+        "int": 153,
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_hc.rmdl"
     },
     {
-        "int": 145,
+        "int": 154,
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_ammo_sniper.rmdl"
     },
     {
-        "int": 147,
+        "int": 156,
         "model": "mdl/techart/mshop/weapons/class/lmg/dragon/dragon_base_w.rmdl"
     },
     {
-        "int": 152,
+        "int": 161,
         "model": "mdl/techart/mshop/weapons/class/smg/car/car_base_w.rmdl"
     },
     {
-        "int": 190,
+        "int": 199,
         "model": "mdl/weapons_r5/loot/w_loot_wep_iso_ultimate_accelerant.rmdl"
     },
     {
-        "int": 191,
+        "int": 200,
         "model": "mdl/weapons_r5/loot/w_loot_wep_iso_phoenix_kit_v1.rmdl"
     },
     {
-        "int": 192,
+        "int": 201,
         "model": "mdl/weapons_r5/loot/w_loot_wep_iso_health_main_large.rmdl"
     },
     {
-        "int": 193,
+        "int": 202,
         "model": "mdl/weapons_r5/loot/w_loot_wep_iso_health_main_small.rmdl"
     },
     {
-        "int": 194,
+        "int": 203,
         "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shield_battery_large.rmdl"
     },
     {
-        "int": 195,
+        "int": 204,
         "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shield_battery_small.rmdl"
     },
     {
-        "int": 196,
+        "int": 205,
         "model": "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_head.rmdl"
     },
     {
-        "int": 197,
+        "int": 206,
         "model": "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_head.rmdl"
     },
     {
-        "int": 198,
+        "int": 207,
         "model": "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_head.rmdl"
     },
     {
-        "int": 199,
+        "int": 208,
         "model": "mdl/weapons_r5/loot/_master/w_loot_cha_shield_upgrade_head.rmdl"
-    },
-    {
-        "int": 211,
-        "model": "mdl/props/loot_wep_iso_armor/w_loot_wep_iso_armor_core_01.rmdl"
-    },
-    {
-        "int": 212,
-        "model": "mdl/props/loot_wep_iso_armor/w_loot_wep_iso_armor_core_01.rmdl"
-    },
-    {
-        "int": 213,
-        "model": "mdl/props/loot_wep_iso_armor/w_loot_wep_iso_armor_core_01.rmdl"
-    },
-    {
-        "int": 214,
-        "model": "mdl/props/loot_wep_iso_armor/w_loot_wep_iso_armor_core_01.rmdl"
-    },
-    {
-        "int": 216,
-        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shield_down_v1.rmdl"
-    },
-    {
-        "int": 217,
-        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shield_down_v1.rmdl"
-    },
-    {
-        "int": 218,
-        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shield_down_v1.rmdl"
-    },
-    {
-        "int": 219,
-        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shield_down_v1.rmdl"
     },
     {
         "int": 220,
-        "model": "mdl/humans_r5/loot/w_loot_char_backpack_light.rmdl"
+        "model": "mdl/props/loot_wep_iso_armor/w_loot_wep_iso_armor_core_01.rmdl"
     },
     {
         "int": 221,
-        "model": "mdl/humans_r5/loot/w_loot_char_backpack_medium.rmdl"
+        "model": "mdl/props/loot_wep_iso_armor/w_loot_wep_iso_armor_core_01.rmdl"
     },
     {
         "int": 222,
-        "model": "mdl/humans_r5/loot/w_loot_char_backpack_heavy.rmdl"
+        "model": "mdl/props/loot_wep_iso_armor/w_loot_wep_iso_armor_core_01.rmdl"
     },
     {
         "int": 223,
-        "model": "mdl/humans_r5/loot/w_loot_char_backpack_heavy.rmdl"
-    },
-    {
-        "int": 224,
-        "model": "mdl/techart/mshop/weapons/class/cqc/throwingknife/throwingknife_base_w.rmdl"
+        "model": "mdl/props/loot_wep_iso_armor/w_loot_wep_iso_armor_core_01.rmdl"
     },
     {
         "int": 225,
-        "model": "mdl/weapons/grenades/w_thermite_grenade.rmdl"
+        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shield_down_v1.rmdl"
     },
     {
         "int": 226,
-        "model": "mdl/weapons/grenades/w_loot_m20_f_grenade_projectile.rmdl"
+        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shield_down_v1.rmdl"
     },
     {
         "int": 227,
-        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shuriken.rmdl"
+        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shield_down_v1.rmdl"
     },
     {
         "int": 228,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_cq_hcog_r1.rmdl"
+        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shield_down_v1.rmdl"
     },
     {
         "int": 229,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_cq_hcog_r2.rmdl"
+        "model": "mdl/humans_r5/loot/w_loot_char_backpack_light.rmdl"
     },
     {
         "int": 230,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_cq_holo_var.rmdl"
+        "model": "mdl/humans_r5/loot/w_loot_char_backpack_medium.rmdl"
     },
     {
         "int": 231,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_cq_holo_var_2x.rmdl"
+        "model": "mdl/humans_r5/loot/w_loot_char_backpack_heavy.rmdl"
+    },
+    {
+        "int": 232,
+        "model": "mdl/humans_r5/loot/w_loot_char_backpack_heavy.rmdl"
     },
     {
         "int": 233,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_rng_hcog_acgs.rmdl"
+        "model": "mdl/techart/mshop/weapons/class/cqc/throwingknife/throwingknife_base_w.rmdl"
     },
     {
         "int": 234,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_rng_aog_var_r1.rmdl"
+        "model": "mdl/weapons/grenades/w_thermite_grenade.rmdl"
     },
     {
         "int": 235,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_sni_dcom.rmdl"
+        "model": "mdl/weapons/grenades/w_loot_m20_f_grenade_projectile.rmdl"
     },
     {
         "int": 236,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_sni_var_talon.rmdl"
+        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_shuriken.rmdl"
     },
     {
         "int": 237,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_sni_threat_wyeon.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_cq_hcog_r1.rmdl"
     },
     {
         "int": 238,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_suppr_v2b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_cq_hcog_r2.rmdl"
     },
     {
         "int": 239,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_suppr_v2b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_cq_holo_var.rmdl"
     },
     {
         "int": 240,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_suppr_v2b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_cq_holo_var_2x.rmdl"
     },
     {
         "int": 242,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_lasersight_v1.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_rng_hcog_acgs.rmdl"
     },
     {
         "int": 243,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_lasersight_v1.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_rng_aog_var_r1.rmdl"
     },
     {
         "int": 244,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_lasersight_v1.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_sni_dcom.rmdl"
     },
     {
         "int": 245,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v1b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_sni_var_talon.rmdl"
     },
     {
         "int": 246,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v1b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_optic_sni_threat_wyeon.rmdl"
     },
     {
         "int": 247,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v1b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_suppr_v2b.rmdl"
     },
     {
         "int": 248,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v1b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_suppr_v2b.rmdl"
     },
     {
         "int": 249,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v2b.rmdl"
-    },
-    {
-        "int": 250,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v2b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_suppr_v2b.rmdl"
     },
     {
         "int": 251,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v2b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_lasersight_v1.rmdl"
     },
     {
         "int": 252,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v2b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_lasersight_v1.rmdl"
     },
     {
         "int": 253,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_energy_v1.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_lasersight_v1.rmdl"
     },
     {
         "int": 254,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_energy_v1.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v1b.rmdl"
     },
     {
         "int": 255,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_energy_v1.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v1b.rmdl"
     },
     {
         "int": 256,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_energy_v1.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v1b.rmdl"
     },
     {
         "int": 257,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_sniper_v1.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v1b.rmdl"
     },
     {
         "int": 258,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_sniper_v1.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v2b.rmdl"
     },
     {
         "int": 259,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_sniper_v1.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v2b.rmdl"
     },
     {
         "int": 260,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_sniper_v1.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v2b.rmdl"
     },
     {
         "int": 261,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v3b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v2b.rmdl"
     },
     {
         "int": 262,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v3b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_energy_v1.rmdl"
     },
     {
         "int": 263,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v3b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_energy_v1.rmdl"
     },
     {
         "int": 264,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v3b.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_energy_v1.rmdl"
     },
     {
         "int": 265,
-        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_regular.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_energy_v1.rmdl"
     },
     {
         "int": 266,
-        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_regular.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_sniper_v1.rmdl"
     },
     {
         "int": 267,
-        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_regular.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_sniper_v1.rmdl"
     },
     {
         "int": 268,
-        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_sniper.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_sniper_v1.rmdl"
     },
     {
         "int": 269,
-        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_sniper.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_sniper_v1.rmdl"
     },
     {
         "int": 270,
-        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_sniper.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v3b.rmdl"
     },
     {
         "int": 271,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_chip.rmdl"
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v3b.rmdl"
+    },
+    {
+        "int": 272,
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v3b.rmdl"
+    },
+    {
+        "int": 273,
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_mag_v3b.rmdl"
+    },
+    {
+        "int": 274,
+        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_regular.rmdl"
+    },
+    {
+        "int": 275,
+        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_regular.rmdl"
     },
     {
         "int": 276,
-        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_chip.rmdl"
+        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_regular.rmdl"
     },
     {
         "int": 277,
+        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_sniper.rmdl"
+    },
+    {
+        "int": 278,
+        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_sniper.rmdl"
+    },
+    {
+        "int": 279,
+        "model": "mdl/weapons_r5/loot/w_loot_wep_iso_stock_folded_sniper.rmdl"
+    },
+    {
+        "int": 280,
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_chip.rmdl"
     },
     {
-        "int": 285,
+        "int": 286,
         "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_chip.rmdl"
     },
     {
-        "int": 296,
+        "int": 294,
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_chip.rmdl"
+    },
+    {
+        "int": 295,
+        "model": "mdl/weapons_r5/loot/_master/w_loot_wep_mods_chip.rmdl"
+    },
+    {
+        "int": 306,
         "model": "mdl/props/evac_tower_loot/evac_tower_loot.rmdl"
     },
     {
-        "int": 307,
+        "int": 317,
         "model": "mdl/props/nessie/nessie_april_fools.rmdl"
-    },
-    {
-        "int": 309,
-        "model": "mdl/props/nessie/nessie_april_fools.rmdl"
-    },
-    {
-        "int": 314,
-        "model": "mdl/props/nessie/nessie_april_fools_large.rmdl"
     },
     {
         "int": 324,
+        "model": "mdl/props/nessie/nessie_april_fools_large.rmdl"
+    },
+    {
+        "int": 335,
         "model": "mdl/props/evo_cache_prop_w/evo_cache_prop_w.rmdl"
     }
 ]
