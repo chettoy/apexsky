@@ -174,11 +174,11 @@ pub enum ItemId {
     BoostedLoader = 295,
 }
 
-pub const HIGHLIGHT_LOOT_GOLD: u8 = 71;
-pub const HIGHLIGHT_LOOT_RED: u8 = 72;
-pub const HIGHLIGHT_LOOT_PURPLE: u8 = 73;
-pub const HIGHLIGHT_LOOT_BLUE: u8 = 74;
-pub const HIGHLIGHT_LOOT_WHITE: u8 = 75;
+pub const HIGHLIGHT_LOOT_GOLD: u8 = 15;
+pub const HIGHLIGHT_LOOT_RED: u8 = 42;
+pub const HIGHLIGHT_LOOT_PURPLE: u8 = 47;
+pub const HIGHLIGHT_LOOT_BLUE: u8 = 54;
+pub const HIGHLIGHT_LOOT_WHITE: u8 = 65;
 pub const HIGHLIGHT_LOOT_ENERGY: u8 = 76;
 pub const HIGHLIGHT_LOOT_HEAVY: u8 = 77;
 pub const HIGHLIGHT_LOOT_LIGHT: u8 = 78;
@@ -186,13 +186,13 @@ pub const HIGHLIGHT_LOOT_GREY: u8 = 79;
 pub const HIGHLIGHT_DEATH_BOX: u8 = 80;
 pub const HIGHLIGHT_PLAYER_KNOCKED: u8 = 60;
 pub const HIGHLIGHT_PLAYER_VISIBLE: u8 = 61;
-pub const HIGHLIGHT_PLAYER_NOTVIZ: u8 = 58;
+pub const HIGHLIGHT_PLAYER_NOTVIZ: u8 = 63;
 pub const HIGHLIGHT_PLAYER_ORANGE: u8 = 64;
-pub const HIGHLIGHT_PLAYER_WHITE: u8 = 65;
-pub const HIGHLIGHT_PLAYER_BLUE: u8 = 66;
-pub const HIGHLIGHT_PLAYER_PURPLE: u8 = 67;
-pub const HIGHLIGHT_PLAYER_RED: u8 = 68;
-pub const HIGHLIGHT_PLAYER_RAINBOW: u8 = 69;
+pub const HIGHLIGHT_PLAYER_WHITE: u8 = 71;
+pub const HIGHLIGHT_PLAYER_BLUE: u8 = 72;
+pub const HIGHLIGHT_PLAYER_PURPLE: u8 = 73;
+pub const HIGHLIGHT_PLAYER_RED: u8 = 74;
+pub const HIGHLIGHT_PLAYER_RAINBOW: u8 = 75;
 pub const HIGHLIGHT_PLAYER_BLACK: u8 = 70;
 
 pub static ITEM_LIST: Lazy<HashMap<i32, String>> = Lazy::new(|| {
