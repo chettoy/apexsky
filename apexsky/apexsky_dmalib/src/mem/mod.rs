@@ -10,7 +10,7 @@ pub mod memflow_impl;
 pub mod memprocfs_impl;
 
 pub trait MemOs: Send + Sync {
-    fn open_proc<'a>(&'a mut self, name: String) -> anyhow::Result<MemProcImpl>;
+    fn open_proc(&mut self, name: String) -> anyhow::Result<MemProcImpl>;
 }
 
 #[enum_dispatch]
@@ -28,7 +28,7 @@ pub enum MemOsImpl {
 }
 
 impl MemOs for MemOsImpl {
-    fn open_proc<'a>(&'a mut self, name: String) -> anyhow::Result<MemProcImpl> {
+    fn open_proc(&mut self, name: String) -> anyhow::Result<MemProcImpl> {
         match self {
             MemOsImpl::Memflow(inner) => inner.open_proc(name),
             MemOsImpl::Vmm(inner) => inner.open_proc(name),

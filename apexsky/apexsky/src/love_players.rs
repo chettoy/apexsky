@@ -136,13 +136,11 @@ pub fn check_my_heart(
                 if let Some(x_uid) = x.uid {
                     update_name
                         .shift_remove(&x_uid)
-                        .and_then(|u| {
-                            Some(LovePlayer {
-                                name: x.name.to_owned(),
-                                update_name: Some(u),
-                                uid: x.uid,
-                                level: x.level,
-                            })
+                        .map(|u| LovePlayer {
+                            name: x.name.to_owned(),
+                            update_name: Some(u),
+                            uid: x.uid,
+                            level: x.level,
                         })
                         .unwrap_or(x.to_owned())
                 } else {
@@ -169,7 +167,7 @@ pub fn check_my_heart(
             entity_ptr,
             name: name.to_string(),
             uid: puid,
-            love_status: love_status.clone(),
+            love_status,
         },
     );
 
@@ -183,7 +181,12 @@ pub(crate) fn get_uid_players_map() -> HashMap<u64, CPlayerInfo> {
 // FFI
 
 #[no_mangle]
-pub extern "C" fn check_love_player(puid: u64, euid: u64, name: *const i8, entity_ptr: u64) -> i32 {
+pub unsafe extern "C" fn check_love_player(
+    puid: u64,
+    euid: u64,
+    name: *const i8,
+    entity_ptr: u64,
+) -> i32 {
     let c_str = unsafe { std::ffi::CStr::from_ptr(name) };
     let name_str = c_str.to_string_lossy();
     check_my_heart(

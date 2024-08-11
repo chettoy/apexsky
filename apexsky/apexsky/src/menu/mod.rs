@@ -246,12 +246,12 @@ pub fn alert(model: &mut Model, dialog_text: String) {
     model.running_state = RunningState::Dialog;
 }
 
-fn editing_render(f: &mut Frame, key_input: &String, value_input: &String) {
+fn editing_render(f: &mut Frame, key_input: &str, value_input: &str) {
     let popup_block = Block::default()
         .borders(Borders::NONE)
         .style(Style::default().bg(Color::DarkGray));
 
-    let frame_size = f.size();
+    let frame_size = f.area();
     let graph_width = frame_size.width as f32 / 2.0;
     let graph_height = frame_size.height as f32;
     let ratio = if graph_width > graph_height {
@@ -286,13 +286,13 @@ fn editing_render(f: &mut Frame, key_input: &String, value_input: &String) {
     f.render_widget(value_text, popup_chunks[1]);
 }
 
-fn dialog_render(f: &mut Frame, dialog_text: &String) {
+fn dialog_render(f: &mut Frame, dialog_text: &str) {
     let popup_block = Block::default()
         .title("Dialog")
         .borders(Borders::NONE)
         .style(Style::default().bg(Color::White));
 
-    let frame_size = f.size();
+    let frame_size = f.area();
     let graph_width = frame_size.width as f32 / 2.0;
     let graph_height = frame_size.height as f32;
     let ratio = if graph_width > graph_height {

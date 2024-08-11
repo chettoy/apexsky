@@ -303,7 +303,7 @@ impl I18nBundle {
     }
 
     #[inline]
-    pub fn msg_fmt<'args>(&self, id: MessageId, args: Option<&'args FluentArgs>) -> Cow<str> {
+    pub fn msg_fmt(&self, id: MessageId, args: Option<&FluentArgs>) -> Cow<str> {
         let msg = self
             .0
             .get_message(&id.to_string())
@@ -332,7 +332,7 @@ pub fn load_fluent_bundle() -> I18nBundle {
     I18nBundle(get_bundle(&locale))
 }
 
-fn get_bundle<'a>(accept_locale: &'a str) -> FluentBundle<FluentResource> {
+fn get_bundle(accept_locale: &str) -> FluentBundle<FluentResource> {
     include_flate::flate!(static FTL_ZH_TW: str from "./resource/i18n/zh-TW.ftl");
     include_flate::flate!(static FTL_ZH_CN: str from "./resource/i18n/zh-CN.ftl");
     include_flate::flate!(static FTL_EN_US: str from "./resource/i18n/en-US.ftl");
@@ -369,8 +369,8 @@ macro_rules! i18n_msg_format {
 }
 
 #[allow(dead_code)]
-pub fn get<'a, 'b>(
-    accept_language: &'a str,
+pub fn get(
+    accept_language: &str,
     message_ids: Vec<&'static str>,
 ) -> Result<HashMap<&'static str, String>, ()> {
     let bundle = get_bundle(accept_language);
@@ -381,7 +381,7 @@ pub fn get<'a, 'b>(
             .get_message(message_id)
             .expect(s!("Message doesn't exist."));
         let pattern = msg.value().expect(s!("Message has no value."));
-        let value = bundle.format_pattern(&pattern, None, &mut errors);
+        let value = bundle.format_pattern(pattern, None, &mut errors);
         errors.clear();
         result.insert(message_id, value.to_string());
     }

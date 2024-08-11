@@ -16,8 +16,8 @@ impl From<[f32; 3]> for apexlegends::Vec3 {
     }
 }
 
-impl Into<[f32; 3]> for apexlegends::Vec3 {
-    fn into(self) -> [f32; 3] {
-        [self.x, self.y, self.z]
+impl From<apexlegends::Vec3> for [f32; 3] {
+    fn from(value: apexlegends::Vec3) -> Self {
+        [value.x, value.y, value.z]
     }
 }

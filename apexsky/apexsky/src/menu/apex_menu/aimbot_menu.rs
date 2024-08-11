@@ -73,7 +73,7 @@ pub(super) fn build_aimbot_menu(
         |val| {
             let i18n = I18nBundle::new();
             let val = val.trim();
-            if let Some(new_val) = val.parse::<u8>().ok() {
+            if let Ok(new_val) = val.parse::<u8>() {
                 if new_val < 16 {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.aim_mode = new_val.into();
@@ -92,8 +92,8 @@ pub(super) fn build_aimbot_menu(
         ),
         &i18n_msg!(&i18n, InputPromptAdsFov),
         |val| {
-            if let Some(new_val) = val.parse::<f32>().ok() {
-                if new_val >= 1.0 && new_val <= 50.0 {
+            if let Ok(new_val) = val.parse::<f32>() {
+                if (1.0..=50.0).contains(&new_val) {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.ads_fov = new_val;
                     return None;
@@ -111,8 +111,8 @@ pub(super) fn build_aimbot_menu(
         ),
         &i18n_msg!(&i18n, InputPromptNonAdsFov),
         |val| {
-            if let Some(new_val) = val.parse::<f32>().ok() {
-                if new_val >= 1.0 && new_val <= 50.0 {
+            if let Ok(new_val) = val.parse::<f32>() {
+                if (1.0..=50.0).contains(&new_val) {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.non_ads_fov = new_val;
                     return None;
@@ -190,8 +190,8 @@ pub(super) fn build_aimbot_menu(
                 settings.aimbot_settings.bone_nearest = true;
                 settings.aimbot_settings.bone_auto = false;
                 return None;
-            } else if let Some(new_val) = val.parse::<u8>().ok() {
-                if vec![0, 1, 2, 3].contains(&new_val) {
+            } else if let Ok(new_val) = val.parse::<u8>() {
+                if [0, 1, 2, 3].contains(&new_val) {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.bone = new_val.into();
                     settings.aimbot_settings.bone_auto = false;
@@ -211,8 +211,8 @@ pub(super) fn build_aimbot_menu(
         ),
         &i18n_msg!(&i18n, InputPromptAimDist),
         |val| {
-            if let Some(new_val) = val.parse::<f32>().ok() {
-                if new_val >= 10.0 && new_val <= 1600.0 {
+            if let Ok(new_val) = val.parse::<f32>() {
+                if (10.0..=1600.0).contains(&new_val) {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.aim_dist = new_val * 39.62;
                     return None;
@@ -232,8 +232,8 @@ pub(super) fn build_aimbot_menu(
         ),
         &i18n_msg!(&i18n, InputPromptHeadshotDist),
         |val| {
-            if let Some(new_val) = val.parse::<f32>().ok() {
-                if new_val >= 0.0 && new_val <= 1600.0 {
+            if let Ok(new_val) = val.parse::<f32>() {
+                if (0.0..=1600.0).contains(&new_val) {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.headshot_dist = new_val * 39.62;
                     return None;
@@ -262,12 +262,10 @@ pub(super) fn build_aimbot_menu(
         ),
         &i18n_msg!(&i18n, InputPromptSmoothValue),
         |val| {
-            if let Some(new_val) = val.parse::<u16>().ok() {
-                if new_val >= 50 && new_val <= 1000 {
+            if let Ok(new_val) = val.parse::<u16>() {
+                if (50..=1000).contains(&new_val) {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.smooth = new_val.into();
-                    // settings.aimbot_settings.skynade_smooth =
-                    //     settings.aimbot_settings.smooth * 0.6667;
                     return None;
                 }
             }
@@ -295,8 +293,8 @@ pub(super) fn build_aimbot_menu(
         ),
         &i18n_msg!(&i18n, InputPromptSmoothValue),
         |val| {
-            if let Some(new_val) = val.parse::<u16>().ok() {
-                if new_val >= 50 && new_val <= 1000 {
+            if let Ok(new_val) = val.parse::<u16>() {
+                if (50..=1000).contains(&new_val) {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.skynade_smooth = new_val.into();
                     return None;
@@ -326,8 +324,8 @@ pub(super) fn build_aimbot_menu(
         ),
         &i18n_msg!(&i18n, InputPromptRecoilValue),
         |val| {
-            if let Some(new_val) = val.parse::<f32>().ok() {
-                if new_val >= 0.0 && new_val <= 100.0 {
+            if let Ok(new_val) = val.parse::<f32>() {
+                if (0.0..=200.0).contains(&new_val) {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.recoil_smooth_x = new_val.into();
                     return None;
@@ -357,8 +355,8 @@ pub(super) fn build_aimbot_menu(
         ),
         &i18n_msg!(&i18n, InputPromptRecoilValue),
         |val| {
-            if let Some(new_val) = val.parse::<f32>().ok() {
-                if new_val >= 0.0 && new_val <= 100.0 {
+            if let Ok(new_val) = val.parse::<f32>() {
+                if (0.0..=200.0).contains(&new_val) {
                     let settings = &mut lock_config!().settings;
                     settings.aimbot_settings.recoil_smooth_y = new_val.into();
                     return None;

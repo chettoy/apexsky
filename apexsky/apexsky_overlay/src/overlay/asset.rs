@@ -2,7 +2,7 @@ use bevy::{
     asset::{io::Reader, ron, AssetLoader, AsyncReadExt, LoadContext},
     prelude::*,
     reflect::TypePath,
-    utils::{BoxedFuture, ConditionalSendFuture},
+    utils::ConditionalSendFuture,
 };
 use serde::Deserialize;
 use thiserror::Error;

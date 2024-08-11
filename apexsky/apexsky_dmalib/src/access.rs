@@ -131,6 +131,11 @@ impl AccessType {
     }
 }
 
+type ScatterRequestMap = (
+    HashMap<usize, Vec<MemReadRequest>>,
+    HashMap<usize, Vec<MemWriteRequest>>,
+);
+
 #[instrument(skip_all)]
 pub fn io_thread(
     active: watch::Receiver<bool>,
@@ -142,10 +147,7 @@ pub fn io_thread(
     let mut speed_test_done = false;
     let mut accessible: bool = false;
     let mut priority_queue: BinaryHeap<PriorityAccess> = BinaryHeap::new();
-    let mut scatter_map: (
-        HashMap<usize, Vec<MemReadRequest>>,
-        HashMap<usize, Vec<MemWriteRequest>>,
-    ) = (HashMap::new(), HashMap::new());
+    let mut scatter_map: ScatterRequestMap = ScatterRequestMap::default();
     let mut start_instant;
     let mut next_flush_instant = Instant::now();
 
@@ -235,10 +237,7 @@ pub fn io_thread(
             fn push_req(
                 req: PriorityAccess,
                 priority_queue: &mut BinaryHeap<PriorityAccess>,
-                scatter_map: &mut (
-                    HashMap<usize, Vec<MemReadRequest>>,
-                    HashMap<usize, Vec<MemWriteRequest>>,
-                ),
+                scatter_map: &mut ScatterRequestMap,
                 mem: &mut MemProcImpl,
             ) {
                 let preempt = req.priority > 0xf;
@@ -320,10 +319,7 @@ pub fn io_thread(
 fn execute_requests(
     priority_threshold: i32,
     priority_queue: &mut BinaryHeap<PriorityAccess>,
-    scatter_map: &mut (
-        HashMap<usize, Vec<MemReadRequest>>,
-        HashMap<usize, Vec<MemWriteRequest>>,
-    ),
+    scatter_map: &mut ScatterRequestMap,
     mem: &mut MemProcImpl,
 ) {
     // flush requests
@@ -425,10 +421,7 @@ fn consume_requests(
     flush_request: Option<FlushRequestsRequest>,
     default_priority_threshold: i32,
     priority_queue: &mut BinaryHeap<PriorityAccess>,
-    scatter_map: &mut (
-        HashMap<usize, Vec<MemReadRequest>>,
-        HashMap<usize, Vec<MemWriteRequest>>,
-    ),
+    scatter_map: &mut ScatterRequestMap,
     mem: &mut MemProcImpl,
 ) -> FlushReport {
     let mut flush_report = FlushReport {
@@ -559,7 +552,7 @@ impl AccessRequest for PriorityAccess {
     async fn dispatch(self, api: &MemApi) -> anyhow::Result<()> {
         api.send(self).map_err(|e| {
             let e: anyhow::Error = e.into();
-            e.context(format!("{}", s!("Failed to dispatch access request")))
+            e.context(s!("Failed to dispatch access request").to_string())
         })
     }
 }

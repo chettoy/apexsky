@@ -62,7 +62,7 @@ impl PackageManager {
                 minify_js::minify(
                     &session,
                     minify_js::TopLevelMode::Module,
-                    &code_buf,
+                    code_buf,
                     &mut code_out,
                 )
                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
@@ -71,26 +71,34 @@ impl PackageManager {
 
             let minify_fn2 = |code_buf: &[u8]| -> anyhow::Result<Vec<u8>> {
                 use oxc::allocator::Allocator;
-                use oxc::ast::AstBuilder;
                 use oxc::codegen::WhitespaceRemover;
-                use oxc::minifier::{Minifier, MinifierOptions, RemoveDeadCode};
+                use oxc::minifier::{CompressOptions, Minifier, MinifierOptions};
                 use oxc::parser::Parser;
                 let allocator = Allocator::default();
                 let ret = Parser::new(
                     &allocator,
-                    std::str::from_utf8(&code_buf)?,
+                    std::str::from_utf8(code_buf)?,
                     oxc::span::SourceType::from_path(&main_module)
                         .map_err(|e| anyhow::anyhow!("{:?}", e))?,
                 )
                 .parse();
                 let program = allocator.alloc(ret.program);
-                RemoveDeadCode::new(AstBuilder {
-                    allocator: &allocator,
-                })
-                .build(program);
                 let ret = Minifier::new(MinifierOptions {
                     mangle: true,
-                    ..MinifierOptions::default()
+                    compress: CompressOptions {
+                        remove_syntax: true,
+                        substitute_alternate_syntax: true,
+                        fold_constants: true,
+                        remove_dead_code: true,
+                        collapse: true,
+                        booleans: true,
+                        drop_debugger: true,
+                        drop_console: false,
+                        evaluate: true,
+                        join_vars: true,
+                        loops: true,
+                        typeofs: true,
+                    },
                 })
                 .build(&allocator, program);
 
@@ -186,7 +194,7 @@ impl PackageManager {
             let mut buf = Vec::new();
             file.read_to_end(&mut buf)?;
             std::io::copy(&mut buf.as_slice(), &mut sha256)?;
-            let manifest_doc = serde_json::from_slice::<ManifestDoc>(&mut buf.as_slice())
+            let manifest_doc = serde_json::from_slice::<ManifestDoc>(buf.as_slice())
                 .map_err(PackageError::ManifestParseError)?;
             Manifest::new(manifest_doc).map_err(PackageError::InvalidManifest)?
         };

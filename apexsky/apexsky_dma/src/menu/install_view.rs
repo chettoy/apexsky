@@ -103,9 +103,9 @@ impl InstallView {
             .borders(Borders::NONE)
             .style(Style::default().bg(Color::Black));
 
-        let frame_size = f.size();
-        let graph_width = frame_size.width as f32 / 2.0;
-        let graph_height = frame_size.height as f32;
+        let frame_area = f.area();
+        let graph_width = frame_area.width as f32 / 2.0;
+        let graph_height = frame_area.height as f32;
         let ratio = if graph_width > graph_height {
             graph_height / graph_width
         } else {
@@ -115,7 +115,7 @@ impl InstallView {
         let area = centered_rect(
             (100.0 * scale * ratio / 1.618).round() as u16,
             (100.0 * scale * ratio * graph_width / graph_height).round() as u16,
-            frame_size,
+            frame_area,
         );
         f.render_widget(popup_block, area);
 

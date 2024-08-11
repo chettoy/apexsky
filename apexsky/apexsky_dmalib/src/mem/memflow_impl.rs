@@ -117,10 +117,7 @@ impl MemflowOs {
                 s!(" connector")
             ))?;
 
-        Ok(MemflowOs {
-            inventory: inventory.into(),
-            os,
-        })
+        Ok(MemflowOs { inventory, os })
     }
 }
 

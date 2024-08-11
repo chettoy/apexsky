@@ -40,8 +40,8 @@ impl FromStr for DtbInfo {
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?,
             process_id: u32::from_str(process_id)
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?,
-            dtb: parse_hex(dtb)?.into(),
-            kernel_addr: parse_hex(kernel_addr)?.into(),
+            dtb: parse_hex(dtb)?,
+            kernel_addr: parse_hex(kernel_addr)?,
             name: String::from_str(name)
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?,
         })
@@ -82,7 +82,7 @@ pub fn fix_dtb<'a, 'b>(
             .vfs_list(s!("/misc/procinfo/"))?
             .iter()
             .find_map(|file| {
-                if file.name == s!("dtb.txt").to_string() {
+                if file.name == s!("dtb.txt") {
                     Some(file.size)
                 } else {
                     None
@@ -107,7 +107,7 @@ pub fn fix_dtb<'a, 'b>(
                 memprocfs::CONFIG_OPT_PROCESS_DTB | process.pid as u64,
                 info.dtb,
             )?;
-            if let Some(module_base) = process.get_module_base(module_name).ok() {
+            if let Ok(module_base) = process.get_module_base(module_name) {
                 if module_base != 0 {
                     return Ok(true);
                 }

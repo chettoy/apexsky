@@ -42,44 +42,18 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
     BINARY_DIR ${DEP_LIBS_DIR}/memflow/
-    BUILD_COMMAND cargo +stable build --release
+    BUILD_COMMAND cargo build --release
     INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${DEP_LIBS_DIR}/memflow/target/release/${LIB_PREFIX}memflow_ffi${STATIC_LIB_EXT}
     LOG_BUILD ON)
-
-ExternalProject_Add(
-    memflow_kvm
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BINARY_DIR ${DEP_LIBS_DIR}/memflow-kvm/
-    BUILD_COMMAND cargo +stable build --release --all-features
-    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-kvm/target/release/${LIB_PREFIX}memflow_kvm${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
-    LOG_BUILD ON)
-
-ExternalProject_Add(
-    memflow_qemu
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BINARY_DIR ${DEP_LIBS_DIR}/memflow-qemu/
-    BUILD_COMMAND cargo +stable build --release --all-features
-    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-qemu/target/release/${LIB_PREFIX}memflow_qemu${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
-    LOG_BUILD ON)
-
-ExternalProject_Add(
-    memflow_win32
-    DOWNLOAD_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BINARY_DIR ${DEP_LIBS_DIR}/memflow-win32/
-    BUILD_COMMAND cargo +stable build --release --all-features
-    INSTALL_COMMAND cp ${DEP_LIBS_DIR}/memflow-win32/target/release/${LIB_PREFIX}memflow_win32${SHARED_LIB_EXT} ${CMAKE_BINARY_DIR}/
-    LOG_BUILD ON)
+include_directories(${DEP_LIBS_DIR}/memflow/memflow-ffi)
 
 find_package(Threads REQUIRED)
 
 # GLFW
 set(GLFW_BUILD_WAYLAND ON)
-set(GLFW_BUILD_X11 OFF)
-set(GLFW_DIR ${PROJECT_SOURCE_DIR}/Client/glfw)
+set(GLFW_BUILD_X11 ON)
+set(GLFW_DIR ${PROJECT_SOURCE_DIR}/../esp_legacy/Client/glfw)
 option(GLFW_BUILD_EXAMPLES "Build the GLFW example programs" OFF)
 option(GLFW_BUILD_TESTS "Build the GLFW test programs" OFF)
 option(GLFW_BUILD_DOCS "Build the GLFW documentation" OFF)
@@ -89,7 +63,7 @@ add_subdirectory(${GLFW_DIR} glfw-prefix EXCLUDE_FROM_ALL)
 include_directories(${GLFW_DIR}/include)
 
 # Dear ImGui
-set(IMGUI_DIR ${PROJECT_SOURCE_DIR}/Client/imgui)
+set(IMGUI_DIR ${PROJECT_SOURCE_DIR}/../esp_legacy/Client/imgui)
 include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends)
 
 
@@ -112,17 +86,14 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
     BINARY_DIR ${PROJECT_SOURCE_DIR}/../apexsky/apexsky/
-    BUILD_COMMAND cargo +stable build --release
+    BUILD_COMMAND cargo build --release
     INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${PROJECT_SOURCE_DIR}/../apexsky/target/release/${LIB_PREFIX}apexsky${STATIC_LIB_EXT}
     LOG_BUILD ON)
 
 add_dependencies(apex_dma 
     apexsky
-    memflow_ffi
-    memflow_kvm
-    memflow_qemu
-    memflow_win32)
+    memflow_ffi)
 
 
 if (WIN32)

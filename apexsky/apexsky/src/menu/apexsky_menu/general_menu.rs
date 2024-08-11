@@ -229,9 +229,9 @@ where
                 Constraint::Min(1),
                 Constraint::Length(1),
             ])
-            .split(f.size());
+            .split(f.area());
 
-        f.render_widget(block_title(self.title.to_owned()), chunks[0]);
+        f.render_widget(block_title(self.title.clone()), chunks[0]);
         f.render_widget(
             render_selected_list(&self.items, self.nav_index, self.scroll_top),
             chunks[1],
@@ -401,18 +401,18 @@ macro_rules! menu_add_toggle_item {
     }};
 }
 
-impl<'a, L> Into<GeneralMenu<'a, L>> for MenuBuilder<'a, L>
+impl<'a, L> From<MenuBuilder<'a, L>> for GeneralMenu<'a, L>
 where
     L: GeneralMenuName,
 {
-    fn into(self) -> GeneralMenu<'a, L> {
+    fn from(val: MenuBuilder<'a, L>) -> Self {
         GeneralMenu {
-            menu_level: self.menu_level,
-            title: self.title,
-            items: self.list_items,
-            handler: self.handlers,
-            input_handlers: self.input_handlers,
-            num_ids: self.num_ids,
+            menu_level: val.menu_level,
+            title: val.title,
+            items: val.list_items,
+            handler: val.handlers,
+            input_handlers: val.input_handlers,
+            num_ids: val.num_ids,
             nav_index: 0,
             scroll_top: 0,
             scroll_height: 0,
@@ -421,7 +421,7 @@ where
 }
 
 fn render_selected_list<'a>(
-    list_items: &'a Vec<ListItem<'a>>,
+    list_items: &'a [ListItem<'a>],
     selected_index: usize,
     scroll_top: usize,
 ) -> List<'a> {

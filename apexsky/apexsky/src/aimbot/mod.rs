@@ -583,7 +583,7 @@ impl Aimbot {
                 }
             } else {
                 for i in 0..256 {
-                    let fi = i as i32 as f32 / 256.0 * target_hitboxes.len() as i32 as f32;
+                    let fi = i as f32 / 256.0 * target_hitboxes.len() as i32 as f32;
                     let starti = fi.floor() as i32 as usize;
                     let endi = fi.ceil() as i32 as usize;
                     let t = fi.fract();
@@ -951,7 +951,7 @@ impl Aimbot {
 
             let skynade_angles = ffi::skynade_angle(
                 self.weapon_info.weapon_id.try_into().unwrap(),
-                self.weapon_info.weapon_mod_bitfield.try_into().unwrap(),
+                self.weapon_info.weapon_mod_bitfield,
                 self.weapon_info.bullet_gravity / 750.0,
                 self.weapon_info.bullet_speed,
                 view_origin[0],
@@ -1063,7 +1063,7 @@ impl Aimbot {
         let smooth = if self.is_grenade() {
             self.settings.skynade_smooth
         } else if self.triggerbot_ready && self.settings.auto_shoot {
-            f32::min(f32::max(40.0, self.settings.smooth / 2.0), 90.0)
+            (self.settings.smooth / 2.0).clamp(40.0, 90.0)
         } else if self.quick_looting_ready {
             self.settings.looting_smooth
         } else {
@@ -1244,8 +1244,7 @@ pub fn get_unix_timestamp_in_millis() -> u64 {
     match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => {
             // Calculate the total milliseconds from the duration
-            let millis = duration.as_secs() * 1000 + duration.subsec_millis() as u64;
-            millis
+            duration.as_secs() * 1000 + duration.subsec_millis() as u64
         }
         Err(e) => {
             // Handle errors, such as clock rollback

@@ -117,7 +117,7 @@ pub(super) fn build_main_menu(
             &i18n_msg!(i18n_bundle, InputPromptPlayerOutlines),
             |val| {
                 let i18n_bundle = &I18nBundle::new();
-                if let Some(new_val) = val.parse::<u8>().ok() {
+                if let Ok(new_val) = val.parse::<u8>() {
                     let settings = &mut lock_config!().settings;
                     settings.player_glow_outline_size = new_val; //[0, 255]
                     return Some({
@@ -185,7 +185,7 @@ pub(super) fn build_main_menu(
             ),
             &i18n_msg!(i18n_bundle, InputPromptFpsPredict),
             |val| {
-                if let Some(new_val) = val.parse::<u16>().ok() {
+                if let Ok(new_val) = val.parse::<u16>() {
                     let settings = &mut lock_config!().settings;
                     if new_val == 0 {
                         settings.calc_game_fps = true;

@@ -48,7 +48,7 @@ impl Manifest {
         }
         for comp in &manifest.components {
             if let Some(t) = &comp.r#type {
-                if !vec!["module"].contains(&t.as_str()) {
+                if !["module"].contains(&t.as_str()) {
                     bail!("{}", s!("Invalid component type"));
                 }
             }
@@ -97,11 +97,11 @@ impl Manifest {
         Ok(Self(manifest))
     }
 
-    pub fn get_inner<'a>(&'a self) -> &'a ManifestDoc {
+    pub fn get_inner(&self) -> &ManifestDoc {
         &self.0
     }
 
-    pub fn get_package_name<'a>(&'a self) -> &'a str {
+    pub fn get_package_name(&self) -> &str {
         &self.0.package_name
     }
 
@@ -109,19 +109,19 @@ impl Manifest {
         self.0.version_code
     }
 
-    pub fn get_version_name<'a>(&'a self) -> &'a str {
+    pub fn get_version_name(&self) -> &str {
         &self.0.version
     }
 
-    pub fn get_label<'a>(&'a self) -> &'a str {
+    pub fn get_label(&self) -> &str {
         &self.0.label
     }
 
-    pub fn get_description<'a>(&'a self) -> &'a str {
+    pub fn get_description(&self) -> &str {
         &self.0.description
     }
 
-    pub fn get_permissions<'a>(&'a self) -> &'a Vec<PermissionField> {
+    pub fn get_permissions(&self) -> &Vec<PermissionField> {
         &self.0.permissions
     }
 

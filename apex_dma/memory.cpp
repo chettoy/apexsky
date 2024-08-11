@@ -94,17 +94,17 @@ void Memory::check_proc() {
   }
 }
 
-Memory::Memory() { log_init(LevelFilter::LevelFilter_Info); }
+Memory::Memory() { mf_log_init(LevelFilter::LevelFilter_Info); }
 
 int Memory::open_os(bool nokvm) {
   // load all available plugins
   if (inventory) {
-    inventory_free(inventory);
+    mf_inventory_free(inventory);
     inventory = nullptr;
   }
-  inventory = inventory_scan();
+  inventory = mf_inventory_scan();
   if (!inventory) {
-    log_error(xorstr_("unable to create inventory"));
+    mf_log_error(xorstr_("unable to create inventory"));
     return 1;
   }
   printf("%s%p\n", xorstr_("inventory initialized: "), inventory);
@@ -137,8 +137,8 @@ int Memory::open_os(bool nokvm) {
   // initialize the connector plugin
   if (conn) {
     printf("Using %s connector.\n", conn_name.c_str());
-    if (inventory_create_connector(inventory, conn_name.c_str(),
-                                   conn_arg.c_str(), &connector)) {
+    if (mf_inventory_create_connector(inventory, conn_name.c_str(),
+                                      conn_arg.c_str(), &connector)) {
       printf("Unable to initialize %s connector.\n", conn_name.c_str());
       return 1;
     }
@@ -148,8 +148,8 @@ int Memory::open_os(bool nokvm) {
   }
 
   // initialize the OS plugin
-  if (inventory_create_os(inventory, os_name.c_str(), os_arg.c_str(), conn,
-                          &os)) {
+  if (mf_inventory_create_os(inventory, os_name.c_str(), os_arg.c_str(), conn,
+                             &os)) {
     printf("%s", xorstr_("unable to initialize OS\n"));
     return 1;
   }
@@ -211,7 +211,6 @@ void Memory::speed_test() {
 int Memory::open_proc(const char *name) {
   int ret;
   const char *target_proc = name;
-  const char *target_module = name;
 
   if (!(ret = os.process_by_name(CSliceRef<uint8_t>(target_proc),
                                  &proc.hProcess))) {
@@ -247,9 +246,9 @@ int Memory::open_proc(const char *name) {
 
 Memory::~Memory() {
   if (inventory) {
-    inventory_free(inventory);
+    mf_inventory_free(inventory);
     inventory = nullptr;
-    log_info(xorstr_("inventory freed"));
+    mf_log_info(xorstr_("inventory freed"));
   }
 }
 

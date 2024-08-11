@@ -111,7 +111,7 @@ impl RunningManager {
         Ok(())
     }
 
-    pub fn get_running<'a>(&'a self) -> &HashMap<String, TaskContext> {
+    pub fn get_running(&self) -> &HashMap<String, TaskContext> {
         &self.running
     }
 }

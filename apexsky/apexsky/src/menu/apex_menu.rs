@@ -2,8 +2,8 @@ use crate::{i18n::load_fluent_bundle, lock_config};
 
 use super::apexsky_menu::{general_menu::GeneralMenuName, MenuState};
 
-pub(self) use super::apexsky_menu::general_menu::*;
-pub(self) use super::apexsky_menu::TerminalMenu;
+use super::apexsky_menu::general_menu::*;
+use super::apexsky_menu::TerminalMenu;
 
 mod aimbot_menu;
 mod glow_color_menu;
@@ -51,8 +51,12 @@ impl<'a> Into<Box<GeneralMenu<'a, MenuLevel>>> for MenuLevel {
             MenuLevel::ItemFilterMenu => loot_menu::build_item_filter_menu(&i18n_bundle, data),
             MenuLevel::LightWeaponsMenu => loot_menu::build_light_weapons_menu(&i18n_bundle, data),
             MenuLevel::HeavyWeaponsMenu => loot_menu::build_heavy_weapons_menu(&i18n_bundle, data),
-            MenuLevel::EnergyWeaponsMenu => loot_menu::build_energy_weapons_menu(&i18n_bundle, data),
-            MenuLevel::SniperWeaponsMenu => loot_menu::build_sniper_weapons_menu(&i18n_bundle, data),
+            MenuLevel::EnergyWeaponsMenu => {
+                loot_menu::build_energy_weapons_menu(&i18n_bundle, data)
+            }
+            MenuLevel::SniperWeaponsMenu => {
+                loot_menu::build_sniper_weapons_menu(&i18n_bundle, data)
+            }
             MenuLevel::ArmorsMenu => loot_menu::build_armors_menu(&i18n_bundle, data),
             MenuLevel::HealingMenu => loot_menu::build_healing_menu(&i18n_bundle, data),
             MenuLevel::NadesMenu => loot_menu::build_nades_menu(&i18n_bundle, data),
@@ -66,9 +70,9 @@ impl<'a> Into<Box<GeneralMenu<'a, MenuLevel>>> for MenuLevel {
     }
 }
 
-impl Into<Box<dyn MenuState>> for MenuLevel {
-    fn into(self) -> Box<dyn MenuState> {
-        let menu: Box<GeneralMenu<_>> = self.into();
+impl From<MenuLevel> for Box<dyn MenuState> {
+    fn from(val: MenuLevel) -> Self {
+        let menu: Box<GeneralMenu<_>> = val.into();
         menu
     }
 }

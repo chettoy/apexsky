@@ -53,13 +53,13 @@ impl GlobalState {
 #[macro_export]
 macro_rules! lock_config {
     () => {
-        crate::global_state::G_STATE.lock().unwrap().config
+        $crate::global_state::G_STATE.lock().unwrap().config
     };
 }
 
 #[macro_export]
 macro_rules! lock_mod {
     () => {
-        crate::global_state::G_MOD.lock().unwrap()
+        $crate::global_state::G_MOD.lock().unwrap()
     };
 }

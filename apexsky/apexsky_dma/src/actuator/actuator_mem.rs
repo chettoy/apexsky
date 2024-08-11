@@ -23,6 +23,7 @@ pub struct MemAimActuator<'a> {
 }
 
 impl MemAimHelper {
+    #[allow(dead_code)]
     pub async fn self_update(&mut self) {
         let Some((apex_base, lplayer_ptr)) = Self::read_ptr(&self.mem).await else {
             self.apex_base = 0;

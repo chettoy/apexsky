@@ -135,7 +135,7 @@ async fn op_mem_read_all(
 ) -> Result<Vec<serde_json::Value>, AnyError> {
     let api = Arc::clone(state.borrow().borrow::<GameApiInstance>());
     api.mem_read_all(list).await.map_err(|e| {
-        //tracing::error!(%e);
+        tracing::debug!(%e);
         e
     })
 }
@@ -222,7 +222,7 @@ fn op_game_cached_player(
         if let Some(obj) = val.as_object_mut() {
             for v in obj.values_mut() {
                 if let Some(num) = v.as_u64() {
-                    if num > 2 << 52 - 1 {
+                    if num > (2 << 52) - 1 {
                         *v = serde_json::Value::String(num.to_string());
                     }
                 }

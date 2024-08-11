@@ -27,11 +27,12 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
+    - run: rustup default nightly
 
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install protobuf-compiler libzstd-dev libglfw3-dev libfreetype6-dev libvulkan-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev wayland-protocols libwayland-dev libxkbcommon-dev
+        sudo apt install protobuf-compiler libzstd-dev libglfw3-dev libfreetype6-dev libvulkan-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev wayland-protocols libwayland-dev libxkbcommon-dev lld
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -67,8 +68,5 @@ jobs:
         name: apexsky_legacy_${{ steps.vars.outputs.sha_short }}_b${{ github.run_number }}
         path: |
           build/apex_dma
-          build/libmemflow_kvm.so
-          build/libmemflow_qemu.so
-          build/libmemflow_win32.so
           README.md
         retention-days: 5

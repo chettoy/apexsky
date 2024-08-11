@@ -65,7 +65,7 @@ impl ExtensionMessage {
     pub fn new(name: String, callback: Option<oneshot::Sender<serde_json::Value>>) -> Self {
         ExtensionMessage {
             inner: ExtensionMessageInner { name, data: None },
-            callback: callback.and_then(|c| Some(ExtensionMessageCallback(c))),
+            callback: callback.map(ExtensionMessageCallback),
         }
     }
 
@@ -80,7 +80,7 @@ impl ExtensionMessage {
         };
         Ok(ExtensionMessage {
             inner: ExtensionMessageInner { name, data },
-            callback: callback.and_then(|c| Some(ExtensionMessageCallback(c))),
+            callback: callback.map(ExtensionMessageCallback),
         })
     }
 }

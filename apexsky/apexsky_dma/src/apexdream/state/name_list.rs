@@ -62,6 +62,7 @@ impl NameList {
         }
     }
 }
+
 impl GameState {
     pub fn get_player_name(&self, handle: sdk::EHandle) -> Option<&str> {
         let index = handle.index()?.wrapping_sub(1).wrapping_mul(3);

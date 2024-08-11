@@ -31,7 +31,7 @@ use wasmer_wasix::{
 };
 
 #[cfg(feature = "wasmtime")]
-use wasmtime::{Config, Engine, Instance, Linker, Module, Store, Val};
+use wasmtime::{Config, Engine, Instance, Linker, Module, Store};
 #[cfg(feature = "wasmtime")]
 use wasmtime_wasi::preview1::{self, WasiP1Ctx};
 #[cfg(feature = "wasmtime")]

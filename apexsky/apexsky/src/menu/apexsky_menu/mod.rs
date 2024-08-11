@@ -64,7 +64,7 @@ impl TerminalMenu {
     }
 
     pub fn resize(&mut self, f: &mut Frame) {
-        let scroll_height = f.size().height.into();
+        let scroll_height = f.area().height.into();
         if let Some(state) = &mut self.current {
             state.resize(scroll_height);
         }

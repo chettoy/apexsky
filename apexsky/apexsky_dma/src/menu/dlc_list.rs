@@ -255,7 +255,7 @@ async fn read_packages() -> anyhow::Result<Vec<Data>> {
 }
 
 pub(super) fn ui(f: &mut Frame, app: &mut TableApp) {
-    let rects = Layout::vertical([Constraint::Min(5), Constraint::Length(3)]).split(f.size());
+    let rects = Layout::vertical([Constraint::Min(5), Constraint::Length(3)]).split(f.area());
 
     app.set_colors();
 
