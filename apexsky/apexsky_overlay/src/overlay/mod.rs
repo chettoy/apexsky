@@ -1,8 +1,8 @@
-use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 #[cfg(feature = "native")]
 use bevy::window::{WindowLevel, WindowMode};
 use bevy::{color::palettes, window::CompositeAlphaMode};
+use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, winit::WinitSettings};
 use bevy_egui::EguiPlugin;
 use bevy_health_bar3d::prelude as hpbar;
 use model::{MyOverlayState, TokioRuntime};
@@ -80,16 +80,6 @@ pub(crate) fn main() {
         ))
         .init_asset::<Blob>()
         .init_asset_loader::<BlobAssetLoader>()
-        .insert_resource(
-            hpbar::ColorScheme::<model::Health>::new()
-                .foreground_color(hpbar::ForegroundColor::Static(Color::Srgba(
-                    palettes::css::LIGHT_GREEN,
-                )))
-                .background_color(Color::Srgba(palettes::css::RED)),
-        )
-        .insert_resource(hpbar::ColorScheme::<model::Mana>::new().foreground_color(
-            hpbar::ForegroundColor::Static(Color::Srgba(palettes::css::BISQUE)),
-        ))
         .init_resource::<TokioRuntime>()
         .init_resource::<MyOverlayState>()
         .init_resource::<ui::UiPersistance>()
@@ -100,6 +90,20 @@ pub(crate) fn main() {
         .init_resource::<system::navigator::NavigatorSystem>()
         .insert_resource(ClearColor(Color::NONE))
         .insert_resource(Msaa::Sample4)
+        .insert_resource(WinitSettings {
+            focused_mode: bevy::winit::UpdateMode::Continuous,
+            unfocused_mode: bevy::winit::UpdateMode::Continuous,
+        })
+        .insert_resource(
+            hpbar::ColorScheme::<model::Health>::new()
+                .foreground_color(hpbar::ForegroundColor::Static(Color::Srgba(
+                    palettes::css::LIGHT_GREEN,
+                )))
+                .background_color(Color::Srgba(palettes::css::RED)),
+        )
+        .insert_resource(hpbar::ColorScheme::<model::Mana>::new().foreground_color(
+            hpbar::ForegroundColor::Static(Color::Srgba(palettes::css::BISQUE)),
+        ))
         .add_systems(Startup, setup)
         .add_systems(Startup, system::navigator::setup_voice_navigator)
         .add_systems(Update, system::navigator::update_voice_navigator)
