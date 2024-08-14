@@ -47,8 +47,10 @@ pub struct WeaponXEntity {
     pub modifiers_ptr: sdk::Ptr,
 
     pub is_semi_auto: bool,
+    pub ammo_clip_size: i32,
     pub projectile_scale: f32,
     pub projectile_speed: f32,
+    pub projectile_air_fiction: f32,
 }
 impl WeaponXEntity {
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
@@ -146,8 +148,8 @@ impl Entity for WeaponXEntity {
             burst: [u32; 4],
             weapon_name_index: [u32; 3],
             mod_bitfield: [u32; 3],
-            data: [u32; 1],
-            projectile: [u32; 2],
+            data: [u32; 2],
+            projectile: [u32; 3],
         }
 
         let data = &ctx.data;
@@ -190,10 +192,11 @@ impl Entity for WeaponXEntity {
                 data.weaponx_mod_bitfield + 4,
                 data.weaponx_mod_bitfield + 8,
             ],
-            data: [data.weaponx_is_semi_auto & !3],
+            data: [data.weaponx_is_semi_auto & !3, data.weaponx_ammo_clip_size],
             projectile: [
-                data.weaponx_projectile_speed + 0,
-                data.weaponx_projectile_speed + 8,
+                data.weaponx_projectile_speed,
+                data.weaponx_projectile_scale,
+                data.weaponx_projectile_air_friction,
             ],
         };
 
@@ -239,8 +242,10 @@ impl Entity for WeaponXEntity {
 
             self.is_semi_auto =
                 fields.data[0].to_le_bytes()[data.weaponx_is_semi_auto as usize & 3] != 0;
+            self.ammo_clip_size = fields.data[1] as i32;
             self.projectile_speed = f32::from_bits(fields.projectile[0]);
             self.projectile_scale = f32::from_bits(fields.projectile[1]);
+            self.projectile_air_fiction = f32::from_bits(fields.projectile[2]);
         }
 
         self.update_rate = if self.weapon_owner == ctx.local_entity {

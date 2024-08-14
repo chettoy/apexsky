@@ -52,11 +52,11 @@ pub struct Skyapex {
 
 #[cfg(feature = "wasmtime")]
 pub struct Skyapex {
-    config: Config,
-    engine: Engine,
-    linker: Linker<WasiP1Ctx>,
+    _config: Config,
+    _engine: Engine,
+    _linker: Linker<WasiP1Ctx>,
     store: Store<WasiP1Ctx>,
-    module: Module,
+    _module: Module,
     instance: Instance,
     runtime: tokio::runtime::Runtime,
 }
@@ -337,11 +337,11 @@ impl Skyapex {
                     .unwrap();
                 runtime.block_on(load(mod_bytes)).map(
                     |(config, engine, linker, store, module, instance)| Self {
-                        config,
-                        engine,
-                        linker,
+                        _config: config,
+                        _engine: engine,
+                        _linker: linker,
                         store,
-                        module,
+                        _module: module,
                         instance,
                         runtime,
                     },

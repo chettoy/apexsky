@@ -52,6 +52,8 @@ pub struct GameData {
     pub entity_team_num: u32,
     pub entity_velocity: u32,
     pub entity_owner_entity: u32,
+    pub entity_collision: u32,
+    pub entity_collision_group: u32,
     pub entity_max_health: u32,
     pub entity_life_state: u32,
 
@@ -59,10 +61,16 @@ pub struct GameData {
     pub animating_bone_array: u32, // m_bSequenceFinished - 0x1C
     pub animating_studiohdr: u32,  // m_flModelScale + 0x1D0
 
+    pub bone_follower_model_index: u32,
+    pub bone_follower_bone_index: u32,
+    pub collision_property_vec_mins: u32,
+    pub collision_property_vec_maxs: u32,
+
     pub bcc_next_attack: u32,
     pub bcc_inventory: u32,
     pub bcc_selected_weapons: u32,
     pub bcc_last_visible_time: u32, // m_hudInfo_visibilityTestAlwaysPasses + 0x3
+    pub player_last_visible_time: u32,
 
     pub player_zoom_state: u32,
     pub player_camera_data: u32,
@@ -85,6 +93,7 @@ pub struct GameData {
     pub player_is_performing_boost_action: u32,
     pub player_xp: u32,
     pub player_controller_active: u32,
+    pub player_skydive_state: u32,
 
     pub weaponx_weapon_owner: u32,
     pub weaponx_next_primary_attack: u32,
@@ -93,7 +102,10 @@ pub struct GameData {
     pub weaponx_mod_bitfield: u32,
     pub weaponx_weapon_name_index: u32,
     pub weaponx_is_semi_auto: u32,
+    pub weaponx_ammo_clip_size: u32,
     pub weaponx_projectile_speed: u32,
+    pub weaponx_projectile_scale: u32,
+    pub weaponx_projectile_air_friction: u32,
     pub weaponx_charge_start_time: u32,
     pub weaponx_burst_fire: u32,
 
@@ -152,15 +164,22 @@ impl Default for GameData {
             entity_team_num: G_OFFSETS.entity_team_num.try_into().unwrap(),
             entity_velocity: G_OFFSETS.centity_velocity.try_into().unwrap(),
             entity_owner_entity: G_OFFSETS.entity_owner_entity.try_into().unwrap(),
+            entity_collision: G_OFFSETS.entity_collision.try_into().unwrap(),
+            entity_collision_group: G_OFFSETS.entity_collision_group.try_into().unwrap(),
             entity_max_health: G_OFFSETS.player_maxhealth.try_into().unwrap(),
             entity_life_state: G_OFFSETS.player_life_state.try_into().unwrap(),
             animating_skin: G_OFFSETS.animating_skin.try_into().unwrap(),
             animating_bone_array: G_OFFSETS.animating_bone_array.try_into().unwrap(),
             animating_studiohdr: G_OFFSETS.animating_studiohdr.try_into().unwrap(),
+            bone_follower_model_index: G_OFFSETS.bone_follower_model_index.try_into().unwrap(),
+            bone_follower_bone_index: G_OFFSETS.bone_follower_bone_index.try_into().unwrap(),
+            collision_property_vec_mins: G_OFFSETS.collision_property_vec_mins.try_into().unwrap(),
+            collision_property_vec_maxs: G_OFFSETS.collision_property_vec_maxs.try_into().unwrap(),
             bcc_next_attack: G_OFFSETS.bcc_next_attack.try_into().unwrap(),
             bcc_inventory: G_OFFSETS.bcc_inventory.try_into().unwrap(),
             bcc_selected_weapons: G_OFFSETS.bcc_selected_weapons.try_into().unwrap(),
             bcc_last_visible_time: G_OFFSETS.bcc_last_visible_time.try_into().unwrap(),
+            player_last_visible_time: G_OFFSETS.player_last_visible_time.try_into().unwrap(),
             player_zoom_state: G_OFFSETS.player_zooming.try_into().unwrap(),
             player_camera_data: G_OFFSETS.cplayer_camerapos.try_into().unwrap(),
             player_time_base: G_OFFSETS.cplayer_timebase.try_into().unwrap(),
@@ -188,6 +207,7 @@ impl Default for GameData {
                 .unwrap(),
             player_xp: G_OFFSETS.player_xp.try_into().unwrap(),
             player_controller_active: G_OFFSETS.player_controller_active.try_into().unwrap(),
+            player_skydive_state: G_OFFSETS.player_skydive_state.try_into().unwrap(),
             weaponx_weapon_owner: G_OFFSETS.weaponx_weapon_owner.try_into().unwrap(),
             weaponx_next_primary_attack: G_OFFSETS.weaponx_next_primary_attack.try_into().unwrap(),
             weaponx_ammo_in_clip: G_OFFSETS.weaponx_ammo_in_clip.try_into().unwrap(),
@@ -195,7 +215,19 @@ impl Default for GameData {
             weaponx_mod_bitfield: G_OFFSETS.weaponx_bitfield_from_player.try_into().unwrap(),
             weaponx_weapon_name_index: G_OFFSETS.weaponx_weapon_name_index.try_into().unwrap(),
             weaponx_is_semi_auto: G_OFFSETS.weaponx_is_semi_auto.try_into().unwrap(),
-            weaponx_projectile_speed: G_OFFSETS.weaponx_projectile_speed.try_into().unwrap(),
+            weaponx_ammo_clip_size: G_OFFSETS.weaponx_ammo_clip_size.try_into().unwrap(),
+            weaponx_projectile_speed: G_OFFSETS
+                .weaponx_projectile_launch_speed
+                .try_into()
+                .unwrap(),
+            weaponx_projectile_scale: G_OFFSETS
+                .weaponx_projectile_gravity_scale
+                .try_into()
+                .unwrap(),
+            weaponx_projectile_air_friction: G_OFFSETS
+                .weaponx_projectile_air_friction
+                .try_into()
+                .unwrap(),
             weaponx_charge_start_time: G_OFFSETS.weaponx_charge_start_time.try_into().unwrap(),
             weaponx_burst_fire: G_OFFSETS.cweaponx_burst_fire.try_into().unwrap(),
             vehicle_driver: G_OFFSETS.vehicle_driver.try_into().unwrap(),

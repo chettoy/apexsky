@@ -1,5 +1,4 @@
 use crate::game::data::OFFSET_YAW;
-use apexsky::offsets::G_OFFSETS;
 
 use super::*;
 
@@ -397,7 +396,7 @@ impl Entity for PlayerEntity {
                 data.entity_flags,
                 data.entity_life_state,
                 data.player_bleedout_state,
-                G_OFFSETS.player_last_visible_time.try_into().unwrap(),
+                data.player_last_visible_time,
                 data.bcc_last_visible_time + 4,
                 data.bcc_last_visible_time + 8,
             ],
@@ -414,7 +413,7 @@ impl Entity for PlayerEntity {
                 data.player_helmet_armor_type + 0,
                 data.player_helmet_armor_type + 4,
             ],
-            skydive_state: G_OFFSETS.player_skydive_state.try_into().unwrap(),
+            skydive_state: data.player_skydive_state,
             next_attack: [
                 data.bcc_next_attack + 0,
                 data.bcc_next_attack + 4,

@@ -1,5 +1,3 @@
-use apexsky::offsets::G_OFFSETS;
-
 use super::*;
 
 #[derive(Default, Debug, Clone)]
@@ -103,6 +101,7 @@ impl Entity for BaseNPCEntity {
             studio: [u32; 2],
             skin: [u32; 4],
             state: [u32; 3],
+            //collision: [u32; 7],
         }
 
         let data = &ctx.data;
@@ -135,8 +134,17 @@ impl Entity for BaseNPCEntity {
                 data.entity_flags,
                 data.entity_life_state,
                 //data.bcc_last_visible_time,
-                G_OFFSETS.player_last_visible_time.try_into().unwrap(),
+                data.player_last_visible_time,
             ],
+            // collision: [
+            //     data.entity_collision + data.collision_property_vec_mins,
+            //     data.entity_collision + data.collision_property_vec_mins + 4,
+            //     data.entity_collision + data.collision_property_vec_mins + 8,
+            //     data.entity_collision + data.collision_property_vec_maxs,
+            //     data.entity_collision + data.collision_property_vec_maxs + 4,
+            //     data.entity_collision + data.collision_property_vec_maxs + 8,
+            //     data.entity_collision_group,
+            // ],
         };
 
         if let Ok(fields) = api
@@ -203,6 +211,22 @@ impl Entity for BaseNPCEntity {
             self.flags = fields.state[0];
             self.life_state = fields.state[1] as u8;
             self.last_visible_time = f32::from_bits(fields.state[2]);
+
+            // let collision = (
+            //     [
+            //         f32::from_bits(fields.collision[0]),
+            //         f32::from_bits(fields.collision[1]),
+            //         f32::from_bits(fields.collision[2]),
+            //     ],
+            //     [
+            //         f32::from_bits(fields.collision[3]),
+            //         f32::from_bits(fields.collision[4]),
+            //         f32::from_bits(fields.collision[5]),
+            //     ],
+            // );
+            // let collision_group = fields.collision[6] as i32;
+
+            // println!("collision:{collision:?} grp:{collision_group:?}");
         }
     }
     #[instrument(skip_all)]

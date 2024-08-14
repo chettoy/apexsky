@@ -6,10 +6,9 @@ use once_cell::sync::Lazy;
 use crate::workers::items::LootInt;
 
 /*
- * GameVersion=v3.0.76.22
+ * GameVersion=v3.0.77.28
  */
 pub const OFFSET_YAW: u64 = 0x223c - 0x8;
-pub const OFFSET_SPECTATOR_LIST: u64 = 0x1f16e28;
 //pub const OFFSET_GLOW_CONTEXT_ID: u64 = 0x29c;
 pub const OFFSET_GLOW_VISIBLE_TYPE: u64 = 0x26c;
 pub const OFFSET_GLOW_DISTANCE: u64 = 0x264;

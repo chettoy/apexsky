@@ -231,6 +231,8 @@ impl GetClientEntity {
             // 	Some(BaseEntity::new(entity_ptr, index, &data.client_class))
             // },
             _ => {
+                // let name = base::from_utf8_buf(&data.name_buf);
+                //tracing::warn!("{}{}{}{name:?}", s!("Uninteresting["), index, s!("]: "));
                 if log_uninteresting {
                     let name = base::from_utf8_buf(&data.name_buf);
                     api.log(format!(

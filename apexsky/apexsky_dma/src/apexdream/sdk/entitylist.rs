@@ -10,6 +10,7 @@ pub struct CEntInfo {
     pub pNext: Ptr<CEntInfo>,
 }
 
+pub const CGlobalNonRewinding: u32 = hash!("CGlobalNonRewinding");
 pub const CPlayer: u32 = hash!("CPlayer");
 pub const CPropSurvival: u32 = hash!("CPropSurvival");
 pub const CWeaponX: u32 = hash!("CWeaponX");
@@ -23,6 +24,7 @@ pub const CScriptProp: u32 = hash!("CScriptProp");
 pub const CPhysicsProp: u32 = hash!("CPhysicsProp");
 pub const CCrossbowBolt: u32 = hash!("CCrossbowBolt");
 pub const CBaseGrenade: u32 = hash!("CBaseGrenade");
+pub const CBoneFollower: u32 = hash!("CBoneFollower");
 
 pub const CScriptNetData_SNDC_PLAYER_EXCLUSIVE: u32 = hash!("CScriptNetData_SNDC_PLAYER_EXCLUSIVE");
 pub const CScriptNetData_SNDC_PLAYER_GLOBAL: u32 = hash!("CScriptNetData_SNDC_PLAYER_GLOBAL");
