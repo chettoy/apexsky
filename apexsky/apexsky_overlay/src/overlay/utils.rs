@@ -15,3 +15,8 @@ pub fn get_unix_timestamp_in_millis() -> u64 {
         }
     }
 }
+
+#[inline]
+pub fn game_coords_to_engine_coords(game_pos: [f32; 3]) -> [f32; 3] {
+    [-game_pos[1], game_pos[2], -game_pos[0]]
+}

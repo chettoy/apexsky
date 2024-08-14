@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use apexsky::aimbot::{
-    AimAngles, AimEntity, Aimbot, AimbotSettings, CurrentWeaponInfo, TriggerBot,
+    AimAngles, AimEntity, Aimbot, AimbotSettings, CurrentWeaponInfo, HitScanReport, TriggerBot,
 };
 use apexsky::config::DeviceConfig;
 use apexsky::global_state::G_STATE;
@@ -30,7 +30,12 @@ pub trait ContextForAimbot {
     async fn get_entity(&self, target_ptr: u64) -> Option<Arc<dyn AimEntity>>;
     async fn get_held_id(&self) -> Option<i32>;
     async fn get_weapon_info(&self) -> Option<CurrentWeaponInfo>;
-    async fn update_aim_target_for_esp(&mut self, position: [f32; 3]);
+    async fn update_aim_target_for_esp(
+        &mut self,
+        aim_result: AimAngles,
+        hitscan_result: Option<HitScanReport>,
+        target_pos: Option<[f32; 3]>,
+    );
 }
 
 async fn create_aim_actuator_from_device(
@@ -207,55 +212,70 @@ pub async fn aimbot_loop(
             continue;
         };
 
-        let (aim_result, target_pos): (AimAngles, Option<[f32; 3]>) =
-            if let Some(ref target_entity) = target_entity {
-                // // debug target entity
-                // if !target_entity.is_player() {
-                //     let is_visible = target_entity.is_visible();
-                //     trace!(is_visible, ?target_entity, "{}", s!("711aac39-e83c-444b"));
-                // }
+        let (aim_result, hitscan, target_pos): (
+            AimAngles,
+            Option<HitScanReport>,
+            Option<[f32; 3]>,
+        ) = if let Some(ref target_entity) = target_entity {
+            // // debug target entity
+            // if !target_entity.is_player() {
+            //     let is_visible = target_entity.is_visible();
+            //     trace!(is_visible, ?target_entity, "{}", s!("711aac39-e83c-444b"));
+            // }
 
-                if !(aimbot.is_aiming() || aimbot.is_triggerbot_ready()) {
-                    (AimAngles::default(), Some(target_entity.get_position()))
-                } else if aimbot.get_gun_safety() {
-                    trace!("{}", s!("711aac39-e83c-4788 safety on"));
-                    //println!("{:?}", target_entity);
-                    (AimAngles::default(), Some(target_entity.get_position()))
-                } else if local_entity.is_knocked()
-                    || !target_entity.is_alive()
-                    || target_entity.is_knocked()
-                {
-                    trace!(
-                        ?target_entity,
-                        ?local_entity,
-                        "{}",
-                        s!("711aac39-e83c-4788 not target")
-                    );
-                    aimbot.cancel_locking();
-                    (AimAngles::default(), Some(target_entity.get_position()))
-                } else {
-                    trace!("{}", s!("711aac39-e83c-4788 calc best aim"));
-                    let Some(view_angles) = read_view_angles(&mem_aim_helper).await else {
-                        continue;
-                    };
-                    let (aim_angles, position) = aimbot.calc_best_aim(
-                        local_entity.as_ref(),
-                        target_entity.as_ref(),
-                        view_angles,
-                    );
-                    trace!(?aim_angles, "{}", s!("711aac39-e83c-4788 best aim"));
-                    (aim_angles, Some(position))
-                }
-            } else {
-                //tracing::warn!(aim_entity_ptr, "{}", s!("targeted entity does not exist"));
-                tracing::debug!(
-                    aim_entity_ptr,
+            if !(aimbot.is_aiming() || aimbot.is_triggerbot_ready()) {
+                (
+                    AimAngles::default(),
+                    None,
+                    Some(target_entity.get_position()),
+                )
+            } else if aimbot.get_gun_safety() {
+                trace!("{}", s!("711aac39-e83c-4788 safety on"));
+                //println!("{:?}", target_entity);
+                (
+                    AimAngles::default(),
+                    None,
+                    Some(target_entity.get_position()),
+                )
+            } else if local_entity.is_knocked()
+                || !target_entity.is_alive()
+                || target_entity.is_knocked()
+            {
+                trace!(
+                    ?target_entity,
+                    ?local_entity,
                     "{}",
-                    s!("711aac39-e83c-4788 targeted entity does not exist")
+                    s!("711aac39-e83c-4788 not target")
                 );
                 aimbot.cancel_locking();
-                (AimAngles::default(), None)
-            };
+                (
+                    AimAngles::default(),
+                    None,
+                    Some(target_entity.get_position()),
+                )
+            } else {
+                trace!("{}", s!("711aac39-e83c-4788 calc best aim"));
+                let Some(view_angles) = read_view_angles(&mem_aim_helper).await else {
+                    continue;
+                };
+                let (aim_angles, hitscan, position) = aimbot.calc_best_aim(
+                    local_entity.as_ref(),
+                    target_entity.as_ref(),
+                    view_angles,
+                );
+                trace!(?aim_angles, "{}", s!("711aac39-e83c-4788 best aim"));
+                (aim_angles, Some(hitscan), Some(position))
+            }
+        } else {
+            //tracing::warn!(aim_entity_ptr, "{}", s!("targeted entity does not exist"));
+            tracing::debug!(
+                aim_entity_ptr,
+                "{}",
+                s!("711aac39-e83c-4788 targeted entity does not exist")
+            );
+            aimbot.cancel_locking();
+            (AimAngles::default(), None, None)
+        };
 
         if aiming {
             tracing::debug!(?aim_result, "711aac39-e83c-4788");
@@ -263,8 +283,10 @@ pub async fn aimbot_loop(
 
         if let Some(pos) = target_pos {
             tracing::trace!(target_pos = ?pos, ?aim_result);
-            state.update_aim_target_for_esp(pos).await;
         }
+        state
+            .update_aim_target_for_esp(aim_result.clone(), hitscan, target_pos)
+            .await;
 
         // Update Trigger Bot state
         // Ensure that the triggerbot is updated,
@@ -280,7 +302,7 @@ pub async fn aimbot_loop(
 
         // Aim Assist
         if aimbot.is_aiming() && aim_result.valid {
-            let view_angles = [aim_result.view_pitch, aim_result.view_yew, 0.0];
+            let view_angles = [aim_result.view_pitch, aim_result.view_yaw, 0.0];
             let smoothed_angles = aimbot.smooth_aim_angles(&aim_result, smooth_factor);
             let smoothed_angles = [smoothed_angles.0, smoothed_angles.1, 0.0];
             let smoothed_delta_angles = math::sub(smoothed_angles, view_angles);

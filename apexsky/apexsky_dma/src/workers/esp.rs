@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use apexsky::global_state::G_STATE;
 use apexsky_proto::pb::apexlegends::{
-    AimEntityData, AimTargetHitbox, AimTargetItem, AimTargetList, AimbotState, EspData,
-    EspDataOption, EspSettings, EspVisualsFlag, GSettings, Loots, Matrix4x4, Players,
+    AimEntityData, AimResultData, AimTargetHitbox, AimTargetItem, AimTargetList, AimbotState,
+    EspData, EspDataOption, EspSettings, EspVisualsFlag, GSettings, Loots, Matrix4x4, Players,
     SpectatorList,
 };
 use apexsky_proto::pb::esp_service::esp_service_server::{EspService, EspServiceServer};
@@ -218,14 +218,7 @@ impl EspService for GameApiHandle {
                         None
                     },
                     loop_duration: duration.as_millis().try_into().unwrap(),
-                    target_position: if !(aim_target[0] == 0.0
-                        && aim_target[1] == 0.0
-                        && aim_target[2] == 0.0)
-                    {
-                        Some(aim_target.into())
-                    } else {
-                        None
-                    },
+                    target_position: aim_target.2.map(Into::into),
                     aim_mode: state.get_settings().aim_mode,
                     aiming: state.is_aiming(),
                     gun_safety: state.get_gun_safety(),
@@ -236,6 +229,22 @@ impl EspService for GameApiHandle {
                     weapon_id: state.get_weapon_id(),
                     max_fov: state.get_max_fov(),
                     aim_entity: state.get_aim_entity(),
+                    aim_result: aim_target.0.valid.then_some(AimResultData {
+                        hitscan: aim_target.0.hitscan,
+                        view_pitch: aim_target.0.view_pitch,
+                        view_yaw: aim_target.0.view_yaw,
+                        delta_pitch: aim_target.0.delta_pitch,
+                        delta_yaw: aim_target.0.delta_yaw,
+                        delta_pitch_min: aim_target.0.delta_pitch_min,
+                        delta_pitch_max: aim_target.0.delta_pitch_max,
+                        delta_yaw_min: aim_target.0.delta_yaw_min,
+                        delta_yaw_max: aim_target.0.delta_yaw_max,
+                        distance: aim_target.0.distance,
+                        hitscan_nearest_pos: aim_target
+                            .1
+                            .and_then(|v| v.nearest_bone_pos)
+                            .map(Into::into),
+                    }),
                 }),
                 target_count: aim_targets.len() as u64,
                 targets: Some(AimTargetList {

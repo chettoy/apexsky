@@ -5,6 +5,7 @@ use ndarray::arr1;
 pub use self::message::{SonicMessage, VoicePrompt};
 pub use self::resource::ContentId;
 use self::state::{State, StateDiff};
+use crate::overlay::utils::game_coords_to_engine_coords;
 use crate::pb::apexlegends::EspData;
 
 pub(crate) mod message;
@@ -99,7 +100,7 @@ impl VoiceNavigator {
                 .flatten()
                 .map(|(_dist, pos)| (arr1(pos) - arr1(&state.local_pos)) / 40.0 / 20.0)
                 .map(|rel| [rel[0], rel[1], rel[2]])
-                .map(|game_pos| [-game_pos[1], game_pos[2], -game_pos[0]])
+                .map(game_coords_to_engine_coords)
                 .map(|engine_pos| {
                     let axis = Vector3::y_axis();
                     let rotation_matrix =

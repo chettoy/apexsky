@@ -28,9 +28,6 @@ impl FromWorld for TokioRuntime {
 
 #[derive(Resource, Default)]
 pub(crate) struct MyOverlayState {
-    pub(crate) sound_handle: Handle<AudioSource>,
-    pub(super) font_blob: Handle<Blob>,
-    pub(crate) font_loaded: bool,
     pub(crate) user_gesture: bool,
     pub(crate) test_sound: bool,
     pub(crate) override_esp_addr: Option<EspServiceAddr>,

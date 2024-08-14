@@ -55,12 +55,12 @@ impl AssetLoader for CustomAssetLoader {
 }
 
 #[derive(Asset, TypePath, Debug)]
-pub(super) struct Blob {
-    pub(super) bytes: Vec<u8>,
+pub struct Blob {
+    pub bytes: Vec<u8>,
 }
 
 #[derive(Default)]
-pub(super) struct BlobAssetLoader;
+pub struct BlobAssetLoader;
 
 /// Possible errors that can be produced by [`CustomAssetLoader`]
 #[non_exhaustive]

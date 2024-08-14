@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use apexsky::__load_settings;
-use apexsky::aimbot::{AimEntity, Aimbot};
+use apexsky::aimbot::{AimAngles, AimEntity, Aimbot, HitScanReport};
 use apexsky::config::Settings;
 use apexsky::global_state::G_STATE;
 use apexsky_dmalib::MemConnector;
@@ -48,7 +48,7 @@ struct SharedState {
     tick_num: AtomicU64,
     tick_duration: AtomicU64,
     actions_duration: AtomicU64,
-    aim_target: Mutex<[f32; 3]>,
+    aim_target: Mutex<(AimAngles, Option<HitScanReport>, Option<[f32; 3]>)>,
     view_matrix: Mutex<[f32; 16]>,
     highlight_injected: AtomicBool,
     teammates: Mutex<Vec<PlayerState>>,

@@ -16,7 +16,7 @@ mod embedded;
 mod model;
 mod system;
 mod ui;
-mod utils;
+pub mod utils;
 
 const DRY_RUN: bool = false;
 const PRINT_LATENCY: bool = false;
@@ -104,7 +104,7 @@ pub(crate) fn main() {
         .insert_resource(hpbar::ColorScheme::<model::Mana>::new().foreground_color(
             hpbar::ForegroundColor::Static(Color::Srgba(palettes::css::BISQUE)),
         ))
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (embedded::setup, setup))
         .add_systems(Startup, system::navigator::setup_voice_navigator)
         .add_systems(Update, system::navigator::update_voice_navigator)
         .add_systems(Update, system::sound::load_test_sound)
@@ -125,14 +125,10 @@ pub(crate) fn main() {
 
 fn setup(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut overlay_state: ResMut<MyOverlayState>,
 ) {
-    overlay_state.font_blob = asset_server.load(&*embedded::S_FONT_PATH);
-    overlay_state.sound_handle = asset_server.load(&*embedded::S_SOUND_PATH);
-
     // Space between the two ears
     let gap = 12.0;
 
@@ -187,6 +183,7 @@ fn setup(
     // );
 
     // camera
+    commands.spawn((Camera2dBundle::default(), IsDefaultUiCamera));
     commands.spawn((
         Camera3dBundle {
             projection: Projection::Perspective(PerspectiveProjection {

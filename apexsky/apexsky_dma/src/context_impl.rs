@@ -1,4 +1,7 @@
-use apexsky::{aimbot::AimEntity, global_state::G_STATE};
+use apexsky::{
+    aimbot::{AimAngles, AimEntity, HitScanReport},
+    global_state::G_STATE,
+};
 use apexsky_proto::pb::apexlegends::TreasureClue;
 use std::sync::Arc;
 use tracing::instrument;
@@ -160,8 +163,13 @@ impl ContextForAimbot for SharedStateWrapper {
     }
 
     #[instrument]
-    async fn update_aim_target_for_esp(&mut self, position: [f32; 3]) {
-        *self.aim_target.lock() = position;
+    async fn update_aim_target_for_esp(
+        &mut self,
+        aim_result: AimAngles,
+        hitscan_result: Option<HitScanReport>,
+        target_pos: Option<[f32; 3]>,
+    ) {
+        *self.aim_target.lock() = (aim_result, hitscan_result, target_pos);
     }
 }
 

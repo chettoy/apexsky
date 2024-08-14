@@ -9,6 +9,7 @@ use bevy_egui::{egui, EguiContexts};
 use instant::Instant;
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -26,10 +27,12 @@ use crate::pb::apexlegends::PlayerState;
 use crate::pb::apexlegends::SpectatorInfo;
 
 use super::asset::Blob;
+use super::embedded;
 use super::system::game_esp::EspServiceAddr;
 use super::system::game_esp::EspSystem;
 use super::MyOverlayState;
 
+mod hud;
 mod mini_map;
 
 static ID_HELLO_WINDOW: Lazy<egui::Id> = Lazy::new(|| egui::Id::new(s!("#hello_window")));
@@ -47,12 +50,24 @@ pub fn toggle_mouse_passthrough(
     }
 }
 
-#[derive(Debug, Resource, Serialize, Deserialize, Default)]
+#[derive(Debug, Resource, Serialize, Deserialize)]
 pub(crate) struct UiPersistance {
     hello_position: Option<(f32, f32)>,
     radar_position: Option<(f32, f32)>,
     #[serde(skip)]
     change_time: Option<Instant>,
+    pub(crate) draw_hud: bool,
+}
+
+impl Default for UiPersistance {
+    fn default() -> Self {
+        Self {
+            hello_position: None,
+            radar_position: None,
+            change_time: None,
+            draw_hud: true,
+        }
+    }
 }
 
 impl UiPersistance {
@@ -74,6 +89,7 @@ impl UiPersistance {
             hello_position: saved.hello_position,
             radar_position: saved.radar_position,
             change_time: None,
+            draw_hud: saved.draw_hud,
         })
     }
     pub(crate) fn update(&mut self, mem: &egui::Memory) {
@@ -169,13 +185,21 @@ pub fn ui_system(
     time: Res<Time>,
     diagnostics: Res<DiagnosticsStore>,
     blobs: Res<Assets<Blob>>,
+    font_blob: Option<Res<embedded::FontBlob>>,
+    hud_image_handle: Res<embedded::EspHudImage>,
 ) {
     use egui::{CentralPanel, Color32, ScrollArea};
+
+    let hud_image = contexts.image_id(&hud_image_handle).unwrap();
+    let mut hud = hud::HUD
+        .get_or_init(|| Mutex::new(hud::Hud::new(hud_image)))
+        .lock();
+
     let ctx = contexts.ctx_mut();
 
     // Set default font
-    if !overlay_state.font_loaded {
-        if let Some(font_blob) = blobs.get(&overlay_state.font_blob) {
+    if let Some(font_blob_handle) = font_blob {
+        if let Some(font_blob) = blobs.get(&font_blob_handle.0) {
             let mut egui_fonts = egui::FontDefinitions::default();
             egui_fonts.font_data.insert(
                 "my_font".to_owned(),
@@ -193,7 +217,7 @@ pub fn ui_system(
                 .push("my_font".to_owned());
             ctx.set_fonts(egui_fonts);
 
-            overlay_state.font_loaded = true;
+            commands.remove_resource::<embedded::FontBlob>();
         }
     }
 
@@ -612,6 +636,15 @@ pub fn ui_system(
                         ui.label(egui::RichText::new(s!("Show ball")));
                         ui.add(toggle_button(&mut show_entity_ball.0));
                     });
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                        ui.label(egui::RichText::new(s!("Show HUD")));
+                        if ui
+                            .add(toggle_button(&mut ui_persistance.draw_hud))
+                            .changed()
+                        {
+                            ui_persistance.persistance().ok();
+                        }
+                    });
                 });
             }
         });
@@ -635,6 +668,10 @@ pub fn ui_system(
         CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
             if !is_teammate_view {
                 esp_2d_ui(ui, esp_data, esp_settings, esp_loots, view_player);
+                if ui_persistance.draw_hud {
+                    hud.set_data(ui.ctx(), esp_data);
+                    hud.draw(ui);
+                }
             }
             info_bar_ui(
                 ui,
@@ -864,7 +901,7 @@ fn esp_2d_ui(
     let (box_color_viz, box_color_not_viz) = {
         let color_viz: [f32; 3] = esp_settings.glow_color_viz.clone().unwrap().into();
         let color_notviz: [f32; 3] = esp_settings.glow_color_notviz.clone().unwrap().into();
-        let convert = |v: f32| -> u8 { (v.max(0.0).min(1.0) * 255.0).round() as u8 };
+        let convert = |v: f32| -> u8 { (v.clamp(0.0, 1.0) * 255.0).round() as u8 };
         (
             (
                 convert(color_viz[0]),
@@ -903,7 +940,7 @@ fn esp_2d_ui(
             } else {
                 1.0 - (target_info.distance - aim_distance) / (16000.0 - aim_distance) * 0.6
             };
-            let alpha = (255.0 * alpha.max(0.0).min(1.0)).round() as u8;
+            let alpha = (255.0 * alpha.clamp(0.0, 1.0)).round() as u8;
             let radar_distance = (target_info.distance / 39.62).round() as i32;
 
             let head_position = target_data.head_position.clone().unwrap();

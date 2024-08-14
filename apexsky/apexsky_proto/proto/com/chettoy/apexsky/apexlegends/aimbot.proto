@@ -26,3 +26,17 @@ message AimTargetInfo {
   bool is_npc = 9;
   bool is_loot = 10;
 }
+
+message AimResultData {
+  bool hitscan = 1;
+  float view_pitch = 2;
+  float view_yaw = 3;
+  float delta_pitch = 4;
+  float delta_yaw = 5;
+  float delta_pitch_min = 6;
+  float delta_pitch_max = 7;
+  float delta_yaw_min = 8;
+  float delta_yaw_max = 9;
+  float distance = 10;
+  Vec3 hitscan_nearest_pos = 11;
+}

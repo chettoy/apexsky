@@ -133,24 +133,6 @@ impl GamePlayer {
         }
     }
 
-    pub fn update_buf_hotdata(&mut self, value: &PlayerEntity) {
-        let state = value;
-
-        let buf = &mut self.buf;
-        buf.origin = Some(state.origin.into());
-        buf.view_angles = Some(state.view_angles.into());
-        buf.velocity = Some(state.velocity.into());
-        buf.yaw = state.yaw;
-        buf.health = state.health;
-        buf.shield = state.shields;
-        buf.flags = state.flags as i32;
-        buf.is_alive = state.is_alive();
-        buf.is_knocked = state.is_knocked();
-        buf.head_position = Some(state.get_bone_position_by_hitbox(0).into());
-
-        self.state = state.clone();
-    }
-
     pub fn get_buf(&self) -> &PlayerState {
         &self.buf
     }

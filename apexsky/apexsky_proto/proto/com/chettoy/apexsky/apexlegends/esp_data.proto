@@ -94,6 +94,7 @@ message AimbotState {
   int32 weapon_id = 12;
   float max_fov = 13;
   uint64 aim_entity = 14;
+  AimResultData aim_result = 15;
 }
 
 message EspDataOption {

@@ -73,13 +73,13 @@ pub struct AimAngles {
     pub valid: bool,
     pub hitscan: bool,
     pub view_pitch: f32,
-    pub view_yew: f32,
+    pub view_yaw: f32,
     pub delta_pitch: f32,
-    pub delta_yew: f32,
+    pub delta_yaw: f32,
     pub delta_pitch_min: f32,
     pub delta_pitch_max: f32,
-    pub delta_yew_min: f32,
-    pub delta_yew_max: f32,
+    pub delta_yaw_min: f32,
+    pub delta_yaw_max: f32,
     pub distance: f32,
 }
 
@@ -89,13 +89,13 @@ impl Default for AimAngles {
             valid: false,
             hitscan: false,
             view_pitch: Default::default(),
-            view_yew: Default::default(),
+            view_yaw: Default::default(),
             delta_pitch: Default::default(),
-            delta_yew: Default::default(),
+            delta_yaw: Default::default(),
             delta_pitch_min: Default::default(),
             delta_pitch_max: Default::default(),
-            delta_yew_min: Default::default(),
-            delta_yew_max: Default::default(),
+            delta_yaw_min: Default::default(),
+            delta_yaw_max: Default::default(),
             distance: Default::default(),
         }
     }
@@ -248,10 +248,11 @@ pub trait AimEntity: Debug + Send + Sync {
     fn is_loot(&self) -> bool;
 }
 
-struct HitScanReport {
-    hit: bool,
-    nearest_hitbox: Option<([f32; 3], ([f32; 3], [f32; 3]))>,
-    nearest_bone_pos: Option<[f32; 3]>,
+#[derive(Debug, Clone)]
+pub struct HitScanReport {
+    pub hit: bool,
+    pub nearest_hitbox: Option<([f32; 3], ([f32; 3], [f32; 3]))>,
+    pub nearest_bone_pos: Option<[f32; 3]>,
 }
 
 impl Aimbot {
@@ -711,7 +712,7 @@ impl Aimbot {
         view_angles: [f32; 3],
         //target_origin: [f32; 3],
         //target_vel: [f32; 3],
-    ) -> (AimAngles, [f32; 3]) {
+    ) -> (AimAngles, HitScanReport, [f32; 3]) {
         let target_origin = target.get_position();
         let target_vel = target.get_abs_velocity();
         let local_origin = from.get_position();
@@ -919,22 +920,23 @@ impl Aimbot {
 
             if target_fov > max_fov {
                 trace!(target_fov, ?delta, "ExceededFOVThreshold");
-                (AimAngles::default(), aim_target)
+                (AimAngles::default(), hitscan, aim_target)
             } else {
                 (
                     AimAngles {
                         valid: true,
                         hitscan: hitscan.hit,
                         view_pitch: view_angles[0],
-                        view_yew: view_angles[1],
+                        view_yaw: view_angles[1],
                         delta_pitch: delta[0],
-                        delta_yew: delta[1],
+                        delta_yaw: delta[1],
                         delta_pitch_min: delta_min[0],
                         delta_pitch_max: delta_max[0],
-                        delta_yew_min: delta_min[1],
-                        delta_yew_max: delta_max[1],
+                        delta_yaw_min: delta_min[1],
+                        delta_yaw_max: delta_max[1],
                         distance,
                     },
+                    hitscan,
                     aim_target,
                 )
             }
@@ -946,7 +948,7 @@ impl Aimbot {
             let target_angle = calc_angle(&view_origin, &target_origin);
             if target_angle[0].abs() > 80.0 {
                 trace!("ExceededPitchThreshold");
-                return (AimAngles::default(), aim_target);
+                return (AimAngles::default(), hitscan, aim_target);
             }
 
             let skynade_angles = ffi::skynade_angle(
@@ -964,7 +966,7 @@ impl Aimbot {
 
             trace!(?view_angles, ?skynade_angles);
             if !skynade_angles.w.is_normal() {
-                return (AimAngles::default(), aim_target);
+                return (AimAngles::default(), hitscan, aim_target);
             }
 
             let target_aim_angles = [
@@ -981,15 +983,16 @@ impl Aimbot {
                     valid: true,
                     hitscan: false,
                     view_pitch: view_angles[0],
-                    view_yew: view_angles[1],
+                    view_yaw: view_angles[1],
                     delta_pitch: delta[0],
-                    delta_yew: delta[1],
+                    delta_yaw: delta[1],
                     delta_pitch_min: delta[0],
                     delta_pitch_max: delta[0],
-                    delta_yew_min: delta[1],
-                    delta_yew_max: delta[1],
+                    delta_yaw_min: delta[1],
+                    delta_yaw_max: delta[1],
                     distance,
                 },
+                hitscan,
                 aim_target,
             )
         }
@@ -1035,13 +1038,13 @@ impl Aimbot {
         } else {
             lock_mod!().triggerbot_cross_hair_ready(
                 aim_angles.view_pitch,
-                aim_angles.view_yew,
+                aim_angles.view_yaw,
                 aim_angles.delta_pitch,
-                aim_angles.delta_yew,
+                aim_angles.delta_yaw,
                 aim_angles.delta_pitch_min,
                 aim_angles.delta_pitch_max,
-                aim_angles.delta_yew_min,
-                aim_angles.delta_yew_max,
+                aim_angles.delta_yaw_min,
+                aim_angles.delta_yaw_max,
                 aim_angles.distance,
                 self.weapon_info.weapon_zoom_fov,
             ) > 0
@@ -1080,8 +1083,8 @@ impl Aimbot {
             ),
             sm.aimbot_smooth_y(
                 self.aim_entity as i64,
-                aim_angles.view_yew,
-                aim_angles.delta_yew,
+                aim_angles.view_yaw,
+                aim_angles.delta_yaw,
                 smooth,
             ),
         )
