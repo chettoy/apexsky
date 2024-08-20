@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_health_bar3d::prelude as hpbar;
 
-use super::{system::game_esp::EspServiceAddr, Blob};
+use super::system::game_esp::EspServiceAddr;
 
 #[derive(Resource)]
 pub(crate) struct TokioRuntime(pub tokio::runtime::Runtime);

@@ -1,12 +1,10 @@
-#![feature(is_none_or)]
-
 mod navigator;
 mod overlay;
 mod pb;
 
 fn main() {
     #[cfg(unix)]
-    if users::get_current_uid() == 0 {
+    if uzers::get_current_uid() == 0 {
         println!("{}", obfstr::obfstr!("Do NOT run it with root privileges!"));
         return;
     }

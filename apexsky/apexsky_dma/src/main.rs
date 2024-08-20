@@ -491,7 +491,7 @@ fn fix_log_permission() {
     use nix::unistd::{Gid, Uid};
     use std::fs;
     use std::os::unix::fs::{chown, MetadataExt};
-    use users::{get_current_uid, get_user_by_uid};
+    use uzers::{get_current_uid, get_user_by_uid};
 
     let current_uid = get_current_uid();
 
