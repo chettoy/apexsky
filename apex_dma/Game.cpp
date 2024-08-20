@@ -670,10 +670,10 @@ void WeaponXEntity::update(uint64_t LocalPlayer) {
   apex_mem.Read<uint64_t>(entitylist + (wephandle << 5), wep_entity);
 
   projectile_speed = 0;
-  apex_mem.Read<float>(wep_entity + offsets.cweaponx_bullet_speed,
+  apex_mem.Read<float>(wep_entity + offsets.weaponx_projectile_launch_speed,
                        projectile_speed);
   projectile_scale = 0;
-  apex_mem.Read<float>(wep_entity + offsets.cweaponx_bullet_scale,
+  apex_mem.Read<float>(wep_entity + offsets.weaponx_projectile_gravity_scale,
                        projectile_scale);
   zoom_fov = 0;
   apex_mem.Read<float>(wep_entity + offsets.weaponx_zoom_fov, zoom_fov);
