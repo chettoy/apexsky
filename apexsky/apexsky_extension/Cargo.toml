@@ -17,17 +17,17 @@ async-channel = "2.3.1"
 async-compression = { version = "0.4.12", features = ["zstdmt", "tokio"] }
 async-trait = "0.1.81"
 deno_ast = { version = "0.41.3", features = ["transpiling"] }
-deno_core = "0.304.0"
+deno_core = "0.306.0"
 hex = "0.4.3"
 indexmap = { version = "2.4.0", features = ["serde"] }
 minify-js = "0.6.0"
 obfstr = "0.4.3"
-oxc = { version = "0.24.3", features = ["codegen", "minifier"] }
+oxc = { version = "0.25.0", features = ["codegen", "minifier"] }
 reqwest = { version = "0.12.7", default-features = false, features = ["charset", "http2", "macos-system-configuration", "json", "rustls-tls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 sha2 = "0.10.8"
 tar = "0.4.41"
 thiserror = "1.0.63"
-tokio = { version = "1.39.3", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 tracing = "0.1.40"

@@ -36,9 +36,9 @@ qapi = { version = "0.14.0", features = ["qmp", "async-tokio-all"] }
 rand = "0.8.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
-tokio = { version = "1.39.3", features = ["full"] }
-tonic = { version = "0.12.1", features = ["zstd", "gzip"] }
-tonic-web = "0.12.1"
+tokio = { version = "1", features = ["full"] }
+tonic = { version = "0.12.2", features = ["zstd", "gzip"] }
+tonic-web = "0.12.2"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }
 tracing-appender = "0.2.3"

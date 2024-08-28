@@ -30,7 +30,7 @@ rand = "0.8.5"
 indexmap = "2.4.0"
 zbus = { version = "4.4.0", default-features = false, features = ["tokio"] }
 thiserror = "1.0.63"
-tokio = { version = "1.39.3", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 chrono = "0.4.38"
 chinese-lunisolar-calendar = "0.2.0"
 obfstr = "0.4.3"

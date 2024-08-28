@@ -19,8 +19,8 @@ wat = "1"
 wasmedge-sdk = { version = "0.14.0", features = ["wasi_nn"], optional = true }
 #wasmer = { version = "4.3.5", optional = true }
 #wasmer-wasix = { version = "0.25.0", optional = true }
-wasmtime = { version = "23.0.2", optional = true }
-wasmtime-wasi = { version = "23.0.2", optional = true }
+wasmtime = { version = "24.0.0", optional = true }
+wasmtime-wasi = { version = "24.0.0", optional = true }
 skyapex-derive = { path = "../skyapex-derive" }
 
 

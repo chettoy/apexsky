@@ -71,7 +71,7 @@ impl PackageManager {
 
             let minify_fn2 = |code_buf: &[u8]| -> anyhow::Result<Vec<u8>> {
                 use oxc::allocator::Allocator;
-                use oxc::codegen::WhitespaceRemover;
+                use oxc::codegen::CodeGenerator;
                 use oxc::minifier::{CompressOptions, Minifier, MinifierOptions};
                 use oxc::parser::Parser;
                 let allocator = Allocator::default();
@@ -102,7 +102,7 @@ impl PackageManager {
                 })
                 .build(&allocator, program);
 
-                let code_out = WhitespaceRemover::new()
+                let code_out = CodeGenerator::new()
                     .with_mangler(ret.mangler)
                     .build(program)
                     .source_text
