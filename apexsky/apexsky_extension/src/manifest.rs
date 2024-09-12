@@ -45,6 +45,11 @@ impl Manifest {
             if api_version.runtime != RUNTIME_API_VERSION {
                 bail!("{}", s!("Unsupported api version"));
             }
+            if api_version.game.as_ref().is_some_and(|v| {
+                ![s!("apexlegends-v3.0.79.51"), s!("apexlegends")].contains(&v.as_str())
+            }) {
+                bail!("{}", s!("Unsupported game version"));
+            }
         }
         for comp in &manifest.components {
             if let Some(t) = &comp.r#type {

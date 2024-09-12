@@ -6,11 +6,11 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 apexsky_proto = { path = "../apexsky/apexsky_proto" }
-buttplug = "8.0.0"
+buttplug = "9.0.1"
 chrono = "0.4.38"
-prost = "0.13.1"
+prost = "0.13.2"
 rand = "0.8.5"
-tokio = { version = "1.39.3", features = ["full"] }
+tokio = { version = "1.40.0", features = ["full"] }
 tonic = { version = "0.12.2", features = ["zstd"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "chrono", "env-filter"] }

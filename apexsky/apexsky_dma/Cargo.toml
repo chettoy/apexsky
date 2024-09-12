@@ -11,7 +11,7 @@ apexsky_extension = { path = "../apexsky_extension" }
 apexsky_kmbox = { path = "../apexsky_kmbox" }
 apexsky_proto = { path = "../apexsky_proto" }
 async-channel = "2.3.1"
-async-trait = "0.1.81"
+async-trait = "0.1.82"
 bitset-core = "0.1.1"
 chrono = "0.4.38"
 #console-subscriber = "0.1.5"
@@ -23,7 +23,7 @@ fakeit = "1.3.0"
 futures-util = "0.3.30"
 hex = "0.4.3"
 include-flate = "0.3.0"
-indexmap = "2.4.0"
+indexmap = "2.5.0"
 intptr = { version = "0.1.6", features = ["dataview_1", "serde"] }
 itertools = "0.13.0"
 named_constants = "0.2.0"
@@ -31,8 +31,8 @@ ndarray = "0.16.1"
 obfstr = "0.4.3"
 once_cell = "1.19.0"
 parking_lot = { version = "0.12.3", features = ["nightly"] }
-prost = "0.13.1"
-qapi = { version = "0.14.0", features = ["qmp", "async-tokio-all"] }
+prost = "0.13.2"
+qapi = { version = "0.15.0", features = ["qmp", "async-tokio-all"] }
 rand = "0.8.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }

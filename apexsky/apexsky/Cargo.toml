@@ -14,7 +14,7 @@ libc = "0.2.158"
 config = { version = "0.14", default-features = false, features = ["toml"] }
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
-ratatui = { version = "0.28.0", features = ["all-widgets", "serde"] }
+ratatui = { version = "0.28.1", features = ["all-widgets", "serde"] }
 crossterm = "0.28.1"
 anyhow = "1.0"
 fluent = "0.16.1"
@@ -27,7 +27,7 @@ unicode-width = "0.1.13"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 entropy = "0.4.2"
 rand = "0.8.5"
-indexmap = "2.4.0"
+indexmap = "2.5.0"
 zbus = { version = "4.4.0", default-features = false, features = ["tokio"] }
 thiserror = "1.0.63"
 tokio = { version = "1", features = ["full"] }

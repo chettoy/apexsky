@@ -80,7 +80,7 @@ impl MemProcFsOs {
 }
 
 impl super::MemOs for MemProcFsOs {
-    fn open_proc<'a>(&'a mut self, name: String) -> anyhow::Result<super::MemProcImpl> {
+    fn open_proc<'a>(&'a mut self, name: String) -> anyhow::Result<super::MemProcImpl<'a>> {
         let process = self.vmm.process_from_name(&name)?;
 
         if let Ok(procinfo) = process.info() {

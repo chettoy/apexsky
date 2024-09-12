@@ -31,12 +31,12 @@ impl Buttons {
             data.in_duck + 0,
             data.in_duck + 4,
             data.in_duck + 8,
-            data.in_reload + 0,
-            data.in_reload + 4,
-            data.in_reload + 8,
-            data.in_use + 0,
-            data.in_use + 4,
-            data.in_use + 8,
+            // data.in_reload + 0,
+            // data.in_reload + 4,
+            // data.in_reload + 8,
+            // data.in_use + 0,
+            // data.in_use + 4,
+            // data.in_use + 8,
             data.in_zoom + 0,
             data.in_zoom + 4,
             data.in_zoom + 8,
@@ -62,17 +62,27 @@ impl Buttons {
             )
             .await
         {
-            let fields = dataview::DataView::from(fields).read::<[sdk::kbutton_t; 10]>(0);
+            // let fields = dataview::DataView::from(fields).read::<[sdk::kbutton_t; 10]>(0);
+            // self.in_attack = fields[0];
+            // self.in_jump = fields[1];
+            // self.in_duck = fields[2];
+            // self.in_reload = fields[3];
+            // self.in_use = fields[4];
+            // self.in_zoom = fields[5];
+            // self.in_forward = fields[6];
+            // self.in_backward = fields[7];
+            // self.in_moveleft = fields[8];
+            // self.in_moveright = fields[9];
+
+            let fields = dataview::DataView::from(fields).read::<[sdk::kbutton_t; 8]>(0);
             self.in_attack = fields[0];
             self.in_jump = fields[1];
             self.in_duck = fields[2];
-            self.in_reload = fields[3];
-            self.in_use = fields[4];
-            self.in_zoom = fields[5];
-            self.in_forward = fields[6];
-            self.in_backward = fields[7];
-            self.in_moveleft = fields[8];
-            self.in_moveright = fields[9];
+            self.in_zoom = fields[3];
+            self.in_forward = fields[4];
+            self.in_backward = fields[5];
+            self.in_moveleft = fields[6];
+            self.in_moveright = fields[7];
         }
     }
 }

@@ -6,7 +6,7 @@ use apexsky_proto::pb::{
 use buttplug::{
     client::{ButtplugClient, ScalarValueCommand},
     core::{
-        connector::new_json_ws_client_connector, message::ClientGenericDeviceMessageAttributes,
+        connector::new_json_ws_client_connector, message::ClientGenericDeviceMessageAttributesV3,
     },
 };
 use tokio::time::sleep;
@@ -52,7 +52,7 @@ async fn main() -> anyhow::Result<()> {
     let device = &device_client.devices()[0];
 
     {
-        fn print_attrs(attrs: &Vec<ClientGenericDeviceMessageAttributes>) {
+        fn print_attrs(attrs: &Vec<ClientGenericDeviceMessageAttributesV3>) {
             for attr in attrs {
                 println!(
                     "{}: {} - Steps: {}",

@@ -292,7 +292,7 @@ where
         self
     }
 
-    pub fn add_item<F, T>(mut self, item: ListItem<'a>, handler: F, state: T) -> MenuBuilder<L>
+    pub fn add_item<F, T>(mut self, item: ListItem<'a>, handler: F, state: T) -> MenuBuilder<'a, L>
     where
         F: FnOnce(&mut TerminalMenu, T) -> Option<String> + Clone + 'static,
         T: Clone + 'static,
@@ -338,7 +338,7 @@ where
         item: ListItem<'a>,
         handler: F,
         state: T,
-    ) -> MenuBuilder<L>
+    ) -> MenuBuilder<'a, L>
     where
         F: FnOnce(&mut TerminalMenu, T) -> Option<String> + Clone + 'static,
         T: Clone + 'static,

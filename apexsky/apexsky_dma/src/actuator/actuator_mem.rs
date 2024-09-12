@@ -88,6 +88,11 @@ impl MemAimHelper {
         apex_base: u64,
         force_attack_state: i32,
     ) -> anyhow::Result<()> {
+        // TODO: Offset not updated
+        if G_OFFSETS.in_attack == 0 {
+            return Ok(());
+        }
+
         AccessType::mem_write_typed::<i32>(
             apex_base + G_OFFSETS.in_attack + 0x8,
             &force_attack_state,
@@ -104,6 +109,11 @@ impl MemAimHelper {
         apex_base: u64,
         force_use_state: i32,
     ) -> anyhow::Result<()> {
+        // TODO: Offset not updated
+        if G_OFFSETS.in_use == 0 {
+            return Ok(());
+        }
+
         AccessType::mem_write_typed::<i32>(apex_base + G_OFFSETS.in_use + 0x8, &force_use_state, 0)
             .with_priority(50)
             .dispatch(mem)
