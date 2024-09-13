@@ -156,11 +156,19 @@ impl Entity for BaseNPCEntity {
                 f32::from_bits(fields.origin[1]),
                 f32::from_bits(fields.origin[2]),
             ];
+            if self.origin[0].is_nan() || self.origin[1].is_nan() || self.origin[2].is_nan() {
+                tracing::warn!(?self.origin);
+            }
+
             self.angles = [
                 f32::from_bits(fields.origin[3]),
                 f32::from_bits(fields.origin[4]),
                 f32::from_bits(fields.origin[5]),
             ];
+            if self.angles[0].is_nan() || self.angles[1].is_nan() || self.angles[2].is_nan() {
+                tracing::warn!(?self.angles);
+            }
+
             let estvel = self.derivative_origin.update(ctx.time, self.origin, 0.1);
             self.velocity = estvel;
 

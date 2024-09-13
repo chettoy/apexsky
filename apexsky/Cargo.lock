@@ -7906,11 +7906,10 @@ checksum = "955d28af4278de8121b7ebeb796b6a45735dc01436d898801014aced2773a3d6"
 
 [[package]]
 name = "ruzstd"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c8b8f3d26bd9f945e5cbae77f7cdfbf37af9a66956f1115eb4516e45df519f4"
+checksum = "99c3938e133aac070997ddc684d4b393777d293ba170f2988c8fd5ea2ad4ce21"
 dependencies = [
- "byteorder",
  "twox-hash",
 ]
 
@@ -8149,9 +8148,9 @@ dependencies = [
 
 [[package]]
 name = "serial2"
-version = "0.2.26"
+version = "0.2.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f39915da34f43a64c66d53c228b8ba9a4e21fed4894af24304e47f96996acafd"
+checksum = "cfe881b4dcdd6996fb8d3cbfc3ee37286222b36fb6c789e8604b67360120aa99"
 dependencies = [
  "cfg-if",
  "libc",

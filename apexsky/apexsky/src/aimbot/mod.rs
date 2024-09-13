@@ -921,6 +921,18 @@ impl Aimbot {
             if target_fov > max_fov {
                 trace!(target_fov, ?delta, "ExceededFOVThreshold");
                 (AimAngles::default(), hitscan, aim_target)
+            } else if delta[0].is_nan() || delta[1].is_nan() {
+                tracing::error!(
+                    ?delta,
+                    ?delta_min,
+                    ?delta_max,
+                    ?view_angles,
+                    ?calculated_angles_min,
+                    ?calculated_angles_max,
+                    ?sway_angles,
+                    ?camera_origin
+                );
+                (AimAngles::default(), hitscan, aim_target)
             } else {
                 (
                     AimAngles {
@@ -978,7 +990,18 @@ impl Aimbot {
 
             let mut delta = math::sub(target_aim_angles, view_angles);
             normalize_delta_angles(&mut delta);
-            (
+
+            let aim_angles = if delta[0].is_nan() || delta[1].is_nan() || delta[2].is_nan() {
+                tracing::error!(
+                    ?delta,
+                    ?target_aim_angles,
+                    ?view_angles,
+                    ?skynade_angles,
+                    ?view_origin,
+                    ?target_origin
+                );
+                AimAngles::default()
+            } else {
                 AimAngles {
                     valid: true,
                     hitscan: false,
@@ -991,10 +1014,9 @@ impl Aimbot {
                     delta_yaw_min: delta[1],
                     delta_yaw_max: delta[1],
                     distance,
-                },
-                hitscan,
-                aim_target,
-            )
+                }
+            };
+            (aim_angles, hitscan, aim_target)
         }
     }
 
@@ -1073,21 +1095,27 @@ impl Aimbot {
             self.settings.smooth
         } / smooth_factor;
 
-        let mut sm = lock_mod!();
-        (
-            sm.aimbot_smooth_x(
-                self.aim_entity as i64,
-                aim_angles.view_pitch,
-                aim_angles.delta_pitch,
-                smooth,
-            ),
-            sm.aimbot_smooth_y(
-                self.aim_entity as i64,
-                aim_angles.view_yaw,
-                aim_angles.delta_yaw,
-                smooth,
-            ),
-        )
+        let smoothed = {
+            let mut sm = lock_mod!();
+            (
+                sm.aimbot_smooth_x(
+                    self.aim_entity as i64,
+                    aim_angles.view_pitch,
+                    aim_angles.delta_pitch,
+                    smooth,
+                ),
+                sm.aimbot_smooth_y(
+                    self.aim_entity as i64,
+                    aim_angles.view_yaw,
+                    aim_angles.delta_yaw,
+                    smooth,
+                ),
+            )
+        };
+        if smoothed.0.is_nan() || smoothed.1.is_nan() {
+            tracing::warn!(?aim_angles, ?smoothed);
+        }
+        smoothed
     }
 }
 

@@ -135,11 +135,14 @@ impl AimActuator for MemAimActuator<'_> {
                 if let Some(delta) = action.shift_angles {
                     // calc and check target view angles
                     let mut update_angles = math::add(self.view_angles, delta);
-                    if update_angles[0].abs() > 360.0
+                    if update_angles[0].is_nan()
+                        || update_angles[1].is_nan()
+                        || update_angles[2].is_nan()
+                        || update_angles[0].abs() > 360.0
                         || update_angles[1].abs() > 360.0
                         || update_angles[2].abs() > 360.0
                     {
-                        tracing::warn!(?update_angles, "{}", s!("got invalid target view_angles"));
+                        tracing::warn!(?update_angles, ?self.view_angles, ?delta, "{}", s!("got invalid target view_angles"));
                         anyhow::bail!("{}", s!("got invalid target view_angles"))
                     }
                     normalize_angles(&mut update_angles);

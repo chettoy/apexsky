@@ -37,14 +37,20 @@ pub fn skynade_angle(
 
     let calc_angle = if lob { lob_angle } else { optimal_angle };
     trace!(dx, dy, v0, g);
-    if let Some(launch_pitch) = calc_angle(dx, dy, v0, g) {
-        let view_pitch = pitches::launch2view(pitches, launch_pitch);
-        let view_yew = math::qangle(math::sub(*target, *local_view_origin))[1].to_radians();
-        trace!(view_pitch, view_yew);
-        return Some((view_pitch, view_yew));
-    } else {
+    let Some(launch_pitch) = calc_angle(dx, dy, v0, g) else {
+        return None;
+    };
+
+    let view_pitch = pitches::launch2view(pitches, launch_pitch);
+    let view_yaw = math::qangle(math::sub(*target, *local_view_origin))[1].to_radians();
+
+    if view_pitch.is_nan() || view_yaw.is_nan() {
+        tracing::warn!(view_pitch, view_yaw, launch_pitch, dx, dy, v0, g);
         return None;
     }
+
+    trace!(view_pitch, view_yaw);
+    return Some((view_pitch, view_yaw));
 
     fn optimal_angle(x: f32, y: f32, v0: f32, g: f32) -> Option<f32> {
         let root = v0 * v0 * v0 * v0 - g * (g * x * x + 2.0 * y * v0 * v0);

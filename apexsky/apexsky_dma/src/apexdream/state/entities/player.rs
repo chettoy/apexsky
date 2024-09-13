@@ -463,21 +463,21 @@ impl Entity for PlayerEntity {
                 return;
             }
 
-            self.origin = [
+            self.origin = validate_vec3([
                 f32::from_bits(fields.origin[0]),
                 f32::from_bits(fields.origin[1]),
                 f32::from_bits(fields.origin[2]),
-            ];
-            self.angles = [
+            ]);
+            self.angles = validate_vec3([
                 f32::from_bits(fields.origin[3]),
                 f32::from_bits(fields.origin[4]),
                 f32::from_bits(fields.origin[5]),
-            ];
-            self.velocity = [
+            ]);
+            self.velocity = validate_vec3([
                 f32::from_bits(fields.velocity[0]),
                 f32::from_bits(fields.velocity[1]),
                 f32::from_bits(fields.velocity[2]),
-            ];
+            ]);
 
             let estvel = self.derivative_origin.update(ctx.time, self.origin, 0.1);
             if self.velocity == [0.0; 3] {
@@ -533,38 +533,48 @@ impl Entity for PlayerEntity {
             };
             self.team_color = team_color;
 
-            self.camera_origin = [
+            self.camera_origin = validate_vec3([
                 f32::from_bits(fields.camera[0]),
                 f32::from_bits(fields.camera[1]),
                 f32::from_bits(fields.camera[2]),
-            ];
-            self.camera_angles = [
+            ]);
+            self.camera_angles = validate_vec3([
                 f32::from_bits(fields.camera[3]),
                 f32::from_bits(fields.camera[4]),
                 f32::from_bits(fields.camera[5]),
-            ];
+            ]);
 
             self.time_base = f32::from_bits(fields.time_base);
+            if self.time_base.is_subnormal() {
+                tracing::warn!(self.time_base);
+            }
 
-            self.server_angles[0] = f32::from_bits(fields.server_angles[0]);
-            self.server_angles[1] = f32::from_bits(fields.server_angles[1]);
-            self.server_angles[2] = f32::from_bits(fields.server_angles[2]);
+            self.server_angles = validate_vec3([
+                f32::from_bits(fields.server_angles[0]),
+                f32::from_bits(fields.server_angles[1]),
+                f32::from_bits(fields.server_angles[2]),
+            ]);
+            self.breath_angles = validate_vec3([
+                f32::from_bits(fields.breath_angles[0]),
+                f32::from_bits(fields.breath_angles[1]),
+                f32::from_bits(fields.breath_angles[2]),
+            ]);
+            self.view_angles = validate_vec3([
+                f32::from_bits(fields.view_angles[0]),
+                f32::from_bits(fields.view_angles[1]),
+                f32::from_bits(fields.view_angles[2]),
+            ]);
+            self.weapon_punch = validate_vec3([
+                f32::from_bits(fields.weapon_punch[0]),
+                f32::from_bits(fields.weapon_punch[1]),
+                f32::from_bits(fields.weapon_punch[2]),
+            ]);
 
-            self.breath_angles[0] = f32::from_bits(fields.breath_angles[0]);
-            self.breath_angles[1] = f32::from_bits(fields.breath_angles[1]);
-            self.breath_angles[2] = f32::from_bits(fields.breath_angles[2]);
-            self.view_angles[0] = f32::from_bits(fields.view_angles[0]);
-            self.view_angles[1] = f32::from_bits(fields.view_angles[1]);
-            self.view_angles[2] = f32::from_bits(fields.view_angles[2]);
-            self.weapon_punch[0] = f32::from_bits(fields.weapon_punch[0]);
-            self.weapon_punch[1] = f32::from_bits(fields.weapon_punch[1]);
-            self.weapon_punch[2] = f32::from_bits(fields.weapon_punch[2]);
-
-            self.view_offset = [
+            self.view_offset = validate_vec3([
                 f32::from_bits(fields.view[0]),
                 f32::from_bits(fields.view[1]),
                 f32::from_bits(fields.view[2]),
-            ];
+            ]);
             self.view_origin = sdk::add(self.origin, self.view_offset);
 
             dataview::bytes_mut(&mut self.consumables)
@@ -668,6 +678,16 @@ impl Entity for PlayerEntity {
             self.tmp_last_vischeck_time = ctx.time;
         }
     }
+}
+
+#[track_caller]
+#[instrument]
+fn validate_vec3(val: [f32; 3]) -> [f32; 3] {
+    if val[0].is_nan() || val[1].is_nan() || val[2].is_nan() {
+        let caller = std::panic::Location::caller();
+        tracing::warn!(?val, ?caller);
+    }
+    val
 }
 
 // Little hack to keep colors in sync everywhere

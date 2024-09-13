@@ -246,6 +246,15 @@ impl Entity for WeaponXEntity {
             self.projectile_speed = f32::from_bits(fields.projectile[0]);
             self.projectile_scale = f32::from_bits(fields.projectile[1]);
             self.projectile_air_fiction = f32::from_bits(fields.projectile[2]);
+
+            if !(self.ammo_clip_size >= -1 && self.ammo_clip_size <= 999) {
+                tracing::warn!(
+                    self.ammo_clip_size,
+                    self.projectile_speed,
+                    self.projectile_scale,
+                    ?self
+                );
+            }
         }
 
         self.update_rate = if self.weapon_owner == ctx.local_entity {
