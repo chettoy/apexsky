@@ -204,7 +204,6 @@ pub(crate) fn follow_game_state(
     mut materials: ResMut<Assets<StandardMaterial>>,
     show_entity_ball: Res<ShowEntityBall>,
     esp_system: Option<ResMut<EspSystem>>,
-    mut windows: Query<&mut Window>,
     mut query_camera: Query<
         (&mut Projection, &mut Transform),
         (
@@ -245,19 +244,8 @@ pub(crate) fn follow_game_state(
     };
 
     if let Some(esp_settings) = fresh_data.new_esp_settings.take() {
-        let screen_wh = (
-            esp_settings.screen_width as f32,
-            esp_settings.screen_height as f32,
-        );
         esp_system.esp_settings = esp_settings;
         esp_system.last_settings_fetch_time = Some(Instant::now());
-
-        let mut window = windows.single_mut();
-        if (window.resolution.width() - screen_wh.0).abs() > f32::EPSILON
-            || (window.resolution.height() - screen_wh.1).abs() > f32::EPSILON
-        {
-            window.resolution = screen_wh.into();
-        }
     }
     if let Some(loots_data) = fresh_data.new_esp_loots.take() {
         esp_system.esp_loots = loots_data;

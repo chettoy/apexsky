@@ -182,6 +182,7 @@ pub fn ui_system(
     mut ui_state: ResMut<UiState>,
     mut show_entity_ball: ResMut<ShowEntityBall>,
     mut esp_system: Option<ResMut<EspSystem>>,
+    mut windows: Query<&mut Window>,
     time: Res<Time>,
     diagnostics: Res<DiagnosticsStore>,
     blobs: Res<Assets<Blob>>,
@@ -218,6 +219,19 @@ pub fn ui_system(
             ctx.set_fonts(egui_fonts);
 
             commands.remove_resource::<embedded::FontBlob>();
+        }
+    }
+
+    if let Some(esp_settings) = esp_system.as_ref().map(|v| v.get_esp_settings()) {
+        let screen_wh = (
+            esp_settings.screen_width as f32,
+            esp_settings.screen_height as f32,
+        );
+        let mut window = windows.single_mut();
+        if (window.resolution.width() - screen_wh.0).abs() > f32::EPSILON
+            || (window.resolution.height() - screen_wh.1).abs() > f32::EPSILON
+        {
+            window.resolution = screen_wh.into();
         }
     }
 
