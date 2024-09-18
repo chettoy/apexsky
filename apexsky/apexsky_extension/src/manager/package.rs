@@ -87,6 +87,7 @@ impl PackageManager {
                     mangle: true,
                     compress: CompressOptions {
                         remove_syntax: true,
+                        minimize_conditions: true,
                         substitute_alternate_syntax: true,
                         fold_constants: true,
                         remove_dead_code: true,
