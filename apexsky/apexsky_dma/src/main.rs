@@ -183,7 +183,12 @@ impl TaskManager for State {
             std::thread::spawn(move || {
                 use apexsky_dmalib::access::io_thread;
                 use apexsky_dmalib::AccessError;
-                match io_thread(active_rx, access_rx, choose_connector()) {
+                match io_thread(
+                    active_rx,
+                    access_rx,
+                    choose_connector(),
+                    choose_target_process(),
+                ) {
                     Ok(_) => Ok(()),
                     Err(e) => match e {
                         AccessError::Connector(connector, e) => {
@@ -436,6 +441,16 @@ fn choose_connector() -> MemConnector {
         return MemConnector::PCILeech(args[2].clone());
     }
     MemConnector::PCILeech(s!("fpga").to_string())
+}
+
+#[instrument]
+fn choose_target_process() -> String {
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().find(|&x| x == s!("dx12")).is_some() {
+        s!("r5apex_dx12.exe").to_string()
+    } else {
+        s!("r5apex.exe").to_string()
+    }
 }
 
 pub fn press_to_exit() {

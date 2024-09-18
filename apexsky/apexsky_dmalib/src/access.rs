@@ -141,6 +141,7 @@ pub fn io_thread(
     active: watch::Receiver<bool>,
     access_rx: crossbeam_channel::Receiver<PriorityAccess>,
     mem_connector: crate::mem::MemConnector,
+    target_proc_name: String,
 ) -> Result<(), AccessError> {
     tracing::debug!("{}", s!("task start"));
 
@@ -192,8 +193,8 @@ pub fn io_thread(
             }
         }
 
-        // Find game process
-        let Some(mut mem) = find_game_process(&mut mem_os) else {
+        // Find process
+        let Some(mut mem) = find_target_process(&mut mem_os, target_proc_name.to_owned()) else {
             accessible = false;
             sleep_until(start_instant + Duration::from_secs(2));
             continue;
@@ -506,15 +507,12 @@ fn create_os_instance(connector: MemConnector) -> anyhow::Result<MemOsImpl> {
     }
 }
 
-fn find_game_process(mem_os: &mut MemOsImpl) -> Option<MemProcImpl<'_>> {
-    tracing::info!(parent: None, "{}", s!("Searching for apex process..."));
-    mem_os
-        .open_proc(s!("r5apex.exe").to_string())
-        .map(Some)
-        .unwrap_or_else(|e| {
-            tracing::trace!(?e, "{}", s!("open_proc"));
-            None
-        })
+fn find_target_process(mem_os: &mut MemOsImpl, proc_name: String) -> Option<MemProcImpl<'_>> {
+    tracing::info!(parent: None, "{}", s!("Searching for process..."));
+    mem_os.open_proc(proc_name).map(Some).unwrap_or_else(|e| {
+        tracing::trace!(?e, "{}", s!("open_proc"));
+        None
+    })
 }
 
 impl PartialEq for PriorityAccess {
