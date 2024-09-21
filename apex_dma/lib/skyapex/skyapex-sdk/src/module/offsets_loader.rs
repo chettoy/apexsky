@@ -97,8 +97,6 @@ import_custom_offsets!({
     entiry_name,
     entity_sign_name,
     entity_fade_dist,
-    bone_follower_model_index,
-    bone_follower_bone_index,
     collision_property_vec_mins,
     collision_property_vec_maxs,
     animating_skin,

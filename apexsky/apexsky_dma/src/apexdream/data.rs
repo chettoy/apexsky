@@ -61,8 +61,6 @@ pub struct GameData {
     pub animating_bone_array: u32, // m_bSequenceFinished - 0x1C
     pub animating_studiohdr: u32,  // m_flModelScale + 0x1D0
 
-    pub bone_follower_model_index: u32,
-    pub bone_follower_bone_index: u32,
     pub collision_property_vec_mins: u32,
     pub collision_property_vec_maxs: u32,
 
@@ -171,8 +169,6 @@ impl Default for GameData {
             animating_skin: G_OFFSETS.animating_skin.try_into().unwrap(),
             animating_bone_array: G_OFFSETS.animating_bone_array.try_into().unwrap(),
             animating_studiohdr: G_OFFSETS.animating_studiohdr.try_into().unwrap(),
-            bone_follower_model_index: G_OFFSETS.bone_follower_model_index.try_into().unwrap(),
-            bone_follower_bone_index: G_OFFSETS.bone_follower_bone_index.try_into().unwrap(),
             collision_property_vec_mins: G_OFFSETS.collision_property_vec_mins.try_into().unwrap(),
             collision_property_vec_maxs: G_OFFSETS.collision_property_vec_maxs.try_into().unwrap(),
             bcc_next_attack: G_OFFSETS.bcc_next_attack.try_into().unwrap(),

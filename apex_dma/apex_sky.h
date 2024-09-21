@@ -354,8 +354,6 @@ typedef struct {
   uintptr_t entiry_name;
   uintptr_t entity_sign_name;
   uintptr_t entity_fade_dist;
-  uintptr_t bone_follower_model_index;
-  uintptr_t bone_follower_bone_index;
   uintptr_t collision_property_vec_mins;
   uintptr_t collision_property_vec_maxs;
   uintptr_t animating_skin;
