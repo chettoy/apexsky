@@ -41,7 +41,6 @@ Game version: v3.0.80.27
 
  **Features**
 
-* Inherits all features from apex_dma_kvm_pub.
 * **Aimbot** with Improved target locking.
 * Sky Grenade feature
 * Advanced targeting options with various bone selection effects.
@@ -65,6 +64,24 @@ Game version: v3.0.80.27
 * **Offsets Loader:** Supports dynamic loading of offsets from offsets.ini file, making it convenient to keep up with game version updates.
 * **Multilingual Support:** Supports multilingual functionality for global accessibility.
 
+
+
+**Overlay Features**
+
+| apexsky_overlay                   | 🐧Linux | 🪟Windows | 🌐Web | Shareable to teammates |
+| --------------------------------- | ------ | -------- | ---- | ---------------------- |
+| player and health bar ESP         | ✅      | ✅        | ✅    | ✅                      |
+| mini-map radar                    | ✅      | ✅        | ✅    | ✅                      |
+| show player box and skeleton      | ✅      | ✅        | ✅    | 🚧                      |
+| show nearby loots and death boxes | ✅      | ✅        | ✅    | 🚧                      |
+| aiming target indicator           | ✅      | ✅        | ✅    | ❌                      |
+| fps display                       | ✅      | ✅        | ✅    | ❌                      |
+| spectator list                    | ✅      | ✅        | ✅    | 🚧                      |
+| teammate damage list              | ✅      | ✅        | ✅    | ✅                      |
+| voice navigator (callouts)        | ✅      | ✅        | ✅    | 🚧                      |
+
+
+
 Please star if you like it.
 Look forward to your testing and feedback.
 
@@ -75,6 +92,17 @@ Look forward to your testing and feedback.
 
 
 ### Usage
+
+
+
+|                        | 🎮Game Device                | 2️⃣econd Device               | note                                              |
+| ---------------------- | --------------------------- | --------------------------- | ------------------------------------------------- |
+| 🎮🖥💻+DMA+2️⃣🖥💻            | clean✅                      | apexsky_dma+apexsky_overlay |                                                   |
+| 2️⃣🐧(Host)+🎮(VM)         | clean✅                      | apexsky_dma+apexsky_overlay | Requires dual GPU                                 |
+| 2️⃣🐧(Host, no GPU)+🎮(VM) | clean✅                      | apexsky_dma                 | No overlay                                        |
+| 2️⃣🐧(Host, no GPU)+🎮(VM) | apexsky_overlay             | apexsky_dma                 | Overlay can be detected                           |
+| 2️⃣🐧(Host, no GPU)+🎮(VM) | apexsky_overlay🌐 in browser | apexsky_dma                 | Difficulty in displaying the graphics on the game |
+| 🎮🐧                     | apexsky_dma+apexsky_overlay |                             | Not recommended                                   |
 
 
 
@@ -118,50 +146,43 @@ There are really only two steps:
 
 
 
-### Overlay (optional)
+**Overlay (optional):**
 
-First ensure that the ESP service is enabled, either by enabling it in the menu or by editing the settings file.
+ESP is now implemented as a stand-alone program. The official `apexsky_overlay` currently supports Linux/Windows/Web platforms.
 
-ESP is now implemented as a stand-alone program and is currently available for the Linux/Windows/Web platform.
-
-The official `apexsky_overlay` currently supports Linux/Windows/Web platforms, all of which are interoperable and can be connected remotely. You can also choose or write your own preferred overlay.
-
-`apexsky_overlay` supports mini-map radar (supports teammate perspective), health bars (supports teammate perspective), displays player boxes and skeletons, displays nearby loot and death boxes, and more.
+You can choose `apexsky_overlay` for any platform or use them both. You can also write your own unofficial overlay program.
 
 * Linux
 
      ```bash
      ./apexsky_overlay
      ```
-     
-     Recommended for **non-**single GPU passthrough users, so that both `apexsky_overlay` and `apexsky` run outside the virtual machine.
-     
-     Suitable for Linux players, but not guaranteed to be undetected.
 
 * Windows
 
-  `apexsky_overlay.exe`
-
-  Recommended for DMA users paired with an Video Synthesizer on a secondary machine.
-
-  Can also be used inside a virtual machine, but not guaranteed to be undetected.
+  ````shell
+  apexsky_overlay.exe
+  ````
 
 * Web
 
   Access via browser at https://chettoy.github.io/apexsky/
 
-  Recommended for use on tablets or shared with teammates via LAN.
-
-  Also serves as a backup option.
 
 
+> [!NOTE]
+> If you are using a resolution other than 1920x1080, save the configuration and then modify the `screen_width` and `screen_height` in settings.toml and reload the configuration.
 
-Additional information:
+> [!NOTE]
+> The default setting only allows connections from localhost. If remote access is required, you need to expose the ESP service port on the network. The listening address can be viewed and edited in settings.toml.
 
-1. Please put the overlay window on the top of the VM screen after start. For example, on top of the looking-glass window.
-2. For a better experience, please passthrough your keyboard, mouse or controller into the VM.
-3. ~~Press Insert to open the Overlay menu.~~ Press and hold the Insert key to temporarily interact with the overlay.
-4. If you are using a resolution other than 1080p, save the configuration and then modify the `screen_width` and `screen_height` in *settings.toml* and reload the configuration.
+To use overlay, first ensure that the ESP service is enabled, either by enabling it in the menu or by editing the settings file.
+
+You can then connect overlay running on any platforms to apexsky's ESP service.
+
+~~Press Insert to open the Overlay menu.~~ Press and hold the Insert key to temporarily interact with the overlay.
+
+Click the `Connection` button to display the address bar, and then click again to connect to the ESP service.
 
 
 
@@ -169,8 +190,9 @@ Additional information:
 
 To install DLCs:
 
-1. Place the `.spk` DLC package into the `dlc` folder within the same directory.
-2. Navigate to the DLC menu and install DLCs.
+1. Create a `dlc` folder in the same directory.
+2. Place the `.spk` DLC package into the `dlc` folder.
+3. Navigate to the DLC menu and install DLCs.
 
 
 
@@ -206,8 +228,8 @@ To install DLCs:
 
 **Requirements:**
 
-* ~~C++ toolchain~~
 * Rust toolchain
+* Clang
 * ~~CMake~~
 * Git
 * Protoc (protobuf)
@@ -255,17 +277,12 @@ cargo build --release
 
 ## FAQ
 
-1. Many people are using a single GPU
-
-    > If there is only one GPU and the linux host can't be displayed after  starting the VM, you can still use features other than the overlay.
-    > In this case you will not be able to use only the overlay-dependent features such as the mini-map radar, health shield bars, spectator list, etc. But all other features such as player glow, terminal menu and aimbot will still work.
-    
-2. It seems that the client is still reading the values required for the esp stuff. If AC is looking for access on those specific memory locations, then IDK if just removing the implementation of the overlay will work in  terms of preventing detection. Or is AC simply detecting the presence of the overlay/client itself, and banning due to that?
+1. It seems that the client is still reading the values required for the ESP stuff. If AC is looking for access on those specific memory locations, then IDK if just removing the implementation of the overlay will work in  terms of preventing detection. Or is AC simply detecting the presence of the overlay/client itself, and banning due to that?
 
     > First of all, everything related to game state is realized by *access on those specific memory locations*. So we need to use DMA or VM techniques to access memory covertly.
-    > AC detects the overlay client, so we re-implement the overlay outside the VM and remove the client.
+    > AC detects the overlay client, so we re-implement the overlay outside the game device and remove the client.
 
-3. How to load new offsets after a game update
+2. How to load new offsets after a game update
 
     > Place a updated offsets.ini in the same directory to automatically load the new offsets instead of the built-in offsets.
     > This may not always be enough to keep up with changes in game updates, but for the most part this will allow play to continue.
