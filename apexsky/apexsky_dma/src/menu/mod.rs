@@ -14,6 +14,7 @@ use apexsky::{
 use crossterm::event::{KeyCode, MouseEvent};
 use dlc_list::Data;
 use obfstr::obfstr as s;
+use regex::Regex;
 use tokio::sync::oneshot;
 
 use crate::{usermod_thr::UserModEvent, USERMOD_TX};
@@ -27,6 +28,7 @@ pub enum CustomMenuLevel {
     ApexskyMenu,
     MainMenu,
     DlcMenu,
+    DeveloperMenu,
 }
 
 impl Into<Box<dyn MenuState>> for CustomMenuLevel {
@@ -35,6 +37,7 @@ impl Into<Box<dyn MenuState>> for CustomMenuLevel {
             CustomMenuLevel::ApexskyMenu => Box::new(build_menu()),
             CustomMenuLevel::MainMenu => apex_menu::MenuLevel::MainMenu.into(),
             CustomMenuLevel::DlcMenu => DlcMenu::build(),
+            CustomMenuLevel::DeveloperMenu => DeveloperMenu::build(),
         }
     }
 }
@@ -80,6 +83,14 @@ pub fn build_menu() -> GeneralMenu<'static, CustomMenuLevel> {
             },
             (),
         )
+        .add_item(
+            item_text(format!("{}", "")),
+            |ctx, _| {
+                ctx.nav_menu(CustomMenuLevel::DeveloperMenu);
+                None
+            },
+            (),
+        )
         .into()
 }
 
@@ -109,7 +120,7 @@ impl MenuState for DlcMenu {
         self.install_view = state.install_view;
     }
 
-    fn resize(&mut self, scroll_height: usize) {}
+    fn resize(&mut self, _scroll_height: usize) {}
 
     fn nav_up(&mut self) {
         if let Some(install_view) = self.install_view.as_mut() {
@@ -127,15 +138,15 @@ impl MenuState for DlcMenu {
         }
     }
 
-    fn nav_jump(&mut self, num: usize) {}
+    fn nav_jump(&mut self, _num: usize) {}
 
-    fn nav_mouse(&mut self, mouse: MouseEvent) {}
+    fn nav_mouse(&mut self, _mouse: MouseEvent) {}
 
     fn nav_click(
         &mut self,
-        ctx: &mut apexsky::menu::apexsky_menu::TerminalMenu,
-        col: u16,
-        row: u16,
+        _ctx: &mut apexsky::menu::apexsky_menu::TerminalMenu,
+        _col: u16,
+        _row: u16,
     ) {
     }
 
@@ -193,7 +204,7 @@ impl MenuState for DlcMenu {
         true
     }
 
-    fn update_menu(&mut self, ctx: &mut apexsky::menu::apexsky_menu::TerminalMenu) {}
+    fn update_menu(&mut self, _ctx: &mut apexsky::menu::apexsky_menu::TerminalMenu) {}
 
     fn render(&mut self, f: &mut ratatui::Frame) {
         if let Some(install_view) = self.install_view.as_mut() {
@@ -227,7 +238,7 @@ fn install(data: &mut Data) -> Option<String> {
     );
     if apexsky::save_settings() {
         data.set_installed(true);
-        let Some(tx) = USERMOD_TX.read().clone() else {
+        let Some(tx) = USERMOD_TX.get().clone() else {
             return Some(i18n_msg!(i18n_bundle, InfoDlcInstallSuccess).to_string());
         };
         let (callback_tx, callback_rx) = oneshot::channel();
@@ -285,7 +296,7 @@ fn uninstall(data: &mut Data) -> Option<String> {
         .shift_remove(data.package_name());
     if apexsky::save_settings() {
         data.set_installed(false);
-        if let Some(tx) = USERMOD_TX.read().clone() {
+        if let Some(tx) = USERMOD_TX.get().clone() {
             let (callback_tx, callback_rx) = oneshot::channel();
             if let Err(e) = tx.send(UserModEvent::KillPackage(
                 data.package_name().to_owned(),
@@ -324,4 +335,120 @@ fn uninstall(data: &mut Data) -> Option<String> {
         }
     }
     Some(i18n_msg!(i18n_bundle, InfoDlcUninstallSuccess).to_string())
+}
+
+struct DeveloperMenu;
+
+impl DeveloperMenu {
+    fn new() -> GeneralMenu<'static, CustomMenuLevel> {
+        use crate::ACCESS_TX;
+        use apexsky_dmalib::access::*;
+        MenuBuilder::new(CustomMenuLevel::DeveloperMenu)
+            .title(s!("Developer Menu"))
+            .add_input_item(
+                item_text(s!("find signature")),
+                s!("example \n0x0..0x1000, 48 ? ? ?"),
+                |val| {
+                    let re = Regex::new(s!(r"0x([0-9a-fA-F]+?)\.\.0x([0-9a-fA-F]+?), (.+)")).unwrap();
+                    let Some((start, end, sig)) = re
+                        .captures(&val)
+                        .and_then(|caps| {
+                            Some((
+                                caps.get(1)?.as_str(),
+                                caps.get(2)?.as_str(),
+                                caps.get(3)?.as_str(),
+                            ))
+                        })
+                        .and_then(|(start, end, sig)| {
+                            Some((
+                                u64::from_str_radix(start, 16).ok()?,
+                                u64::from_str_radix(end, 16).ok()?,
+                                sig,
+                            ))
+                        })
+                    else {
+                        return Some(s!("invalid input").to_string());
+                    };
+                    match sig.parse::<MemSignature>() {
+                        Ok(sig) => {
+                            fn find_sig(
+                                sig: MemSignature,
+                                start: u64,
+                                end: u64,
+                            ) -> anyhow::Result<(usize, Vec<u8>)> {
+                                let mem = &mut ACCESS_TX
+                                    .get()
+                                    .ok_or(anyhow::anyhow!(s!("no api").to_string()))?
+                                    .clone();
+                                let Some(base) = AccessType::mem_baseaddr()
+                                    .blocking_dispatch(mem)?
+                                    .blocking_recv()?
+                                else {
+                                    anyhow::bail!("{}", s!("invalid base"));
+                                };
+                                let ret = AccessType::mem_find_signature(
+                                    sig,
+                                    (base + start)..(base + end),
+                                )
+                                .blocking_dispatch(mem)?
+                                .blocking_recv()??;
+                                ret.ok_or(anyhow::anyhow!("null"))
+                            }
+                            match find_sig(sig, start, end) {
+                                Ok((addr, data)) => Some(format!(
+                                    "offset=0x{:x}\naddr=0x{:x}\n{:x?}",
+                                    addr as u64 - start,
+                                    addr,
+                                    data
+                                )),
+                                Err(e) => Some(e.to_string()),
+                            }
+                        }
+                        Err(e) => Some(format!("{}", e)),
+                    }
+                },
+            )
+            .add_item(
+                item_text(s!("dump memory")),
+                |_ctx, _| {
+                    fn dump() -> anyhow::Result<()> {
+                        use std::fs;
+                        use std::io::Write;
+                        let mem = &mut ACCESS_TX
+                            .get()
+                            .ok_or(anyhow::anyhow!(s!("no api").to_string()))?
+                            .clone();
+                        let image_data = AccessType::mem_dump()
+                            .blocking_dispatch(mem)?
+                            .blocking_recv()??;
+                        let mut file = fs::OpenOptions::new()
+                            .create(true)
+                            .write(true)
+                            .truncate(true)
+                            .open(std::env::current_dir()?.join(s!("./r5apex.bin")))?;
+                        file.write_all(&image_data)?;
+                        Ok(())
+                    }
+                    match dump() {
+                        Ok(()) => Some(s!("ok").to_string()),
+                        Err(e) => Some(e.to_string()),
+                    }
+                },
+                (),
+            )
+            .add_dummy_item()
+            .add_item(
+                item_text(s!("Back")),
+                |ctx, _| {
+                    ctx.nav_menu(CustomMenuLevel::ApexskyMenu);
+                    None
+                },
+                (),
+            )
+            .into()
+    }
+
+    fn build() -> Box<GeneralMenu<'static, CustomMenuLevel>> {
+        Box::new(Self::new())
+    }
 }

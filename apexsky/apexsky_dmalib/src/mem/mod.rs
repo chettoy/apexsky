@@ -52,10 +52,18 @@ pub enum MemProcImpl<'a> {
 }
 
 impl<'a> MemProcImpl<'a> {
+    #[inline]
+    pub fn read<T: Pod>(&mut self, addr: u64) -> anyhow::Result<T> {
+        let mut dest: T = dataview::zeroed();
+        self.read_into(addr, &mut dest).map(|()| dest)
+    }
+
+    #[inline]
     pub fn read_into<T: Pod + ?Sized>(&mut self, addr: u64, out: &mut T) -> anyhow::Result<()> {
         self.read_raw_into(addr, dataview::bytes_mut(out))
     }
 
+    #[inline]
     pub fn write<T: Pod + ?Sized>(&mut self, addr: u64, data: &T) -> anyhow::Result<()> {
         self.write_raw(addr, dataview::bytes(data))
     }

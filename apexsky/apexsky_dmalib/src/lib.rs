@@ -1,4 +1,8 @@
-#![feature(thread_sleep_until, try_find)]
+#![feature(
+    iterator_try_collect,
+    thread_sleep_until,
+    try_find
+)]
 
 pub mod access;
 mod mem;

@@ -12,9 +12,8 @@ use apexsky_proto::pb::apexlegends::{
     AimKeyState, AimTargetInfo, PlayerState, SpectatorInfo, TreasureClue,
 };
 use obfstr::obfstr as s;
-use once_cell::sync::Lazy;
 use parking_lot::{Mutex, RwLock};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::{mpsc, watch, OnceCell};
 use tokio::task::{self, JoinHandle};
 use tokio::time::sleep;
 use tracing::{instrument, Level};
@@ -39,8 +38,8 @@ mod workers;
 
 const PRINT_LATENCY: bool = false;
 
-pub(crate) static USERMOD_TX: Lazy<RwLock<Option<mpsc::UnboundedSender<UserModEvent>>>> =
-    Lazy::new(|| RwLock::new(None));
+pub(crate) static ACCESS_TX: OnceCell<apexsky_dmalib::access::MemApi> = OnceCell::const_new();
+pub(crate) static USERMOD_TX: OnceCell<mpsc::UnboundedSender<UserModEvent>> = OnceCell::const_new();
 
 #[derive(Debug, Default)]
 struct SharedState {
@@ -165,7 +164,13 @@ impl TaskManager for State {
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
         let (update_time_tx, update_time_rx) = watch::channel(0.0);
         let (usermod_tx, usermod_rx) = mpsc::unbounded_channel();
-        let usermod_tx = USERMOD_TX.write().insert(usermod_tx).clone();
+
+        if let Err(e) = ACCESS_TX.set(access_tx.clone()) {
+            tracing::error!(%e, ?e);
+        }
+        if let Err(e) = USERMOD_TX.set(usermod_tx.clone()) {
+            tracing::error!(%e, ?e);
+        }
 
         let game_api = api_impl::GameApiHandle {
             state: self.shared_state.clone(),
