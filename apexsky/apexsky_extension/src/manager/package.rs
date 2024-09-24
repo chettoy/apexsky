@@ -86,19 +86,8 @@ impl PackageManager {
                 let ret = Minifier::new(MinifierOptions {
                     mangle: true,
                     compress: CompressOptions {
-                        remove_syntax: true,
-                        minimize_conditions: true,
-                        substitute_alternate_syntax: true,
-                        fold_constants: true,
-                        remove_dead_code: true,
-                        collapse: true,
-                        booleans: true,
-                        drop_debugger: true,
-                        drop_console: false,
-                        evaluate: true,
-                        join_vars: true,
-                        loops: true,
-                        typeofs: true,
+                        dead_code_elimination: true,
+                        ..Default::default()
                     },
                 })
                 .build(&allocator, program);
