@@ -117,8 +117,9 @@ impl EspSystem {
     pub(crate) fn get_esp_data(&self) -> &EspData {
         &self.esp_data
     }
-    pub(crate) fn get_esp_settings(&self) -> &EspSettings {
-        &self.esp_settings
+    pub(crate) fn get_esp_settings(&self) -> Option<&EspSettings> {
+        self.last_settings_fetch_time
+            .and_then(|_| Some(&self.esp_settings))
     }
     pub(crate) fn get_esp_loots(&self) -> &Loots {
         &self.esp_loots

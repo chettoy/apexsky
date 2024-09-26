@@ -222,7 +222,7 @@ pub fn ui_system(
         }
     }
 
-    if let Some(esp_settings) = esp_system.as_ref().map(|v| v.get_esp_settings()) {
+    if let Some(esp_settings) = esp_system.as_ref().and_then(|v| v.get_esp_settings()) {
         let screen_wh = (
             esp_settings.screen_width as f32,
             esp_settings.screen_height as f32,
@@ -663,12 +663,17 @@ pub fn ui_system(
             }
         });
 
-    if let Some(ref esp_system_connected) = esp_system {
-        let esp_settings = esp_system_connected.get_esp_settings();
-        let esp_data = esp_system_connected.get_esp_data();
-        let esp_loots = esp_system_connected.get_esp_loots();
-        let view_player = esp_system_connected.get_view_player();
-
+    if let Some((esp_settings, esp_data, esp_loots, view_player, is_teammate_view)) =
+        esp_system.as_ref().and_then(|esp| {
+            Some((
+                esp.get_esp_settings()?,
+                esp.get_esp_data(),
+                esp.get_esp_loots(),
+                esp.get_view_player(),
+                esp.get_view_teammate().is_some(),
+            ))
+        })
+    {
         let panel_frame = egui::Frame {
             fill: Color32::TRANSPARENT, //ctx.style().visuals.window_fill(),
             rounding: 10.0.into(),
@@ -678,7 +683,6 @@ pub fn ui_system(
         };
 
         // Draw 2D ESP for local player
-        let is_teammate_view = esp_system_connected.get_view_teammate().is_some();
         CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
             if !is_teammate_view {
                 esp_2d_ui(ui, esp_data, esp_settings, esp_loots, view_player);
