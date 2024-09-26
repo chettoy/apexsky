@@ -37,7 +37,7 @@ UnknownCheats thread: <https://www.unknowncheats.me/forum/apex-legends/406426-kv
 
 Bone IDs reference: <https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes>
 
-Game version: v3.0.80.27
+Game version: v3.0.81.36
 
  **Features**
 
@@ -286,6 +286,13 @@ cargo build --release
 
     > Place a updated offsets.ini in the same directory to automatically load the new offsets instead of the built-in offsets.
     > This may not always be enough to keep up with changes in game updates, but for the most part this will allow play to continue.
+
+
+
+## Community
+Join the apexsky community server at Discord!
+
+<a href="https://discord.gg/A4QYWDBPU7"><img src="https://discord.com/api/guilds/1288767206640844832/widget.png?style=banner3"/></a>
 
 
 
