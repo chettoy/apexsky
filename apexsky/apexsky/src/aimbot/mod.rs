@@ -534,6 +534,7 @@ impl Aimbot {
         // Update target lock
         if !self.aiming
             || self.is_headshot()
+            || self.get_zoom_state() == 0
             || (self.triggerbot_ready && !self.settings.auto_shoot)
             || (self.settings.aim_mode & 0x4 != 0)
         {
