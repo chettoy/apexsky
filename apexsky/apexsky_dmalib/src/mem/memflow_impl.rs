@@ -1,3 +1,4 @@
+use ::std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::{anyhow, Context};
@@ -25,7 +26,7 @@ const MZ_HEADER: u16 = 0x5A4D;
 
 impl std::fmt::Debug for MemflowOs {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        f.debug_struct("MemflowOs")
+        f.debug_struct(s!("MemflowOs"))
             .field(
                 s!("inventory"),
                 &(
@@ -40,9 +41,9 @@ impl std::fmt::Debug for MemflowOs {
 
 impl<'a> std::fmt::Debug for MemflowProc<'a> {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        f.debug_struct("MemflowProc")
-            .field("base_addr", &self.base_addr)
-            .field("status", &self.status)
+        f.debug_struct(s!("MemflowProc"))
+            .field(s!("base_addr"), &self.base_addr)
+            .field(s!("status"), &self.status)
             .field(s!("proc"), &self.proc.info())
             .finish()
     }
@@ -51,7 +52,19 @@ impl<'a> std::fmt::Debug for MemflowProc<'a> {
 impl MemflowOs {
     pub fn new(choose_connector: super::MemConnector) -> anyhow::Result<Self> {
         // load all available plugins
-        let inventory = Inventory::scan();
+        let mut inventory = Inventory::scan();
+
+        if let Some(original_home) = std::env::var(s!("SUDO_HOME")).ok() {
+            inventory
+                .add_dir(
+                    PathBuf::from(original_home)
+                        .join(".local")
+                        .join("lib")
+                        .join(s!("memflow")),
+                )
+                .ok();
+        }
+
         tracing::info!("{}", s!("inventory initialized"));
 
         let (connector_name, connector_args, os_name) = {

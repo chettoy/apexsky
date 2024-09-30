@@ -4,7 +4,7 @@ fn main() {
         .build_server(true)
         .out_dir("src/pb")
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
-        .compile(
+        .compile_protos(
             &[
                 "proto/com/chettoy/apexsky/apexlegends/aimbot.proto",
                 "proto/com/chettoy/apexsky/apexlegends/esp_data.proto",

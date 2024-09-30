@@ -13,7 +13,6 @@ use self::apexsky_menu::TerminalMenu;
 // ANCHOR: model
 #[derive(Debug)]
 pub struct Model {
-    counter: i32,
     running_state: RunningState,
     key_input: String,
     input_callback: Option<fn(String) -> Option<String>>,
@@ -51,7 +50,6 @@ pub fn main(default_memu: Box<dyn apexsky_menu::MenuState>) -> anyhow::Result<()
     let mut terminal = tui::init_terminal()?;
     let mut apex_menu = apexsky_menu::TerminalMenu::new(
         Model {
-            counter: 0,
             running_state: RunningState::default(),
             key_input: String::new(),
             input_callback: None,

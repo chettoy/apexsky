@@ -349,7 +349,8 @@ impl DeveloperMenu {
                 item_text(s!("find signature")),
                 s!("example \n0x0..0x1000, 48 ? ? ?"),
                 |val| {
-                    let re = Regex::new(s!(r"0x([0-9a-fA-F]+?)\.\.0x([0-9a-fA-F]+?), (.+)")).unwrap();
+                    let re =
+                        Regex::new(s!(r"0x([0-9a-fA-F]+?)\.\.0x([0-9a-fA-F]+?), (.+)")).unwrap();
                     let Some((start, end, sig)) = re
                         .captures(&val)
                         .and_then(|caps| {
@@ -425,7 +426,7 @@ impl DeveloperMenu {
                             .create(true)
                             .write(true)
                             .truncate(true)
-                            .open(std::env::current_dir()?.join(s!("./r5apex.bin")))?;
+                            .open(apexsky::get_base_dir().join(s!("./r5apex.bin")))?;
                         file.write_all(&image_data)?;
                         Ok(())
                     }

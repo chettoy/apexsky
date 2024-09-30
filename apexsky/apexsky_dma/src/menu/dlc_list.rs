@@ -196,8 +196,7 @@ impl TableApp {
 }
 
 async fn read_packages() -> anyhow::Result<Vec<Data>> {
-    let current_dir = std::env::current_dir()?;
-    let dlc_dir = current_dir.join("dlc");
+    let dlc_dir = apexsky::get_base_dir().join("mods");
 
     let mut install_mgr = PackageManager::default();
 

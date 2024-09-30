@@ -454,7 +454,7 @@ impl Default for Settings {
             // Done with Gamepad or Keyboard config
             // triggerbot?
             trigger_bot_hot_key: 81,
-            quick_looting_hot_key: 79,
+            quick_looting_hot_key: 0,
             // Terminal Stuff
             loot_filled_toggle: true,
             player_filled_toggle: true,
@@ -483,7 +483,7 @@ impl Default for Settings {
             max_dist: 3800.0 * 40.0, // Max Distance of ESP 3800 is full map
             map_radar_testing: false,
             show_aim_target: true,
-            game_fps: 75.0,       // Game FPS for aim prediction
+            game_fps: 75.0,      // Game FPS for aim prediction
             calc_game_fps: true, // Automatic calculation of game fps
             firing_range: false,
             // Player Glow Color and Brightness.
@@ -515,11 +515,18 @@ impl Default for Settings {
 
 pub fn get_config_path() -> PathBuf {
     static S_CONF_FILENAME: Lazy<String> = Lazy::new(|| s!("settings.toml").to_string());
-    static S_ERR_MSG: Lazy<String> =
-        Lazy::new(|| s!("Failed to determine the current directory").to_string());
-    let base_path = std::env::current_dir().expect(&*S_ERR_MSG);
-    let configuration_directory = base_path;
-    configuration_directory.join(&*S_CONF_FILENAME)
+    static CONFIG_DIR: Lazy<PathBuf> = Lazy::new(|| {
+        if cfg!(unix) && std::fs::exists(s!("/usr/share/apexsky/")).is_ok_and(|exists| exists) {
+            crate::get_runner_home_dir()
+                .unwrap()
+                .join(".config")
+                .join(s!("apexsky"))
+        } else {
+            std::env::current_dir().expect(s!("Failed to determine the current directory"))
+        }
+    });
+    std::fs::create_dir_all(CONFIG_DIR.as_path()).expect(s!("Failed to create config directory"));
+    CONFIG_DIR.join(&*S_CONF_FILENAME)
 }
 
 pub fn get_configuration() -> Result<Config, config::ConfigError> {

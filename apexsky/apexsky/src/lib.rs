@@ -8,8 +8,11 @@ pub mod menu;
 pub mod offsets;
 pub mod system;
 
+use std::path::PathBuf;
+
 pub use ffi::*;
 
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 #[repr(C)]
@@ -38,4 +41,29 @@ macro_rules! noobfstr {
     ($str:expr) => {
         $str
     };
+}
+
+pub fn get_runner_home_dir() -> Option<PathBuf> {
+    std::env::var(obfstr::obfstr!("SUDO_HOME"))
+        .ok()
+        .map(PathBuf::from)
+        .or(dirs::home_dir())
+}
+
+pub fn get_base_dir() -> PathBuf {
+    static DATA_DIR: Lazy<PathBuf> = Lazy::new(|| {
+        if cfg!(unix)
+            && std::fs::exists(obfstr::obfstr!("/usr/share/apexsky/")).is_ok_and(|exists| exists)
+        {
+            get_runner_home_dir()
+                .unwrap()
+                .join(".local")
+                .join("share")
+                .join(obfstr::obfstr!("apexsky"))
+        } else {
+            std::env::current_dir().unwrap()
+        }
+    });
+
+    DATA_DIR.to_path_buf()
 }

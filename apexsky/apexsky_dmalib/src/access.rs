@@ -81,7 +81,7 @@ pub struct MemDumpRequest {
 #[derive(Debug, Default)]
 struct DumpMemory {
     base: u64,
-    time_data_stamp: u32,
+    time_date_stamp: u32,
     checksum: u32,
     size_of_image: u32,
 }
@@ -112,7 +112,7 @@ impl DumpMemory {
             anyhow::bail!("{}", s!("[-] Failed to read Section Header"));
         };
         self.base = base;
-        self.time_data_stamp = nt_headers.FileHeader.TimeDateStamp;
+        self.time_date_stamp = nt_headers.FileHeader.TimeDateStamp;
         self.checksum = nt_headers.OptionalHeader.CheckSum;
         self.size_of_image = nt_headers.OptionalHeader.SizeOfImage;
         Ok(())
@@ -359,12 +359,19 @@ struct ContextData {
     dumper: DumpMemory,
 }
 
+#[derive(Debug, Clone)]
+pub struct ConnectConfig {
+    pub mem_connector: crate::mem::MemConnector,
+    pub target_proc_name: String,
+    pub check_time_date_stamp: Option<u32>,
+    pub speed_test: bool,
+}
+
 #[instrument(skip_all)]
 pub fn io_thread(
     active: watch::Receiver<bool>,
     access_rx: crossbeam_channel::Receiver<PriorityAccess>,
-    mem_connector: crate::mem::MemConnector,
-    target_proc_name: String,
+    config: ConnectConfig,
 ) -> Result<(), AccessError> {
     tracing::debug!("{}", s!("task start"));
 
@@ -374,8 +381,8 @@ pub fn io_thread(
     let mut start_instant;
     let mut next_flush_instant = Instant::now();
 
-    let mut mem_os = create_os_instance(mem_connector.clone())
-        .map_err(|e| AccessError::Connector(mem_connector, e))?;
+    let mut mem_os = create_os_instance(config.mem_connector.clone())
+        .map_err(|e| AccessError::Connector(config.mem_connector, e))?;
 
     while *active.borrow() {
         start_instant = Instant::now();
@@ -423,7 +430,8 @@ pub fn io_thread(
         }
 
         // Find process
-        let Some(mut mem) = find_target_process(&mut mem_os, target_proc_name.to_owned()) else {
+        let Some(mut mem) = find_target_process(&mut mem_os, config.target_proc_name.to_owned())
+        else {
             accessible = false;
             sleep_until(start_instant + Duration::from_secs(2));
             continue;
@@ -449,13 +457,22 @@ pub fn io_thread(
             tracing::info!("{}", s!("Process found"));
             tracing::info!(dumper=?ctx.dumper, "{}{:x}", s!("Base: 0x"), mem.get_proc_baseaddr());
 
-            if !speed_test_done {
+            if config.speed_test && !speed_test_done {
                 tracing::debug!("{}", s!("speed_test"));
                 mem.speed_test();
                 println!("{}", s!("Press enter to continue.."));
                 tracing::debug!("{}", s!("press to continue"));
                 let _ = std::io::stdin().read_line(&mut String::new());
                 speed_test_done = true;
+            }
+
+            if let Some(check) = config.check_time_date_stamp {
+                if check != ctx.dumper.time_date_stamp {
+                    return Err(AccessError::InvalidTimeDateStamp(
+                        ctx.dumper.time_date_stamp,
+                        check,
+                    ));
+                }
             }
 
             accessible = true;

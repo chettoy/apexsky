@@ -1,9 +1,7 @@
 use dataview::Pod;
 use enum_dispatch::enum_dispatch;
-use memflow_impl::MemflowOs;
-use memprocfs_impl::MemProcFsOs;
-
-use self::{memflow_impl::MemflowProc, memprocfs_impl::MemProcFSProc};
+use memflow_impl::{MemflowOs, MemflowProc};
+use memprocfs_impl::{MemProcFSProc, MemProcFsOs};
 
 pub mod dma_helper;
 pub mod memflow_impl;
@@ -63,6 +61,7 @@ impl<'a> MemProcImpl<'a> {
         self.read_raw_into(addr, dataview::bytes_mut(out))
     }
 
+    #[allow(dead_code)]
     #[inline]
     pub fn write<T: Pod + ?Sized>(&mut self, addr: u64, data: &T) -> anyhow::Result<()> {
         self.write_raw(addr, dataview::bytes(data))

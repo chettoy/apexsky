@@ -4,7 +4,7 @@ fn main() {
         .build_server(false)
         .build_transport(!cfg!(feature = "web-wasm"))
         .out_dir("src/pb")
-        .compile(
+        .compile_protos(
             &[
                 "../apexsky_proto/proto/com/chettoy/apexsky/apexlegends/aimbot.proto",
                 "../apexsky_proto/proto/com/chettoy/apexsky/apexlegends/esp_data.proto",

@@ -224,7 +224,7 @@ pub fn export_new_items(loots: Vec<LootInt>) -> anyhow::Result<()> {
 
     if modify {
         let items_json = serde_json::to_string(&loots)?;
-        let path = std::env::current_dir()?.join(s!("updated_item.json"));
+        let path = apexsky::get_base_dir().join(s!("updated_item.json"));
         let mut json_file = fs::OpenOptions::new()
             .create(true)
             .write(true)

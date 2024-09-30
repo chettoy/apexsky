@@ -12,6 +12,7 @@ use apexsky_proto::pb::apexlegends::{
     AimKeyState, AimTargetInfo, PlayerState, SpectatorInfo, TreasureClue,
 };
 use obfstr::obfstr as s;
+use once_cell::sync::Lazy;
 use parking_lot::{Mutex, RwLock};
 use tokio::sync::{mpsc, watch, OnceCell};
 use tokio::task::{self, JoinHandle};
@@ -186,18 +187,32 @@ impl TaskManager for State {
         self.io_thread = Some({
             let active_rx = self.active_tx.subscribe();
             std::thread::spawn(move || {
-                use apexsky_dmalib::access::io_thread;
+                use apexsky_dmalib::access::{io_thread, ConnectConfig};
                 use apexsky_dmalib::AccessError;
                 match io_thread(
                     active_rx,
                     access_rx,
-                    choose_connector(),
-                    choose_target_process(),
+                    ConnectConfig {
+                        mem_connector: CMD_OPTIONS.connector.clone(),
+                        target_proc_name: CMD_OPTIONS.target_process_name.clone(),
+                        check_time_date_stamp: (!CMD_OPTIONS.force_bypass_check).then_some(
+                            apexsky::offsets::G_OFFSETS
+                                .time_date_stamp
+                                .try_into()
+                                .unwrap(),
+                        ),
+                        speed_test: true,
+                    },
                 ) {
                     Ok(_) => Ok(()),
                     Err(e) => match e {
                         AccessError::Connector(connector, e) => {
                             tracing::error!(?connector, ?e, %e);
+                            press_to_exit();
+                            Ok(())
+                        }
+                        AccessError::InvalidTimeDateStamp(_got, _except) => {
+                            tracing::error!(%e);
                             press_to_exit();
                             Ok(())
                         }
@@ -349,14 +364,101 @@ impl TaskManager for State {
     }
 }
 
+#[derive(Debug, Clone)]
+struct CmdOptions {
+    menu_mode: bool,
+    debug: bool,
+    connector: MemConnector,
+    target_process_name: String,
+    force_bypass_check: bool,
+}
+
+impl CmdOptions {
+    #[instrument]
+    fn parse() -> Self {
+        use clap::{Parser, Subcommand};
+
+        #[derive(Parser)]
+        #[command(version, about, long_about = None)]
+        #[command(propagate_version = true)]
+        struct Cli {
+            /// Disable TUI menu
+            #[arg(long)]
+            debug: bool,
+
+            /// Bypass time_date_stamp check
+            #[arg(long)]
+            force_bypass_check: bool,
+
+            /// Set target process name
+            #[arg(long)]
+            proc_name: Option<String>,
+
+            #[command(subcommand)]
+            command: Option<Commands>,
+        }
+
+        #[derive(Subcommand)]
+        enum Commands {
+            /// Show menu
+            Menu,
+
+            /// Starts with MemProcFS FPGA
+            Fpga,
+
+            /// Starts with memflow KVM/QEMU connector
+            Kvm,
+
+            /// Starts with memflow native/linux connector
+            #[clap(aliases = &["no-kvm", "nokvm", "nodma", "linux"])]
+            Native,
+
+            /// Starts with MemProcFS LeechCore
+            #[clap(alias = "pcileech")]
+            Leechcore { device: String },
+        }
+
+        let cli = Cli::parse();
+        let mut options = Self {
+            menu_mode: false,
+            debug: cli.debug,
+            connector: MemConnector::PCILeech(s!("fpga").to_string()),
+            target_process_name: cli.proc_name.unwrap_or(s!("r5apex.exe").to_string()),
+            force_bypass_check: cli.force_bypass_check,
+        };
+
+        if let Some(subcmd) = cli.command {
+            match &subcmd {
+                Commands::Menu => {
+                    options.menu_mode = true;
+                }
+                Commands::Kvm => options.connector = MemConnector::MemflowKvm,
+                Commands::Native => options.connector = MemConnector::MemflowNative,
+                Commands::Fpga => {
+                    options.connector = MemConnector::PCILeech(s!("fpga").to_string())
+                }
+                Commands::Leechcore { device } => {
+                    options.connector = MemConnector::PCILeech(device.to_owned())
+                }
+            }
+        }
+
+        options
+    }
+}
+
+static CMD_OPTIONS: Lazy<CmdOptions> = Lazy::new(CmdOptions::parse);
+
 fn main() {
+    let _ = *CMD_OPTIONS;
+
     let (non_blocking, _guard) = tracing_appender::non_blocking(tracing_appender::rolling::daily(
-        s!("log"),
+        &apexsky::get_base_dir().join(s!("log")),
         s!("rolling.log"),
     ));
     init_logger(non_blocking, true);
     #[cfg(unix)]
-    fix_log_permission();
+    fix_dir_permission();
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -367,25 +469,19 @@ fn main() {
     let _enter = rt.enter();
 
     let args: Vec<String> = std::env::args().collect();
-
     tracing::debug!(?args, "{}", s!("start PJbGRfJ0aZpx"));
     __load_settings();
 
     let mut state = State::new();
 
-    if args.len() == 2 {
-        if args[1] == s!("menu") {
-            apexsky::menu::main(menu::CustomMenuLevel::ApexskyMenu.into()).unwrap();
-            return;
-        }
+    if CMD_OPTIONS.menu_mode {
+        apexsky::menu::main(menu::CustomMenuLevel::ApexskyMenu.into()).unwrap();
+        return;
     }
 
     let g_settings = global_settings();
 
-    let mut debug_mode = g_settings.debug_mode;
-    if args.len() == 3 && args[2] == s!("debug") {
-        debug_mode = true;
-    }
+    let debug_mode = g_settings.debug_mode || CMD_OPTIONS.debug;
 
     // // Create a background thread which checks for deadlocks every 10s
     // rt.spawn_blocking(|| loop {
@@ -426,36 +522,6 @@ fn main() {
 
 pub fn global_settings() -> Settings {
     G_STATE.lock().unwrap().config.settings.clone()
-}
-
-#[instrument]
-fn choose_connector() -> MemConnector {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() == 2 {
-        if args[1] == s!("kvm") {
-            return MemConnector::MemflowKvm;
-        } else if args[1] == s!("no-kvm")
-            || args[1] == s!("nokvm")
-            || args[1] == s!("nodma")
-            || args[1] == s!("linux")
-            || args[1] == s!("native")
-        {
-            return MemConnector::MemflowNative;
-        }
-    } else if args.len() == 3 && args[1] == s!("--pcileech") {
-        return MemConnector::PCILeech(args[2].clone());
-    }
-    MemConnector::PCILeech(s!("fpga").to_string())
-}
-
-#[instrument]
-fn choose_target_process() -> String {
-    let args: Vec<String> = std::env::args().collect();
-    if args.iter().find(|&x| x == s!("dx12")).is_some() {
-        s!("r5apex_dx12.exe").to_string()
-    } else {
-        s!("r5apex.exe").to_string()
-    }
 }
 
 pub fn press_to_exit() {
@@ -507,7 +573,7 @@ fn init_logger(non_blocking: NonBlocking, print: bool) {
 }
 
 #[cfg(unix)]
-fn fix_log_permission() {
+fn fix_dir_permission() {
     use nix::unistd::{Gid, Uid};
     use std::fs;
     use std::os::unix::fs::{chown, MetadataExt};
@@ -515,33 +581,54 @@ fn fix_log_permission() {
 
     let current_uid = get_current_uid();
 
-    if current_uid == 0 {
-        let original_user_uid = match std::env::var(s!("SUDO_UID")) {
-            Ok(var) => Uid::from_raw(var.parse::<u32>().expect(s!("Invalid SUDO_UID"))),
-            Err(_) => return,
-        };
-        let original_user_gid = Gid::from_raw(
-            std::env::var(s!("SUDO_GID"))
-                .expect(s!("Faild to read SUDO_GID"))
-                .parse::<u32>()
-                .expect(s!("Invalid SUDO_GID")),
-        );
+    if current_uid != 0 {
+        return;
+    }
 
-        let original_user =
-            get_user_by_uid(original_user_uid.into()).expect(s!("Failed to get original user"));
+    let original_user_uid = match std::env::var(s!("SUDO_UID")) {
+        Ok(var) => Uid::from_raw(var.parse::<u32>().expect(s!("Invalid SUDO_UID"))),
+        Err(_) => return,
+    };
+    let original_user_gid = Gid::from_raw(
+        std::env::var(s!("SUDO_GID"))
+            .expect(s!("Faild to read SUDO_GID"))
+            .parse::<u32>()
+            .expect(s!("Invalid SUDO_GID")),
+    );
 
-        let metadata = fs::metadata(s!("log")).expect(s!("Failed to get metadata of log folder"));
+    let original_user =
+        get_user_by_uid(original_user_uid.into()).expect(s!("Failed to get original user"));
+
+    let original_home = std::env::var(s!("SUDO_HOME")).expect(s!("Failed to get SUDO_HOME"));
+    for path in [
+        apexsky::get_base_dir(),
+        apexsky::get_base_dir().join(s!("log")),
+        apexsky::get_runner_home_dir()
+            .unwrap()
+            .join(s!(".config"))
+            .join(s!("apexsky")),
+        apexsky::config::get_config_path(),
+    ] {
+        if !path.starts_with(&original_home) {
+            continue;
+        }
+        if !path.exists() {
+            continue;
+        }
+        let metadata =
+            fs::metadata(&path).expect(&format!("{}{:?}", s!("Failed to get metadata of "), path));
         let current_file_uid = Uid::from_raw(metadata.uid());
         let current_file_gid = Gid::from_raw(metadata.gid());
 
         if current_file_uid != original_user_uid || current_file_gid != original_user_gid {
             tracing::warn!(
+                ?path,
                 "{}{:?}",
-                s!("Changing ownership of 'log' folder to user: "),
+                s!("Changing ownership to user: "),
                 original_user.name()
             );
             chown(
-                s!("log"),
+                path,
                 Some(original_user_uid.into()),
                 Some(original_user_gid.into()),
             )

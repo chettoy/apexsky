@@ -10,7 +10,7 @@
   <h3 align="center">apexsky</h3>
 
   <p align="center">
-    Apex Legends hack
+    DMA/KVM/Linux game mod loader
     <br />
     <br />
     <br />
@@ -30,39 +30,46 @@
 
 ## About The Project
 
+The goal of the project is to become a universal game mod loader.
 
-Apex Legends QEMU/KVM/DMA/Linux hack
+It accesses game memory via DMA or virtual machine, ensuring availability for most games.
 
-UnknownCheats thread: <https://www.unknowncheats.me/forum/apex-legends/406426-kvm-vmread-apex-esp-aimbot.html>
 
-Bone IDs reference: <https://www.unknowncheats.me/wiki/Apex_Legends_Bones_and_Hitboxes>
 
-Game version: v3.0.81.36
+**Features**
 
- **Features**
-
-* **Aimbot** with Improved target locking.
-* Sky Grenade feature
-* Advanced targeting options with various bone selection effects.
-* **Aim Assist:** Simulates powerful aim assist-like magnetism through Aimbot.
-* **Triggerbot:** Triggerbot function with magnetism and hit prediction.
-* **Bone/Skeleton ESP:** Optional glow box and Bone/Skeleton ESP and health bar to replace player glow (ideal for screenshot prevention or live broadcasting). (overlay required)
-* **Aiming Target Indicator:** White small circle indicating current pre-aim target. (overlay required)
-* **Favorite Gamer Highlight:** Highlights favorite gamers for quick identification.
 * **FPS Display**: Calculate and display the game's frame rate. (overlay required)
-* **Spectator List:** Displays spectator list. (overlay required)
-* ~~**Weapon Model Glow:** Indicates spectators through weapon model color change.~~ (Removed, may be supported via DLC in the future)
-* Alerts the number of spectators by blinking the keyboard backlight (requires D-Bus support).
-* **Teammate Damage Display:** Shows the damage dealt by teammates in real-time.
-* **Voice Navigator:** Overlay integrated voice prompts function, providing in-game callouts like teammates. (overlay required; currently only Chinese voice pack available, more contributions welcome)
-* **DLC support**: Write JavaScript extensions and package as apexsky DLC to share with friends; download and install DLC to expand functionality.
-* Automatically SuperGlide via DLC
-* **Safety:** Only modify the memory when specific functions such as glow are enabled.
+* **MODs**: Write JavaScript code and package it into apexsky mods to share with your friends; download and install mods to expand the functionality.
+* **Safety:** Write memory only when enabling features that require memory modification.
 * Supports controlling the mouse via Kmbox, QEMU QMP, etc., at which point aimbot does not need to modify memory (no evidence suggests this is safer).
 * **User-Friendly Customization:** Interactive terminal menu with a more intuitive and user-friendly design for customization.
 * **Config:** Fine customization achieved through saving and editing settings in settings.toml file.
 * **Offsets Loader:** Supports dynamic loading of offsets from offsets.ini file, making it convenient to keep up with game version updates.
 * **Multilingual Support:** Supports multilingual functionality for global accessibility.
+
+
+
+**Current Supported Games**
+
+ * Apex Legends v3.0.81.36
+   
+   UnknownCheats thread: <https://www.unknowncheats.me/forum/apex-legends/406426-kvm-vmread-apex-esp-aimbot.html>
+   
+   built-in mods:
+   
+   * **Aimbot** with Improved target locking.
+   * Sky Grenade feature
+   * **Aim Assist:** Simulates powerful aim assist-like magnetism through Aimbot.
+   * **Triggerbot:** Triggerbot function with magnetism and hit prediction.
+   * Automatically SuperGlide via standalone mod
+   * **Bone/Skeleton ESP:** Optional glow box and Bone/Skeleton ESP and health bar to replace player glow (ideal for screenshot prevention or live broadcasting). (overlay required)
+   * **Aiming Target Indicator:** White small circle indicating current pre-aim target. (overlay required)
+   * **Favorite Gamer Highlight:** Highlights favorite gamers for quick identification.
+   * **Spectator List:** Displays spectator list. (overlay required)
+   * ~~**Weapon Model Glow:** Indicates spectators through weapon model color change.~~ (Removed, may be supported via MOD in the future)
+   * Alerts the number of spectators by blinking the keyboard backlight (requires D-Bus support).
+   * **Teammate Damage Display:** Shows the damage dealt by teammates in real-time.
+   * **Voice Navigator:** Overlay integrated voice prompts function, providing in-game callouts like teammates. (overlay required; currently only Chinese voice pack available, more contributions welcome)
 
 
 
@@ -109,7 +116,7 @@ Look forward to your testing and feedback.
 **Play with DMA:**
 
 ```shell
-./apexsky_dma.exe --pcileech fpga
+./apexsky_dma.exe pcileech fpga
 ```
 
 
@@ -120,20 +127,20 @@ There are really only two steps:
 
 1. Run the game on a windows guest in a kvm virtual machine.
 
-2. Run the compiled apex_dma program on the Linux host.
+2. Run the compiled apexsky_dma program on the Linux host.
 
    * Using the DMA Library
 
      Find the virtual machine process PID and QMP address after starting the virtual machine, then run the compiled apexsky_dma program on the Linux host.
 
      ```shell
-     sudo ./apexsky_dma --pcileech qemu://hugepage-pid=<PID>,qmp=<QMP_ADDRESS>
+     sudo ./apexsky_dma pcileech qemu://hugepage-pid=<PID>,qmp=<QMP_ADDRESS>
      ```
 
      For example, if your VM's PID is 5678 and the QMP address is /tmp/qmp-win11.sock, the command would be:
 
      ```shell
-     sudo ./apexsky_dma --pcileech qemu://hugepage-pid=5678,qmp=/tmp/qmp-win11.sock
+     sudo ./apexsky_dma pcileech qemu://hugepage-pid=5678,qmp=/tmp/qmp-win11.sock
      ```
 
      For more details, see https://github.com/ufrisk/LeechCore/wiki/Device_QEMU
@@ -155,7 +162,7 @@ You can choose `apexsky_overlay` for any platform or use them both. You can also
 * Linux
 
      ```bash
-     ./apexsky_overlay
+     apexsky_overlay
      ```
 
 * Windows
@@ -186,13 +193,13 @@ Click the `Connection` button to display the address bar, and then click again t
 
 
 
-### DLC (optional)
+### MODs
 
-To install DLCs:
+To install mods:
 
-1. Create a `dlc` folder in the same directory.
-2. Place the `.spk` DLC package into the `dlc` folder.
-3. Navigate to the DLC menu and install DLCs.
+1. Create a `mods` folder in `~/.local/share/apexsky/` or in the current directory.
+2. Place the `.spk` mod package into the `mods` folder.
+3. Navigate to the mod menu and install mods.
 
 
 
@@ -200,13 +207,13 @@ To install DLCs:
 
 1. **Download libraries for accessing memory**
 
-   - If you're using the *memflow* connector, ensure you download the corresponding files and place them in the same directory:
+   - If you're using the *memflow* connector, ensure you download the corresponding files and place them in `~/.local/lib/memflow/` or the current directory:
 
       * [libmemflow_kvm.so](https://github.com/memflow/memflow-kvm/releases/download/bin-stable/libmemflow_kvm.x86_64.so)
       * [libmemflow_qemu.so](https://github.com/memflow/memflow-qemu/releases/download/bin-0.2.1/libmemflow_qemu.x86_64.so)
       * [libmemflow_win32.so](https://github.com/memflow/memflow-win32/releases/download/bin-stable/libmemflow_win32.x86_64.so)
 
-   - If you're using MemProcFS or LeechCore
+   - If you're using MemProcFS or LeechCore, extract them to `~/.local/lib/memprocfs/` or the current directory:
 
       - Download and extract the files from [MemProcFS Releases](https://github.com/ufrisk/MemProcFS/releases).
 
@@ -251,7 +258,7 @@ rustup default nightly
 **Install Build Dependencies (Ubuntu):**
 
 ```bash
-sudo apt install clang protobuf-compiler libusb-1.0-0-dev libzstd-dev pkg-config libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0 libwayland-dev libxkbcommon-dev lld
+sudo apt install clang protobuf-compiler libusb-1.0-0-dev libzstd-dev pkgconf libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0 libwayland-dev libxkbcommon-dev lld
 ```
 
 **Install Build Dependencies (Arch):**

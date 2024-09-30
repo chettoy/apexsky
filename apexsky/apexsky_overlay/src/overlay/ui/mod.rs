@@ -73,8 +73,19 @@ impl Default for UiPersistance {
 impl UiPersistance {
     #[cfg(feature = "native")]
     fn file_path() -> anyhow::Result<std::path::PathBuf> {
-        let current_dir = std::env::current_dir()?;
-        Ok(current_dir.join(s!("./overlay-ui.json")))
+        static CONFIG_DIR: Lazy<std::path::PathBuf> = Lazy::new(|| {
+            if cfg!(unix) && std::fs::exists(s!("/usr/share/apexsky/")).is_ok_and(|exists| exists) {
+                dirs::home_dir()
+                    .unwrap()
+                    .join(".config")
+                    .join(s!("apexsky"))
+            } else {
+                std::env::current_dir().expect(s!("Failed to determine the current directory"))
+            }
+        });
+        std::fs::create_dir_all(CONFIG_DIR.as_path())
+            .expect(s!("Failed to create config directory"));
+        Ok(CONFIG_DIR.join(s!("./overlay-ui.json")))
     }
 
     #[cfg(feature = "native")]

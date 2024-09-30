@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context};
 use memprocfs::{Vmm, VmmProcess, VmmScatterMemory, FLAG_NOCACHE};
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
-use std::{env, sync::Arc, time::Instant};
+use std::{env, path::PathBuf, sync::Arc, time::Instant};
 
 use crate::mem::dma_helper::fix_dtb;
 
@@ -42,20 +42,40 @@ impl MemProcFsOs {
 
         tracing::info!("{}{}", s!("leechcore device: "), device);
 
-        // MemProcFS Rust requires full path to vmm.dll/so so use current directory
-        let vmm_path: String = match env::current_dir() {
-            Ok(current_dir) => {
-                let current_dir_str = current_dir.to_str().unwrap();
-                if cfg!(windows) {
-                    format!("{}{}", current_dir_str, s!("\\vmm.dll"))
-                } else {
-                    format!("{}{}", current_dir_str, s!("/vmm.so"))
+        // MemProcFS Rust requires full path to vmm.dll/so
+        let vmm_path: String = (|| {
+            if cfg!(unix) {
+                // try ~/.local/lib/memprocfs/vmm.so
+                if let Some(local_lib) = std::env::var(s!("SUDO_HOME"))
+                    .ok()
+                    .map(PathBuf::from)
+                    .or(dirs::home_dir())
+                    .map(|home| {
+                        home.join(s!(".local"))
+                            .join(s!("lib"))
+                            .join(s!("memprocfs"))
+                            .join(s!("vmm.so"))
+                    })
+                {
+                    if local_lib.try_exists().is_ok_and(|exists| exists) {
+                        return anyhow::Ok(local_lib.to_str().unwrap().to_string());
+                    }
                 }
             }
-            Err(_) => {
-                return Err(anyhow!("{}", s!("App: Unable to get current directory.")));
+
+            let current_dir = env::current_dir()
+                .map_err(|_| anyhow!("{}", s!("App: Unable to get current directory.")))?;
+
+            if cfg!(windows) {
+                Ok(current_dir
+                    .join(s!("vmm.dll"))
+                    .to_str()
+                    .unwrap()
+                    .to_string())
+            } else {
+                Ok(current_dir.join(s!("vmm.so")).to_str().unwrap().to_string())
             }
-        };
+        })()?;
 
         // Initialize Vmm on passed parameters, always expect this to be ok, so panic if it's not
         let vmm = {

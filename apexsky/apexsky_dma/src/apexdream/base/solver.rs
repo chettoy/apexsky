@@ -255,6 +255,6 @@ mod tests {
         let weapon = Weapon(10000.0, 750.0);
 
         let sol = solve(&player.0, &weapon, &target);
-        panic!("{:?}", sol);
+        println!("{:?}", sol);
     }
 }
