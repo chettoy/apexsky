@@ -15,7 +15,9 @@ pub const OFFSET_GLOW_DISTANCE: u64 = 0x264;
 pub const OFFSET_GLOW_FIX: u64 = 0x278;
 
 #[allow(dead_code)]
-#[repr(C)]
+#[named_constants]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+#[repr(i32)]
 pub enum WeaponId {
     R301 = 0,
     Sentinel = 1,

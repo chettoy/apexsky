@@ -119,38 +119,38 @@ impl ContextForAimbot for SharedStateWrapper {
         weapon_info.weapon_zoom_fov = weapon.cur_zoom_fov;
         weapon_info.weapon_mod_bitfield = weapon.mod_bitfield;
         weapon_info.weapon_headshot = {
-            match weapon_info.weapon_id {
-                IDWEAPON_3030_REPEATER => true,
-                IDWEAPON_BOW => true,
-                IDWEAPON_CHARGE_RIFLE => true,
-                IDWEAPON_G7_SCOUT => true,
-                IDWEAPON_KRABER => true,
-                IDWEAPON_LONGBOW => true,
-                IDWEAPON_SENTINEL => true,
-                IDWEAPON_P2020 => false,
-                IDWEAPON_TRIPLE_TAKE => true,
-                IDWEAPON_WINGMAN => true,
+            match WeaponId(weapon_info.weapon_id) {
+                WeaponId::_3030Repeater => true,
+                WeaponId::Bow => true,
+                WeaponId::ChargeRifle => true,
+                WeaponId::G7Scout => true,
+                WeaponId::Kraber => true,
+                WeaponId::Longbow => true,
+                WeaponId::Sentinel => true,
+                WeaponId::P2020 => false,
+                WeaponId::TripleTake => true,
+                WeaponId::Wingman => true,
                 _ => false,
             }
         };
         weapon_info.weapon_semi_auto = {
-            match weapon_info.weapon_id {
-                IDWEAPON_3030_REPEATER => true,
-                IDWEAPON_BOW => true,
-                IDWEAPON_CHARGE_RIFLE => false,
-                IDWEAPON_G7_SCOUT => true,
-                IDWEAPON_HEMLOCK => true,
-                IDWEAPON_KRABER => false,
-                IDWEAPON_LONGBOW => true,
-                IDWEAPON_SENTINEL => false,
-                IDWEAPON_P2020 => true,
-                IDWEAPON_TRIPLE_TAKE => true,
-                IDWEAPON_WINGMAN => true,
-                IDWEAPON_HANDS => true,
-                THROWING_KNIFE => true,
-                GRENADE_THERMITE => false,
-                GRENADE_FRAG => false,
-                GRENADE_ARC_STAR => false,
+            match WeaponId(weapon_info.weapon_id) {
+                WeaponId::_3030Repeater => true,
+                WeaponId::Bow => true,
+                WeaponId::ChargeRifle => false,
+                WeaponId::G7Scout => true,
+                WeaponId::Hemlock => true,
+                WeaponId::Kraber => false,
+                WeaponId::Longbow => true,
+                WeaponId::Sentinel => false,
+                WeaponId::P2020 => true,
+                WeaponId::TripleTake => true,
+                WeaponId::Wingman => true,
+                WeaponId::Hands => true,
+                WeaponId::ThrowingKnife => true,
+                WeaponId::GrenadeThermite => false,
+                WeaponId::GrenadeFrag => false,
+                WeaponId::GrenadeArcStar => false,
                 _ => weapon.is_semi_auto,
             }
         };
@@ -172,20 +172,3 @@ impl ContextForAimbot for SharedStateWrapper {
         *self.aim_target.lock() = (aim_result, hitscan_result, target_pos);
     }
 }
-
-const IDWEAPON_SENTINEL: i32 = WeaponId::Sentinel as i32;
-const IDWEAPON_BOW: i32 = WeaponId::Bow as i32;
-const IDWEAPON_CHARGE_RIFLE: i32 = WeaponId::ChargeRifle as i32;
-const IDWEAPON_LONGBOW: i32 = WeaponId::Longbow as i32;
-const IDWEAPON_G7_SCOUT: i32 = WeaponId::G7Scout as i32;
-const IDWEAPON_HEMLOCK: i32 = WeaponId::Hemlock as i32;
-const IDWEAPON_KRABER: i32 = WeaponId::Kraber as i32;
-const IDWEAPON_P2020: i32 = WeaponId::P2020 as i32;
-const IDWEAPON_TRIPLE_TAKE: i32 = WeaponId::TripleTake as i32;
-const IDWEAPON_WINGMAN: i32 = WeaponId::Wingman as i32;
-const IDWEAPON_3030_REPEATER: i32 = WeaponId::_3030Repeater as i32;
-const IDWEAPON_HANDS: i32 = WeaponId::Hands as i32;
-const THROWING_KNIFE: i32 = WeaponId::ThrowingKnife as i32;
-const GRENADE_THERMITE: i32 = WeaponId::GrenadeThermite as i32;
-const GRENADE_FRAG: i32 = WeaponId::GrenadeFrag as i32;
-const GRENADE_ARC_STAR: i32 = WeaponId::GrenadeArcStar as i32;
