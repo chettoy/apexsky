@@ -8,11 +8,16 @@ use crate::workers::items::LootInt;
 /*
  * GameVersion=v3.0.81.36
  */
+
+pub static TARGET_PROCESS_NAME: Lazy<String> =
+    Lazy::new(|| obfstr::obfstr!("r5apex.exe").to_string());
+
 pub const OFFSET_YAW: u64 = 0x223c - 0x8;
 //pub const OFFSET_GLOW_CONTEXT_ID: u64 = 0x29c;
 pub const OFFSET_GLOW_VISIBLE_TYPE: u64 = 0x26c;
 pub const OFFSET_GLOW_DISTANCE: u64 = 0x264;
 pub const OFFSET_GLOW_FIX: u64 = 0x278;
+pub const OFFSET_MODULE_BASE: u64 = 0x140000000;
 
 #[allow(dead_code)]
 #[named_constants]

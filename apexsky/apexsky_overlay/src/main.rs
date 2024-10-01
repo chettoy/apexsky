@@ -26,9 +26,11 @@ fn init_logger() -> tracing_appender::non_blocking::WorkerGuard {
 
     static DATA_DIR: Lazy<PathBuf> = Lazy::new(|| {
         if cfg!(unix)
-            && std::fs::exists(obfstr::obfstr!("/usr/share/apexsky/")).is_ok_and(|exists| exists)
+            && std::env::current_exe()
+                .is_ok_and(|exe| exe.starts_with(s!("/usr/bin")) || exe.starts_with(s!("/bin")))
         {
-            dirs::home_dir()
+            homedir::my_home()
+                .unwrap()
                 .unwrap()
                 .join(".local")
                 .join("share")

@@ -1,0 +1,12 @@
+[package]
+name = "apexsky_utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+homedir = "0.3.4"
+obfstr = "0.4.3"
+
+[target.'cfg(unix)'.dependencies]
+nix = "0.29.0"
+uzers = "0.12.1"

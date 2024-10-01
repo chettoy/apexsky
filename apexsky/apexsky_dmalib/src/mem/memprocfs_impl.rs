@@ -1,8 +1,9 @@
 use anyhow::{anyhow, Context};
+use apexsky_utils::get_runner_home_dir;
 use memprocfs::{Vmm, VmmProcess, VmmScatterMemory, FLAG_NOCACHE};
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
-use std::{env, path::PathBuf, sync::Arc, time::Instant};
+use std::{env, sync::Arc, time::Instant};
 
 use crate::mem::dma_helper::fix_dtb;
 
@@ -46,17 +47,12 @@ impl MemProcFsOs {
         let vmm_path: String = (|| {
             if cfg!(unix) {
                 // try ~/.local/lib/memprocfs/vmm.so
-                if let Some(local_lib) = std::env::var(s!("SUDO_HOME"))
-                    .ok()
-                    .map(PathBuf::from)
-                    .or(dirs::home_dir())
-                    .map(|home| {
-                        home.join(s!(".local"))
-                            .join(s!("lib"))
-                            .join(s!("memprocfs"))
-                            .join(s!("vmm.so"))
-                    })
-                {
+                if let Some(local_lib) = get_runner_home_dir().map(|home| {
+                    home.join(s!(".local"))
+                        .join(s!("lib"))
+                        .join(s!("memprocfs"))
+                        .join(s!("vmm.so"))
+                }) {
                     if local_lib.try_exists().is_ok_and(|exists| exists) {
                         return anyhow::Ok(local_lib.to_str().unwrap().to_string());
                     }
@@ -100,8 +96,8 @@ impl MemProcFsOs {
 }
 
 impl super::MemOs for MemProcFsOs {
-    fn open_proc<'a>(&'a mut self, name: String) -> anyhow::Result<super::MemProcImpl<'a>> {
-        let process = self.vmm.process_from_name(&name)?;
+    fn open_proc<'a>(&'a mut self, name: &str) -> anyhow::Result<super::MemProcImpl<'a>> {
+        let process = self.vmm.process_from_name(name)?;
 
         if let Ok(procinfo) = process.info() {
             println!("{}{:?}", s!("struct   -> "), procinfo);
@@ -114,14 +110,14 @@ impl super::MemOs for MemProcFsOs {
             println!("{}{:?}", s!("SID      -> "), procinfo.sid);
         }
 
-        fix_dtb(&self.vmm, &process, &name).map_err(|e| {
+        fix_dtb(&self.vmm, &process, name).map_err(|e| {
             tracing::warn!(%e, ?e);
             e
         })?;
 
-        let process_base = process.get_module_base(&name)?;
+        let process_base = process.get_module_base(name)?;
 
-        println!("{}{}{:x}", name, s!(" module found: 0x"), process_base);
+        tracing::info!(?name, "{}{:x}", s!("module found: 0x"), process_base);
 
         Ok(super::MemProcImpl::Vmm(MemProcFSProc {
             base_addr: process_base,
@@ -132,8 +128,13 @@ impl super::MemOs for MemProcFsOs {
 }
 
 impl<'a> MemProc for MemProcFSProc<'a> {
-    fn get_proc_baseaddr(&self) -> u64 {
+    #[inline]
+    fn get_base_addr(&self) -> u64 {
         self.base_addr
+    }
+
+    fn set_base_addr(&mut self, base_addr: u64) {
+        self.base_addr = base_addr;
     }
 
     fn check_proc_status(&mut self) -> super::ProcessStatus {

@@ -89,7 +89,7 @@ struct DumpMemory {
 impl DumpMemory {
     fn check_and_update(&mut self, mem: &mut MemProcImpl) -> anyhow::Result<()> {
         use pelite::pe64::*;
-        let base = mem.get_proc_baseaddr();
+        let base = mem.get_base_addr();
         let Ok(dos_header) = mem.read::<image::IMAGE_DOS_HEADER>(base) else {
             anyhow::bail!("{}", s!("[-] Failed to read PE Header"));
         };
@@ -363,6 +363,7 @@ struct ContextData {
 pub struct ConnectConfig {
     pub mem_connector: crate::mem::MemConnector,
     pub target_proc_name: String,
+    pub specify_module_base: Option<u64>,
     pub check_time_date_stamp: Option<u32>,
     pub speed_test: bool,
 }
@@ -430,32 +431,38 @@ pub fn io_thread(
         }
 
         // Find process
-        let Some(mut mem) = find_target_process(&mut mem_os, config.target_proc_name.to_owned())
+        tracing::info!(parent: None, "{}", s!("Searching for process..."));
+        let Some(mut mem) = mem_os
+            .open_proc(&config.target_proc_name)
+            .inspect_err(|e| tracing::debug!(?e, "{}", s!("open_proc")))
+            .ok()
+            .and_then(|mut proc| {
+                if let Some(override_base_addr) = config.specify_module_base {
+                    proc.set_base_addr(override_base_addr);
+                    assert_eq!(override_base_addr, proc.get_base_addr());
+                    tracing::warn!(
+                        "{}{:x}",
+                        s!("Override base address = 0x"),
+                        override_base_addr
+                    );
+                }
+                (proc.check_proc_status() == ProcessStatus::FoundReady
+                    && ctx
+                        .dumper
+                        .check_and_update(&mut proc)
+                        .inspect_err(|e| tracing::warn!("{}", e))
+                        .is_ok())
+                .then_some(proc)
+            })
         else {
             accessible = false;
             sleep_until(start_instant + Duration::from_secs(2));
             continue;
         };
 
-        // Check
-        if mem.check_proc_status() != ProcessStatus::FoundReady
-            || ctx
-                .dumper
-                .check_and_update(&mut mem)
-                .inspect_err(|e| {
-                    tracing::warn!("{}", e);
-                })
-                .is_err()
-        {
-            accessible = false;
-            sleep_until(start_instant + Duration::from_secs(2));
-            continue;
-        }
-
         // Found and ready
         if !accessible {
-            tracing::info!("{}", s!("Process found"));
-            tracing::info!(dumper=?ctx.dumper, "{}{:x}", s!("Base: 0x"), mem.get_proc_baseaddr());
+            tracing::info!(dumper=?ctx.dumper, "{}{:x}{}", s!("Base: 0x"), mem.get_base_addr(), s!(" Process found"));
 
             if config.speed_test && !speed_test_done {
                 tracing::debug!("{}", s!("speed_test"));
@@ -734,7 +741,7 @@ fn consume_requests(
         }
         match ctx.priority_queue.pop().unwrap().req {
             AccessType::MemBaseaddr(r) => {
-                let _ = r.future_tx.send(match mem.get_proc_baseaddr() {
+                let _ = r.future_tx.send(match mem.get_base_addr() {
                     0 => None,
                     a => Some(a),
                 });
@@ -806,14 +813,6 @@ fn create_os_instance(connector: MemConnector) -> anyhow::Result<MemOsImpl> {
         MemConnector::PCILeech(_) => Ok(MemOsImpl::Vmm(MemProcFsOs::new(connector)?)),
         _ => Ok(MemOsImpl::Memflow(MemflowOs::new(connector)?)),
     }
-}
-
-fn find_target_process(mem_os: &mut MemOsImpl, proc_name: String) -> Option<MemProcImpl<'_>> {
-    tracing::info!(parent: None, "{}", s!("Searching for process..."));
-    mem_os.open_proc(proc_name).map(Some).unwrap_or_else(|e| {
-        tracing::trace!(?e, "{}", s!("open_proc"));
-        None
-    })
 }
 
 impl PartialEq for PriorityAccess {

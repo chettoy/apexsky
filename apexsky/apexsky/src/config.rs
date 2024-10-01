@@ -513,11 +513,11 @@ impl Default for Settings {
     }
 }
 
-pub fn get_config_path() -> PathBuf {
+pub fn get_config_file_path() -> PathBuf {
     static S_CONF_FILENAME: Lazy<String> = Lazy::new(|| s!("settings.toml").to_string());
     static CONFIG_DIR: Lazy<PathBuf> = Lazy::new(|| {
-        if cfg!(unix) && std::fs::exists(s!("/usr/share/apexsky/")).is_ok_and(|exists| exists) {
-            crate::get_runner_home_dir()
+        if crate::is_installed_locally() {
+            apexsky_utils::get_runner_home_dir()
                 .unwrap()
                 .join(".config")
                 .join(s!("apexsky"))
@@ -532,7 +532,7 @@ pub fn get_config_path() -> PathBuf {
 pub fn get_configuration() -> Result<Config, config::ConfigError> {
     let settings = config::Config::builder()
         .add_source(config::Config::try_from::<Config>(&Config::default())?)
-        .add_source(config::File::from(get_config_path()))
+        .add_source(config::File::from(get_config_file_path()))
         .add_source(config::Environment::with_prefix(s!("APP")))
         .build()?;
 
@@ -547,7 +547,7 @@ pub fn save_configuration(config_state: Config) -> Result<(), std::io::Error> {
         .create(true)
         .write(true)
         .truncate(true)
-        .open(get_config_path())?;
+        .open(get_config_file_path())?;
     let toml_con = toml::to_string(&config_state).unwrap();
     write!(config_write, "{}", toml_con)?;
     Ok(())

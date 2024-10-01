@@ -2,9 +2,6 @@ use apexsky::offsets::G_OFFSETS;
 
 #[derive(Debug)]
 pub struct GameData {
-    pub time_date_stamp: u32,
-    pub checksum: u32,
-
     pub global_vars: u32,
 
     pub entity_list: u32,
@@ -123,8 +120,6 @@ pub struct GameData {
 impl Default for GameData {
     fn default() -> Self {
         Self {
-            time_date_stamp: G_OFFSETS.time_date_stamp.try_into().unwrap(),
-            checksum: G_OFFSETS.checksum.try_into().unwrap(),
             global_vars: G_OFFSETS.global_vars.try_into().unwrap(),
             entity_list: G_OFFSETS.entitylist.try_into().unwrap(),
             local_entity_handle: G_OFFSETS.local_entity_handle.try_into().unwrap(),

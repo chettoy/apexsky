@@ -5,10 +5,10 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
+apexsky_utils = { path = "../apexsky_utils" }
 chrono = "0.4.38"
 crossbeam-channel = "0.5.13"
 dataview = "1.0.1"
-dirs = "5.0.1"
 enum_dispatch = "0.3.13"
 memflow = "0.2.3"
 memflow-qemu = { git = "https://github.com/memflow/memflow-qemu", rev = "78bdf30" }

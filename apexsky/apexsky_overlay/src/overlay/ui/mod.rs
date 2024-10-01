@@ -74,8 +74,12 @@ impl UiPersistance {
     #[cfg(feature = "native")]
     fn file_path() -> anyhow::Result<std::path::PathBuf> {
         static CONFIG_DIR: Lazy<std::path::PathBuf> = Lazy::new(|| {
-            if cfg!(unix) && std::fs::exists(s!("/usr/share/apexsky/")).is_ok_and(|exists| exists) {
-                dirs::home_dir()
+            if cfg!(unix)
+                && std::env::current_exe()
+                    .is_ok_and(|exe| exe.starts_with(s!("/usr/bin")) || exe.starts_with(s!("/bin")))
+            {
+                homedir::my_home()
+                    .unwrap()
                     .unwrap()
                     .join(".config")
                     .join(s!("apexsky"))

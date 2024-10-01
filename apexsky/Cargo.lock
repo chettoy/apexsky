@@ -371,11 +371,11 @@ name = "apexsky"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "apexsky_utils",
  "chinese-lunisolar-calendar",
  "chrono",
  "config",
  "crossterm",
- "dirs 5.0.1",
  "entropy",
  "fluent",
  "futures",
@@ -413,6 +413,7 @@ dependencies = [
  "apexsky_extension",
  "apexsky_kmbox",
  "apexsky_proto",
+ "apexsky_utils",
  "async-channel 2.3.1",
  "async-trait",
  "bitset-core",
@@ -456,10 +457,10 @@ name = "apexsky_dmalib"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "apexsky_utils",
  "chrono",
  "crossbeam-channel",
  "dataview 1.0.1",
- "dirs 5.0.1",
  "enum_dispatch",
  "memflow",
  "memflow-qemu",
@@ -529,7 +530,6 @@ dependencies = [
  "bevy_egui",
  "bevy_health_bar3d",
  "chrono",
- "dirs 5.0.1",
  "fyrox-sound",
  "homedir",
  "indexmap 2.6.0",
@@ -564,6 +564,16 @@ dependencies = [
  "serde",
  "tonic",
  "tonic-build",
+]
+
+[[package]]
+name = "apexsky_utils"
+version = "0.1.0"
+dependencies = [
+ "homedir",
+ "nix",
+ "obfstr",
+ "uzers",
 ]
 
 [[package]]
@@ -4584,6 +4594,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3d1354bf6b7235cb4a0576c2619fd4ed18183f689b12b006a0ee7329eeff9a5"
 dependencies = [
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "homedir"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bdbbd5bc8c5749697ccaa352fa45aff8730cf21c68029c0eef1ffed7c3d6ba2"
+dependencies = [
+ "cfg-if",
+ "nix",
+ "widestring",
+ "windows 0.57.0",
 ]
 
 [[package]]
@@ -10721,6 +10743,16 @@ dependencies = [
 
 [[package]]
 name = "windows"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12342cb4d8e3b046f3d80effd474a7a02447231330ef77d71daa6fbc40681143"
+dependencies = [
+ "windows-core 0.57.0",
+ "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "windows"
 version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd04d41d93c4992d421894c18c8b43496aa748dd4c081bac0dc93eb0489272b6"
@@ -10744,6 +10776,18 @@ version = "0.54.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12661b9c89351d684a50a8a643ce5f608e20243b9fb84687800163429f161d65"
 dependencies = [
+ "windows-result 0.1.2",
+ "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "windows-core"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2ed2439a290666cd67ecce2b0ffaad89c2a56b976b736e6ece670297897832d"
+dependencies = [
+ "windows-implement 0.57.0",
+ "windows-interface 0.57.0",
  "windows-result 0.1.2",
  "windows-targets 0.52.6",
 ]
@@ -10774,6 +10818,17 @@ dependencies = [
 
 [[package]]
 name = "windows-implement"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9107ddc059d5b6fbfbffdfa7a7fe3e22a226def0b2608f72e9d552763d3e1ad7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.79",
+]
+
+[[package]]
+name = "windows-implement"
 version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bbd5b46c938e506ecbce286b6628a02171d56153ba733b6c741fc627ec9579b"
@@ -10788,6 +10843,17 @@ name = "windows-interface"
 version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da33557140a288fae4e1d5f8873aaf9eb6613a9cf82c3e070223ff177f598b60"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.79",
+]
+
+[[package]]
+name = "windows-interface"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29bee4b38ea3cde66011baa44dba677c432a78593e202392d1e9070cf2a7fca7"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -8,12 +8,13 @@ pub mod memflow_impl;
 pub mod memprocfs_impl;
 
 pub trait MemOs: Send + Sync {
-    fn open_proc(&mut self, name: String) -> anyhow::Result<MemProcImpl>;
+    fn open_proc(&mut self, name: &str) -> anyhow::Result<MemProcImpl>;
 }
 
 #[enum_dispatch]
 pub trait MemProc: Send + Sync {
-    fn get_proc_baseaddr(&self) -> u64;
+    fn get_base_addr(&self) -> u64;
+    fn set_base_addr(&mut self, base_addr: u64);
     fn check_proc_status(&mut self) -> ProcessStatus;
     fn speed_test(&mut self);
     fn read_raw_into(&mut self, addr: u64, out: &mut [u8]) -> anyhow::Result<()>;
@@ -26,7 +27,7 @@ pub enum MemOsImpl {
 }
 
 impl MemOs for MemOsImpl {
-    fn open_proc(&mut self, name: String) -> anyhow::Result<MemProcImpl> {
+    fn open_proc(&mut self, name: &str) -> anyhow::Result<MemProcImpl> {
         match self {
             MemOsImpl::Memflow(inner) => inner.open_proc(name),
             MemOsImpl::Vmm(inner) => inner.open_proc(name),

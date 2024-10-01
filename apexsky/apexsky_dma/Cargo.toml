@@ -10,11 +10,13 @@ apexsky_dmalib = { path = "../apexsky_dmalib" }
 apexsky_extension = { path = "../apexsky_extension" }
 apexsky_kmbox = { path = "../apexsky_kmbox" }
 apexsky_proto = { path = "../apexsky_proto" }
+apexsky_utils = { path = "../apexsky_utils" }
 async-channel = "2.3.1"
 async-trait = "0.1.83"
 bitset-core = "0.1.1"
 chrono = "0.4.38"
 clap = { version = "4.5.19", features = ["derive"] }
+clap-num = "1.1.1"
 #console-subscriber = "0.1.5"
 crossbeam-skiplist = "0.1.3"
 crossterm = "0.28.1"
@@ -47,3 +49,8 @@ tracing-appender = "0.2.3"
 [target.'cfg(unix)'.dependencies]
 nix = "0.29.0"
 uzers = "0.12.1"
+
+[build-dependencies]
+clap = { version = "4.5.19", features = ["derive"] }
+clap-num = "1.1.1"
+clap_complete = "4.5.32"
