@@ -83,7 +83,7 @@ pub fn main(default_memu: Box<dyn apexsky_menu::MenuState>) -> anyhow::Result<()
         let mut current_msg = handle_event(apex_menu.app_model())?;
 
         // Process updates as long as they return a non-‌​‌‌​​​‌‌‌‍‌​‌‌​‌​​​‌‍‌​‌‌​​‌​‌‌‍‌​‌‌‌​‌​​‌‍‌​‌‌‌​‌​​‌‍‌​‌‌​‌‌‌‌‌‍‌​‌‌‌‌​​‌‌‍‌​‌‌​​​​‌‌‍‌​‌‌‌​​​​‌‍‌​‌‌​​‌​‌‌‍‌​‌‌‌‌​​​‌‍‌​‌‌‌​‌​​‌‍‌​‌‌‌​‌​‌‌‍‌​‌‌​‌​​‌‌‍‌​‌‌​‌‌​‌‌‍‌​‌‌​​‌​‌‌‍‌​‌‌​‌‌‌​‌‍‌​‌‌‌​‌​‌‌None message
-        while current_msg != None {
+        while current_msg.is_some() {
             current_msg = update(&mut apex_menu, current_msg.unwrap());
         }
     }
@@ -193,7 +193,7 @@ fn update(apex_menu: &mut TerminalMenu, msg: Message) -> Option<Message> {
             model.input_buf.insert(model.input_buf.len(), c);
         }
         Message::Delete => {
-            if model.input_buf.len() > 0 {
+            if !model.input_buf.is_empty() {
                 model.input_buf.remove(model.input_buf.len() - 1);
             }
         }

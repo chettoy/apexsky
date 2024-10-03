@@ -40,11 +40,11 @@ impl GeneralMenuName for MenuLevel {
     }
 }
 
-impl<'a> Into<Box<GeneralMenu<'a, MenuLevel>>> for MenuLevel {
-    fn into(self) -> Box<GeneralMenu<'a, MenuLevel>> {
+impl<'a> From<MenuLevel> for Box<GeneralMenu<'a, MenuLevel>> {
+    fn from(value: MenuLevel) -> Self {
         let data = lock_config!().settings.to_owned();
         let i18n_bundle = load_fluent_bundle();
-        Box::new(match self {
+        Box::new(match value {
             MenuLevel::MainMenu => main_menu::build_main_menu(&i18n_bundle, data),
             MenuLevel::AimbotMenu => aimbot_menu::build_aimbot_menu(&i18n_bundle, data),
             MenuLevel::GlowColorMenu => glow_color_menu::build_glow_color_menu(&i18n_bundle, data),

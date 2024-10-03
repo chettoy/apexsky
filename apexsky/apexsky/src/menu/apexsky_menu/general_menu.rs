@@ -110,9 +110,9 @@ where
     #[tracing::instrument(skip_all)]
     fn resize(&mut self, scroll_height: usize) {
         self.scroll_height = scroll_height - 4;
-        if !(self.nav_index < self.scroll_top + self.scroll_height) {
+        if self.nav_index >= self.scroll_top + self.scroll_height {
             self.scroll_top = self.nav_index - self.scroll_height + 1;
-        } else if !(self.nav_index >= self.scroll_top) {
+        } else if self.nav_index < self.scroll_top {
             self.scroll_top = self.nav_index;
         }
     }

@@ -82,7 +82,6 @@ impl SysContext {
     ///
     /// Returns `Ok(())` if the blinking operation is successful.
     /// Returns an `Err` variant with an error description if an issue occurs.
-
     pub fn kbd_blink(&self, count: u8) -> Result<()> {
         use std::thread::sleep;
         let kbd_backlight = self.kbd_backlight_proxy()?;
