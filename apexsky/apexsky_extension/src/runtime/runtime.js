@@ -16,6 +16,7 @@ const console = {
 
 const runtime = {
     core: {
+        overrideCreateArgs: null,
         msgHandler: null,
         msgLoop: null,
         pollMessages: async () => {
@@ -26,7 +27,11 @@ const runtime = {
                 // Call handler to handle the message
                 try {
                     const result = await apexsky.runtime.core.msgHandler(message);
-                    ops.op_message_callback(result);
+                    if (message.name === "create" && runtime.core.overrideCreateArgs) {
+                        ops.op_message_callback(runtime.core.overrideCreateArgs);
+                    } else {
+                        ops.op_message_callback(result);
+                    }
                 } catch (e) {
                     console.error("Error handle messages:", e);
                 }
@@ -42,6 +47,9 @@ const runtime = {
                 console.error("Error polling messages:", err);
             });
         }
+    },
+    registerOptions: (args) => {
+        runtime.core.overrideCreateArgs = args;
     },
 
     readFile: (path) => {
@@ -96,6 +104,15 @@ const apexsky = {
         },
         getCachedPlayer: (ptr) => {
             return ops.op_game_cached_player(ptr);
+        },
+        getCachedNpc: (ptr) => {
+            return ops.op_game_cached_npc(ptr);
+        },
+        getCachedLoot: (ptr) => {
+            return ops.op_game_cached_loot(ptr);
+        },
+        getCachedAimEntity: (ptr) => {
+            return ops.op_game_cached_aim_entity(ptr);
         }
     },
     mem: {
@@ -111,11 +128,17 @@ const apexsky = {
         memReadI32: async (addr) => {
             return await ops.op_mem_read_i32(addr);
         },
+        memReadU8: async (addr) => {
+            return await ops.op_mem_read_u8(addr);
+        },
         memWriteF32: async (addr, val) => {
             return await ops.op_mem_write_f32(addr, val);
         },
         memWriteI32: async (addr, val) => {
             return await ops.op_mem_write_i32(addr, val);
+        },
+        memWriteU8: async (addr, val) => {
+            return await ops.op_mem_write_u8(addr, val);
         },
     },
 };

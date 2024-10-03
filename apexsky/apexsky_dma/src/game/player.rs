@@ -1,7 +1,8 @@
+use std::sync::Arc;
 use std::vec;
 
 use apexsky::aimbot::{get_unix_timestamp_in_millis, AimEntity, HitboxData};
-use apexsky_proto::pb::apexlegends::{Badge, GradeFlag, PlayerState, TreasureClue};
+use apexsky_proto::pb::apexlegends::{AimEntityData, Badge, GradeFlag, PlayerState, TreasureClue};
 use obfstr::obfstr as s;
 
 use crate::apexdream::sdk::ScriptNetVarName;
@@ -690,5 +691,33 @@ impl AimEntity for QuickLooting {
 
     fn is_loot(&self) -> bool {
         true
+    }
+}
+
+pub struct ArcAimEntity(pub Arc<dyn AimEntity>);
+
+impl From<ArcAimEntity> for AimEntityData {
+    fn from(value: ArcAimEntity) -> Self {
+        let entity = value.0;
+        AimEntityData {
+            id: entity.get_entity_ptr(),
+            view_angles: Some(entity.get_view_angles().into()),
+            cam_pos: Some(entity.get_cam_pos().into()),
+            sway_angles: Some(entity.get_sway_angles().into()),
+            abs_velocity: Some(entity.get_abs_velocity().into()),
+            head_position: Some(entity.get_bone_position_by_hitbox(0).into()),
+            position: Some(entity.get_position().into()),
+            view_offset: Some(entity.get_view_offset().into()),
+            recoil_angles: Some(entity.get_recoil_angles().into()),
+            team_num: entity.get_team_num(),
+            health: entity.get_health(),
+            shield_health: entity.get_shield_health(),
+            max_health: entity.get_max_health(),
+            max_shield_health: entity.get_max_shield_health(),
+            is_alive: entity.is_alive(),
+            is_knocked: entity.is_knocked(),
+            is_player: entity.is_player(),
+            is_visible: entity.is_visible(),
+        }
     }
 }

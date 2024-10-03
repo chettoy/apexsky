@@ -82,7 +82,7 @@ impl PackageManager {
                         .map_err(|e| anyhow::anyhow!("{:?}", e))?,
                 )
                 .parse();
-                let program = allocator.alloc(ret.program);
+                let mut program = ret.program;
                 let ret = Minifier::new(MinifierOptions {
                     mangle: true,
                     compress: CompressOptions {
@@ -90,11 +90,11 @@ impl PackageManager {
                         ..Default::default()
                     },
                 })
-                .build(&allocator, program);
+                .build(&allocator, &mut program);
 
                 let code_out = CodeGenerator::new()
                     .with_mangler(ret.mangler)
-                    .build(program)
+                    .build(&program)
                     .source_text
                     .as_bytes()
                     .to_vec();

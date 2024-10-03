@@ -296,12 +296,17 @@ impl ExtensionRuntime {
                         "op_mem_read_all" => perms.memory_access,
                         "op_mem_read_f32" => perms.memory_access,
                         "op_mem_read_i32" => perms.memory_access,
+                        "op_mem_read_u8" => perms.memory_access,
                         "op_mem_write_f32" => perms.memory_modify,
                         "op_mem_write_i32" => perms.memory_modify,
+                        "op_mem_write_u8" => perms.memory_modify,
                         "op_game_local_player_ptr" => perms.game_world_access,
                         "op_game_view_player_ptr" => perms.game_world_access,
                         "op_game_is_world_ready" => perms.game_world_access,
                         "op_game_cached_player" => perms.game_world_access,
+                        "op_game_cached_npc" => perms.game_world_access,
+                        "op_game_cached_loot" => perms.game_world_access,
+                        "op_game_cached_aim_entity" => perms.game_world_access,
                         _ => true,
                     };
                     if on {

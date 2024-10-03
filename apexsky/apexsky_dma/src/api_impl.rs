@@ -1,9 +1,10 @@
 use apexsky::{global_state::G_STATE, offsets::G_OFFSETS};
 use apexsky_dmalib::access::{AccessType, MemApi, PendingAccessRequest, PendingMemRead};
 use apexsky_extension::{GameApi, OpMemReadItem};
+use apexsky_proto::pb::apexlegends::AimEntityData;
 use async_trait::async_trait;
 
-use crate::{SharedStateWrapper, TaskChannels};
+use crate::{game::player::ArcAimEntity, SharedStateWrapper, TaskChannels};
 
 #[derive(Debug, Clone)]
 pub struct GameApiHandle {
@@ -82,6 +83,23 @@ impl GameApi for GameApiHandle {
             .await?
     }
 
+    async fn mem_read_u8(&self, addr: u64) -> anyhow::Result<u8> {
+        AccessType::mem_read(addr, size_of::<u8>(), 0)
+            .with_priority(1)
+            .dispatch(&self.access_tx)
+            .await?
+            .recv_for::<u8>()
+            .await
+    }
+
+    async fn mem_write_u8(&self, addr: u64, value: u8) -> anyhow::Result<()> {
+        AccessType::mem_write_typed::<u8>(addr, &value, 0)
+            .with_priority(1)
+            .dispatch(&self.access_tx)
+            .await?
+            .await?
+    }
+
     fn game_is_world_ready(&self) -> bool {
         self.state.is_world_ready()
     }
@@ -98,6 +116,24 @@ impl GameApi for GameApiHandle {
         self.state
             .read_cached_player(&ptr)
             .map(|pl| serde_json::to_value(pl.get_buf()).unwrap())
+    }
+
+    fn game_cached_npc(&self, ptr: u64) -> Option<serde_json::Value> {
+        self.state
+            .read_cached_npc(&ptr)
+            .map(|npc| serde_json::to_value(AimEntityData::from(ArcAimEntity(npc))).unwrap())
+    }
+
+    fn game_cached_loot(&self, ptr: u64) -> Option<serde_json::Value> {
+        self.state
+            .read_cached_loot(&ptr)
+            .map(|loot| serde_json::to_value(loot).unwrap())
+    }
+
+    fn game_cached_aim_entity(&self, ptr: u64) -> Option<serde_json::Value> {
+        self.state
+            .read_cached_aim_entity(&ptr)
+            .map(|ent| serde_json::to_value(AimEntityData::from(ArcAimEntity(ent))).unwrap())
     }
 
     fn game_is_ready(&self) -> bool {

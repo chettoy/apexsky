@@ -29,12 +29,17 @@ pub trait GameApi: Send + Sync {
     async fn mem_write_i32(&self, addr: u64, value: i32) -> anyhow::Result<()>;
     async fn mem_read_f32(&self, addr: u64) -> anyhow::Result<f32>;
     async fn mem_write_f32(&self, addr: u64, value: f32) -> anyhow::Result<()>;
+    async fn mem_read_u8(&self, addr: u64) -> anyhow::Result<u8>;
+    async fn mem_write_u8(&self, addr: u64, value: u8) -> anyhow::Result<()>;
 
     // game world
     fn game_is_world_ready(&self) -> bool;
     fn game_local_player_ptr(&self) -> Option<u64>;
     fn game_view_player_ptr(&self) -> Option<u64>;
     fn game_cached_player(&self, ptr: u64) -> Option<serde_json::Value>;
+    fn game_cached_npc(&self, ptr: u64) -> Option<serde_json::Value>;
+    fn game_cached_loot(&self, ptr: u64) -> Option<serde_json::Value>;
+    fn game_cached_aim_entity(&self, ptr: u64) -> Option<serde_json::Value>;
 }
 
 pub type GameApiInstance = Arc<dyn GameApi>;
@@ -62,12 +67,17 @@ extension!(
     op_mem_read_all,
     op_mem_read_f32,
     op_mem_read_i32,
+    op_mem_read_u8,
     op_mem_write_f32,
     op_mem_write_i32,
+    op_mem_write_u8,
     op_game_local_player_ptr,
     op_game_view_player_ptr,
     op_game_is_world_ready,
     op_game_cached_player,
+    op_game_cached_npc,
+    op_game_cached_loot,
+    op_game_cached_aim_entity,
   ],
   options = {
     game_api: GameApiInstance,
@@ -165,6 +175,15 @@ async fn op_mem_read_i32(
 }
 
 #[op2(async)]
+async fn op_mem_read_u8(#[bigint] addr: u64, state: Rc<RefCell<OpState>>) -> Result<u8, AnyError> {
+    let api = Arc::clone(state.borrow().borrow::<GameApiInstance>());
+    api.mem_read_u8(addr).await.map_err(|e| {
+        tracing::error!(%e);
+        e
+    })
+}
+
+#[op2(async)]
 async fn op_mem_write_f32(
     #[bigint] addr: u64,
     value: f32,
@@ -190,6 +209,19 @@ async fn op_mem_write_i32(
     })
 }
 
+#[op2(async)]
+async fn op_mem_write_u8(
+    #[bigint] addr: u64,
+    value: u8,
+    state: Rc<RefCell<OpState>>,
+) -> Result<(), AnyError> {
+    let api = Arc::clone(state.borrow().borrow::<GameApiInstance>());
+    api.mem_write_u8(addr, value).await.map_err(|e| {
+        tracing::error!(%e);
+        e
+    })
+}
+
 #[op2(fast)]
 #[bigint]
 fn op_game_local_player_ptr(state: &OpState) -> Result<u64, AnyError> {
@@ -210,6 +242,18 @@ fn op_game_is_world_ready(state: &OpState) -> Result<bool, AnyError> {
     Ok(api.game_is_world_ready())
 }
 
+fn fix_big_number(value: &mut serde_json::Value) {
+    if let Some(obj) = value.as_object_mut() {
+        for v in obj.values_mut() {
+            if let Some(num) = v.as_u64() {
+                if num > (2 << 52) - 1 {
+                    *v = serde_json::Value::String(num.to_string());
+                }
+            }
+        }
+    }
+}
+
 #[op2]
 #[serde]
 fn op_game_cached_player(
@@ -218,16 +262,46 @@ fn op_game_cached_player(
 ) -> Result<serde_json::Value, AnyError> {
     let api = state.borrow::<GameApiInstance>();
     if let Some(mut val) = api.game_cached_player(ptr) {
-        // fix big number
-        if let Some(obj) = val.as_object_mut() {
-            for v in obj.values_mut() {
-                if let Some(num) = v.as_u64() {
-                    if num > (2 << 52) - 1 {
-                        *v = serde_json::Value::String(num.to_string());
-                    }
-                }
-            }
-        }
+        fix_big_number(&mut val);
+        Ok(val)
+    } else {
+        Ok(serde_json::Value::Null)
+    }
+}
+
+#[op2]
+#[serde]
+fn op_game_cached_npc(#[bigint] ptr: u64, state: &OpState) -> Result<serde_json::Value, AnyError> {
+    let api = state.borrow::<GameApiInstance>();
+    if let Some(mut val) = api.game_cached_npc(ptr) {
+        fix_big_number(&mut val);
+        Ok(val)
+    } else {
+        Ok(serde_json::Value::Null)
+    }
+}
+
+#[op2]
+#[serde]
+fn op_game_cached_loot(#[bigint] ptr: u64, state: &OpState) -> Result<serde_json::Value, AnyError> {
+    let api = state.borrow::<GameApiInstance>();
+    if let Some(mut val) = api.game_cached_loot(ptr) {
+        fix_big_number(&mut val);
+        Ok(val)
+    } else {
+        Ok(serde_json::Value::Null)
+    }
+}
+
+#[op2]
+#[serde]
+fn op_game_cached_aim_entity(
+    #[bigint] ptr: u64,
+    state: &OpState,
+) -> Result<serde_json::Value, AnyError> {
+    let api = state.borrow::<GameApiInstance>();
+    if let Some(mut val) = api.game_cached_aim_entity(ptr) {
+        fix_big_number(&mut val);
         Ok(val)
     } else {
         Ok(serde_json::Value::Null)
