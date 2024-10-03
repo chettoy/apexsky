@@ -6,9 +6,9 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 apexsky_proto = { path = "../apexsky/apexsky_proto" }
-buttplug = "9.0.1"
+buttplug = "9.0.2"
 chrono = "0.4.38"
-prost = "0.13.2"
+prost = "0.13.3"
 rand = "0.8.5"
 tokio = { version = "1.40.0", features = ["full"] }
 tonic = { version = "0.12.3", features = ["zstd"] }
