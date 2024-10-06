@@ -1,9 +1,13 @@
 use std::{
+    convert::Infallible,
     net::{Ipv4Addr, SocketAddr},
     time::Duration,
 };
 
-use embedded_graphics::pixelcolor::{IntoStorage, Rgb565, WebColors};
+use embedded_graphics::{
+    pixelcolor::{IntoStorage, Rgb565, WebColors},
+    prelude::{DrawTarget, OriginDimensions},
+};
 use rand::Rng;
 use tokio::{net::UdpSocket, time::timeout};
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
@@ -170,6 +174,57 @@ impl TrajectoryCorrectionStrength {
     /// Between 1 and 100
     pub fn enabled(value: u8) -> Self {
         Self(value.clamp(1, 100).into())
+    }
+}
+
+#[derive(Debug, AsBytes)]
+#[repr(C)]
+pub struct KmboxNetDisplay {
+    framebuffer: [u16; 128 * 160],
+}
+
+impl KmboxNetDisplay {
+    pub fn get_buffer_data(&self) -> &[u8] {
+        self.framebuffer.as_bytes()
+    }
+}
+
+impl Default for KmboxNetDisplay {
+    fn default() -> Self {
+        Self {
+            framebuffer: [0; 128 * 160],
+        }
+    }
+}
+
+impl DrawTarget for KmboxNetDisplay {
+    type Color = Rgb565;
+
+    type Error = Infallible;
+
+    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = embedded_graphics::Pixel<Self::Color>>,
+    {
+        use embedded_graphics::prelude::*;
+        for Pixel(coord, color) in pixels.into_iter() {
+            // Check if the pixel coordinates are out of bounds (negative or greater than
+            // (127,159)). `DrawTarget` implementation are required to discard any out of bounds
+            // pixels without returning an error or causing a panic.
+            if let Ok((x @ 0..=127, y @ 0..=159)) = coord.try_into() {
+                // Calculate the index in the framebuffer.
+                let index: u32 = x + y * 128;
+                self.framebuffer[index as usize] = color.into_storage();
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl OriginDimensions for KmboxNetDisplay {
+    fn size(&self) -> embedded_graphics::prelude::Size {
+        embedded_graphics::prelude::Size::new(128, 160)
     }
 }
 
@@ -353,7 +408,6 @@ impl KmboxNet {
     pub async fn lcd_logo(&mut self) -> Result<(), KmboxError> {
         use embedded_graphics::{
             geometry::{Dimensions, Point},
-            mock_display::MockDisplay,
             mono_font::{ascii::FONT_6X10, MonoTextStyle},
             pixelcolor::RgbColor,
             primitives::{Primitive, PrimitiveStyle, PrimitiveStyleBuilder, StrokeAlignment},
@@ -361,10 +415,7 @@ impl KmboxNet {
             Drawable,
         };
 
-        let draw = || -> Result<[u16; 128 * 160], anyhow::Error> {
-            // Create a new mock display
-            let mut display: MockDisplay<Rgb565> = MockDisplay::new();
-
+        let draw = |display: &mut KmboxNetDisplay| -> anyhow::Result<()> {
             // Create styles used by the drawing operations.
             let _thin_stroke = PrimitiveStyle::with_stroke(Rgb565::WHITE, 1);
             let _thick_stroke = PrimitiveStyle::with_stroke(Rgb565::WHITE, 3);
@@ -380,7 +431,7 @@ impl KmboxNet {
             display
                 .bounding_box()
                 .into_styled(border_stroke)
-                .draw(&mut display)?;
+                .draw(display)?;
 
             // Draw centered text.
             obfstr::obfstr! {
@@ -392,32 +443,20 @@ impl KmboxNet {
                 character_style,
                 Alignment::Center,
             )
-            .draw(&mut display)?;
+            .draw(display)?;
 
-            let mut pixels: [u16; 128 * 160] = [0; 128 * 160];
-            for y in 0..160 {
-                for x in 0..128 {
-                    pixels[y * 128 + x] = display
-                        .get_pixel(Point {
-                            x: x.try_into()?,
-                            y: y.try_into()?,
-                        })
-                        .unwrap_or(Rgb565::BLACK)
-                        .into_storage();
-                }
-            }
-
-            Ok(pixels)
+            Ok(())
         };
 
-        let pixels = draw().map_err(KmboxError::AnyError)?;
+        let mut display = KmboxNetDisplay::default();
+        draw(&mut display).map_err(KmboxError::AnyError)?;
 
-        let (chunks, _) = pixels.as_chunks::<512>();
+        let (chunks, _) = display.get_buffer_data().as_chunks::<1024>();
         for (y, data) in chunks.iter().enumerate() {
             self.send_packet(
                 Cmd::ShowPic,
                 Some((y * 4).try_into().unwrap()),
-                CmdBody::U16Buff(CmdDataU16 { buff: *data }),
+                CmdBody::U8Buff(CmdDataU8 { buff: *data }),
             )
             .await?;
             self.check_rx_packet_head(self.recv_packet_showpic().await?)?;

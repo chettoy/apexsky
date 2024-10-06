@@ -190,8 +190,13 @@ pub(crate) async fn usermod_loop(
 }
 
 async fn install_packages(install_mgr: &mut PackageManager) -> anyhow::Result<()> {
+    let mods_dir = crate::MODS_DIR.as_path();
+    if !mods_dir.is_dir() {
+        return Ok(());
+    }
+
     let install_list = G_STATE.lock().unwrap().config.dlc.install.clone();
-    for entry in std::fs::read_dir(crate::MODS_DIR.as_path())? {
+    for entry in std::fs::read_dir(mods_dir)? {
         let entry = entry?;
         let path = entry.path();
 
