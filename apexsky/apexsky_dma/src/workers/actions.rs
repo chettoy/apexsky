@@ -168,13 +168,13 @@ pub async fn actions_loop(
                     fps_checkpoint_instant = Instant::now();
                     None
                 } else {
-                    let duration = fps_checkpoint_instant.elapsed().as_millis();
+                    let duration = fps_checkpoint_instant.elapsed().as_secs_f32();
                     //trace!(delta_frame, duration, "{}", s!("calc game fps"));
 
                     last_checkpoint_frame = apex_state.client.framecount;
                     fps_checkpoint_instant = Instant::now();
 
-                    Some(delta_frame as f32 * 1000.0 / duration as f32)
+                    Some(delta_frame as f32 / duration)
                 }
             };
 
@@ -940,6 +940,7 @@ fn player_glow(
     player_glow_armor_color: bool,
     player_glow_love_user: bool,
 ) -> u8 {
+    let game_fps = if game_fps.is_normal() { game_fps } else { 60.0 } as i32;
     let mut setting_index = {
         if target.is_knocked {
             HIGHLIGHT_PLAYER_KNOCKED
@@ -963,7 +964,7 @@ fn player_glow(
 
     // love player glow
     if player_glow_love_user {
-        let frame_frag = frame_count / game_fps as i32;
+        let frame_frag = frame_count / game_fps;
         if target.is_visible || frame_frag % 2 == 0 {
             match target.love_status.try_into().unwrap_or(LoveStatus::Normal) {
                 LoveStatus::Love => {

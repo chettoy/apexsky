@@ -12,27 +12,24 @@ pub fn get_runner_home_dir() -> Option<PathBuf> {
         use obfstr::obfstr as s;
         use uzers::{get_current_uid, get_user_by_uid};
         if get_current_uid() == 0 {
-            return std::env::var(s!("SUDO_HOME"))
-                .ok()
-                .map(PathBuf::from)
-                .or_else(|| {
-                    let original_user_uid: Uid = std::env::var(s!("SUDO_UID"))
-                        .ok()?
-                        .parse::<u32>()
-                        .expect(s!("Invalid SUDO_UID"))
-                        .into();
-                    let original_user = get_user_by_uid(original_user_uid.into())
-                        .expect(s!("Failed to get original user"));
-
-                    homedir::home(original_user.name().to_str().expect(&format!(
-                        "{}{:?}{}",
-                        s!("Invalid username `"),
-                        original_user.name(),
-                        s!("` -> str")
-                    )))
-                    .ok()
-                    .flatten()
-                });
+            if let Some(from_env) = std::env::var(s!("SUDO_HOME")).ok().map(PathBuf::from) {
+                return Some(from_env);
+            }
+            if let Some(original_user_uid) = std::env::var(s!("SUDO_UID")).ok() {
+                let original_user_uid: Uid = original_user_uid
+                    .parse::<u32>()
+                    .expect(s!("Invalid SUDO_UID"))
+                    .into();
+                let original_user = get_user_by_uid(original_user_uid.into())
+                    .expect(s!("Failed to get original user"));
+                let original_user_username = original_user.name().to_str().expect(&format!(
+                    "{}{:?}{}",
+                    s!("Invalid username `"),
+                    original_user.name(),
+                    s!("` -> str")
+                ));
+                return homedir::home(original_user_username).ok().flatten();
+            }
         }
     }
 
