@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use crate::workers::items::LootInt;
 
 /*
- * GameVersion=v3.0.81.36
+ * GameVersion=v3.0.82.42
  */
 
 pub static TARGET_PROCESS_NAME: Lazy<String> =
