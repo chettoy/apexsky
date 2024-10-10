@@ -140,7 +140,8 @@ impl super::MemOs for MemflowOs {
     fn open_proc<'a>(&'a mut self, name: &str) -> anyhow::Result<super::MemProcImpl<'a>> {
         const LOG_MODULE_LIST: bool = false;
 
-        let mut proc = self.os.process_by_name(name)?;
+        let mut os = self.os.clone();
+        let mut proc = os.process_by_name(name)?;
 
         let proc_info = proc.info();
 
@@ -189,11 +190,14 @@ impl super::MemOs for MemflowOs {
             Ok(super::MemProcImpl::Memflow(MemflowProc {
                 base_addr: module_base,
                 status: ProcessStatus::FoundReady,
-                proc,
+                proc: self.os.process_by_name(name)?,
             }))
         } else {
-            let connector = memflow_qemu::create_connector(&Default::default())
-                .context(s!("unable to initialize qemu connector").to_string())?;
+            let connector = self
+                .os
+                .clone()
+                .cast_impl_physicalmemory()
+                .context(s!("unable to cast os connector").to_string())?;
             let mut win32_kernel = Box::new(
                 Win32Kernel::builder(connector)
                     .build_default_caches()
@@ -204,6 +208,8 @@ impl super::MemOs for MemflowOs {
             );
 
             let section_base_address = win32_kernel.process_by_name(name)?.proc_info.section_base;
+
+            let mut proc = self.os.process_by_name(name)?;
 
             // Credit: https://www.unknowncheats.me/forum/anti-cheat-bypass/635533-eac-dtb-fix-memflow-rust-paste-ready.html
             // the idea here is that since EAC sets CR3 to be invalid, memflow cannot resolve the correct DTB.
