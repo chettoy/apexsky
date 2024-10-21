@@ -1,0 +1,29 @@
+{
+    "manifest_version": 1,
+    "package_name": "app.ohos.example.cpp.mod",
+    "version_code": 0,
+    "version": "0.1.0",
+    "label": "example_cpp_mod",
+    "description": "",
+    "icons": {},
+    "target_api": {
+        "runtime": 1
+    },
+    "components": [
+        {
+            "service": {
+                "name": "example_cpp_mod",
+                "target": [
+                    "x86_64-linux"
+                ]
+            },
+            "type": "native"
+        }
+    ],
+    "permissions": [
+        {
+            "name": "app.ohos.permission.MODIFY_MEMORY",
+            "value": ""
+        }
+    ]
+}

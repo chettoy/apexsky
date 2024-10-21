@@ -25,7 +25,7 @@ struct HudData {
     movement_offset: [f32; 2],
     target_locking: bool,
     target_locked: bool,
-    aim_pos: Option<bevy::prelude::Vec2>,
+    aim_pos: Option<egui::Pos2>,
 }
 
 impl Hud {
@@ -138,7 +138,6 @@ impl Hud {
         };
 
         if let Some(aim_pos) = data.aim_pos {
-            let aim_pos = (aim_pos.x, aim_pos.y).into();
             ui.painter()
                 .circle_stroke(aim_pos, 15.0, (1.6726, hud_color));
             ui.painter().line_segment(

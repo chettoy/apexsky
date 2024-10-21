@@ -1,5 +1,5 @@
 use super::Pod;
-use apexsky::noobfstr as s;
+use crate::noobfstr as s;
 use std::fmt;
 
 // https://www.unknowncheats.me/forum/apex-legends/446349-script-highlight.html
@@ -53,10 +53,10 @@ impl HighlightBits {
     pub fn from_uint(int: u32) -> HighlightBits {
         unsafe { std::mem::transmute(int) }
     }
-    pub fn to_int(&self) -> u32 {
-        (self.inside_opacity as u32) << 24
-            | (self.outline_radius as u32) << 16
-            | (self.outline_function as u32) << 8
+    pub fn to_int(self) -> u32 {
+        ((self.inside_opacity as u32) << 24)
+            | ((self.outline_radius as u32) << 16)
+            | ((self.outline_function as u32) << 8)
             | (self.inside_function as u32)
     }
     pub fn outline_radius(&self) -> f32 {

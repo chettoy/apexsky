@@ -1,7 +1,0 @@
-[workspace]
-resolver = "2"
-members = [
-    "skyapex-derive",
-    "skyapex-sdk",
-]
-default-members = ["skyapex-sdk"]

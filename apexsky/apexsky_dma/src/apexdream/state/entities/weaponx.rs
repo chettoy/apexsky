@@ -53,6 +53,7 @@ pub struct WeaponXEntity {
     pub projectile_air_fiction: f32,
 }
 impl WeaponXEntity {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
         let entity_size = cc.ClassSize;
         Box::new(WeaponXEntity {
@@ -108,12 +109,12 @@ impl WeaponXEntity {
         desired
     }
     pub fn ammo_item(&self, state: &GameState) -> sdk::ItemId {
-        if matches!(self.weapon_name, sdk::WeaponName::CAR) {
-            if self.is_mod_enabled(state, sdk::ModName::alt_ammo) {
-                return sdk::ItemId::LightRounds;
-            }
+        if matches!(self.weapon_name, sdk::WeaponName::CAR)
+            && self.is_mod_enabled(state, sdk::ModName::alt_ammo)
+        {
+            return sdk::ItemId::LightRounds;
         }
-        return sdk::ammo_type(self.weapon_name);
+        sdk::ammo_type(self.weapon_name)
     }
 }
 #[async_trait]
@@ -162,22 +163,22 @@ impl Entity for WeaponXEntity {
                 data.weaponx_next_primary_attack + 4,
             ],
             ammo: [
-                data.weaponx_ammo_in_clip + 0,
+                data.weaponx_ammo_in_clip,
                 data.weaponx_ammo_in_clip + 4,
                 data.weaponx_ammo_in_clip + 8,
                 data.weaponx_ammo_in_clip + 12,
                 data.weaponx_ammo_in_clip + 16,
                 data.weaponx_ammo_in_clip + 20,
             ],
-            zoom_fov: [data.weaponx_zoom_fov + 0, data.weaponx_zoom_fov + 4],
+            zoom_fov: [data.weaponx_zoom_fov, data.weaponx_zoom_fov + 4],
             charge: [
-                data.weaponx_charge_start_time + 0,
+                data.weaponx_charge_start_time,
                 data.weaponx_charge_start_time + 4,
                 data.weaponx_charge_start_time + 20,
                 data.weaponx_charge_start_time + 24,
             ],
             burst: [
-                data.weaponx_burst_fire + 0,
+                data.weaponx_burst_fire,
                 data.weaponx_burst_fire + 4,
                 data.weaponx_burst_fire + 8,
                 data.weaponx_burst_fire + 12,
@@ -188,7 +189,7 @@ impl Entity for WeaponXEntity {
                 data.weaponx_weapon_name_index + 0x18,
             ],
             mod_bitfield: [
-                data.weaponx_mod_bitfield + 0,
+                data.weaponx_mod_bitfield,
                 data.weaponx_mod_bitfield + 4,
                 data.weaponx_mod_bitfield + 8,
             ],
@@ -201,7 +202,7 @@ impl Entity for WeaponXEntity {
         };
 
         if let Ok(fields) = api
-            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .vm_gatherd(self.entity_ptr, self.entity_size, true, &mut indices)
             .await
         {
             self.weapon_owner = sdk::EHandle::from(fields.weapon_owner);
@@ -214,7 +215,7 @@ impl Entity for WeaponXEntity {
             self.ammo_in_clip = fields.ammo[0] as i32;
             self.ammo_in_stockpile = fields.ammo[1] as i32;
             self.lifetime_shots = fields.ammo[2] as i32;
-            self.time_weapon_idle = f32::from_bits(fields.ammo[3] as u32);
+            self.time_weapon_idle = f32::from_bits(fields.ammo[3]);
             self.weap_state = sdk::WeapState(fields.ammo[4] as i32);
             self.discarded = fields.ammo[5].to_le_bytes()[1] != 0;
             self.in_reload = fields.ammo[5].to_le_bytes()[2] != 0;
@@ -234,7 +235,7 @@ impl Entity for WeaponXEntity {
 
             self.weapon_name_index = fields.weapon_name_index[0] as u16 as i32;
             self.modifiers_ptr = sdk::Ptr::from_raw(
-                fields.weapon_name_index[1] as u64 | (fields.weapon_name_index[2] as u64) << 32,
+                fields.weapon_name_index[1] as u64 | ((fields.weapon_name_index[2] as u64) << 32),
             );
 
             self.mod_bitfield =
@@ -247,13 +248,14 @@ impl Entity for WeaponXEntity {
             self.projectile_scale = f32::from_bits(fields.projectile[1]);
             self.projectile_air_fiction = f32::from_bits(fields.projectile[2]);
 
-            if !(self.ammo_clip_size >= -1 && self.ammo_clip_size <= 999) {
-                tracing::warn!(
-                    self.ammo_clip_size,
-                    self.projectile_speed,
-                    self.projectile_scale,
-                    ?self
-                );
+            if !(-1..=999).contains(&self.ammo_clip_size) {
+                self.ammo_clip_size = -1;
+                // tracing::warn!(
+                //     self.ammo_clip_size,
+                //     self.projectile_speed,
+                //     self.projectile_scale,
+                //     ?self
+                // );
             }
         }
 
@@ -275,7 +277,7 @@ impl crate::apexdream::base::solver::ProjectileWeapon for WeaponXEntity {
             return if self.projectile_scale == 1.5 {
                 28000.0
             } else {
-                charge_level.powf(5.4684388195808)
+                (charge_level as f64).powf(5.4684388195808) as f32
             };
         }
         self.projectile_speed

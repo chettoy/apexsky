@@ -22,6 +22,7 @@ pub struct AnimatingEntity {
     pub spawn_time: f64,
 }
 impl AnimatingEntity {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
         let entity_size = cc.ClassSize;
         Box::new(AnimatingEntity {
@@ -69,14 +70,14 @@ impl Entity for AnimatingEntity {
         let data = &ctx.data;
         let mut indices = Indices {
             origin: [
-                data.entity_origin + 0,
+                data.entity_origin,
                 data.entity_origin + 4,
                 data.entity_origin + 8,
             ],
-            model_name: [data.entity_model_name + 0, data.entity_model_name + 4],
+            model_name: [data.entity_model_name, data.entity_model_name + 4],
             owner_entity: data.entity_owner_entity,
             skin: [
-                data.animating_skin + 0,
+                data.animating_skin,
                 data.animating_skin + 4,
                 data.animating_skin + 8,
                 data.animating_skin + 12,
@@ -84,7 +85,7 @@ impl Entity for AnimatingEntity {
         };
 
         if let Ok(fields) = api
-            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .vm_gatherd(self.entity_ptr, self.entity_size, true, &mut indices)
             .await
         {
             let origin = [
@@ -98,10 +99,17 @@ impl Entity for AnimatingEntity {
             }
             self.origin = origin;
 
-            let model_name_ptr = fields.model_name[0] as u64 | (fields.model_name[1] as u64) << 32;
+            let model_name_ptr =
+                fields.model_name[0] as u64 | ((fields.model_name[1] as u64) << 32);
             self.model_name.update(api, model_name_ptr.into()).await;
 
             self.owner_entity = sdk::EHandle::from(fields.owner_entity);
+
+            // ctx.intresting
+            //     .entry(self.model_name.string.clone())
+            //     .or_default()
+            //     .value_mut()
+            //     .insert(self.index);
 
             self.skin = fields.skin[0] as i32;
             self.skin_mod = fields.skin[1] as i32;

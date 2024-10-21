@@ -1,5 +1,5 @@
 use bevy::{
-    asset::{io::Reader, ron, AssetLoader, AsyncReadExt, LoadContext},
+    asset::{io::Reader, ron, AssetLoader, LoadContext},
     prelude::*,
     reflect::TypePath,
     utils::ConditionalSendFuture,
@@ -32,15 +32,12 @@ impl AssetLoader for CustomAssetLoader {
     type Asset = CustomAsset;
     type Settings = ();
     type Error = CustomAssetLoaderError;
-    fn load<'a>(
-        &'a self,
-        reader: &'a mut Reader,
-        _settings: &'a (),
-        _load_context: &'a mut LoadContext,
-    ) -> impl ConditionalSendFuture
-           + std::future::Future<
-        Output = Result<<Self as AssetLoader>::Asset, <Self as AssetLoader>::Error>,
-    > {
+    fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        _load_context: &mut LoadContext,
+    ) -> impl ConditionalSendFuture<Output = Result<Self::Asset, Self::Error>> {
         Box::pin(async move {
             let mut bytes = Vec::new();
             reader.read_to_end(&mut bytes).await?;
@@ -76,15 +73,12 @@ impl AssetLoader for BlobAssetLoader {
     type Settings = ();
     type Error = BlobAssetLoaderError;
 
-    fn load<'a>(
-        &'a self,
-        reader: &'a mut Reader,
-        _settings: &'a (),
-        _load_context: &'a mut LoadContext,
-    ) -> impl ConditionalSendFuture
-           + std::future::Future<
-        Output = Result<<Self as AssetLoader>::Asset, <Self as AssetLoader>::Error>,
-    > {
+    fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        _load_context: &mut LoadContext,
+    ) -> impl ConditionalSendFuture<Output = Result<Self::Asset, Self::Error>> {
         Box::pin(async move {
             debug!("Loading Blob...");
             let mut bytes = Vec::new();

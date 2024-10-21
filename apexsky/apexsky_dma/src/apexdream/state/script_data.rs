@@ -41,6 +41,7 @@ const _: [(); 1 << 5] = [(); std::mem::size_of::<NetVarData>()];
 #[derive(Default)]
 pub struct ScriptNetData {
     pub entries: Vec<NetVarEntry>,
+    retry: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -117,11 +118,14 @@ impl ScriptNetData {
             self.entries.resize_with(entries_len, Default::default);
         }
         // FIXME! Do I need to check this more often than connected?
-        if ctx.connected {
+        if ctx.connected || self.retry || ctx.ticked(200, 20) {
             let table_ptr = api
                 .apex_base
                 .field::<[NetVarEntry]>(ctx.data.network_var_table_ptr);
-            let _ = api.vm_read_into(table_ptr, &mut self.entries[..]).await;
+            self.retry = api
+                .vm_read_into(table_ptr, &mut self.entries[..])
+                .await
+                .is_err();
         }
     }
 }
@@ -133,7 +137,7 @@ impl GameState {
         index: sdk::EHandle,
     ) -> ScriptValue {
         let entries = &self.script_data.entries[..];
-        if !index.is_valid() || entries.len() == 0 {
+        if !index.is_valid() || entries.is_empty() {
             return ScriptValue::Invalid;
         }
 

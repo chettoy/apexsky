@@ -22,8 +22,33 @@ const DRY_RUN: bool = false;
 const PRINT_LATENCY: bool = false;
 
 impl Default for EspServiceAddr {
+    #[cfg(feature = "native")]
     fn default() -> Self {
         Self::from_str(s!("http://[::1]:50051")).unwrap()
+    }
+
+    #[cfg(feature = "web-wasm")]
+    fn default() -> Self {
+        use once_cell::sync::Lazy;
+
+        static DEFAULT_CONNECT_ADDR: Lazy<EspServiceAddr> = Lazy::new(|| {
+            // Parse connect address from URL "?connect=*"
+            let location = web_sys::window().unwrap().location();
+            if let Ok(params) = location
+                .search()
+                .and_then(|query_string| web_sys::UrlSearchParams::new_with_str(&query_string))
+            {
+                if let Some(addr) = params
+                    .get("connect")
+                    .and_then(|addr| EspServiceAddr::from_str(&addr))
+                {
+                    return addr;
+                }
+            }
+            EspServiceAddr::from_str(s!("http://[::1]:50051")).unwrap()
+        });
+
+        DEFAULT_CONNECT_ADDR.clone()
     }
 }
 
@@ -33,6 +58,7 @@ pub(crate) fn main() {
         .register_type::<model::Mana>()
         .add_plugins((
             DefaultPlugins
+                // // Uncomment to force use of OpenGL Backend
                 // .set(RenderPlugin {
                 //     render_creation: WgpuSettings {
                 //         backends: Some(Backends::GL),
@@ -44,17 +70,10 @@ pub(crate) fn main() {
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         #[cfg(feature = "native")]
-                        mode: WindowMode::BorderlessFullscreen,
-                        // Setting `transparent` allows the `ClearColor`'s alpha value to take effect
-                        #[cfg(feature = "native")]
-                        transparent: true,
-                        #[cfg(feature = "native")]
-                        focused: true,
-                        #[cfg(feature = "native")]
-                        window_level: WindowLevel::AlwaysOnTop,
-                        // Disabling window decorations to make it feel more like a widget than a window
-                        #[cfg(feature = "native")]
-                        decorations: false,
+                        mode: WindowMode::BorderlessFullscreen(MonitorSelection::Current),
+
+                        title: embedded::S_TITLE.to_owned(),
+
                         #[cfg(target_os = "macos")]
                         composite_alpha_mode: CompositeAlphaMode::PostMultiplied,
                         #[cfg(target_os = "linux")]
@@ -67,7 +86,27 @@ pub(crate) fn main() {
                                 CompositeAlphaMode::PreMultiplied
                             }
                         },
-                        title: embedded::S_TITLE.to_owned(),
+
+                        // Disabling window decorations to make it feel more like a widget than a window
+                        #[cfg(feature = "native")]
+                        decorations: false,
+
+                        // Setting `transparent` allows the `ClearColor`'s alpha value to take effect
+                        #[cfg(feature = "native")]
+                        transparent: true,
+
+                        #[cfg(feature = "native")]
+                        focused: true,
+
+                        #[cfg(feature = "native")]
+                        window_level: WindowLevel::AlwaysOnTop,
+
+                        fit_canvas_to_parent: false,
+
+                        // Stop events from propagating out of the canvas element
+                        // This value has no effect on non-web platforms.
+                        prevent_default_event_handling: true,
+
                         ..default()
                     }),
                     ..default()
@@ -89,7 +128,6 @@ pub(crate) fn main() {
         .init_non_send_resource::<system::sound::SoundBufRes>()
         .init_resource::<system::navigator::NavigatorSystem>()
         .insert_resource(ClearColor(Color::NONE))
-        .insert_resource(Msaa::Sample4)
         .insert_resource(WinitSettings {
             focused_mode: bevy::winit::UpdateMode::Continuous,
             unfocused_mode: bevy::winit::UpdateMode::Continuous,
@@ -134,36 +172,38 @@ fn setup(
 
     let listener = SpatialListener::new(gap);
     commands
-        .spawn((SpatialBundle::default(), listener.clone()))
+        .spawn((
+            Transform::default(),
+            Visibility::default(),
+            listener.clone(),
+        ))
         .with_children(|parent| {
             // left ear indicator
-            parent.spawn(PbrBundle {
-                mesh: meshes.add(Cuboid::new(0.2, 0.2, 0.2)),
-                material: materials.add(StandardMaterial {
+            parent.spawn((
+                Mesh3d::from(meshes.add(Cuboid::new(0.2, 0.2, 0.2))),
+                MeshMaterial3d::from(materials.add(StandardMaterial {
                     base_color: Color::Srgba(palettes::css::RED),
                     ..default()
-                }),
-                transform: Transform::from_translation(listener.left_ear_offset),
-                ..default()
-            });
+                })),
+                Transform::from_translation(listener.left_ear_offset),
+            ));
 
             // right ear indicator
-            parent.spawn(PbrBundle {
-                mesh: meshes.add(Cuboid::new(0.2, 0.2, 0.2)),
-                material: materials.add(StandardMaterial {
+            parent.spawn((
+                Mesh3d::from(meshes.add(Cuboid::new(0.2, 0.2, 0.2))),
+                MeshMaterial3d::from(materials.add(StandardMaterial {
                     base_color: Color::Srgba(palettes::css::GREEN),
                     ..default()
-                }),
-                transform: Transform::from_translation(listener.right_ear_offset),
-                ..default()
-            });
+                })),
+                Transform::from_translation(listener.right_ear_offset),
+            ));
         });
 
     // light
-    commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_xyz(0.0, 1000.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+    commands.spawn((
+        DirectionalLight::default(),
+        Transform::from_xyz(0.0, 1000.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 
     // // example instructions
     // commands.spawn(
@@ -183,17 +223,16 @@ fn setup(
     // );
 
     // camera
-    commands.spawn((Camera2dBundle::default(), IsDefaultUiCamera));
+    commands.spawn((Camera2d::default(), IsDefaultUiCamera));
     commands.spawn((
-        Camera3dBundle {
-            projection: Projection::Perspective(PerspectiveProjection {
-                fov: 90.0f32.to_radians(),
-                far: 8000.0,
-                ..Default::default()
-            }),
-            transform: Transform::from_xyz(0.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-            ..default()
-        },
+        Camera3d::default(),
+        Msaa::Sample4,
+        Projection::from(PerspectiveProjection {
+            fov: 90.0f32.to_radians(),
+            far: 8000.0,
+            ..Default::default()
+        }),
+        Transform::from_xyz(0.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         model::MyCameraMarker,
     ));
 

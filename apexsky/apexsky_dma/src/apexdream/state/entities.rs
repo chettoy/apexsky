@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use super::*;
-use apexsky::noobfstr as s;
+use crate::noobfstr as s;
 use async_trait::async_trait;
 use std::any::Any;
 

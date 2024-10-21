@@ -17,6 +17,7 @@ pub struct WaypointEntity {
     pub waypoint_bitfield: u32,
 }
 impl WaypointEntity {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
         let entity_size = cc.ClassSize;
         Box::new(WaypointEntity {
@@ -52,7 +53,9 @@ impl Entity for WaypointEntity {
         #[repr(C)]
         struct Indices {
             origin: [u32; 3],
-            team_num: [u32; 4],
+            network_flags: u32,
+            visibility_flags: u32,
+            team_num: [u32; 2],
             owner_entity: u32,
             waypoint_type: [u32; 2],
         }
@@ -60,31 +63,28 @@ impl Entity for WaypointEntity {
         let data = &ctx.data;
         let mut indices = Indices {
             origin: [
-                data.entity_origin + 0,
+                data.entity_origin,
                 data.entity_origin + 4,
                 data.entity_origin + 8,
             ],
-            team_num: [
-                0x03d4,
-                data.entity_team_num - 8,
-                data.entity_team_num + 0,
-                data.entity_team_num + 4,
-            ],
+            network_flags: 0x02d8, //0x03d4,
+            visibility_flags: data.entity_team_num - 8,
+            team_num: [data.entity_team_num, data.entity_team_num + 4],
             owner_entity: data.entity_owner_entity,
             waypoint_type: [data.waypoint_type, data.waypoint_type + 4],
         };
 
         if let Ok(fields) = api
-            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .vm_gatherd(self.entity_ptr, self.entity_size, true, &mut indices)
             .await
         {
             self.origin[0] = f32::from_bits(fields.origin[0]);
             self.origin[1] = f32::from_bits(fields.origin[1]);
             self.origin[2] = f32::from_bits(fields.origin[2]);
-            self.network_flags = fields.team_num[0];
-            self.visibility_flags = fields.team_num[1];
-            self.team_num = fields.team_num[2] as i32;
-            self.team_member_index = fields.team_num[3] as i32;
+            self.network_flags = fields.network_flags;
+            self.visibility_flags = fields.visibility_flags;
+            self.team_num = fields.team_num[0] as i32;
+            self.team_member_index = fields.team_num[1] as i32;
             self.owner_entity = sdk::EHandle::from(fields.owner_entity);
             self.waypoint_type = fields.waypoint_type[0] as i32;
             self.waypoint_bitfield = fields.waypoint_type[1];

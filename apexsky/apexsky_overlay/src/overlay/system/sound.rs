@@ -162,7 +162,7 @@ pub fn update_sound_objects(
             if emitter.angle > 360.0 {
                 emitter.angle = 0.0;
             }
-            emitter.angle += 16.0 / time.elapsed_seconds();
+            emitter.angle += 16.0 / time.elapsed_secs();
 
             tracing::debug!(
                 "Sound render time {:?}",

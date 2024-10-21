@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use apexsky::{config::Settings, global_state::G_STATE};
-use apexsky_proto::pb::apexlegends::TreasureClue;
+use apex1_common::config::Settings;
+use apex1_common::pb::apexlegends::TreasureClue;
 use obfstr::obfstr as s;
 use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
@@ -9,6 +9,7 @@ use tokio::time::{sleep_until, Instant};
 use tracing::instrument;
 
 use crate::game::data::*;
+use crate::global_state::G_STATE;
 use crate::SharedStateWrapper;
 
 #[instrument]
@@ -52,7 +53,7 @@ pub async fn items_loop(
 #[instrument(skip_all, fields(clue))]
 fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
     let ptr = clue.entity_handle;
-    if ptr <= 0 {
+    if ptr == 0 {
         tracing::error!(?clue);
         return None;
     }
@@ -65,7 +66,9 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
 
     match ItemId(clue.item_id) {
         // DeathBox
-        ItemId::ApexskyItemDeathBox if g_settings.deathbox => Some(HIGHLIGHT_DEATH_BOX),
+        ItemId::ApexskyItemDeathBox if g_settings.feature_settings.show_deathbox => {
+            Some(HIGHLIGHT_DEATH_BOX)
+        }
 
         // Backpacks
         ItemId::LightBackpack if select.lightbackpack => Some(HIGHLIGHT_LOOT_WHITE),
@@ -149,15 +152,17 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
         ItemId::Suppressor1 if select.suppressor1 => Some(HIGHLIGHT_LOOT_WHITE),
         ItemId::Suppressor2 if select.suppressor2 => Some(HIGHLIGHT_LOOT_BLUE),
         ItemId::Suppressor3 if select.suppressor3 => Some(HIGHLIGHT_LOOT_PURPLE),
-        ItemId::TurboCharger if select.turbo_charger => Some(HIGHLIGHT_LOOT_GOLD),
-        ItemId::SkullPiecer if select.skull_piecer => Some(HIGHLIGHT_LOOT_GOLD),
-        ItemId::HammerPoint if select.hammer_point => Some(HIGHLIGHT_LOOT_GOLD),
-        ItemId::DisruptorRounds if select.disruptor_rounds => Some(HIGHLIGHT_LOOT_GOLD),
-        ItemId::BoostedLoader if select.boosted_loader => Some(HIGHLIGHT_LOOT_GOLD),
         ItemId::ShotgunBolt1 if select.shotgunbolt1 => Some(HIGHLIGHT_LOOT_WHITE),
         ItemId::ShotgunBolt2 if select.shotgunbolt2 => Some(HIGHLIGHT_LOOT_BLUE),
         ItemId::ShotgunBolt3 if select.shotgunbolt3 => Some(HIGHLIGHT_LOOT_PURPLE),
         ItemId::ShotgunBolt4 if select.shotgunbolt4 => Some(HIGHLIGHT_LOOT_GOLD),
+        ItemId::BoostedLoader if select.boosted_loader => Some(HIGHLIGHT_LOOT_GOLD),
+        ItemId::DisruptorRounds if select.disruptor_rounds => Some(HIGHLIGHT_LOOT_GOLD),
+        ItemId::GunShieldGenerator if select.gun_shield_generator => Some(HIGHLIGHT_LOOT_GOLD),
+        ItemId::HammerPoint if select.hammer_point => Some(HIGHLIGHT_LOOT_GOLD),
+        ItemId::SelectfireReceiver if select.selectfire_receiver => Some(HIGHLIGHT_LOOT_GOLD),
+        ItemId::SkullPiecer if select.skull_piecer => Some(HIGHLIGHT_LOOT_GOLD),
+        ItemId::TurboCharger if select.turbo_charger => Some(HIGHLIGHT_LOOT_GOLD),
 
         // Nades
         ItemId::GrenadeFrag if select.grenade_frag => Some(HIGHLIGHT_LOOT_RED),
@@ -216,7 +221,7 @@ pub fn export_new_items(loots: Vec<LootInt>) -> anyhow::Result<()> {
             tracing::info!(?item, "{}", s!("new loot item"));
             continue;
         };
-        if *model != item.model {
+        if *model != item.model && !item.model.is_empty() {
             modify = true;
             //tracing::info!(?item, "{}", s!("loot model changed"));
         }
@@ -224,7 +229,7 @@ pub fn export_new_items(loots: Vec<LootInt>) -> anyhow::Result<()> {
 
     if modify {
         let items_json = serde_json::to_string(&loots)?;
-        let path = apexsky::get_base_dir().join(s!("updated_item.json"));
+        let path = crate::DATA_DIR.join(s!("updated_item.json"));
         let mut json_file = fs::OpenOptions::new()
             .create(true)
             .write(true)

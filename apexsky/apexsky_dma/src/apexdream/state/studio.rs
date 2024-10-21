@@ -5,6 +5,7 @@ use obfstr::obfstr as s;
 pub struct StudioModel {
     pub ptr: sdk::Ptr<sdk::CStudioHdr>,
     pub studiohdr_ptr: sdk::Ptr<sdk::studiohdr_t>,
+    pub last_success_studiohdr_ptr: sdk::Ptr<sdk::studiohdr_t>,
     pub studiohdr: sdk::studiohdr_t,
 
     pub bones: Vec<sdk::mstudiobone_t>,
@@ -31,33 +32,40 @@ pub struct StudioModel {
 }
 
 impl StudioModel {
+    #[instrument(skip_all, fields(ptr))]
     pub async fn update(&mut self, api: &Api, ptr: sdk::Ptr<sdk::CStudioHdr>) -> bool {
         self.ptr = ptr;
 
         if self.ptr.is_null() {
-            self.hitboxes.clear();
+            // self.hitboxes.clear();
+            // tracing::debug!("{}", s!("ptr is null"));
             return false;
         }
         // // Sometimes this pointer is garbage...
         // // Figure out why, this may cause triggerbot to fail!
-        // if self.ptr.into_raw() % 8 != 0 {
-        //     tracing::warn!("{}", s!("invalid CStudioHdr ptr"));
-        //     return false;
-        // }
-
-        let Ok(cstudio) = api.vm_read(self.ptr).await else {
-            // tracing::warn!("{}", s!("read cstudio"));
+        if self.ptr.into_raw() % 8 != 0 {
+            //tracing::debug!("{}", s!("invalid CStudioHdr ptr"));
             return false;
+        }
+
+        let cstudio = match api.vm_read(self.ptr).await {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::debug!(?e, "{}", s!("read cstudio: "));
+                return false;
+            }
         };
-        if self.studiohdr_ptr == cstudio.m_pStudioHdr {
+        self.studiohdr_ptr = cstudio.m_pStudioHdr;
+
+        if self.studiohdr_ptr == self.last_success_studiohdr_ptr {
             return true;
         }
-        self.studiohdr_ptr = cstudio.m_pStudioHdr;
-        let Ok(()) = api
+
+        if let Err(e) = api
             .vm_read_into(self.studiohdr_ptr, &mut self.studiohdr)
             .await
-        else {
-            // tracing::warn!("{}", s!("read studiohdr"));
+        {
+            tracing::debug!(?e, "{}", s!("read studiohdr: "));
             return false;
         };
 
@@ -67,7 +75,7 @@ impl StudioModel {
         // Read bones
         let numbones = self.studiohdr.numbones as usize;
         if numbones > 256 {
-            tracing::debug!("{}", s!("too many bones to read"));
+            tracing::debug!("{}{numbones}", s!("too many bones to read "));
             return false;
         }
         if self.bones.len() != numbones {
@@ -75,16 +83,16 @@ impl StudioModel {
             self.hb_lookup.clear();
             self.hb_lookup.resize(numbones, -1);
         }
-        let Ok(()) = api
+        if let Err(e) = api
             .vm_read_into(
                 self.studiohdr_ptr.field(self.studiohdr.boneoffset()),
                 &mut self.bones[..],
             )
             .await
-        else {
-            // tracing::warn!("{}", s!("read bones"));
+        {
+            tracing::debug!(?e, "{}", s!("read bones"));
             return false;
-        };
+        }
 
         // Read first hitboxset
         // if self.studiohdr.numhitboxsets == 0 {
@@ -97,15 +105,15 @@ impl StudioModel {
             )
             .await
         else {
-            // tracing::warn!("{}", s!("read hitboxset"));
+            tracing::debug!("{}", s!("read hitboxset"));
             return false;
         };
 
         // Read hitboxes
         let numhitboxes = self.hitboxset.numhitboxes as usize;
         if numhitboxes > 1024 {
-            // tracing::warn!("{}", s!("too many hitboxes to read"));
-            self.hitboxes.clear();
+            //self.hitboxes.clear();
+            tracing::debug!("{}", s!("too many hitboxes to read"));
             return false;
         }
         if self.hitboxes.len() != numhitboxes {
@@ -120,7 +128,7 @@ impl StudioModel {
                 )
                 .await
             else {
-                // tracing::warn!("{}", s!("read hitboxes"));
+                tracing::debug!("{}", s!("read hitboxes"));
                 return false;
             };
         }
@@ -131,10 +139,8 @@ impl StudioModel {
         let mut bone_end2 = 0;
         for (i, hb) in self.hitboxes.iter().enumerate() {
             bone_end2 = i32::max(bone_end2, hb.bone as i32 + 1);
-            if self.bone_head == -1 {
-                if hb.group == sdk::HITGROUP_HEAD {
-                    self.bone_head = hb.bone as i32;
-                }
+            if self.bone_head == -1 && hb.group == sdk::HITGROUP_HEAD {
+                self.bone_head = hb.bone as i32;
             }
             match hb.group {
                 sdk::HITGROUP_LEFT_HAND => {
@@ -176,7 +182,10 @@ impl StudioModel {
         self.bone_end1 = bone_end1;
         self.bone_body = bone_body;
 
-        return true;
+        // Finish
+        self.last_success_studiohdr_ptr = self.studiohdr_ptr;
+
+        true
     }
     /// Given a hitbox returns its parent hitbox.
     pub fn parent_hitbox(&self, bbox: &sdk::mstudiobbox_t) -> Option<&sdk::mstudiobbox_t> {
@@ -206,7 +215,7 @@ impl StudioModel {
         }
     }
     /// Starting from the head hitbox, iterate over parent bones returning the hitbox until the origin.
-    pub fn spine<'a>(&'a self) -> impl 'a + Clone + Iterator<Item = &'a sdk::mstudiobbox_t> {
+    pub fn spine(&self) -> impl '_ + Clone + Iterator<Item = &sdk::mstudiobbox_t> {
         self.hitboxes.iter().take_while(|hb| {
             matches!(
                 hb.group,

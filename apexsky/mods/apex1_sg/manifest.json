@@ -1,0 +1,40 @@
+{
+    "manifest_version": 1,
+    "package_name": "com.chettoy.apexsky.apexsg",
+    "version_code": 6,
+    "version": "0.3.0",
+    "label": "Apex SG",
+    "description": "Auto SG extension",
+    "icons": {},
+    "target_api": {
+        "runtime": 1
+    },
+    "components": [
+        {
+            "service": "worker.js",
+            "type": "module-script"
+        }
+    ],
+    "permissions": [
+        {
+            "name": "app.ohos.permission.ACCESS_GAME_WORLD",
+            "value": ""
+        },
+        {
+            "name": "app.ohos.permission.ACCESS_GAME_INPUT",
+            "value": ""
+        },
+        {
+            "name": "app.ohos.permission.ACCESS_GAME_MEMORY",
+            "value": ""
+        },
+        {
+            "name": "app.ohos.permission.ACCESS_GLOBAL_SETTINGS",
+            "value": ""
+        },
+        {
+            "name": "app.ohos.permission.MODIFY_MEMORY",
+            "value": ""
+        }
+    ]
+}

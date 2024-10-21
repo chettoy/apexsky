@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
-use bevy_egui::egui::pos2;
 use bevy_egui::egui::Align2;
-use bevy_egui::{egui, EguiContexts};
+use bevy_egui::egui::UiBuilder;
+use bevy_egui::egui::pos2;
+use bevy_egui::{EguiContexts, egui};
 use instant::Instant;
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
@@ -14,8 +15,8 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::overlay::system::game_esp::ShowEntityBall;
-use crate::overlay::ui::mini_map::mini_map_radar;
 use crate::overlay::ui::mini_map::RadarTarget;
+use crate::overlay::ui::mini_map::mini_map_radar;
 use crate::overlay::utils::get_unix_timestamp_in_millis;
 use crate::pb::apexlegends::AimTargetHitbox;
 use crate::pb::apexlegends::EspData;
@@ -26,11 +27,11 @@ use crate::pb::apexlegends::LoveStatusCode;
 use crate::pb::apexlegends::PlayerState;
 use crate::pb::apexlegends::SpectatorInfo;
 
+use super::MyOverlayState;
 use super::asset::Blob;
 use super::embedded;
 use super::system::game_esp::EspServiceAddr;
 use super::system::game_esp::EspSystem;
-use super::MyOverlayState;
 
 mod hud;
 mod mini_map;
@@ -46,7 +47,7 @@ pub fn toggle_mouse_passthrough(
     #[cfg(feature = "native")]
     {
         let mut window = windows.single_mut();
-        window.cursor.hit_test = keyboard_input.pressed(KeyCode::Insert);
+        window.cursor_options.hit_test = keyboard_input.pressed(KeyCode::Insert);
     }
 }
 
@@ -57,6 +58,8 @@ pub(crate) struct UiPersistance {
     #[serde(skip)]
     change_time: Option<Instant>,
     pub(crate) draw_hud: bool,
+    pub(crate) draw_loots: bool,
+    pub(crate) draw_hitbox: bool,
 }
 
 impl Default for UiPersistance {
@@ -66,6 +69,8 @@ impl Default for UiPersistance {
             radar_position: None,
             change_time: None,
             draw_hud: true,
+            draw_loots: true,
+            draw_hitbox: false,
         }
     }
 }
@@ -99,13 +104,9 @@ impl UiPersistance {
 
         let file = File::open(Self::file_path()?)?;
         let reader = BufReader::new(file);
-        let saved: Self = serde_json::from_reader(reader)?;
-        Ok(Self {
-            hello_position: saved.hello_position,
-            radar_position: saved.radar_position,
-            change_time: None,
-            draw_hud: saved.draw_hud,
-        })
+        let mut saved: Self = serde_json::from_reader(reader)?;
+        saved.change_time = None;
+        Ok(saved)
     }
     pub(crate) fn update(&mut self, mem: &egui::Memory) {
         if let Some(rect_hello) = mem.area_rect(*ID_HELLO_WINDOW) {
@@ -197,7 +198,7 @@ pub fn ui_system(
     mut ui_state: ResMut<UiState>,
     mut show_entity_ball: ResMut<ShowEntityBall>,
     mut esp_system: Option<ResMut<EspSystem>>,
-    mut windows: Query<&mut Window>,
+    #[cfg(not(feature = "native"))] mut windows: Query<&mut Window>,
     time: Res<Time>,
     diagnostics: Res<DiagnosticsStore>,
     blobs: Res<Assets<Blob>>,
@@ -219,7 +220,7 @@ pub fn ui_system(
             let mut egui_fonts = egui::FontDefinitions::default();
             egui_fonts.font_data.insert(
                 "my_font".to_owned(),
-                egui::FontData::from_owned(font_blob.bytes.to_owned()),
+                egui::FontData::from_owned(font_blob.bytes.to_owned()).into(),
             );
             egui_fonts
                 .families
@@ -237,6 +238,7 @@ pub fn ui_system(
         }
     }
 
+    #[cfg(not(feature = "native"))]
     if let Some(esp_settings) = esp_system.as_ref().and_then(|v| v.get_esp_settings()) {
         let screen_wh = (
             esp_settings.screen_width as f32,
@@ -296,7 +298,7 @@ pub fn ui_system(
                     .map(|t| t.as_millis() as i32)
                     .unwrap_or(-1),
                 s!("ms(net) + "),
-                time.delta_seconds() * 1000.0,
+                time.delta_secs() * 1000.0,
                 s!("ms(ui)"),
             ),
             loop_duration: esp_system
@@ -370,13 +372,13 @@ pub fn ui_system(
                 .map(|aim_target| {
                     format!(
                         "{}{:.2}{}{:.2}{}{:.2}{}",
-                        s!("aim["),
+                        s!("pre-aim=("),
                         aim_target.x,
                         s!(","),
                         aim_target.y,
                         s!(","),
                         aim_target.z,
-                        s!("]")
+                        s!(")")
                     )
                 })
                 .unwrap_or_default(),
@@ -436,7 +438,7 @@ pub fn ui_system(
             ui.add_space(10.0);
 
             ScrollArea::vertical()
-                .id_source(s!("scroll-teammates"))
+                .id_salt(s!("scroll-teammates"))
                 .max_width(320.0)
                 .max_height(480.0)
                 .show(ui, |ui| {
@@ -488,7 +490,7 @@ pub fn ui_system(
             ui.add_space(10.0);
 
             ScrollArea::vertical()
-                .id_source(s!("scroll-spectators"))
+                .id_salt(s!("scroll-spectators"))
                 .max_width(320.0)
                 .max_height(480.0)
                 .show(ui, |ui| {
@@ -549,7 +551,7 @@ pub fn ui_system(
                                 return Color32::LIGHT_GREEN;
                             }
                             // in game: green blink
-                            if time.elapsed_seconds() as i32 % 2 == 0 {
+                            if time.elapsed_secs() as i32 % 2 == 0 {
                                 Color32::LIGHT_GREEN
                             } else {
                                 Color32::GREEN
@@ -666,9 +668,27 @@ pub fn ui_system(
                         ui.add(toggle_button(&mut show_entity_ball.0));
                     });
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                        ui.label(egui::RichText::new(s!("Show hitbox")));
+                        if ui
+                            .add(toggle_button(&mut ui_persistance.draw_hitbox))
+                            .changed()
+                        {
+                            ui_persistance.persistance().ok();
+                        }
+                    });
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
                         ui.label(egui::RichText::new(s!("Show HUD")));
                         if ui
                             .add(toggle_button(&mut ui_persistance.draw_hud))
+                            .changed()
+                        {
+                            ui_persistance.persistance().ok();
+                        }
+                    });
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                        ui.label(egui::RichText::new(s!("Show loots")));
+                        if ui
+                            .add(toggle_button(&mut ui_persistance.draw_loots))
                             .changed()
                         {
                             ui_persistance.persistance().ok();
@@ -700,7 +720,14 @@ pub fn ui_system(
         // Draw 2D ESP for local player
         CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
             if !is_teammate_view {
-                esp_2d_ui(ui, esp_data, esp_settings, esp_loots, view_player);
+                esp_2d_ui(
+                    ui,
+                    &ui_persistance,
+                    esp_data,
+                    esp_settings,
+                    esp_loots,
+                    view_player,
+                );
                 if ui_persistance.draw_hud {
                     hud.set_data(ui.ctx(), esp_data);
                     hud.draw(ui);
@@ -737,11 +764,7 @@ pub fn ui_system(
                             .as_ref()
                             .map(|view_angles| {
                                 let yaw = view_angles.y;
-                                if yaw < 0.0 {
-                                    yaw + 360.0
-                                } else {
-                                    yaw
-                                }
+                                if yaw < 0.0 { yaw + 360.0 } else { yaw }
                             })
                             .unwrap_or(player_buf.yaw),
                         distance: player_info.distance / 39.62,
@@ -836,7 +859,7 @@ fn info_bar_ui(
 
     // Draw rectangle
     let info_bar_rect = Rect::from_min_max(Pos2::ZERO, pos2(280.0, 30.0));
-    ui.allocate_ui_at_rect(info_bar_rect, |ui| {
+    ui.allocate_new_ui(UiBuilder::new().max_rect(info_bar_rect), |ui| {
         let background_color = Color32::from_black_alpha((0.4 * 255.0 as f32).round() as u8);
         let rounding = 2.0;
         ui.painter()
@@ -904,6 +927,7 @@ fn info_bar_ui(
 
 fn esp_2d_ui(
     ui: &mut egui::Ui,
+    ui_persistance: &UiPersistance,
     esp_data: &EspData,
     esp_settings: &EspSettings,
     esp_loots: &Loots,
@@ -1031,8 +1055,7 @@ fn esp_2d_ui(
                 // draw bone and box
                 let esp_bone = esp_settings.esp_visuals & EspVisualsFlag::Bone as i32 != 0;
                 let esp_box = esp_settings.esp_visuals & EspVisualsFlag::Box as i32 != 0;
-                if esp_bone || esp_box {
-                    const DRAW_HITBOX: bool = false;
+                if esp_bone || esp_box || ui_persistance.draw_hitbox {
                     let (r, g, b) = if target_info.is_visible {
                         box_color_viz
                     } else {
@@ -1046,6 +1069,9 @@ fn esp_2d_ui(
                     let mut bone_groups: HashMap<i32, Vec<(i32, egui::Pos2)>> =
                         HashMap::with_capacity(hitboxes.len());
                     let mut bone_lines: Vec<(i32, i32)> = Vec::with_capacity(hitboxes.len());
+
+                    let proj_screen =
+                        |from| world_to_screen(from, &view_matrix, screen_width, screen_height);
 
                     let mut plot = |hb: &AimTargetHitbox| {
                         if bone_plots.contains_key(&hb.bone) {
@@ -1070,9 +1096,7 @@ fn esp_2d_ui(
                             target_origin.y + bone_origin.y,
                             target_origin.z + bone_origin.z,
                         ];
-                        let Some(bone_screen_pos) =
-                            world_to_screen(bone_pos, &view_matrix, screen_width, screen_height)
-                        else {
+                        let Some(bone_screen_pos) = proj_screen(bone_pos) else {
                             return;
                         };
                         let bone_screen_pos = (bone_screen_pos.x, bone_screen_pos.y).into();
@@ -1095,53 +1119,53 @@ fn esp_2d_ui(
                             bone_groups.insert(group, vec![(bone, bone_screen_pos)]);
                         }
 
-                        if DRAW_HITBOX {
+                        if ui_persistance.draw_hitbox {
                             let Some(bbmin) = bbmin else {
                                 return;
                             };
                             let Some(bbmax) = bbmax else {
                                 return;
                             };
-                            let bone_pos_min = [
+                            let bmin = [
                                 bone_pos[0] + bbmin.x,
                                 bone_pos[1] + bbmin.y,
                                 bone_pos[2] + bbmin.z,
                             ];
-                            let bone_pos_max = [
+                            let bmax = [
                                 bone_pos[0] + bbmax.x,
                                 bone_pos[1] + bbmax.y,
                                 bone_pos[2] + bbmax.z,
                             ];
-                            let Some(bone_screen_pos_min) = world_to_screen(
-                                bone_pos_min,
-                                &view_matrix,
-                                screen_width,
-                                screen_height,
-                            ) else {
+                            // Define the 8 vertices of the box
+                            let vertices = [
+                                [bmin[0], bmin[1], bmin[2]], // min point
+                                [bmin[0], bmin[1], bmax[2]],
+                                [bmin[0], bmax[1], bmin[2]],
+                                [bmin[0], bmax[1], bmax[2]],
+                                [bmax[0], bmin[1], bmin[2]],
+                                [bmax[0], bmin[1], bmax[2]],
+                                [bmax[0], bmax[1], bmin[2]],
+                                [bmax[0], bmax[1], bmax[2]],
+                            ];
+                            // Project the 3D vertices to 2D screen coordinates
+                            let projected_vertices: Option<Vec<_>> =
+                                vertices.iter().map(|&v| proj_screen(v)).collect();
+                            // Check if all projections succeeded
+                            let Some(projected_vertices) = projected_vertices else {
                                 return;
                             };
-                            let Some(bone_screen_pos_max) = world_to_screen(
-                                bone_pos_max,
-                                &view_matrix,
-                                screen_width,
-                                screen_height,
-                            ) else {
-                                return;
-                            };
-                            ui.painter().rect_filled(
-                                Rect {
-                                    min: pos2(
-                                        f32::min(bone_screen_pos_min.x, bone_screen_pos_max.x),
-                                        f32::min(bone_screen_pos_min.y, bone_screen_pos_max.y),
-                                    ),
-                                    max: pos2(
-                                        f32::max(bone_screen_pos_min.x, bone_screen_pos_max.x),
-                                        f32::max(bone_screen_pos_min.y, bone_screen_pos_max.y),
-                                    ),
-                                },
-                                0.0,
-                                box_color,
-                            );
+                            // Define the 12 edges of the box using the indices of the vertices
+                            let edges = [
+                                [(0, 1), (1, 3), (3, 2), (2, 0)], // bottom face
+                                [(4, 5), (5, 7), (7, 6), (6, 4)], // top face
+                                [(0, 4), (1, 5), (2, 6), (3, 7)], // vertical edges
+                            ];
+                            for &(start, end) in edges.iter().flat_map(|lines| lines) {
+                                ui.painter().line_segment(
+                                    [projected_vertices[start], projected_vertices[end]],
+                                    (1.0, box_color),
+                                );
+                            }
                         }
                     };
 
@@ -1327,12 +1351,8 @@ fn esp_2d_ui(
             let pos: [f32; 3] = esp_data.aimbot.as_ref()?.target_position.clone()?.into();
             Some(pos)
         })() {
-            let bs = world_to_screen(aim_pos, &view_matrix, screen_width, screen_height).unwrap_or(
-                Vec2 {
-                    x: screen_width / 2.0,
-                    y: screen_height / 2.0,
-                },
-            );
+            let bs = world_to_screen(aim_pos, &view_matrix, screen_width, screen_height)
+                .unwrap_or(pos2(screen_width / 2.0, screen_height / 2.0));
 
             const INDICATOR_RADIUS: f32 = 10.0;
 
@@ -1364,7 +1384,7 @@ fn esp_2d_ui(
     }
 
     // Drow loots label
-    if !esp_loots.loots.is_empty() {
+    if ui_persistance.draw_loots && !esp_loots.loots.is_empty() {
         if let Some(bs_local) = world_to_screen(
             view_player
                 .and_then(|p| p.origin.clone())
@@ -1413,7 +1433,7 @@ pub fn world_to_screen(
     view_matrix: &[f32; 16],
     screen_width: f32,
     screen_height: f32,
-) -> Option<Vec2> {
+) -> Option<egui::Pos2> {
     let from = Vec3::new(from[0], from[1], from[2]);
 
     let w = view_matrix[12] * from.x
@@ -1425,7 +1445,7 @@ pub fn world_to_screen(
         return None;
     }
 
-    let mut to = Vec2::new(0.0, 0.0);
+    let mut to = egui::Pos2::new(0.0, 0.0);
     to.x = view_matrix[0] * from.x
         + view_matrix[1] * from.y
         + view_matrix[2] * from.z

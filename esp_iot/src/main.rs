@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use apexsky_proto::pb::{
+use apex1_common::pb::{
     apexlegends::EspDataOption, esp_service::esp_service_client::EspServiceClient,
 };
 use buttplug::{

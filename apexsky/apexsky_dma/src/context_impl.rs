@@ -1,11 +1,9 @@
-use apexsky::{
-    aimbot::{AimAngles, AimEntity, HitScanReport},
-    global_state::G_STATE,
-};
-use apexsky_proto::pb::apexlegends::TreasureClue;
+use apex1_common::aimbot::{AimAngles, AimEntity, HitScanReport};
+use apex1_common::pb::apexlegends::TreasureClue;
 use std::sync::Arc;
 use tracing::instrument;
 
+use crate::global_state::G_STATE;
 use crate::{
     apexdream::base::solver::ProjectileWeapon,
     game::{data::WeaponId, player::GamePlayer},
@@ -25,19 +23,19 @@ impl SharedState {
     }
 
     pub fn read_cached_player(&self, ptr: &u64) -> Option<Arc<GamePlayer>> {
-        self.players.read().get(ptr).map(|v| v.clone())
+        self.players.read().get(ptr).cloned()
     }
 
     pub fn read_cached_npc(&self, ptr: &u64) -> Option<Arc<dyn AimEntity>> {
-        self.npcs.read().get(ptr).map(|v| v.clone())
+        self.npcs.read().get(ptr).cloned()
     }
 
     pub fn read_cached_loot(&self, ptr: &u64) -> Option<TreasureClue> {
-        self.treasure_clues.read().get(ptr).map(|v| v.clone())
+        self.treasure_clues.read().get(ptr).cloned()
     }
 
     pub fn read_cached_aim_entity(&self, ptr: &u64) -> Option<Arc<dyn AimEntity>> {
-        self.aim_entities.read().get(ptr).map(|v| v.clone())
+        self.aim_entities.read().get(ptr).cloned()
     }
 
     pub fn get_local_player_ptr(&self) -> Option<u64> {
@@ -81,7 +79,7 @@ impl SharedState {
 
 impl ContextForAimbot for SharedStateWrapper {
     #[instrument]
-    async fn get_aimbot_settings(&self) -> Option<apexsky::aimbot::AimbotSettings> {
+    async fn get_aimbot_settings(&self) -> Option<apex1_common::aimbot::AimbotSettings> {
         G_STATE
             .lock()
             .map(|g_state| Some(g_state.config.settings.aimbot_settings.clone()))
@@ -105,14 +103,14 @@ impl ContextForAimbot for SharedStateWrapper {
     }
 
     #[instrument]
-    async fn get_weapon_info(&self) -> Option<apexsky::aimbot::CurrentWeaponInfo> {
+    async fn get_weapon_info(&self) -> Option<apex1_common::aimbot::CurrentWeaponInfo> {
         let weapon = self
             .get_local_player_ptr()
             .and_then(|ptr| self.read_cached_player(&ptr))?
             .get_active_weapon()?
             .clone();
 
-        let mut weapon_info = apexsky::aimbot::CurrentWeaponInfo::default();
+        let mut weapon_info = apex1_common::aimbot::CurrentWeaponInfo::default();
         weapon_info.weapon_id = weapon.weapon_name_index;
         weapon_info.bullet_speed = weapon.projectile_speed();
         weapon_info.bullet_gravity = weapon.projectile_gravity();

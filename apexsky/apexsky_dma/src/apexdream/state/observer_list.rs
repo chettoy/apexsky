@@ -1,4 +1,4 @@
-use apexsky::offsets::G_OFFSETS;
+use crate::G_OFFSETS;
 
 use self::sdk::EHandle;
 
@@ -33,7 +33,7 @@ impl ObserverList {
             return;
         }
 
-        let mut ptr: intptr::IntPtr = sdk::Ptr::NULL;
+        let mut ptr: sdk::Ptr = sdk::Ptr::NULL;
         let _ = api
             .vm_read_into(
                 base_addr.field(G_OFFSETS.spectator_list.try_into().unwrap()),

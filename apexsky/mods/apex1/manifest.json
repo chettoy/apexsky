@@ -1,0 +1,38 @@
+{
+    "manifest_version": 1,
+    "package_name": "com.chettoy.apex1",
+    "version_code": 2,
+    "version": "0.3.0",
+    "label": "apex1",
+    "description": "Game v3.0.6.37",
+    "icons": {},
+    "target_api": {
+        "runtime": 1
+    },
+    "components": [
+        {
+            "service": {
+                "name": "apexsky_dma",
+                "target": [
+                    "x86_64-linux",
+                    "x86_64-windows"
+                ]
+            },
+            "type": "native"
+        },
+        {
+            "service": "apex1_offsets_parser.wasm",
+            "type": "module-wasm"
+        },
+        {
+            "service": "skyapex.wasm",
+            "type": "module-wasm"
+        }
+    ],
+    "permissions": [
+        {
+            "name": "app.ohos.permission.MODIFY_MEMORY",
+            "value": ""
+        }
+    ]
+}

@@ -1,0 +1,62 @@
+package ohosky:main@0.1.0;
+
+interface host {
+    add: func(x: s32, y: s32) -> s32;
+    check-file-permission: func(path: list<u8>) -> bool;
+    get-base-dir: func() -> string;
+    get-config-dir: func() -> string;
+    get-temp-dir: func() -> string;
+    get-locale: func() -> option<string>;
+    sky-module-args: func() -> list<string>;
+    sky-module-token: func() -> string;
+}
+
+interface msg {
+    reg-msg: func(name: string) -> u64;
+    send-blocking: func(id: u64, value: list<u8>) -> result<_, string>;
+    recv-blocking: func(id: u64) -> result<list<u8>, string>;
+    try-recv: func(id: u64) -> result<option<list<u8>>, string>;
+}
+
+interface rpc {
+    reg-rpc: func(name: string) -> u64;
+    use-rpc: func(name: string) -> u64;
+    recv-blocking: func(id: u64) -> result<list<u8>, string>;
+    try-recv: func(id: u64) -> result<option<list<u8>>, string>;
+    reply: func(id: u64, ret-value: list<u8>) -> result<_, string>;
+    is-online: func(id: u64) -> result<bool, string>;
+    wait-online: func(id: u64) -> result<bool, string>;
+    call-blocking: func(id: u64, arg-value: list<u8>) -> result<list<u8>, string>;
+}
+
+interface store {
+    set: func(id: u64, value: list<u8>);
+    get: func(id: u64) -> option<list<u8>>;
+    has: func(id: u64) -> bool;
+    del: func(id: u64) -> bool;
+    child-set: func(id: u64, child-id: u64, value: list<u8>);
+    child-get: func(id: u64, child-id: u64) -> option<list<u8>>;
+    child-has: func(id: u64, child-id: u64) -> bool;
+    child-del: func(id: u64, child-id: u64) -> bool;
+    insert-children: func(id: u64, entries: list<tuple<u64, list<u8>>>);
+    swap-children: func(id: u64, entries: list<tuple<u64, list<u8>>>);
+    get-children: func(id: u64) -> list<tuple<u64, list<u8>>>;
+    list-children: func(id: u64) -> list<u64>;
+    clear-children: func(id: u64) -> u64;
+}
+
+world ohosky {
+    import access;
+    import access-async-result;
+
+    import host;
+
+    import msg;
+    import rpc;
+
+    import store;
+
+    export add: func(x: s32, y: s32) -> s32;
+    export load: func();
+}
+

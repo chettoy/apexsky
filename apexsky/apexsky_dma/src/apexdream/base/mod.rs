@@ -34,7 +34,7 @@ pub fn parse_u32(value: &str) -> u32 {
         let Some(src) = value.get(2..) else { return 0 };
         u32::from_str_radix(src, 16)
     } else {
-        u32::from_str_radix(value, 10)
+        value.parse::<u32>()
     })
     .unwrap_or(0)
 }

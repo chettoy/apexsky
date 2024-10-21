@@ -11,6 +11,7 @@ mod globalvars;
 mod highlight;
 mod input;
 mod inputsystem;
+mod intptr;
 mod items;
 pub mod pitches;
 pub mod projectiles;
@@ -79,7 +80,8 @@ pub const HARDWARE_PS4_1: u32 = 257;
 pub const HARDWARE_PS4_2: u32 = 2056;
 pub const HARDWARE_SWITCH: u32 = 2313;
 
-#[derive(Copy, Clone, Default, Debug, Pod)]
+#[derive(Copy, Clone, Default, Debug, Pod, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[rkyv(derive(Debug))]
 #[repr(C)]
 pub struct ConsumableItem {
     pub item: u16,

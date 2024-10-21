@@ -34,12 +34,17 @@ pub struct BaseNPCEntity {
     pub flags: u32,
     pub life_state: u8,
     pub last_visible_time: f32,
+    pub crosshair_target_start_time: f32,
+    pub last_crosshair_target_time: f32,
     pub tmp_last_lastviz: f32,
-    pub tmp_last_vischeck_time: f64,
+    pub tmp_last_last_crosshair_target: f32,
+    pub tmp_last_postcheck_time: f64,
     pub is_visible: bool,
+    pub is_crosshair_target: bool,
     pub visible_time: f64,
 }
 impl BaseNPCEntity {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
         let entity_size = cc.ClassSize;
         Box::new(BaseNPCEntity {
@@ -88,7 +93,7 @@ impl Entity for BaseNPCEntity {
             rate: 1,
         }
     }
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(index = self.index))]
     async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         #[derive(sdk::Pod)]
         #[repr(C)]
@@ -100,14 +105,14 @@ impl Entity for BaseNPCEntity {
             bone_array: [u32; 2],
             studio: [u32; 2],
             skin: [u32; 4],
-            state: [u32; 3],
+            state: [u32; 5],
             //collision: [u32; 7],
         }
 
         let data = &ctx.data;
         let mut indices = Indices {
             origin: [
-                data.entity_origin + 0,
+                data.entity_origin,
                 data.entity_origin + 4,
                 data.entity_origin + 8,
                 data.entity_origin + 24,
@@ -121,11 +126,11 @@ impl Entity for BaseNPCEntity {
                 data.entity_shield_health + 4,
             ],
             team: [data.entity_team_num],
-            model_name: [data.entity_model_name + 0, data.entity_model_name + 4],
-            bone_array: [data.animating_bone_array + 0, data.animating_bone_array + 4],
-            studio: [data.animating_studiohdr + 0, data.animating_studiohdr + 4],
+            model_name: [data.entity_model_name, data.entity_model_name + 4],
+            bone_array: [data.animating_bone_array, data.animating_bone_array + 4],
+            studio: [data.animating_studiohdr, data.animating_studiohdr + 4],
             skin: [
-                data.animating_skin + 0,
+                data.animating_skin,
                 data.animating_skin + 4,
                 data.animating_skin + 8,
                 data.animating_skin + 12,
@@ -133,8 +138,9 @@ impl Entity for BaseNPCEntity {
             state: [
                 data.entity_flags,
                 data.entity_life_state,
-                //data.bcc_last_visible_time,
                 data.player_last_visible_time,
+                data.player_last_visible_time + 4,
+                data.player_last_visible_time + 8,
             ],
             // collision: [
             //     data.entity_collision + data.collision_property_vec_mins,
@@ -148,7 +154,7 @@ impl Entity for BaseNPCEntity {
         };
 
         if let Ok(fields) = api
-            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .vm_gatherd(self.entity_ptr, self.entity_size, true, &mut indices)
             .await
         {
             self.origin = [
@@ -200,16 +206,20 @@ impl Entity for BaseNPCEntity {
 
             self.team_num = fields.team[0] as i32;
 
-            let model_name_ptr = fields.model_name[0] as u64 | (fields.model_name[1] as u64) << 32;
-            self.model_name.update(api, model_name_ptr.into()).await;
-            let studio_ptr = fields.studio[0] as u64 | (fields.studio[1] as u64) << 32;
-            self.studio
-                .update(api, sdk::Ptr::from_raw(studio_ptr))
-                .await;
-            let bones_ptr = fields.bone_array[0] as u64 | (fields.bone_array[1] as u64) << 32;
-            self.bones
-                .update(api, ctx, &self.studio, sdk::Ptr::from_raw(bones_ptr))
-                .await;
+            let model_name_ptr =
+                fields.model_name[0] as u64 | ((fields.model_name[1] as u64) << 32);
+            let studio_ptr = fields.studio[0] as u64 | ((fields.studio[1] as u64) << 32);
+            let bones_ptr = fields.bone_array[0] as u64 | ((fields.bone_array[1] as u64) << 32);
+
+            tokio::join!(self.model_name.update(api, model_name_ptr.into()), async {
+                let _ = self
+                    .studio
+                    .update(api, sdk::Ptr::from_raw(studio_ptr))
+                    .await;
+                self.bones
+                    .update(api, ctx, &self.studio, sdk::Ptr::from_raw(bones_ptr))
+                    .await;
+            });
 
             self.skin = fields.skin[0] as i32;
             self.skin_mod = fields.skin[1] as i32;
@@ -219,6 +229,8 @@ impl Entity for BaseNPCEntity {
             self.flags = fields.state[0];
             self.life_state = fields.state[1] as u8;
             self.last_visible_time = f32::from_bits(fields.state[2]);
+            self.crosshair_target_start_time = f32::from_bits(fields.state[3]);
+            self.last_crosshair_target_time = f32::from_bits(fields.state[4]);
 
             // let collision = (
             //     [
@@ -242,7 +254,7 @@ impl Entity for BaseNPCEntity {
         // Check if npc is visible
         // let is_visible = self.last_visible_time > 0.0
         //     && (self.last_visible_time - state.client.curtime).abs() < 0.1;
-        if ctx.time > self.tmp_last_vischeck_time + 0.050 {
+        if ctx.time > self.tmp_last_postcheck_time + 0.050 {
             let is_visible = self.last_visible_time > self.tmp_last_lastviz;
             //tracing::trace!(is_visible, self.last_visible_time, self.tmp_last_lastviz);
             // Take note when the npc became visible
@@ -251,8 +263,12 @@ impl Entity for BaseNPCEntity {
             }
             self.is_visible = is_visible;
 
+            self.is_crosshair_target =
+                self.last_crosshair_target_time > self.tmp_last_last_crosshair_target;
+
             self.tmp_last_lastviz = self.last_visible_time;
-            self.tmp_last_vischeck_time = ctx.time;
+            self.tmp_last_last_crosshair_target = self.last_crosshair_target_time;
+            self.tmp_last_postcheck_time = ctx.time;
         }
     }
 }

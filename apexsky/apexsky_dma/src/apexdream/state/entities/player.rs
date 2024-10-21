@@ -66,8 +66,10 @@ pub struct PlayerEntity {
     pub crosshair_target_start_time: f32,
     pub last_crosshair_target_time: f32,
     pub tmp_last_lastviz: f32,
-    pub tmp_last_vischeck_time: f64,
+    pub tmp_last_last_crosshair_target: f32,
+    pub tmp_last_postcheck_time: f64,
     pub is_visible: bool,
+    pub is_crosshair_target: bool,
     pub visible_time: f64,
 
     // Player WeaponInventory
@@ -112,6 +114,7 @@ pub struct PlayerEntity {
     pub yaw: f32,
 }
 impl PlayerEntity {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
         let entity_size = cc.ClassSize;
         Box::new(PlayerEntity {
@@ -215,7 +218,7 @@ impl PlayerEntity {
             set.bit_set(sdk::ItemId::EvoShieldLv2.0 as usize);
         }
 
-        return set;
+        set
     }
     pub fn active_weapon<'a>(&self, state: &'a GameState) -> Option<&'a WeaponXEntity> {
         state.entity_as(self.active_weapon)
@@ -249,7 +252,7 @@ impl PlayerEntity {
                 }
             }
         }
-        return count;
+        count
     }
 }
 #[async_trait]
@@ -271,7 +274,7 @@ impl Entity for PlayerEntity {
             rate: 1,
         }
     }
-    #[instrument(skip_all)]
+    #[instrument(skip_all, fields(index = self.index))]
     async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         #[derive(sdk::Pod)]
         #[repr(C)]
@@ -310,7 +313,7 @@ impl Entity for PlayerEntity {
         let data = &ctx.data;
         let mut indices = Indices {
             origin: [
-                data.entity_origin + 0,
+                data.entity_origin,
                 data.entity_origin + 4,
                 data.entity_origin + 8,
                 data.entity_origin + 24,
@@ -318,7 +321,7 @@ impl Entity for PlayerEntity {
                 data.entity_origin + 32,
             ],
             velocity: [
-                data.entity_velocity + 0,
+                data.entity_velocity,
                 data.entity_velocity + 4,
                 data.entity_velocity + 8,
             ],
@@ -337,7 +340,7 @@ impl Entity for PlayerEntity {
                 data.entity_team_num + 16,
             ],
             camera: [
-                data.player_camera_data + 0,
+                data.player_camera_data,
                 data.player_camera_data + 4,
                 data.player_camera_data + 8,
                 data.player_camera_data + 12,
@@ -346,27 +349,27 @@ impl Entity for PlayerEntity {
             ],
             time_base: data.player_time_base,
             server_angles: [
-                data.player_server_angles + 0,
+                data.player_server_angles,
                 data.player_server_angles + 4,
                 data.player_server_angles + 8,
             ],
             breath_angles: [
-                data.player_view_angles - 0x10 + 0,
+                data.player_view_angles - 0x10,
                 data.player_view_angles - 0x10 + 4,
                 data.player_view_angles - 0x10 + 8,
             ],
             view_angles: [
-                data.player_view_angles + 0,
+                data.player_view_angles,
                 data.player_view_angles + 4,
                 data.player_view_angles + 8,
             ],
             weapon_punch: [
-                data.player_weapon_punch + 0,
+                data.player_weapon_punch,
                 data.player_weapon_punch + 4,
                 data.player_weapon_punch + 8,
             ],
             consumables: [
-                data.player_consumables + 0,
+                data.player_consumables,
                 data.player_consumables + 4,
                 data.player_consumables + 8,
                 data.player_consumables + 12,
@@ -384,21 +387,18 @@ impl Entity for PlayerEntity {
                 data.player_consumables + 60,
             ],
             view: [
-                data.entity_view_offset + 0,
+                data.entity_view_offset,
                 data.entity_view_offset + 4,
                 data.entity_view_offset + 8,
             ],
-            observer: [
-                data.player_observer_state + 0,
-                data.player_observer_state + 4,
-            ],
+            observer: [data.player_observer_state, data.player_observer_state + 4],
             state: [
                 data.entity_flags,
                 data.entity_life_state,
                 data.player_bleedout_state,
                 data.player_last_visible_time,
-                data.bcc_last_visible_time + 4,
-                data.bcc_last_visible_time + 8,
+                data.player_last_visible_time + 4,
+                data.player_last_visible_time + 8,
             ],
             inventory: [
                 data.bcc_inventory + 8,
@@ -410,34 +410,31 @@ impl Entity for PlayerEntity {
             ],
             zoom_state: data.player_zoom_state,
             armor_type: [
-                data.player_helmet_armor_type + 0,
+                data.player_helmet_armor_type,
                 data.player_helmet_armor_type + 4,
             ],
             skydive_state: data.player_skydive_state,
             next_attack: [
-                data.bcc_next_attack + 0,
+                data.bcc_next_attack,
                 data.bcc_next_attack + 4,
                 data.bcc_next_attack + 8,
                 data.bcc_next_attack + 12,
             ],
             selected: [
-                data.bcc_selected_weapons + 0,
+                data.bcc_selected_weapons,
                 data.bcc_selected_weapons + 4,
                 data.bcc_selected_weapons + 20,
             ],
             uid: [
-                data.player_platform_uid + 0,
+                data.player_platform_uid,
                 data.player_platform_uid + 4,
                 data.player_platform_uid + 16,
                 data.player_platform_uid + 20,
             ],
-            model_name: [data.entity_model_name + 0, data.entity_model_name + 4],
-            bone_array: [data.animating_bone_array + 0, data.animating_bone_array + 4],
-            studio: [data.animating_studiohdr + 0, data.animating_studiohdr + 4],
-            script: [
-                data.player_script_net_data + 0,
-                data.player_script_net_data + 4,
-            ],
+            model_name: [data.entity_model_name, data.entity_model_name + 4],
+            bone_array: [data.animating_bone_array, data.animating_bone_array + 4],
+            studio: [data.animating_studiohdr, data.animating_studiohdr + 4],
+            script: [data.player_script_net_data, data.player_script_net_data + 4],
             temp_shield: [
                 data.player_shadow_shield_active,
                 data.player_temp_shield_health,
@@ -451,12 +448,14 @@ impl Entity for PlayerEntity {
         };
 
         if let Ok(fields) = api
-            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .vm_gatherd(self.entity_ptr, self.entity_size, true, &mut indices)
             .await
         {
-            self.eadp_uid = fields.uid[2] as u64 | (fields.uid[3] as u64) << 32;
-            let model_name_ptr = fields.model_name[0] as u64 | (fields.model_name[1] as u64) << 32;
+            self.eadp_uid = fields.uid[2] as u64 | ((fields.uid[3] as u64) << 32);
+            let model_name_ptr =
+                fields.model_name[0] as u64 | ((fields.model_name[1] as u64) << 32);
             self.model_name.update(api, model_name_ptr.into()).await;
+
             if self.eadp_uid < 1 {
                 // tracing::warn!(self.model_name.string, "{}", s!("invalid euid"));
                 tracing::trace!(self.model_name.string, "{}", s!("invalid euid"));
@@ -617,13 +616,14 @@ impl Entity for PlayerEntity {
             self.primary_weapon = fields.selected[1].into();
             self.selected_slot = fields.selected[2].to_ne_bytes()[0];
 
-            self.platform_uid = fields.uid[0] as u64 | (fields.uid[1] as u64) << 32;
+            self.platform_uid = fields.uid[0] as u64 | ((fields.uid[1] as u64) << 32);
 
-            let studio_ptr = fields.studio[0] as u64 | (fields.studio[1] as u64) << 32;
+            let studio_ptr = fields.studio[0] as u64 | ((fields.studio[1] as u64) << 32);
+            let bone_ptr = fields.bone_array[0] as u64 | ((fields.bone_array[1] as u64) << 32);
+
             self.studio
                 .update(api, sdk::Ptr::from_raw(studio_ptr))
                 .await;
-            let bone_ptr = fields.bone_array[0] as u64 | (fields.bone_array[1] as u64) << 32;
             self.bones
                 .update(api, ctx, &self.studio, sdk::Ptr::from_raw(bone_ptr))
                 .await;
@@ -665,7 +665,7 @@ impl Entity for PlayerEntity {
         // Check if player is visible
         // let is_visible = self.last_visible_time > 0.0
         //     && (self.last_visible_time - state.client.curtime).abs() < 10.0;
-        if ctx.time > self.tmp_last_vischeck_time + 0.050 {
+        if ctx.time > self.tmp_last_postcheck_time + 0.050 {
             let is_visible = self.last_visible_time > self.tmp_last_lastviz;
             //tracing::trace!(is_visible, self.last_visible_time, self.tmp_last_lastviz);
             // Take note when the npc became visible
@@ -674,8 +674,12 @@ impl Entity for PlayerEntity {
             }
             self.is_visible = is_visible;
 
+            self.is_crosshair_target =
+                self.last_crosshair_target_time > self.tmp_last_last_crosshair_target;
+
             self.tmp_last_lastviz = self.last_visible_time;
-            self.tmp_last_vischeck_time = ctx.time;
+            self.tmp_last_last_crosshair_target = self.last_crosshair_target_time;
+            self.tmp_last_postcheck_time = ctx.time;
         }
     }
 }

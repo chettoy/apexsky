@@ -2,7 +2,15 @@ use super::*;
 
 const SIZE: usize = 32;
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum InitState {
+    #[default]
+    Uninitialized,
+    Initialized,
+    Initializing,
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct ScriptNetDataEntity {
     pub entity_ptr: sdk::Ptr,
     pub entity_size: u32,
@@ -12,9 +20,9 @@ pub struct ScriptNetDataEntity {
     // Offsets for [m_bools, m_ranges, m_int32s, m_times, m_entities] respectively
     offsets: [u32; 5],
 
-    initialized: u8,
+    initialized: InitState,
 
-    // Script data related to local player
+    /// Is the script data related to local player
     local_player: bool,
 
     pub bools: [u8; SIZE],
@@ -25,6 +33,7 @@ pub struct ScriptNetDataEntity {
 }
 
 impl ScriptNetDataEntity {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
         let entity_size = cc.ClassSize;
         let recv_table = cc.pRecvTable.cast();
@@ -58,14 +67,14 @@ impl ScriptNetDataEntity {
         &self.ents[..usize::min(SIZE, len)]
     }
 
-    async fn init(&mut self, api: &Api) -> bool {
-        if self.initialized == 1 {
+    async fn init(&mut self, api: &Api, ctx: &UpdateContext) -> bool {
+        if self.initialized == InitState::Initialized {
             return true;
         }
-        if self.initialized == 2 {
+        if self.initialized == InitState::Initializing && !ctx.ticked(200, 21) {
             return false;
         }
-        self.initialized = 2;
+        self.initialized = InitState::Initializing;
 
         let Ok(recv_table) = api.vm_read(self.recv_table).await else {
             return false;
@@ -120,8 +129,8 @@ impl ScriptNetDataEntity {
             indices,
             s!("]")
         ));
-        self.initialized = 1;
-        return true;
+        self.initialized = InitState::Initialized;
+        true
     }
 }
 
@@ -145,12 +154,8 @@ impl Entity for ScriptNetDataEntity {
         }
     }
     #[instrument(skip_all)]
-    async fn update(&mut self, api: &Api, _ctx: &UpdateContext) {
-        // if !self.local_player {
-        //     return;
-        // }
-
-        if !self.init(api).await {
+    async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
+        if !self.init(api, ctx).await {
             return;
         }
 
@@ -189,16 +194,13 @@ impl Entity for ScriptNetDataEntity {
                 .unwrap_or_default();
         }
     }
+
     fn post(&mut self, _api: &Api, _ctx: &UpdateContext, state: &GameState) {
-        self.local_player = false;
         let Some(local) = state.local_player() else {
+            self.local_player = false;
             return;
         };
-        if local.script_net_data_exclusive.signed_index() == self.index as i32 {
-            self.local_player = true;
-        }
-        if local.script_net_data_global.signed_index() == self.index as i32 {
-            self.local_player = true;
-        }
+        self.local_player = self.index as i32 == local.script_net_data_exclusive.signed_index()
+            || self.index as i32 == local.script_net_data_global.signed_index();
     }
 }

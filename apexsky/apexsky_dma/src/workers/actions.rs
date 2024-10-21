@@ -1,28 +1,30 @@
+use crate::global_state::G_STATE;
+use crate::G_OFFSETS;
 use anyhow::Context;
-use apexsky::{
+use apex1_common::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
+use apex1_common::utils::get_unix_timestamp_in_millis;
+use apex1_common::{
     aimbot::{calc_angle, calc_fov, AimEntity},
     config::Settings,
-    global_state::G_STATE,
     love_players::LoveStatus,
-    offsets::G_OFFSETS,
 };
-use apexsky_dmalib::access::{
-    AccessType, MemApi, PendingAccessRequest, PendingMemRead, PendingMemWrite,
-};
-use apexsky_proto::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
 use ndarray::arr1;
+use ohosky_api::common::dmalib::IMemAccess;
+use ohosky_api::common::msg::ISharedWatchValue;
+use ohosky_api::common::share::ISharableValue;
+use tracing::{info_span, Instrument};
 //use obfstr::obfstr as s;
-use apexsky::noobfstr as s;
-use std::mem::size_of;
+use crate::noobfstr as s;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use std::{collections::HashSet, sync::atomic::Ordering};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::watch;
 use tokio::time::{sleep, Instant};
 
 use crate::{
     apexdream::state::entities::{DeathboxEntity, Entity},
     game::player::QuickLooting,
-    usermod_thr::{ActionTickData, UserModEvent},
+    skyapi,
+    skyapi::dmalib,
     workers::items::LootInt,
     SharedStateWrapper,
 };
@@ -39,27 +41,34 @@ use crate::{
     PRINT_LATENCY,
 };
 
+const REQUEST_ID: usize = 0; //obfstr::random!(usize);
+
 #[tracing::instrument(skip_all)]
 pub async fn actions_loop(
     mut active: watch::Receiver<bool>,
     shared_state: SharedStateWrapper,
-    access_tx: MemApi,
+    access_tx: dmalib::MemAccess,
     aim_key_tx: watch::Sender<AimKeyState>,
     aim_select_tx: watch::Sender<Vec<AimTargetInfo>>,
     update_time_tx: watch::Sender<f64>,
-    usermod_event_tx: mpsc::UnboundedSender<UserModEvent>,
     mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
     mut items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,
 ) -> anyhow::Result<()> {
     tracing::debug!("{}", s!("task start"));
 
-    let usermod_send_event = |event: UserModEvent| {
-        if let Err(e) = usermod_event_tx.send(event) {
+    let event_tick = skyapi::SharedWatchValue::new(&apex1_common::global::MSG.action_tick, "").0;
+    let event_attached =
+        skyapi::SharedWatchValue::new(&apex1_common::global::MSG.game_attached, "").0;
+    let event_unattached =
+        skyapi::SharedWatchValue::new(&apex1_common::global::MSG.game_unattached, "").0;
+    fn usermod_send_event<T: ISharableValue>(tx: &impl ISharedWatchValue<T>, v: T) {
+        if let Err(e) = tx.update(v) {
             tracing::error!(%e, "{}", s!("usermod_send_event"));
         };
-    };
+    }
 
-    let mut apexdream = crate::apexdream::Instance::new();
+    let mut apexdream =
+        crate::apexdream::Instance::new(G_STATE.lock().unwrap().config.settings.is_access_fast);
     let mut start_instant = Instant::now();
     let mut fps_checkpoint_instant = Instant::now();
     let mut last_checkpoint_frame: i32 = 0;
@@ -72,17 +81,12 @@ pub async fn actions_loop(
     while *active.borrow_and_update() {
         sleep(Duration::from_secs(2)).await;
 
-        match AccessType::mem_baseaddr()
-            .with_priority(100)
-            .dispatch(&access_tx)
-            .await?
-            .await?
-        {
+        match access_tx.get_baseaddr(100).await? {
             Some(baseaddr) => {
                 shared_state
                     .game_baseaddr
                     .store(baseaddr, Ordering::Release);
-                usermod_send_event(UserModEvent::GameAttached);
+                usermod_send_event(&event_attached, ());
             }
             None => {
                 shared_state.game_baseaddr.store(0, Ordering::Release);
@@ -96,19 +100,14 @@ pub async fn actions_loop(
             let loop_duration = start_instant.elapsed().as_millis().try_into()?;
             start_instant = Instant::now();
 
-            let apex_base = match AccessType::mem_baseaddr()
-                .with_priority(100)
-                .dispatch(&access_tx)
-                .await?
-                .await?
-            {
+            let apex_base = match access_tx.get_baseaddr(100).await? {
                 Some(addr) => {
                     shared_state.game_baseaddr.store(addr, Ordering::Release);
                     addr
                 }
                 None => {
                     shared_state.game_baseaddr.store(0, Ordering::Release);
-                    usermod_send_event(UserModEvent::GameUnattached);
+                    usermod_send_event(&event_unattached, ());
                     tracing::warn!("{}", s!("Unattached to the game"));
                     break;
                 }
@@ -121,18 +120,20 @@ pub async fn actions_loop(
             let verbose = actions_tick % 1_000 == 0;
 
             // Tick game state
-            let (tick_duration, apex_state, is_newly_connected) = {
+            let (tick_duration, apex_state, apex_update_ctx, is_newly_connected) = {
                 (
                     {
                         let mut api = crate::apexdream::api::Api {
                             apex_base: apex_base.into(),
                             mem_access: mem.clone(),
+                            req_id: REQUEST_ID,
                         };
                         let tick_start = Instant::now();
                         apexdream.tick_state(&mut api).await;
                         tick_start.elapsed().as_millis().try_into()?
                     },
                     apexdream.get_state(),
+                    apexdream.get_update_ctx(),
                     apexdream.is_newly_connected(),
                 )
             };
@@ -225,34 +226,50 @@ pub async fn actions_loop(
                     println!(
                         "{}{:.1}",
                         s!("actions data latency "),
-                        apexsky::aimbot::get_unix_timestamp_in_millis() as f64
-                            - apex_state.time * 1000.0
+                        get_unix_timestamp_in_millis() as f64 - apex_state.time * 1000.0
                     );
                 }
 
                 if verbose {
-                    tracing::trace!(?shared_state);
+                    if !world_ready {
+                        let local_player = apex_state.local_player();
+                        tracing::debug!(
+                            signon_state = apex_state.client.signon_state,
+                            levelname = apex_state.client.level_name,
+                            local_ent = ?apex_state.client.local_entity,
+                            ?local_player,
+                        );
+                        if local_player.is_none() {
+                            tracing::debug!(entity_list = ?apex_state.entity_list);
+                        }
+                    }
+                    tracing::trace!(?shared_state, localplayer = ?apex_state.local_player());
                 }
             }
 
             // Send key status to aimbot worker
             aim_key_tx
                 .send(AimKeyState {
-                    aimbot_hotkey_1: if apex_state.is_button_down(g_settings.aimbot_hot_key_1) {
-                        g_settings.aimbot_hot_key_1
+                    aimbot_hotkey_1: if apex_state
+                        .is_button_down(g_settings.hotkey_settings.aimbot_key1)
+                    {
+                        g_settings.hotkey_settings.aimbot_key1
                     } else {
                         0
                     },
-                    aimbot_hotkey_2: if apex_state.is_button_down(g_settings.aimbot_hot_key_2) {
-                        g_settings.aimbot_hot_key_2
+                    aimbot_hotkey_2: if apex_state
+                        .is_button_down(g_settings.hotkey_settings.aimbot_key2)
+                    {
+                        g_settings.hotkey_settings.aimbot_key2
                     } else {
                         0
                     },
                     attack_button: apex_state.buttons.in_attack.down[0],
                     zoom_button: apex_state.buttons.in_zoom.down[0],
-                    triggerbot_hotkey: if apex_state.is_button_down(g_settings.trigger_bot_hot_key)
+                    triggerbot_hotkey: if apex_state
+                        .is_button_down(g_settings.hotkey_settings.triggerbot_key1)
                     {
-                        g_settings.trigger_bot_hot_key
+                        g_settings.hotkey_settings.triggerbot_key1
                     } else {
                         0
                     },
@@ -265,9 +282,9 @@ pub async fn actions_loop(
                         }
                     },
                     quick_looting_hotkey: if apex_state
-                        .is_button_down(g_settings.quick_looting_hot_key)
+                        .is_button_down(g_settings.hotkey_settings.quick_looting_key)
                     {
-                        g_settings.quick_looting_hot_key
+                        g_settings.hotkey_settings.quick_looting_key
                     } else {
                         0
                     },
@@ -294,9 +311,8 @@ pub async fn actions_loop(
                     players.insert(entity_ptr, player);
                 });
 
-                let local_player_ptr: u64 = players
-                    .contains_key(&apex_state.client.local_player_ptr)
-                    .then_some(apex_state.client.local_player_ptr)
+                let local_player_ptr: u64 = Some(apex_state.client.local_player_ptr)
+                    .take_if(|ptr| players.contains_key(ptr))
                     .unwrap_or(0);
                 let view_player_ptr: u64 = apex_state
                     .local_player()
@@ -331,7 +347,7 @@ pub async fn actions_loop(
                                 entity_handle: entity.entity_ptr.into_raw(),
                                 item_id: entity.custom_script_int,
                                 custom_item_id: (entity.custom_script_int as u64
-                                    | (entity.survival_property as u64) << 32),
+                                    | ((entity.survival_property as u64) << 32)),
                                 position: Some(entity.origin.into()),
                                 distance,
                             };
@@ -368,7 +384,7 @@ pub async fn actions_loop(
                         if v.distance > 40.0 * 3.0 {
                             continue;
                         }
-                        aim_entities.insert(*k, Arc::new(QuickLooting(v.clone())));
+                        aim_entities.insert(*k, Arc::new(QuickLooting(*v)));
                     }
                     let entity_count = aim_entities.len();
                     tracing::trace!(entity_count, "{}", s!("AimEntities updated"));
@@ -398,9 +414,10 @@ pub async fn actions_loop(
                 tracing::error!(%e, ?e, "{}", s!("send update time"));
             }
 
-            usermod_send_event(UserModEvent::ActionTick(ActionTickData {
-                input_state: apex_state.input_system.button_state,
-            }));
+            // usermod_send_event(UserModEvent::ActionTick(ActionTickData {
+            //     input_state: apex_state.input_system.button_state,
+            // }));
+            usermod_send_event(&event_tick, actions_tick.to_le_bytes().to_vec());
 
             // Log WeaponId
             if is_newly_connected {
@@ -414,7 +431,7 @@ pub async fn actions_loop(
 
                         let weapons_json =
                             serde_json::to_string(&apex_state.string_tables.weapon_names)?;
-                        let path = apexsky::get_base_dir().join(s!("updated_weapon.json"));
+                        let path = crate::DATA_DIR.join(s!("updated_weapon.json"));
                         let mut json_file = fs::OpenOptions::new()
                             .create(true)
                             .write(true)
@@ -468,6 +485,7 @@ pub async fn actions_loop(
                             int: entity.custom_script_int,
                             model: entity.model_name.string.clone(),
                         })
+                        .filter(|loot| !(loot.int == 0 && loot.model.is_empty()))
                         .collect::<HashSet<LootInt>>();
                     let mut item_namelist: Vec<LootInt> = item_namelist.into_iter().collect();
                     item_namelist.sort_by(|a, b| a.int.cmp(&b.int));
@@ -500,15 +518,28 @@ pub async fn actions_loop(
 
             tracing::trace_span!("Update state in global settings").in_scope(|| {
                 let firing_range_mode = apex_state.is_firing_range();
+                let tdm = apex_state
+                    .gamemode()
+                    .is_some_and(|gamemode| [s!("control"), s!("freedm")].contains(&gamemode));
+
+                let mut update_menu = false;
                 let g_state = &mut G_STATE.lock().unwrap();
+
                 if g_state.config.settings.firing_range != firing_range_mode {
                     g_state.config.settings.firing_range = firing_range_mode;
-                    g_state.tui_forceupdate = true;
+                    update_menu = true;
+                }
+                if g_state.config.settings.team_death_match != tdm {
+                    g_state.config.settings.team_death_match = tdm;
+                    update_menu = true;
                 }
                 if g_state.config.settings.calc_game_fps {
                     if let Some(fps_update) = game_fps_update {
                         g_state.config.settings.game_fps = fps_update;
                     }
+                }
+                if update_menu {
+                    crate::global_state::G_TUI_FORCE_UPDATE.store(true, Ordering::Release);
                 }
             });
 
@@ -537,7 +568,7 @@ pub async fn actions_loop(
                         let lplayer_team = local_player.get_buf().team_num;
                         let alter_local_team =
                             shared_state.map_testing_local_team.load(Ordering::Acquire);
-                        let tdm_toggle = g_settings.tdm_toggle;
+                        let tdm_toggle = g_settings.team_death_match;
                         let is_teammate = |team_num| {
                             teammate_check(team_num, lplayer_team, alter_local_team, tdm_toggle)
                         };
@@ -615,10 +646,16 @@ pub async fn actions_loop(
                 });
 
                 if player_ready {
+                    let highlight_injected =
+                        shared_state.highlight_injected.load(Ordering::Acquire);
+
                     // Inject highlight settings
-                    let highlight_injected = {
-                        let mut injected = shared_state.highlight_injected.load(Ordering::Acquire);
-                        if (g_settings.player_glow || g_settings.item_glow) && player_ready {
+                    let task_inject_highlights = async {
+                        if (g_settings.glow_settings.player_glow
+                            || g_settings.glow_settings.item_glow
+                            || g_settings.glow_settings.weapon_model_glow)
+                            && player_ready
+                        {
                             match inject_highlight(mem, apex_state.client.framecount, &g_settings)
                                 .await
                             {
@@ -626,25 +663,32 @@ pub async fn actions_loop(
                                     shared_state
                                         .highlight_injected
                                         .store(true, Ordering::Release);
-                                    injected = true;
                                 }
                                 Err(e) => {
-                                    tracing::debug!(%e, ?e, "{}", s!("Inject highlight settings"));
+                                    tracing::warn!(%e, ?e, "{}", s!("err inject highlight settings"));
                                 }
                             }
                         }
-                        injected
-                    };
+                    }.instrument(info_span!("1"));
 
                     // Write Player Glow
-                    if g_settings.player_glow
+
+                    // tracing::debug!(
+                    //     playre_glow_on = g_settings.player_glow,
+                    //     highlight_injected,
+                    //     need_update = aim_select_rx.has_changed().unwrap_or(false),
+                    //     write_count = aim_select_rx.borrow().iter().count(),
+                    //     "debug player glow"
+                    // );
+                    let task_player_glow = async {
+                        if g_settings.glow_settings.player_glow
                         && highlight_injected
                         && aim_select_rx.has_changed().unwrap_or_else(|e| {
                             tracing::error!(%e, ?aim_select_rx, "{}", s!("perform player glow"));
                             false
                         })
                     {
-                        let reqs = aim_select_rx
+                        let writes = aim_select_rx
                             .borrow_and_update()
                             .iter()
                             .map(|target| {
@@ -653,84 +697,179 @@ pub async fn actions_loop(
                                     target,
                                     apex_state.client.framecount,
                                     g_settings.game_fps,
-                                    g_settings.player_glow_armor_color,
-                                    g_settings.player_glow_love_user,
+                                    g_settings.glow_settings.player_glow_armor_color,
+                                    g_settings.glow_settings.player_glow_love_user,
                                 );
-                                (
-                                    AccessType::mem_write_typed::<u8>(
-                                        target_ptr + G_OFFSETS.entity_highlight_generic_context - 1,
-                                        &highlight_context_id,
-                                        0,
-                                    ),
-                                    AccessType::mem_write_typed::<i32>(
-                                        target_ptr + OFFSET_GLOW_VISIBLE_TYPE,
-                                        &2,
-                                        0,
-                                    ),
-                                    AccessType::mem_write_typed::<f32>(
-                                        target_ptr + OFFSET_GLOW_DISTANCE,
-                                        &8.0E+4,
-                                        0,
-                                    ),
-                                    AccessType::mem_write_typed::<i32>(
-                                        target_ptr + OFFSET_GLOW_FIX,
-                                        &0,
-                                        0,
-                                    ),
-                                )
+                                (target_ptr, highlight_context_id)
                             })
                             .collect::<Vec<_>>();
-                        for (
-                            req_write_glow_id,
-                            req_write_glow_type,
-                            req_write_glow_dist,
-                            req_write_glow_fix,
-                        ) in reqs
-                        {
-                            let (r0, r1, r2, r3) = tokio::try_join!(
-                                req_write_glow_id.with_priority(0).dispatch(mem),
-                                req_write_glow_type.with_priority(0).dispatch(mem),
-                                req_write_glow_dist.with_priority(0).dispatch(mem),
-                                req_write_glow_fix.with_priority(0).dispatch(mem),
-                            )?;
-                            r0.spawn_err_handler();
-                            r1.spawn_err_handler();
-                            r2.spawn_err_handler();
-                            r3.spawn_err_handler();
+                        for (target_ptr, highlight_context_id) in writes {
+                            let mem = mem.clone();
+                            tokio::spawn(async move {
+                                if let Err(e) = tokio::try_join!(
+                                    mem.write::<u8>(
+                                        target_ptr + G_OFFSETS.entity_highlight_generic_context - 1,
+                                        &highlight_context_id,
+                                        dmalib::PRIO_LOW,
+                                        0,
+                                    ),
+                                    mem.write::<i32>(
+                                        target_ptr + OFFSET_GLOW_VISIBLE_TYPE,
+                                        &2,
+                                        dmalib::PRIO_LOW,
+                                        0
+                                    ),
+                                    mem.write::<f32>(
+                                        target_ptr + OFFSET_GLOW_DISTANCE,
+                                        &8.0E+4,
+                                        dmalib::PRIO_LOW,
+                                        0
+                                    ),
+                                    mem.write::<f32>(
+                                        target_ptr + G_OFFSETS.entity_fade_dist,
+                                        &g_settings.aimbot_settings.aim_dist,
+                                        dmalib::PRIO_LOW,
+                                        0
+                                    ),
+                                    mem.write::<i32>(
+                                        target_ptr + OFFSET_GLOW_FIX,
+                                        &0,
+                                        dmalib::PRIO_LOW,
+                                        0
+                                    ),
+                                ) {
+                                    tracing::error!(
+                                        ?e,
+                                        target_ptr,
+                                        highlight_context_id,
+                                        "{}",
+                                        s!("write player glow")
+                                    );
+                                }
+                            });
                         }
                     }
+                    }
+                    .instrument(info_span!("2"));
 
                     // Write Items Glow
-                    if g_settings.item_glow
+                    let task_items_glow =
+                        async {
+                            if g_settings.glow_settings.item_glow
                         && highlight_injected
                         && items_glow_rx.has_changed().unwrap_or_else(|e| {
                             tracing::error!(%e, ?items_glow_rx, "{}", s!("perform items glow"));
                             false
                         })
                     {
-                        let reqs = items_glow_rx
-                            .borrow_and_update()
-                            .iter()
-                            .map(|(ptr, ctx_id)| {
-                                AccessType::mem_write_typed(
-                                    ptr + G_OFFSETS.entity_highlight_generic_context - 1,
-                                    ctx_id,
-                                    0,
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        for req in reqs {
-                            req.with_priority(0)
-                                .dispatch(mem)
-                                .await?
-                                .spawn_err_handler();
+                        let writes = items_glow_rx.borrow_and_update().clone();
+                        for (ptr, ctx_id) in writes {
+                            let mem = mem.clone();
+                            tokio::spawn(async move {
+                                if let Err(e) = mem
+                                    .write::<u8>(
+                                        ptr + G_OFFSETS.entity_highlight_generic_context - 1,
+                                        &ctx_id,
+                                        dmalib::PRIO_LOW,
+                                        0,
+                                    )
+                                    .await
+                                {
+                                    tracing::error!(?e, ptr, ctx_id, "{}", s!("write loot glow"))
+                                }
+                            });
                         }
                     }
+                        }
+                        .instrument(info_span!("3"));
 
                     // Weapon model glow
-                    // Not planned
+                    let task_vmodel_glow = async {
+                        if !(g_settings.glow_settings.weapon_model_glow && highlight_injected) {
+                            return;
+                        }
+                        let Some(local_player) = shared_state
+                            .get_local_player_ptr()
+                            .and_then(|lplayer_ptr| shared_state.read_cached_player(&lplayer_ptr))
+                            .filter(|pl| pl.is_alive())
+                        else {
+                            return;
+                        };
+                        let Ok(view_model_handle) = mem
+                            .read::<u64>(
+                                local_player.get_entity_ptr() + G_OFFSETS.cplayer_viewmodels,
+                                dmalib::PRIO_LOW,
+                                0,
+                            )
+                            .await
+                            .inspect_err(|e| {
+                                tracing::warn!(?e, "{}", s!("read player view_model"))
+                            })
+                        else {
+                            return;
+                        };
+
+                        let handle = (view_model_handle & 0xffff) as u32;
+                        let view_model_ptr = apex_state.entity_ptr(handle);
+                        let Some(ptr) = view_model_ptr else {
+                            return;
+                        };
+                        let (al_spec, spec) = {
+                            let spec_list = shared_state.spectator_list.lock();
+                            (spec_list.0.len(), spec_list.1.len())
+                        };
+                        let ctx_id = if spec > 0 {
+                            HIGHLIGHT_DEATH_BOX
+                        } else if al_spec > 0 {
+                            HIGHLIGHT_LOOT_ENERGY
+                        } else {
+                            HIGHLIGHT_WEAPON_RAINBOW
+                        };
+                        if let Err(e) = mem
+                            .write::<u8>(
+                                ptr.into_raw() + G_OFFSETS.entity_highlight_generic_context - 1,
+                                &ctx_id,
+                                dmalib::PRIO_LOW,
+                                0,
+                            )
+                            .await
+                        {
+                            tracing::error!(?e, ?ptr, ctx_id, "{}", s!("write weapon model glow"))
+                        }
+                    }
+                    .instrument(tracing::info_span!("4"));
+
+                    tokio::join!(
+                        task_inject_highlights,
+                        task_player_glow,
+                        task_items_glow,
+                        task_vmodel_glow,
+                    );
+
+                    if actions_tick % 160 == 0 {
+                        tracing::trace!(?apex_update_ctx.intresting);
+                    }
 
                     // println!("in_use state {}", apex_state.buttons.in_use.state);
+                    // if verbose {
+                    //     tracing::warn!(ent_dir = ?apex_state.entity_list.gce.directory);
+                    // }
+                    // {"al_shield_anchor_l": "CScriptProp",
+                    // "-1": "CInfoTarget",
+                    // "shield_throw": "CScriptMover",
+                    // "vortex_trigger_area": "CVortexSphere",
+                    // "rebuilt_door": "CScriptProp",
+                    // "caustic_trap": "CScriptProp",
+                    // "player": "CPlayer",
+                    // "dynamic_dummie": "CAI_BaseNPC",
+                    // "crypto_camera": "CScriptProp",
+                    // "al_shield_low_r": "CScriptProp",
+                    // "al_shield_low_l": "CScriptProp",
+                    // "al_shield_anchor_c": "CScriptProp",
+                    // "axiom_impact_zone_threat": "CScriptProp",
+                    // "drone_no_minimap_object": "CPlayerVehicle",
+                    // "al_shield_anchor_r": "CScriptProp",
+                    // "": "CScriptNetDataGlobalNonRewind"}
                 }
             }
         }
@@ -750,7 +889,7 @@ fn collect_aim_targets(
         return vec![];
     }
 
-    let quick_looting = apex_state.is_button_down(g_settings.quick_looting_hot_key);
+    let quick_looting = apex_state.is_button_down(g_settings.hotkey_settings.quick_looting_key);
 
     let aim_entities = state.aim_entities.read().clone();
     let players = state.players.read().clone();
@@ -774,7 +913,7 @@ fn collect_aim_targets(
         .values()
         .filter_map(|entity| {
             process_player(
-                &lplayer,
+                lplayer,
                 entity.as_ref(),
                 &players,
                 alter_local_team_id,
@@ -788,7 +927,7 @@ fn collect_aim_targets(
             let clue = loots.get(ptr)?;
             let distance = clue.distance;
             (distance < 40.0 * 2.5).then_some({
-                let target_entity = QuickLooting(clue.clone());
+                let target_entity = QuickLooting(*clue);
                 let fov = calculate_target_fov(lplayer.as_ref(), &target_entity);
                 AimTargetInfo {
                     fov,
@@ -801,6 +940,7 @@ fn collect_aim_targets(
                     entity_ptr: target_entity.get_entity_ptr(),
                     is_npc: false,
                     is_loot: target_entity.is_loot(),
+                    is_crosshair_target: target_entity.is_crosshair_target(),
                 }
             })
         }));
@@ -837,7 +977,7 @@ fn process_player(
         entity_team,
         local_team,
         alter_local_team_id,
-        g_settings.tdm_toggle,
+        g_settings.team_death_match,
     );
     // trace!(target_ptr, entity_team, is_teammate);
 
@@ -847,15 +987,15 @@ fn process_player(
     }
 
     // Teammate and 1v1 check
-    if !g_settings.onevone {
-        if g_settings.firing_range {
-            if target_entity.is_player() {
-                return None;
-            }
-        } else {
-            if is_teammate {
-                return None;
-            }
+    if !g_settings.feature_settings.onevone {
+        match (
+            g_settings.firing_range,
+            target_entity.is_player(),
+            is_teammate,
+        ) {
+            (true, true, _) => return None,
+            (false, _, true) => return None,
+            _ => (),
         }
     }
 
@@ -865,7 +1005,7 @@ fn process_player(
     }
 
     // Exclude players in invalid team
-    if target_entity.is_player() && (entity_team < 0 || entity_team > 50) {
+    if target_entity.is_player() && !(0..=50).contains(&entity_team) {
         tracing::warn!(?entity_team, ?target_entity, "{}", s!("invalid team"));
         return None;
     }
@@ -929,6 +1069,7 @@ fn process_player(
         entity_ptr: target_ptr,
         is_npc: target_player.is_none(),
         is_loot: false,
+        is_crosshair_target: target_entity.is_crosshair_target(),
     })
 }
 
@@ -940,25 +1081,27 @@ fn player_glow(
     player_glow_armor_color: bool,
     player_glow_love_user: bool,
 ) -> u8 {
-    let game_fps = if game_fps.is_normal() { game_fps } else { 60.0 } as i32;
+    let game_fps = if game_fps.is_normal() {
+        i32::max(1, game_fps as i32)
+    } else {
+        60
+    };
     let mut setting_index = {
         if target.is_knocked {
             HIGHLIGHT_PLAYER_KNOCKED
         } else if target.is_visible {
             HIGHLIGHT_PLAYER_VISIBLE
-        } else {
-            if player_glow_armor_color {
-                match target.health_points {
-                    0..=100 => HIGHLIGHT_PLAYER_ORANGE,
-                    101..=150 => HIGHLIGHT_PLAYER_WHITE,
-                    151..=175 => HIGHLIGHT_PLAYER_BLUE,
-                    176..=200 => HIGHLIGHT_PLAYER_PURPLE,
-                    201..=225 => HIGHLIGHT_PLAYER_RED,
-                    _ => HIGHLIGHT_PLAYER_BLACK,
-                }
-            } else {
-                HIGHLIGHT_PLAYER_NOTVIZ
+        } else if player_glow_armor_color {
+            match target.health_points {
+                0..=100 => HIGHLIGHT_PLAYER_ORANGE,
+                101..=150 => HIGHLIGHT_PLAYER_WHITE,
+                151..=175 => HIGHLIGHT_PLAYER_BLUE,
+                176..=200 => HIGHLIGHT_PLAYER_PURPLE,
+                201..=225 => HIGHLIGHT_PLAYER_RED,
+                _ => HIGHLIGHT_PLAYER_BLACK,
             }
+        } else {
+            HIGHLIGHT_PLAYER_NOTVIZ
         }
     };
 
@@ -980,7 +1123,7 @@ fn player_glow(
 
     // kill leader glow
     if target.is_kill_leader {
-        let frame_frag = frame_count / game_fps as i32;
+        let frame_frag = frame_count / game_fps;
         if target.is_visible || frame_frag % 3 == 0 {
             setting_index = HIGHLIGHT_PLAYER_ORANGE;
         }
@@ -991,24 +1134,39 @@ fn player_glow(
 
 #[tracing::instrument(skip_all)]
 async fn inject_highlight(
-    mem: &MemApi,
+    mem: &dmalib::MemAccess,
     frame_count: i32,
     g_settings: &Settings,
 ) -> anyhow::Result<()> {
-    let bits_loot = HighlightBits::new(g_settings.loot_filled, 125, 64, 7, true, false);
-    let bits_box = HighlightBits::new(0, 125, 64, 7, true, false);
-    let bits_player_fill = HighlightBits::new(
-        g_settings.player_glow_inside_value,
-        6,
-        g_settings.player_glow_outline_size,
+    let bits_loot = HighlightBits::new(
+        g_settings.glow_settings.loot_filled,
+        125,
+        64,
         7,
         true,
         false,
     );
-    let bits_player_outline =
-        HighlightBits::new(0, 6, g_settings.player_glow_outline_size, 7, true, false);
+    let bits_outline = HighlightBits::new(0, 125, 64, 7, true, false);
+    let bits_player_fill = HighlightBits::new(
+        g_settings.glow_settings.player_glow_inside_value,
+        125,
+        g_settings.glow_settings.player_glow_outline_size,
+        7,
+        true,
+        false,
+    );
+    let bits_player_outline = HighlightBits::new(
+        0,
+        125,
+        g_settings.glow_settings.player_glow_outline_size,
+        7,
+        true,
+        false,
+    );
+    let bits_nobody_outline = HighlightBits::new(0, 125, 64, 0, false, false);
+    let rainbow_col = rainbow_color(frame_count);
 
-    let highlight_settings_inject: [(u8, &HighlightBits, [f32; 3]); 20] = [
+    let highlight_settings_inject: [(u8, &HighlightBits, [f32; 3]); 21] = [
         (HIGHLIGHT_LOOT_HEAVY, &bits_loot, [0.0, 1.0, 1.0]),
         (HIGHLIGHT_LOOT_LIGHT, &bits_loot, [1.0, 0.5490, 0.0]),
         (HIGHLIGHT_LOOT_RED, &bits_loot, [1.0, 0.0, 0.0]),
@@ -1018,80 +1176,83 @@ async fn inject_highlight(
         (HIGHLIGHT_LOOT_ENERGY, &bits_loot, [0.2, 1.0, 0.0]),
         (HIGHLIGHT_LOOT_PURPLE, &bits_loot, [0.2941, 0.0, 0.5098]),
         (HIGHLIGHT_LOOT_GOLD, &bits_loot, [1.0, 0.8431, 0.0]),
-        (HIGHLIGHT_DEATH_BOX, &bits_box, [1.0, 0.0, 0.0]),
+        (HIGHLIGHT_DEATH_BOX, &bits_outline, [1.0, 0.0, 0.0]),
+        (
+            HIGHLIGHT_WEAPON_RAINBOW,
+            if g_settings.glow_settings.weapon_model_transparent {
+                &bits_nobody_outline
+            } else {
+                &bits_outline
+            },
+            rainbow_col,
+        ),
         (
             HIGHLIGHT_PLAYER_KNOCKED,
             &bits_player_outline,
             [
-                g_settings.glow_r_knocked,
-                g_settings.glow_g_knocked,
-                g_settings.glow_b_knocked,
+                g_settings.color_settings.glow_r_knocked,
+                g_settings.color_settings.glow_g_knocked,
+                g_settings.color_settings.glow_b_knocked,
             ],
         ),
         (
             HIGHLIGHT_PLAYER_VISIBLE,
             &bits_player_outline,
             [
-                g_settings.glow_r_viz,
-                g_settings.glow_g_viz,
-                g_settings.glow_b_viz,
+                g_settings.color_settings.glow_r_viz,
+                g_settings.color_settings.glow_g_viz,
+                g_settings.color_settings.glow_b_viz,
             ],
         ),
         (
             HIGHLIGHT_PLAYER_NOTVIZ,
             &bits_player_fill,
             [
-                g_settings.glow_r_not,
-                g_settings.glow_g_not,
-                g_settings.glow_b_not,
+                g_settings.color_settings.glow_r_not,
+                g_settings.color_settings.glow_g_not,
+                g_settings.color_settings.glow_b_not,
             ],
         ),
         (
             HIGHLIGHT_PLAYER_BLACK,
             &bits_player_fill,
-            [2.0 / 255.0, 2.0 / 255.0, 2.0 / 255.0],
+            [2.0 / 256.0, 2.0 / 256.0, 2.0 / 256.0],
         ),
         (
             HIGHLIGHT_PLAYER_ORANGE,
             &bits_player_fill,
-            [255.0 / 255.0, 165.0 / 255.0, 0.0 / 255.0],
+            [255.0 / 256.0, 165.0 / 256.0, 0.0 / 256.0],
         ),
         (
             HIGHLIGHT_PLAYER_WHITE,
             &bits_player_fill,
-            [247.0 / 255.0, 247.0 / 255.0, 247.0 / 255.0],
+            [247.0 / 256.0, 247.0 / 256.0, 247.0 / 256.0],
         ),
         (
             HIGHLIGHT_PLAYER_BLUE,
             &bits_player_fill,
-            [39.0 / 255.0, 178.0 / 255.0, 255.0 / 255.0],
+            [39.0 / 256.0, 178.0 / 256.0, 255.0 / 256.0],
         ),
         (
             HIGHLIGHT_PLAYER_PURPLE,
             &bits_player_fill,
-            [206.0 / 255.0, 59.0 / 255.0, 255.0 / 255.0],
+            [206.0 / 256.0, 59.0 / 256.0, 255.0 / 256.0],
         ),
         (
             HIGHLIGHT_PLAYER_RED,
             &bits_player_fill,
-            [219.0 / 255.0, 2.0 / 255.0, 2.0 / 255.0],
+            [219.0 / 256.0, 2.0 / 256.0, 2.0 / 256.0],
         ),
-        (
-            HIGHLIGHT_PLAYER_RAINBOW,
-            &bits_player_fill,
-            rainbow_color(frame_count),
-        ),
+        (HIGHLIGHT_PLAYER_RAINBOW, &bits_player_fill, rainbow_col),
     ];
 
-    let Some(base) = AccessType::mem_baseaddr().dispatch(mem).await?.await? else {
+    let Some(base) = mem.get_baseaddr(dmalib::PRIO_HIGH).await? else {
+        tracing::warn!("{}", s!("inject highlight get baseaddr"));
         return Ok(());
     };
-    let highlight_settings_ptr =
-        AccessType::mem_read(base + G_OFFSETS.highlight_settings, size_of::<u64>(), 0)
-            .dispatch(mem)
-            .await?
-            .recv_for::<u64>()
-            .await?;
+    let highlight_settings_ptr = mem
+        .read::<u64>(base + G_OFFSETS.highlight_settings, dmalib::PRIO_HIGH, 0)
+        .await?;
     let mut futs_write_highlight_settings: Vec<tokio::task::JoinHandle<anyhow::Result<()>>> =
         Vec::with_capacity(highlight_settings_inject.len());
     for (context_id, &bits, color) in highlight_settings_inject {
@@ -1099,16 +1260,11 @@ async fn inject_highlight(
         futs_write_highlight_settings.push(tokio::spawn({
             let mem = mem.clone();
             async move {
-                let (r1, r2) = tokio::try_join!(
-                    AccessType::mem_write_typed::<HighlightBits>(context_offset, &bits, 0)
-                        .dispatch(&mem)
-                        .await?,
-                    AccessType::mem_write_typed::<[f32; 3]>(context_offset + 4, &color, 0)
-                        .dispatch(&mem)
-                        .await?,
-                )?;
-                r1.context(format!("{:?}", context_id))?;
-                r2.context(format!("{:?}", context_id))?;
+                tokio::try_join!(
+                    mem.write::<HighlightBits>(context_offset, &bits, dmalib::PRIO_HIGH, 0),
+                    mem.write::<[f32; 3]>(context_offset + 4, &color, dmalib::PRIO_HIGH, 0),
+                )
+                .context(format!("{:?}", context_id))?;
                 Ok(())
             }
         }));
@@ -1141,11 +1297,7 @@ fn rainbow_color(frame_count: i32) -> [f32; 3] {
     let b = (FREQUENCY * frame_number + 4.0).sin() * AMPLITUDE + 0.5;
 
     // Clamp the colors to the range [0, 1]
-    [
-        r.min(1.0).max(0.0),
-        g.min(1.0).max(0.0),
-        b.min(1.0).max(0.0),
-    ]
+    [r.clamp(0.0, 1.0), g.clamp(0.0, 1.0), b.clamp(0.0, 1.0)]
 }
 
 fn teammate_check(

@@ -2,27 +2,31 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
 
-use apexsky::aimbot::{
-    calc_angle, calc_fov, normalize_angles, normalize_delta_angles, AimAngles, AimEntity, Aimbot,
-    AimbotSettings, CurrentWeaponInfo, HitScanReport, TriggerBot,
+use apex1_common::aimbot::ffi::skynade_angle;
+use apex1_common::aimbot::{
+    AimAngles, AimEntity, Aimbot, AimbotSettings, CurrentWeaponInfo, HitScanReport, HitboxData,
+    TriggerBot, calc_angle, calc_fov, normalize_angles, normalize_delta_angles,
 };
-use apexsky::config::DeviceConfig;
-use apexsky::global_state::G_STATE;
-use apexsky::love_players::LoveStatus;
-use apexsky_dmalib::access::MemApi;
-use apexsky_kmbox::kmbox::{KmboxB, KmboxNet};
-use apexsky_proto::pb::apexlegends::{AimKeyState, AimTargetInfo};
+use apex1_common::config::DeviceConfig;
+use apex1_common::love_players::LoveStatus;
+use apex1_common::pb::apexlegends::{AimKeyState, AimTargetInfo};
 use obfstr::obfstr as s;
-use tokio::sync::{mpsc, watch};
-use tokio::time::{sleep, sleep_until, Instant};
+use ohosky_api::common::msg::ISharedMessageChannel;
+use ohosky_api::common::rpc::ISharedRpcClient;
+use ohosky_api::common::share::{ISharableValue, RkyvValue};
+use ohosky_kmbox::kmbox::{KmboxB, KmboxNet};
+use tokio::sync::watch;
+use tokio::time::{Instant, sleep, sleep_until};
 use tracing::{instrument, trace};
 
+use crate::SharedStateWrapper;
 use crate::actuator::{
     AimActuator, AimbotAction, DeviceAimActuator, KmboxAimActuator, MemAimHelper, QmpAimActuator,
 };
 use crate::apexdream::base::math;
-use crate::usermod_thr::UserModEvent;
-use crate::SharedStateWrapper;
+use crate::global_state::G_STATE;
+use crate::skyapi::SharedRpcClient;
+use crate::{skyapi, skyapi::dmalib};
 
 const ENABLE_MEM_AIM: bool = true;
 
@@ -64,18 +68,19 @@ async fn create_aim_actuator_from_device(
 pub async fn aimbot_loop(
     mut active: watch::Receiver<bool>,
     mut state: SharedStateWrapper,
-    access_tx: MemApi,
-    usermod_event_tx: mpsc::UnboundedSender<UserModEvent>,
+    access_tx: dmalib::MemAccess,
     mut aim_key_rx: watch::Receiver<AimKeyState>,
     mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
 ) -> anyhow::Result<()> {
     tracing::debug!("{}", s!("task start"));
 
-    let usermod_send_event = |event: UserModEvent| {
-        if let Err(e) = usermod_event_tx.send(event) {
+    let event_tick =
+        skyapi::SharedMessageChannel::new(&apex1_common::global::MSG.aimbot_tick);
+    async fn usermod_send_event(tx: &impl ISharedMessageChannel<()>) {
+        if let Err(e) = tx.send(()).await {
             tracing::error!(%e, "{}", s!("usermod_send_event"));
         };
-    };
+    }
 
     let mut start_instant = Instant::now();
     let mut aimbot = Aimbot::default();
@@ -98,6 +103,11 @@ pub async fn aimbot_loop(
                 None
             })
     };
+    let smoother = SharedRpcClient::new(s!("17250aa3-ef04-4718-96f8-29a07d09b0b1"));
+    if !smoother.is_online()? {
+        tracing::debug!("{}", s!("waiting for smoother ready"));
+        smoother.wait_online().await?;
+    }
 
     while *active.borrow_and_update() {
         sleep(Duration::from_millis(2)).await;
@@ -136,7 +146,7 @@ pub async fn aimbot_loop(
         };
 
         // Calc smooth factor
-        let smooth_factor = loop_duration.as_millis() as f32 / 1.054571726;
+        let smooth_factor = loop_duration.as_millis() as f32 / 1.054_571_7;
         trace!(%smooth_factor, loop_duration = loop_duration.as_millis());
 
         // Read held_id from shared_state
@@ -304,20 +314,18 @@ pub async fn aimbot_loop(
         // Aim Assist
         if aimbot.is_aiming() && aim_result.valid {
             let view_angles = [aim_result.view_pitch, aim_result.view_yaw, 0.0];
-            let smoothed_angles = aimbot.smooth_aim_angles(&aim_result, smooth_factor);
+            let smoothed_angles =
+                smooth_aim_angles_ext(&smoother, &aimbot, &aim_result, smooth_factor).await?;
             let smoothed_angles = [smoothed_angles.0, smoothed_angles.1, 0.0];
             let smoothed_delta_angles = math::sub(smoothed_angles, view_angles);
 
             if aimbot_settings.aim_mode & 0x4 != 0 && !aimbot.is_grenade() {
                 let natural_viewangle_vel = {
                     let arr = natural_delta_viewangles.clone();
-                    let arr_len = arr.len() as usize;
-                    let all_sum_values = arr
-                        .into_iter()
-                        .reduce(|acc, e| math::add(acc, e))
-                        .unwrap_or_default();
-                    let mean = math::muls(all_sum_values, 1.0 / arr_len as f32);
-                    mean
+                    let arr_len = arr.len();
+                    let all_sum_values = arr.into_iter().reduce(math::add).unwrap_or_default();
+                    // mean
+                    math::muls(all_sum_values, 1.0 / arr_len as f32)
                 };
 
                 //println!("{:?}", natural_delta);
@@ -458,7 +466,8 @@ pub async fn aimbot_loop(
         *state.aimbot_state.lock() = Some((aimbot.clone(), loop_duration));
 
         // Update state for UserMod
-        usermod_send_event(UserModEvent::AimbotTick(aimbot.clone(), aim_result));
+        //usermod_send_event(UserModEvent::AimbotTick(aimbot.clone(), aim_result));
+        usermod_send_event(&event_tick).await;
 
         // Read view_angles
         let Some(view_angles) = read_view_angles(&mem_aim_helper).await else {
@@ -526,7 +535,7 @@ trait BestAim {
         view_angles: [f32; 3],
         target_origin: [f32; 3],
         target_vel: [f32; 3],
-        target_hitboxes: Vec<([f32; 3], ([f32; 3], [f32; 3]))>,
+        target_hitboxes: Vec<HitboxData>,
     ) -> HitScanReport;
 }
 
@@ -631,7 +640,7 @@ impl BestAim for Aimbot {
 
         if !self.is_grenade() {
             let fun_calc_angles =
-                |local_camera_position: [f32; 3],
+                |local_view_position: [f32; 3],
                  target_bone_position: [f32; 3],
                  target_vel: [f32; 3],
                  weapon_info: &CurrentWeaponInfo| {
@@ -640,14 +649,14 @@ impl BestAim for Aimbot {
 
                     if self.get_quick_looting_ready() {
                         return (
-                            calc_angle(&local_camera_position, &target_bone_position),
+                            calc_angle(&local_view_position, &target_bone_position),
                             aim_target,
                         );
                     }
 
                     if weapon_info.bullet_speed > 1.0 {
                         let distance_to_target =
-                            math::dist(target_bone_position, local_camera_position);
+                            math::dist(target_bone_position, local_view_position);
                         let time_to_target = distance_to_target / weapon_info.bullet_speed;
                         let target_pos_ahead = math::add(
                             target_bone_position,
@@ -659,7 +668,7 @@ impl BestAim for Aimbot {
 
                         calculated_angles = linear_predict(
                             weapon_info,
-                            local_camera_position,
+                            local_view_position,
                             target_pos_ahead,
                             target_vel,
                         );
@@ -668,7 +677,7 @@ impl BestAim for Aimbot {
                     if calculated_angles.is_some() {
                         trace!(?calculated_angles);
                     } else {
-                        let angles = calc_angle(&local_camera_position, &target_bone_position);
+                        let angles = calc_angle(&local_view_position, &target_bone_position);
                         // tracing::debug!(
                         //     ?local_camera_position,
                         //     ?target_bone_position,
@@ -683,29 +692,47 @@ impl BestAim for Aimbot {
                 };
 
             let (calculated_angles_min, _) = fun_calc_angles(
-                camera_origin,
+                view_origin,
                 target_bone_position_min,
                 target_vel,
                 weapon_info,
             );
             let (calculated_angles_max, aim_pos) = fun_calc_angles(
-                camera_origin,
+                view_origin,
                 target_bone_position_max,
                 target_vel,
                 weapon_info,
             );
             aim_target = aim_pos;
 
-            let mut calculated_angles_min =
-                math::sub(calculated_angles_min, math::sub(sway_angles, view_angles));
-            let mut calculated_angles_max =
-                math::sub(calculated_angles_max, math::sub(sway_angles, view_angles));
+            let sway_offset = math::sub(sway_angles, view_angles);
+            let mut base_angles = view_angles;
+            let mut calculated_angles_min = math::sub(calculated_angles_min, sway_offset);
+            let mut calculated_angles_max = math::sub(calculated_angles_max, sway_offset);
+
+            tracing::trace!(
+                ?calculated_angles_min,
+                ?calculated_angles_max,
+                ?base_angles,
+                ?sway_offset
+            );
+
             normalize_angles(&mut calculated_angles_min);
             normalize_angles(&mut calculated_angles_max);
-            let mut delta_min = math::sub(calculated_angles_min, view_angles);
-            let mut delta_max = math::sub(calculated_angles_max, view_angles);
+            normalize_angles(&mut base_angles);
+            tracing::trace!(
+                ?calculated_angles_min,
+                ?calculated_angles_max,
+                ?base_angles,
+                "norm"
+            );
+
+            let mut delta_min = math::sub(calculated_angles_min, base_angles);
+            let mut delta_max = math::sub(calculated_angles_max, base_angles);
+            tracing::trace!(?delta_min, ?delta_max);
             normalize_delta_angles(&mut delta_min);
             normalize_delta_angles(&mut delta_max);
+            tracing::trace!(?delta_min, ?delta_max, "norm");
 
             let mut delta = [0.0, 0.0, 0.0];
             if (delta_min[0] * delta_max[0]).is_sign_positive() {
@@ -748,7 +775,7 @@ impl BestAim for Aimbot {
                     ?calculated_angles_min,
                     ?calculated_angles_max,
                     ?sway_angles,
-                    ?camera_origin
+                    ?view_origin
                 );
                 (AimAngles::default(), hitscan, aim_target)
             } else {
@@ -780,7 +807,7 @@ impl BestAim for Aimbot {
                 return (AimAngles::default(), hitscan, aim_target);
             }
 
-            let skynade_angles = apexsky::ffi::skynade_angle(
+            let skynade_angles = skynade_angle(
                 weapon_info.weapon_id.try_into().unwrap(),
                 weapon_info.weapon_mod_bitfield,
                 weapon_info.bullet_gravity / 750.0,
@@ -997,7 +1024,7 @@ fn linear_predict(
     pos_target: [f32; 3],
     vel_target: [f32; 3],
 ) -> Option<(f32, f32)> {
-    use crate::apexdream::base::solver::{solve, Collection, LinearPredictor, ProjectileWeapon};
+    use crate::apexdream::base::solver::{Collection, LinearPredictor, ProjectileWeapon, solve};
     use crate::apexdream::sdk::projectiles;
     use crate::game::data::WeaponId;
 
@@ -1021,7 +1048,7 @@ fn linear_predict(
     };
 
     struct Weapon<'a>(f32, f32, Option<Collection<'a>>);
-    impl<'a> ProjectileWeapon for Weapon<'a> {
+    impl ProjectileWeapon for Weapon<'_> {
         fn projectile_speed(&self) -> f32 {
             self.0
         }
@@ -1052,4 +1079,39 @@ fn linear_predict(
     } else {
         None
     }
+}
+
+#[derive(Debug, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+struct AimbotSmoothArgs {
+    target: u64,
+    current: (f32, f32),
+    delta: (f32, f32),
+    smooth: (f32, f32),
+}
+
+async fn smooth_aim_angles_ext(
+    smoother: &SharedRpcClient<RkyvValue<AimbotSmoothArgs>, RkyvValue<(f32, f32)>>,
+    aimbot: &Aimbot,
+    aim_angles: &AimAngles,
+    smooth_factor: f32,
+) -> anyhow::Result<(f32, f32)> {
+    assert!(aim_angles.valid);
+
+    let smooth = aimbot.get_smooth() / smooth_factor;
+
+    let smoothed = {
+        let args = AimbotSmoothArgs {
+            target: aimbot.get_aim_entity(),
+            current: (aim_angles.view_pitch, aim_angles.view_yaw),
+            delta: (aim_angles.delta_pitch, aim_angles.delta_yaw),
+            smooth: (smooth, smooth),
+        };
+        let ret = smoother.call(RkyvValue::from_value(args)?).await?;
+        ret.into_value()?
+    };
+
+    if smoothed.0.is_nan() || smoothed.1.is_nan() {
+        tracing::warn!(?aim_angles, ?smoothed);
+    }
+    Ok(smoothed)
 }

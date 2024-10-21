@@ -8,6 +8,7 @@ pub struct DeathboxEntity {
     pub origin: [f32; 3],
 }
 impl DeathboxEntity {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
         let entity_size = cc.ClassSize;
         Box::new(DeathboxEntity {
@@ -48,14 +49,14 @@ impl Entity for DeathboxEntity {
         let data = &ctx.data;
         let mut indices = Indices {
             origin: [
-                data.entity_origin + 0,
+                data.entity_origin,
                 data.entity_origin + 4,
                 data.entity_origin + 8,
             ],
         };
 
         if let Ok(fields) = api
-            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .vm_gatherd(self.entity_ptr, self.entity_size, true, &mut indices)
             .await
         {
             self.origin[0] = f32::from_bits(fields.origin[0]);

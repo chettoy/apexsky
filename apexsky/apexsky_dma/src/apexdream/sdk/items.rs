@@ -1,9 +1,8 @@
 use super::Pod;
 use crate::apexdream::base::hash;
-use apexsky::noobfstr as s;
+use crate::noobfstr as s;
 use bitset_core::*;
 use named_constants::named_constants;
-use once_cell::sync::Lazy;
 use std::fmt;
 
 //----------------------------------------------------------------
@@ -21,17 +20,12 @@ pub enum Rarity {
 
 impl Rarity {
     pub fn to_str<R, F: FnMut(&str) -> R>(self, mut f: F) -> R {
-        static S_COMMON: Lazy<String> = Lazy::new(|| s!("Common").to_string());
-        static S_RARE: Lazy<String> = Lazy::new(|| s!("Rare").to_string());
-        static S_EPIC: Lazy<String> = Lazy::new(|| s!("Epic").to_string());
-        static S_LEGENDARY: Lazy<String> = Lazy::new(|| s!("Legendary").to_string());
-        static S_HEIRLOOM: Lazy<String> = Lazy::new(|| s!("Heirloom").to_string());
         match self {
-            Rarity::Common => f(&*S_COMMON),
-            Rarity::Rare => f(&*S_RARE),
-            Rarity::Epic => f(&*S_EPIC),
-            Rarity::Legendary => f(&*S_LEGENDARY),
-            Rarity::Heirloom => f(&*S_HEIRLOOM),
+            Rarity::Common => f(s!("Common")),
+            Rarity::Rare => f(s!("Rare")),
+            Rarity::Epic => f(s!("Epic")),
+            Rarity::Legendary => f(s!("Legendary")),
+            Rarity::Heirloom => f(s!("Heirloom")),
         }
     }
 }
@@ -528,7 +522,7 @@ pub fn item_set_to_string(set: &ItemSet) -> String {
     for i in 0..set.bit_len() {
         s.push_str(if set.bit_test(i) { "1" } else { "0" });
     }
-    return s;
+    s
 }
 
 pub fn downgrade_mask(item: ItemId) -> ItemSet {

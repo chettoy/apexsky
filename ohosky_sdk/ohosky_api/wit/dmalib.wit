@@ -1,0 +1,29 @@
+interface access {
+    record target-config {
+        target-process-name: string,
+        override-module-base: option<u64>,
+        check-time-date-stamp: option<u32>,
+        speed-test: bool,
+        cache-phys-addr: bool,
+    }
+    resource access-read-response {
+        try-recv: func() -> option<result<list<u8>, string>>;
+    }
+    mem-open: func(config: target-config) -> result<u32, string>;
+    mem-baseaddr: func(handle: u32, prio: s32) -> result<option<u64>, string>;
+    mem-read: func(handle: u32, addr: u64, len: u64, prio: s32) -> result<list<u8>, string>;
+    mem-write: func(handle: u32, addr: u64, data: list<u8>, prio: s32) -> result<_, string>;
+    mem-find-sig: func(handle: u32, sig: string, start: u64, end: u64) -> result<option<tuple<u64, list<u8>>>, string>;
+    mem-dump: func(handle: u32) -> result<list<u8>, string>;
+
+    mem-baseaddr-async-call: func(handle: u32, prio: s32) -> result<u32, string>;
+    mem-read-async-call: func(handle: u32, addr: u64, len: u64, prio: s32) -> result<access-read-response, string>;
+    mem-write-async-call: func(handle: u32, addr: u64, data: list<u8>, prio: s32) -> result<u32, string>;
+    mem-find-sig-async-call: func(handle: u32, sig: string, start: u64, end: u64) -> result<u32, string>;
+}
+
+interface access-async-result {
+    mem-baseaddr-async-result: func(id: u32) -> option<result<option<u64>, string>>;
+    mem-write-async-result: func(id: u32) -> option<result<_, string>>;
+    mem-find-sig-async-result: func(id: u32) -> option<result<option<tuple<u64, list<u8>>>, string>>;
+}

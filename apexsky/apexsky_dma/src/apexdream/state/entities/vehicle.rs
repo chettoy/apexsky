@@ -16,6 +16,7 @@ pub struct VehicleEntity {
     pub vehicle_velocity: [f32; 3],
 }
 impl VehicleEntity {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
         let entity_size = cc.ClassSize;
         Box::new(VehicleEntity {
@@ -58,7 +59,7 @@ impl Entity for VehicleEntity {
         let data = &ctx.data;
         let mut indices = Indices {
             origin: [
-                data.entity_origin + 0,
+                data.entity_origin,
                 data.entity_origin + 4,
                 data.entity_origin + 8,
                 data.entity_origin + 24,
@@ -67,14 +68,14 @@ impl Entity for VehicleEntity {
             ],
             driver: data.vehicle_driver,
             vehicle_velocity: [
-                data.vehicle_velocity + 0,
+                data.vehicle_velocity,
                 data.vehicle_velocity + 4,
                 data.vehicle_velocity + 8,
             ],
         };
 
         if let Ok(fields) = api
-            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .vm_gatherd(self.entity_ptr, self.entity_size, true, &mut indices)
             .await
         {
             let last_origin = self.origin;

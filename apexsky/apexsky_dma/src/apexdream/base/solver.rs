@@ -25,7 +25,7 @@ pub struct Trajectory<'a> {
     pub samples: &'a [[f32; 2]],
 }
 
-impl<'a> Trajectory<'a> {
+impl Trajectory<'_> {
     /// Finds the intersection between this trajectory and a circle with radius `dist`.
     ///
     /// Returns the point of intersection as the time when the projectile reaches it and the angle it makes with the origin.
@@ -34,8 +34,10 @@ impl<'a> Trajectory<'a> {
 
         // Reject distances larger than our max range
         let last = self.samples.last()?;
-        if !(dist2 < last[0] * last[0] + last[1] * last[1]) {
-            return None;
+        match dist2.partial_cmp(&(last[0] * last[0] + last[1] * last[1])) {
+            Some(std::cmp::Ordering::Less) => (),
+            Some(std::cmp::Ordering::Equal) | Some(std::cmp::Ordering::Greater) => return None,
+            None => return None,
         }
 
         // Binary search for the intersection between the trajectory and the distance to [x, y]
@@ -79,7 +81,7 @@ pub const fn Collection<'a>(collection: &'a [Trajectory<'a>]) -> Collection<'a> 
     Collection { collection }
 }
 
-impl<'a> Collection<'a> {
+impl Collection<'_> {
     /// Plan a trajectory to hit the target at given coordinates launched from the origin.
     pub fn plan(&self, [x, y]: [f32; 2]) -> Option<TimeAngle> {
         let collection = self.collection;
@@ -89,7 +91,10 @@ impl<'a> Collection<'a> {
 
         // Precalculate some values we'll need later
         let target_dist = f32::sqrt(x * x + y * y);
-        if !(target_dist >= 0.1) {
+        if matches!(
+            target_dist.partial_cmp(&0.1),
+            Some(std::cmp::Ordering::Less) | None
+        ) {
             return None;
         }
         let target_angle = f32::asin(y / target_dist);
@@ -128,7 +133,7 @@ impl<'a> Collection<'a> {
         let time = low_ta.time + fract * (high_ta.time - low_ta.time);
         let pitch = low_t.pitch + fract * (high_t.pitch - low_t.pitch);
 
-        return Some(TimeAngle { time, pitch });
+        Some(TimeAngle { time, pitch })
     }
 }
 
@@ -170,8 +175,8 @@ pub struct Solution {
     pub time: f32,
 }
 
-const MAX_TIME: f32 = 1.0;
-const TIME_STEP: f32 = 1.0 / 256.0;
+const MAX_TIME: f32 = 2.0;
+const TIME_STEP: f32 = 2.0 / 8192.0;
 
 pub fn solve(
     player: &[f32; 3],

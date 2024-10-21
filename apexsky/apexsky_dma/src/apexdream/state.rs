@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use bitset_core::BitSet;
+use obfstr::obfstr as s;
 use tracing::instrument;
 
 use crate::apexdream::*;
@@ -41,6 +42,7 @@ pub struct GameState {
 
     gamemode_buf: [u8; 16],
     gamemode_hash: u32,
+    gamemode_retry: u8,
 }
 
 impl GameState {
@@ -87,10 +89,14 @@ impl GameState {
             }
         }
 
-        if ctx.connected && ctx.data.mp_gamemode != 0 {
+        if (ctx.connected || self.gamemode_retry > 0) && ctx.data.mp_gamemode != 0 {
+            if !ctx.connected {
+                tracing::debug!("{}", s!("retry fetch gamemode"));
+            }
             self.gamemode_hash = 0;
+            self.gamemode_retry += 1;
             if let Ok(gamemode_ptr) = api
-                .vm_read::<sdk::Ptr<[u8]>>(api.apex_base.field(ctx.data.mp_gamemode + 0x58))
+                .vm_read::<sdk::Ptr<[u8]>>(api.apex_base.field(ctx.data.mp_gamemode + 0x50))
                 .await
             {
                 if !gamemode_ptr.is_null() {
@@ -98,8 +104,13 @@ impl GameState {
                         api.vm_read_cstr(gamemode_ptr, &mut self.gamemode_buf).await
                     {
                         self.gamemode_hash = crate::apexdream::base::hash(gamemode);
+                        self.gamemode_retry = 0;
                     }
                 }
+            }
+            if self.gamemode_retry > 64 {
+                tracing::warn!("{}", s!("Failed to read gamemode"));
+                self.gamemode_retry = 0;
             }
         }
     }
@@ -141,12 +152,20 @@ pub struct UpdateContext {
     pub time: f64,
     pub tickcount: u32,
 
-    // Connection state changed to fully connected
+    /// Connection state changed to fully connected
     pub connected: bool,
-    // Prioritize updating local player related information
+    pub world_ready: bool,
+    
+    /// Prioritize updating local player related information
     pub local_entity: sdk::EHandle,
-    // Update full bones instead of only spine
+    
+    /// Update full bones instead of only spine
     pub full_bones: bool,
+
+    /// Optimized for fast enough reads, regardless of io bottlenecks
+    pub is_io_fast: bool,
+
+    pub intresting: Arc<dashmap::DashMap<String, std::collections::HashSet<u32>>>,
 }
 
 impl UpdateContext {
@@ -171,7 +190,7 @@ impl GameState {
                 }
             }
         }
-        return 90.0;
+        90.0
     }
     pub fn desired_items(&self, player: &PlayerEntity) -> sdk::ItemSet {
         // Start by collecting desired items from the player
@@ -184,7 +203,7 @@ impl GameState {
         if let Some(weapon) = self.entity_as::<WeaponXEntity>(player.weapons[1]) {
             desired_items.bit_or(&weapon.desired_items(self));
         }
-        return desired_items;
+        desired_items
     }
     pub fn player_is_melee(&self, player: &PlayerEntity) -> bool {
         if let Some(weapon) = player.active_weapon(self) {

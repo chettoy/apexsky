@@ -14,9 +14,8 @@ impl DeathField {
         if self.time_end == self.time_start {
             return 0.0;
         }
-        let fraction = ((curtime - self.time_start) / (self.time_end - self.time_start))
-            .max(0.0)
-            .min(1.0);
+        let fraction =
+            ((curtime - self.time_start) / (self.time_end - self.time_start)).clamp(0.0, 1.0);
         self.radius_start + fraction * (self.radius_end - self.radius_start)
     }
     /// Distance to the death field.
@@ -34,12 +33,12 @@ impl DeathField {
     }
     /// Returns if the death field is zero.
     pub fn is_zero(&self) -> bool {
-        return self.is_active == false
+        !self.is_active
             && self.origin == [0.0; 3]
             && self.radius_start == 0.0
             && self.radius_end == 0.0
             && self.time_start == 0.0
-            && self.time_end == 0.0;
+            && self.time_end == 0.0
     }
 }
 
@@ -53,6 +52,7 @@ pub struct WorldEntity {
     pub death_field: DeathField,
 }
 impl WorldEntity {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
         let entity_size = cc.ClassSize;
         Box::new(WorldEntity {
@@ -86,6 +86,7 @@ impl Entity for WorldEntity {
     async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         // Each DeathField array is 0x40 in size
         let base = ctx.data.world_death_field;
+        #[allow(clippy::identity_op)]
         let mut indices = [
             // m_deathFieldIsActive
             base,
@@ -103,7 +104,7 @@ impl Entity for WorldEntity {
             base + 1 * 0x40 + 12 * 0x40 + 4 * 0x40 + 4 * 0x40 + 4 * 0x40,
         ];
         if let Ok(fields) = api
-            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .vm_gatherd(self.entity_ptr, self.entity_size, true, &mut indices)
             .await
         {
             self.death_field.is_active = fields[0] & 0xff != 0;

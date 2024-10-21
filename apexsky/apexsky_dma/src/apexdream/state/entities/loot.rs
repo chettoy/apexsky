@@ -29,6 +29,7 @@ pub struct LootEntity {
     pub mod_bitfield: u32,
 }
 impl LootEntity {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(entity_ptr: sdk::Ptr, index: u32, cc: &sdk::ClientClass) -> Box<dyn Entity> {
         let entity_size = cc.ClassSize;
         Box::new(LootEntity {
@@ -73,24 +74,24 @@ impl Entity for LootEntity {
         let data = &ctx.data;
         let mut indices = Indices {
             origin: [
-                data.entity_origin + 0,
+                data.entity_origin,
                 data.entity_origin + 4,
                 data.entity_origin + 8,
             ],
-            model_name: [data.entity_model_name + 0, data.entity_model_name + 4],
+            model_name: [data.entity_model_name, data.entity_model_name + 4],
             skin: [
-                data.animating_skin + 0,
+                data.animating_skin,
                 data.animating_skin + 4,
                 data.animating_skin + 8,
                 data.animating_skin + 12,
             ],
             // highlight: [
-            // 	data.entity_highlight + 0,
+            // 	data.entity_highlight,
             // 	data.entity_highlight + 4,
             // 	data.entity_highlight + 8,
             // 	data.entity_highlight + 12],
             survival: [
-                data.prop_survival + 0,  // ammo_in_clip
+                data.prop_survival,      // ammo_in_clip
                 data.prop_survival + 4,  // custom_script_int
                 data.prop_survival + 8,  // survival_property
                 data.prop_survival + 16, // weapon_name_index
@@ -99,7 +100,7 @@ impl Entity for LootEntity {
         };
 
         if let Ok(fields) = api
-            .vm_gatherd(self.entity_ptr, self.entity_size, &mut indices)
+            .vm_gatherd(self.entity_ptr, self.entity_size, true, &mut indices)
             .await
         {
             let origin = [
@@ -112,7 +113,8 @@ impl Entity for LootEntity {
             }
             self.origin = origin;
 
-            let model_name_ptr = fields.model_name[0] as u64 | (fields.model_name[1] as u64) << 32;
+            let model_name_ptr =
+                fields.model_name[0] as u64 | ((fields.model_name[1] as u64) << 32);
             self.model_name.update(api, model_name_ptr.into()).await;
 
             self.skin = fields.skin[0] as i32;

@@ -5,6 +5,7 @@ pub struct BoneArray {
     pub v: Vec<[f32; 12]>,
 }
 impl BoneArray {
+    #[instrument(skip_all)]
     pub async fn update(
         &mut self,
         api: &Api,
@@ -16,14 +17,21 @@ impl BoneArray {
             self.v.clear();
             return;
         }
+
         let numbones = if ctx.full_bones {
             studio.bone_end2
         } else {
             studio.bone_end1
         } as usize;
+
+        if numbones == 0 {
+            self.v.clear();
+            return;
+        }
         if self.v.len() != numbones {
             self.v.resize_with(numbones, Default::default);
         }
+
         let bones = &mut self.v[..];
         let _ = api.vm_read_into(ptr, bones).await;
     }

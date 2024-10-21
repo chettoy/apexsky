@@ -1,4 +1,6 @@
-use apexsky::offsets::G_OFFSETS;
+use tracing::Instrument;
+
+use crate::G_OFFSETS;
 
 use super::*;
 
@@ -26,6 +28,7 @@ impl ClientState {
         // Connection signon state
         if ctx.ticked(25, 24) {
             if let Ok(signon_state) = api.vm_read::<i32>(base_addr.field(data.signon_state)).await {
+                ctx.world_ready = signon_state == sdk::SIGNONSTATE_FULL;
                 ctx.connected = self.signon_state != sdk::SIGNONSTATE_FULL
                     && signon_state == sdk::SIGNONSTATE_FULL;
                 //tracing::debug!(signon_state, self.signon_state, ctx.connected);
@@ -37,7 +40,8 @@ impl ClientState {
 
         let task_current_level_name = async {
             // Current level name
-            if ctx.connected {
+            // Update when entering a new game or not fetched
+            if ctx.connected || self.level_hash == 0 {
                 self.level_hash = 0;
                 self.level_name.clear();
 
@@ -50,7 +54,8 @@ impl ClientState {
                     self.level_name.push_str(level_name);
                 }
             }
-        };
+        }
+        .instrument(tracing::info_span!("1"));
 
         let task_local_player_handle = async {
             // Local player entity handle
@@ -69,7 +74,8 @@ impl ClientState {
                     .await;
             }
             self.local_entity
-        };
+        }
+        .instrument(tracing::info_span!("2"));
 
         let task_globals = async {
             // Globals
@@ -105,7 +111,8 @@ impl ClientState {
                     .vm_read_into(self.view_matrix_ptr, &mut self.view_matrix)
                     .await;
             }
-        };
+        }
+        .instrument(tracing::info_span!("3"));
 
         {
             let (_, local_entity, _, _) = tokio::join!(
@@ -120,8 +127,8 @@ impl ClientState {
 }
 impl GameState {
     pub fn is_in_game(&self) -> bool {
-        return self.client.signon_state == sdk::SIGNONSTATE_FULL
-            && self.client.level_hash != hash!("mp_lobby");
+        self.client.signon_state == sdk::SIGNONSTATE_FULL
+            && self.client.level_hash != hash!("mp_lobby")
     }
     pub fn is_firing_range(&self) -> bool {
         self.client.level_hash == hash!("mp_rr_canyonlands_staging_mu1")
@@ -139,10 +146,8 @@ impl GameState {
         let vy = (vmatrix[4] * v[0] + vmatrix[5] * v[1] + vmatrix[6] * v[2] + vmatrix[7]) * invw;
 
         // If the resulting coordinate is too far outside the screen bounds clip it manually
-        if clip {
-            if vx < -2.0 || vx > 2.0 || vy < -2.0 || vy > 2.0 {
-                return None;
-            }
+        if clip && (!(-2.0..=2.0).contains(&vx) || !(-2.0..=2.0).contains(&vy)) {
+            return None;
         }
 
         let width = screen[0] as f32 * 0.5;

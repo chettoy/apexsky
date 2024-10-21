@@ -1,8 +1,8 @@
 use std::net::SocketAddr;
 
-use apexsky_kmbox::kmbox::{KmboxB, KmboxNet, SoftMouse};
+use ohosky_kmbox::kmbox::{KmboxB, KmboxNet, SoftMouse};
 
-use super::{delta_to_mouse_move, AimActuator};
+use super::{AimActuator, delta_to_mouse_move};
 
 pub trait KmboxType {}
 impl KmboxType for KmboxB {}

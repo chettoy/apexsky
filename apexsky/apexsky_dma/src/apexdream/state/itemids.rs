@@ -8,7 +8,7 @@ const MAX_ITEMS: usize = 400;
 pub struct LootItems {
     models: Vec<String>,
     table: Vec<sdk::ItemId>,
-    visualize: bool,
+    //visualize: bool,
 }
 
 impl LootItems {
@@ -33,7 +33,7 @@ impl LootItems {
         // }
 
         let index = loot.custom_script_int as usize;
-        let Some(p_ki) = self.table.get_mut(index) else {
+        let Some(_p_ki) = self.table.get_mut(index) else {
             return;
         };
         let Some(p_model) = self.models.get_mut(index) else {
@@ -43,7 +43,7 @@ impl LootItems {
         // self.visualize |= *p_ki != new_ki;
         // *p_ki = new_ki;
 
-        if loot.model_name.string.len() != 0 {
+        if !loot.model_name.string.is_empty() {
             p_model.clone_from(&loot.model_name.string);
         }
     }
@@ -75,5 +75,5 @@ fn from_color(color: &[f32; 3], items: &[sdk::ItemId; 5]) -> sdk::ItemId {
             }
         }
     }
-    return sdk::ItemId::None;
+    sdk::ItemId::None
 }

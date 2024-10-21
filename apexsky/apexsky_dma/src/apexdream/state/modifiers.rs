@@ -16,6 +16,7 @@ impl Modifiers {
         }
     }
 
+    #[allow(unused)]
     #[instrument(skip_all)]
     pub async fn visit(&mut self, api: &Api, ctx: &UpdateContext, entity_ref: EntityRef<'_>) {
         if ctx.data.mods_names == 0 {
@@ -89,6 +90,6 @@ impl GameState {
             }
             flag <<= 1;
         }
-        return 0;
+        0
     }
 }

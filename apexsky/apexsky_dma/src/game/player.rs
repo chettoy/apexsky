@@ -1,16 +1,19 @@
 use std::sync::Arc;
 use std::vec;
 
-use apexsky::aimbot::{get_unix_timestamp_in_millis, AimEntity, HitboxData};
-use apexsky_proto::pb::apexlegends::{AimEntityData, Badge, GradeFlag, PlayerState, TreasureClue};
+use apex1_common::aimbot::{AimEntity, BoneHitboxData, HitboxData};
+use apex1_common::pb::apexlegends::{
+    AimEntityData, Badge, GradeFlag, PlayerState, TreasureClue,
+};
+use apex1_common::utils::get_unix_timestamp_in_millis;
 use obfstr::obfstr as s;
 
 use crate::apexdream::sdk::ScriptNetVarName;
 use crate::apexdream::*;
 
 use self::base::math;
-use self::state::entities::{BaseNPCEntity, Entity, PlayerEntity, WeaponXEntity};
 use self::state::GameState;
+use self::state::entities::{BaseNPCEntity, Entity, PlayerEntity, WeaponXEntity};
 
 #[derive(Debug, Clone)]
 pub struct GamePlayer {
@@ -23,15 +26,15 @@ impl GamePlayer {
     pub fn new(
         value: PlayerEntity,
         game_state: &GameState,
-        config: &mut apexsky::config::Config,
+        config: &mut apex1_common::config::Config,
     ) -> Self {
         let state = value;
-        let active_weapon = state.active_weapon(game_state).map(|v| v.clone());
+        let active_weapon = state.active_weapon(game_state).cloned();
         let player_name = game_state
             .get_player_name(state.get_info().handle)
             .unwrap()
             .to_string();
-        let love_status = apexsky::love_players::check_my_heart(
+        let love_status = apex1_common::love_players::check_my_heart(
             config,
             state.platform_uid,
             state.eadp_uid,
@@ -152,7 +155,7 @@ impl GamePlayer {
     }
 }
 
-impl apexsky::aimbot::AimEntity for PlayerEntity {
+impl apex1_common::aimbot::AimEntity for PlayerEntity {
     fn get_entity_ptr(&self) -> u64 {
         self.entity_ptr.into_raw()
     }
@@ -198,20 +201,21 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     }
 
     #[tracing::instrument]
-    fn get_hitbox(&self) -> Vec<([f32; 3], ([f32; 3], [f32; 3]))> {
+    fn get_hitbox(&self) -> Vec<HitboxData> {
         self.studio
             .hitboxes
             .iter()
             .filter_map(|bbox| {
-                self.bones.v.get(bbox.bone as usize).and_then(|matrix| {
-                    Some(([matrix[3], matrix[7], matrix[11]], (bbox.bbmin, bbox.bbmax)))
-                })
+                self.bones
+                    .v
+                    .get(bbox.bone as usize)
+                    .map(|matrix| ([matrix[3], matrix[7], matrix[11]], (bbox.bbmin, bbox.bbmax)))
             })
             .collect()
     }
 
     #[tracing::instrument]
-    fn get_bones_data(&self) -> Vec<HitboxData> {
+    fn get_bones_data(&self) -> Vec<BoneHitboxData> {
         // self.studio
         //     .hitboxes
         //     .iter()
@@ -241,7 +245,7 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
                     .get(bone)
                     .and_then(|&hitbox_idx| self.studio.hitboxes.get(hitbox_idx as usize))
                 {
-                    Some(HitboxData {
+                    Some(BoneHitboxData {
                         bone: bone.try_into().unwrap(),
                         group: bbox.group as i32,
                         bbmin: bbox.bbmin,
@@ -251,7 +255,7 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
                         radius: bbox.radius(),
                     })
                 } else {
-                    Some(HitboxData {
+                    Some(BoneHitboxData {
                         bone: bone.try_into().unwrap(),
                         group: sdk::HITGROUP_GENERIC as i32,
                         bbmin: [0.0, 0.0, 0.0],
@@ -344,9 +348,13 @@ impl apexsky::aimbot::AimEntity for PlayerEntity {
     fn is_loot(&self) -> bool {
         false
     }
+
+    fn is_crosshair_target(&self) -> bool {
+        self.is_crosshair_target
+    }
 }
 
-impl apexsky::aimbot::AimEntity for BaseNPCEntity {
+impl apex1_common::aimbot::AimEntity for BaseNPCEntity {
     fn get_entity_ptr(&self) -> u64 {
         self.entity_ptr.into_raw()
     }
@@ -388,20 +396,21 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
     }
 
     #[tracing::instrument]
-    fn get_hitbox(&self) -> Vec<([f32; 3], ([f32; 3], [f32; 3]))> {
+    fn get_hitbox(&self) -> Vec<HitboxData> {
         self.studio
             .hitboxes
             .iter()
             .filter_map(|bbox| {
-                self.bones.v.get(bbox.bone as usize).and_then(|matrix| {
-                    Some(([matrix[3], matrix[7], matrix[11]], (bbox.bbmin, bbox.bbmax)))
-                })
+                self.bones
+                    .v
+                    .get(bbox.bone as usize)
+                    .map(|matrix| ([matrix[3], matrix[7], matrix[11]], (bbox.bbmin, bbox.bbmax)))
             })
             .collect()
     }
 
     #[tracing::instrument]
-    fn get_bones_data(&self) -> Vec<HitboxData> {
+    fn get_bones_data(&self) -> Vec<BoneHitboxData> {
         self.studio
             .bones
             .iter()
@@ -414,7 +423,7 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
                     .get(bone)
                     .and_then(|&hitbox_idx| self.studio.hitboxes.get(hitbox_idx as usize))
                 {
-                    Some(HitboxData {
+                    Some(BoneHitboxData {
                         bone: bone.try_into().unwrap(),
                         group: bbox.group as i32,
                         bbmin: bbox.bbmin,
@@ -424,7 +433,7 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
                         radius: bbox.radius(),
                     })
                 } else {
-                    Some(HitboxData {
+                    Some(BoneHitboxData {
                         bone: bone.try_into().unwrap(),
                         group: sdk::HITGROUP_GENERIC as i32,
                         bbmin: [0.0, 0.0, 0.0],
@@ -497,6 +506,10 @@ impl apexsky::aimbot::AimEntity for BaseNPCEntity {
     fn is_loot(&self) -> bool {
         false
     }
+
+    fn is_crosshair_target(&self) -> bool {
+        self.is_crosshair_target
+    }
 }
 
 impl AimEntity for GamePlayer {
@@ -524,7 +537,7 @@ impl AimEntity for GamePlayer {
         self.get_entity().get_bone_position_by_hitbox(id)
     }
 
-    fn get_bones_data(&self) -> Vec<HitboxData> {
+    fn get_bones_data(&self) -> Vec<BoneHitboxData> {
         self.get_entity().get_bones_data()
     }
 
@@ -587,6 +600,10 @@ impl AimEntity for GamePlayer {
     fn is_loot(&self) -> bool {
         self.get_entity().is_loot()
     }
+
+    fn is_crosshair_target(&self) -> bool {
+        self.get_entity().is_crosshair_target()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -617,8 +634,8 @@ impl AimEntity for QuickLooting {
         self.get_position()
     }
 
-    fn get_bones_data(&self) -> Vec<HitboxData> {
-        vec![HitboxData {
+    fn get_bones_data(&self) -> Vec<BoneHitboxData> {
+        vec![BoneHitboxData {
             bone: 0,
             group: 0,
             bbmin: [-6.0, -6.0, -6.0],
@@ -634,11 +651,7 @@ impl AimEntity for QuickLooting {
     }
 
     fn get_position(&self) -> [f32; 3] {
-        self.0
-            .position
-            .clone()
-            .map(|pos| pos.into())
-            .unwrap_or_default()
+        self.0.position.map(|pos| pos.into()).unwrap_or_default()
     }
 
     fn get_recoil_angles(&self) -> [f32; 3] {
@@ -692,6 +705,10 @@ impl AimEntity for QuickLooting {
     fn is_loot(&self) -> bool {
         true
     }
+
+    fn is_crosshair_target(&self) -> bool {
+        false
+    }
 }
 
 pub struct ArcAimEntity(pub Arc<dyn AimEntity>);
@@ -718,6 +735,7 @@ impl From<ArcAimEntity> for AimEntityData {
             is_knocked: entity.is_knocked(),
             is_player: entity.is_player(),
             is_visible: entity.is_visible(),
+            visible_duration: entity.get_visible_duration(),
         }
     }
 }

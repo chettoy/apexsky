@@ -12,16 +12,270 @@ use url::Url;
 use crate::overlay::model::{Health, Mana, MyCameraMarker, MyOverlayState, TokioRuntime};
 use crate::overlay::{DRY_RUN, PRINT_LATENCY};
 use crate::pb::apexlegends::{
-    AimEntityData, AimTargetInfo, AimTargetItem, EspData, EspDataOption, EspSettings, Loots,
-    LoveStatusCode, PlayerState,
+    AimEntityData, AimTargetInfo, AimTargetItem, EspData, EspDataOption, EspSettings,
+    EspVisualsFlag, Loots, LoveStatusCode, PlayerState,
 };
-use crate::pb::esp_service::esp_service_client::EspServiceClient;
+#[cfg(feature = "apex1-inspect")]
+use crate::pb::app::ohosky::inspect::inspect_service_client::InspectServiceClient;
 use crate::pb::esp_service::GetLootsRequest;
+#[cfg(not(feature = "apex1-inspect"))]
+use crate::pb::esp_service::esp_service_client::EspServiceClient;
 
 #[cfg(feature = "web-wasm")]
-pub type EspClient = EspServiceClient<tonic_web_wasm_client::Client>;
+pub type EspClientTransport = tonic_web_wasm_client::Client;
 #[cfg(not(feature = "web-wasm"))]
-pub type EspClient = EspServiceClient<tonic::transport::Channel>;
+pub type EspClientTransport = tonic::transport::Channel;
+
+#[cfg(feature = "apex1-inspect")]
+pub type EspClient = InspectServiceClient<EspClientTransport>;
+#[cfg(not(feature = "apex1-inspect"))]
+pub type EspClient = EspServiceClient<EspClientTransport>;
+
+#[cfg(feature = "apex1-inspect")]
+mod apex1_adapter {
+    use super::*;
+    use crate::pb::app::ohosky::inspect::{GlobalGetRequest, GlobalListRequest, SharedStorageGet};
+    use apex1_common::{
+        global::{
+            ISharedStore, RecActionsDuration, RecAimTargetsMap, RecAimbotState, RecCurrentZoomFov,
+            RecFrameCount, RecGameBaseAddr, RecGameFps, RecLocalPlayerBuf, RecSpectatorList,
+            RecTeammates, RecTickDuration, RecTickNum, RecTickUpdateTimestamp, RecViewMatrix,
+            RecViewPlayerBuf, RecWorldReady, Record, StoreBackend,
+        },
+        pb::apexlegends::{AimTargetList, EspVisualsFlag},
+    };
+    use once_cell::sync::Lazy;
+    use tonic::{Response, Status};
+
+    static CACHE: Lazy<Mutex<HashMap<u64, HashMap<u64, Vec<u8>>>>> =
+        Lazy::new(|| Mutex::new(Default::default()));
+
+    struct CacheStore;
+
+    impl StoreBackend for CacheStore {}
+    impl ISharedStore for CacheStore {
+        #[inline]
+        fn set(_id: u64, _data: Vec<u8>) {}
+        #[inline]
+        fn get(id: u64) -> Option<Vec<u8>> {
+            CACHE.lock().get(&0).and_then(|m| m.get(&id).cloned())
+        }
+        #[inline]
+        fn has(id: u64) -> bool {
+            CACHE.lock().get(&0).is_some_and(|m| m.contains_key(&id))
+        }
+        #[inline]
+        fn del(_id: u64) -> bool {
+            false
+        }
+        #[inline]
+        fn set_child(_id: u64, _child_id: u64, _data: Vec<u8>) {}
+        #[inline]
+        fn get_child(id: u64, child_id: u64) -> Option<Vec<u8>> {
+            CACHE
+                .lock()
+                .get(&id)
+                .and_then(|m| m.get(&child_id).cloned())
+        }
+        #[inline]
+        fn has_child(id: u64, child_id: u64) -> bool {
+            CACHE
+                .lock()
+                .get(&id)
+                .is_some_and(|m| m.contains_key(&child_id))
+        }
+        #[inline]
+        fn del_child(_id: u64, _child_id: u64) -> bool {
+            false
+        }
+        #[inline]
+        fn insert_children(_id: u64, _entries: Vec<(u64, Vec<u8>)>) {}
+        #[inline]
+        fn get_children(id: u64) -> Vec<(u64, Vec<u8>)> {
+            CACHE
+                .lock()
+                .get(&id)
+                .and_then(|m| Some(m.iter().map(|(k, v)| (*k, v.to_owned())).collect()))
+                .unwrap_or_default()
+        }
+        #[inline]
+        fn list_children(id: u64) -> Vec<u64> {
+            CACHE
+                .lock()
+                .get(&id)
+                .and_then(|m| Some(m.keys().cloned().collect()))
+                .unwrap_or_default()
+        }
+        #[inline]
+        fn swap_children(_id: u64, _entries: Vec<(u64, Vec<u8>)>) {}
+        #[inline]
+        fn clear_children(_id: u64) -> usize {
+            0
+        }
+    }
+
+    impl EspClient {
+        pub(super) async fn fetch_values(&mut self) -> anyhow::Result<()> {
+            let aim_targets_list = self
+                .global_list(GlobalListRequest {
+                    version: 0,
+                    parent_id: vec![RecAimTargetsMap::name_id()],
+                })
+                .await?
+                .into_inner()
+                .result
+                .into_iter()
+                .next()
+                .map(|ret| ret.child_id)
+                .unwrap_or_default();
+
+            let data = self
+                .global_get(GlobalGetRequest {
+                    version: 0,
+                    list: vec![
+                        SharedStorageGet {
+                            parent_id: 0,
+                            ids: vec![
+                                RecActionsDuration::name_id(),
+                                RecAimbotState::name_id(),
+                                RecCurrentZoomFov::name_id(),
+                                RecFrameCount::name_id(),
+                                RecGameBaseAddr::name_id(),
+                                RecGameFps::name_id(),
+                                RecLocalPlayerBuf::name_id(),
+                                RecSpectatorList::name_id(),
+                                RecTeammates::name_id(),
+                                RecTickDuration::name_id(),
+                                RecTickNum::name_id(),
+                                RecTickUpdateTimestamp::name_id(),
+                                RecViewMatrix::name_id(),
+                                RecViewPlayerBuf::name_id(),
+                                RecWorldReady::name_id(),
+                            ],
+                        },
+                        SharedStorageGet {
+                            parent_id: RecAimTargetsMap::name_id(),
+                            ids: aim_targets_list,
+                        },
+                    ],
+                })
+                .await?
+                .into_inner()
+                .list
+                .into_iter()
+                .map(|ret| (ret.parent_id, ret.data))
+                .collect();
+            *CACHE.lock() = data;
+            Ok(())
+        }
+        pub(super) async fn get_esp_settings(
+            &mut self,
+            _: (),
+        ) -> Result<Response<EspSettings>, Status> {
+            let reply = EspSettings {
+                esp: 1,
+                screen_width: 1920,
+                screen_height: 1080,
+                yuan_p: false,
+                debug_mode: false,
+                esp_visuals: EspVisualsFlag::Box.into(),
+                mini_map_radar: true,
+                main_map_radar: false,
+                max_dist: 2000.0 * 40.0,
+                aim_distance: 200.0 * 40.0,
+                show_aim_target: true,
+                glow_color_viz: Some([0.0, 1.0, 0.0].into()),
+                glow_color_notviz: Some([1.0, 0.0, 0.0].into()),
+                desired_loots: vec![],
+            };
+            Ok(Response::new(reply))
+        }
+
+        pub(super) async fn get_esp_data(
+            &mut self,
+            _options: EspDataOption,
+        ) -> Result<Response<EspData>, Status> {
+            if let Err(e) = self.fetch_values().await {
+                tracing::error!(?e);
+                return Err(Status::unavailable(e.to_string()));
+            }
+            let reply = {
+                let aim_targets: Vec<_> = RecAimTargetsMap::get_children::<CacheStore>()
+                    .unwrap_or_default()
+                    .into_values()
+                    .collect();
+                let aimbot = RecAimbotState::get::<CacheStore>().unwrap();
+                let game_fps = RecGameFps::get::<CacheStore>().unwrap().unwrap_or_default();
+                let spectators = RecSpectatorList::get::<CacheStore>().unwrap();
+                let teammates = RecTeammates::get::<CacheStore>().unwrap();
+                let view_matrix = RecViewMatrix::get::<CacheStore>().unwrap();
+                let local_player = RecLocalPlayerBuf::get::<CacheStore>().unwrap();
+                let view_player = RecViewPlayerBuf::get::<CacheStore>().unwrap();
+
+                EspData {
+                    ready: RecGameBaseAddr::get::<CacheStore>().unwrap().is_some(),
+                    in_game: RecWorldReady::get::<CacheStore>()
+                        .unwrap()
+                        .unwrap_or_default(),
+                    tick_num: RecTickNum::get::<CacheStore>()
+                        .unwrap()
+                        .unwrap_or_default()
+                        .try_into()
+                        .unwrap_or(0),
+                    frame_count: RecFrameCount::get::<CacheStore>()
+                        .unwrap()
+                        .unwrap_or_default()
+                        .try_into()
+                        .unwrap_or_else(|e| {
+                            let v = RecFrameCount::get::<CacheStore>();
+                            tracing::debug!(?e, ?v);
+                            0
+                        }),
+                    view_matrix,
+                    view_player,
+                    local_player,
+                    aimbot,
+                    target_count: aim_targets.len() as u64,
+                    targets: Some(AimTargetList {
+                        version: 0,
+                        elements: aim_targets,
+                    }),
+                    teammates,
+                    spectators,
+                    duration_tick: RecTickDuration::get::<CacheStore>()
+                        .unwrap()
+                        .map(|secs| (secs * 1000.0) as u64)
+                        .unwrap_or_default(),
+                    duration_actions: RecActionsDuration::get::<CacheStore>()
+                        .unwrap()
+                        .map(|secs| (secs * 1000.0) as u64)
+                        .unwrap_or_default(),
+                    data_timestamp: RecTickUpdateTimestamp::get::<CacheStore>()
+                        .unwrap()
+                        .unwrap_or_default(),
+                    game_fps,
+                    current_zoom_fov: RecCurrentZoomFov::get::<CacheStore>()
+                        .unwrap()
+                        .unwrap_or(90.0),
+                }
+            };
+            Ok(Response::new(reply))
+        }
+        pub(super) async fn get_loots(
+            &mut self,
+            _options: GetLootsRequest,
+        ) -> Result<Response<Loots>, Status> {
+            let reply = Loots {
+                version: 0,
+                loots: vec![],
+                data_timestamp: RecTickUpdateTimestamp::get::<CacheStore>()
+                    .unwrap()
+                    .unwrap_or_default(),
+            };
+            Ok(Response::new(reply))
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct EspServiceAddr {
@@ -61,13 +315,13 @@ impl EspServiceAddr {
 pub fn init_grpc_client(server_url: String) -> Option<EspClient> {
     #[cfg(feature = "web-wasm")]
     {
-        Some(EspServiceClient::new(tonic_web_wasm_client::Client::new(
+        Some(EspClient::new(tonic_web_wasm_client::Client::new(
             server_url,
         )))
     }
     #[cfg(not(feature = "web-wasm"))]
     {
-        match bevy::tasks::block_on(EspServiceClient::connect(server_url)) {
+        match bevy::tasks::block_on(EspClient::connect(server_url)) {
             Ok(client) => Some(
                 client
                     .accept_compressed(tonic::codec::CompressionEncoding::Zstd)
@@ -264,7 +518,7 @@ pub(crate) fn follow_game_state(
         }
     }
 
-    esp_system.update_latency = time.delta_seconds_f64() * 1000.0;
+    esp_system.update_latency = time.delta_secs_f64() * 1000.0;
 
     let esp_data = &esp_system.esp_data;
 
@@ -371,33 +625,31 @@ pub(crate) fn follow_game_state(
         if health < 1.0 {
             [].into()
         } else {
-            [(
-                0,
-                UpdateTarget {
-                    info: AimTargetInfo {
-                        fov: 1.0,
-                        distance: 40.0,
-                        is_visible: true,
-                        is_knocked: false,
-                        health_points: 150,
-                        love_status: LoveStatusCode::Normal.into(),
-                        is_kill_leader: false,
-                        entity_ptr: 0,
-                        is_npc: true,
-                        is_loot: false,
-                    },
-                    data: None,
-                    point_pos: Vec3 {
-                        x: 0.,
-                        y: -40.,
-                        z: -40.,
-                    },
-                    health,
-                    max_health: 100.,
-                    shield: 50.,
-                    max_shield: 150.,
+            [(0, UpdateTarget {
+                info: AimTargetInfo {
+                    fov: 1.0,
+                    distance: 40.0,
+                    is_visible: true,
+                    is_knocked: false,
+                    health_points: 150,
+                    love_status: LoveStatusCode::Normal.into(),
+                    is_kill_leader: false,
+                    entity_ptr: 0,
+                    is_npc: true,
+                    is_loot: false,
+                    is_crosshair_target: false,
                 },
-            )]
+                data: None,
+                point_pos: Vec3 {
+                    x: 0.,
+                    y: -40.,
+                    z: -40.,
+                },
+                health,
+                max_health: 100.,
+                shield: 50.,
+                max_shield: 150.,
+            })]
             .into()
         }
     };
@@ -434,51 +686,45 @@ pub(crate) fn follow_game_state(
             palettes::css::ORANGE_RED
         };
         let mut spawn_cmd = commands.spawn((
-            if show_entity_ball.0 {
-                PbrBundle {
-                    mesh: meshes.add(Sphere::new(6.0).mesh().uv(32, 18)),
-                    material: materials.add(StandardMaterial {
-                        base_color: Color::Srgba(base_color),
-                        ..Default::default()
-                    }),
-                    transform: Transform::from_translation(target.point_pos),
-                    ..default()
-                }
-            } else {
-                PbrBundle {
-                    transform: Transform::from_translation(target.point_pos),
-                    ..default()
-                }
-            },
+            Transform::from_translation(target.point_pos),
             AimTargetEntity {
                 ptr,
                 data: target.data,
             },
-        ));
-        //if esp_system.esp_settings.esp_visuals & EspVisualsFlag::HealthBar as i32 != 0 {
-        spawn_cmd.insert((
             Health {
                 max: target.max_health,
                 current: target.health,
-            },
-            hpbar::BarSettings::<Health> {
-                width: 12.,
-                offset: 9.,
-                orientation: hpbar::BarOrientation::Vertical,
-                ..default()
             },
             Mana {
                 max: target.max_shield,
                 current: target.shield,
             },
-            hpbar::BarSettings::<Mana> {
-                width: 12.,
-                offset: 12.,
-                orientation: hpbar::BarOrientation::Vertical,
-                ..default()
-            },
         ));
-        //}
+        if show_entity_ball.0 {
+            spawn_cmd.insert((
+                Mesh3d::from(meshes.add(Sphere::new(6.0).mesh().uv(32, 18))),
+                MeshMaterial3d::from(materials.add(StandardMaterial {
+                    base_color: Color::Srgba(base_color),
+                    ..Default::default()
+                })),
+            ));
+        }
+        if esp_system.esp_settings.esp_visuals & EspVisualsFlag::HealthBar as i32 != 0 {
+            spawn_cmd.insert((
+                hpbar::BarSettings::<Health> {
+                    width: 12.,
+                    offset: 9.,
+                    orientation: hpbar::BarOrientation::Vertical,
+                    ..default()
+                },
+                hpbar::BarSettings::<Mana> {
+                    width: 12.,
+                    offset: 12.,
+                    orientation: hpbar::BarOrientation::Vertical,
+                    ..default()
+                },
+            ));
+        }
     });
 }
 

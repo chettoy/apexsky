@@ -16,7 +16,10 @@ pub mod data;
 pub mod sdk;
 pub mod state;
 
+/// ApexDream instance
+/// ```plaintext
 /// Copyright (C) 2019 - 2023 Casper <CasualX@users.noreply.github.com>
+/// Copyright (C) 2023 - 2025 chettoy <chettoy@users.noreply.github.com>
 ///
 /// This program is free software: you can redistribute it and/or modify
 /// it under the terms of the GNU General Public License as published by
@@ -30,21 +33,24 @@ pub mod state;
 ///
 /// You should have received a copy of the GNU General Public License
 /// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+/// ```
 pub struct Instance {
     state: GameState,
     update_ctx: UpdateContext,
 }
 
 impl Instance {
-    pub fn new() -> Self {
+    pub fn new(is_io_fast: bool) -> Self {
         let ctx = UpdateContext {
             data: Arc::new(GameData::default()),
             time: Default::default(),
             connected: false,
+            world_ready: false,
             tickcount: 0,
             local_entity: Default::default(),
             full_bones: true,
+            is_io_fast,
+            intresting: Arc::new(dashmap::DashMap::new()),
         };
         Self {
             state: GameState::default(),
@@ -56,8 +62,12 @@ impl Instance {
         &self.state
     }
 
+    pub fn get_update_ctx(&self) -> &UpdateContext {
+        &self.update_ctx
+    }
+
     pub async fn tick_state(&mut self, api: &mut self::state::Api) {
-        let time = apexsky::aimbot::get_unix_timestamp_in_millis() as f64 / 1000.0;
+        let time = apex1_common::utils::get_unix_timestamp_in_seconds();
         self.update_ctx.time = time;
         self.state.time = time;
 

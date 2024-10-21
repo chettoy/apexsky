@@ -1,5 +1,5 @@
 use super::{Pod, NUM_ENT_ENTRIES};
-use apexsky::noobfstr as s;
+use crate::noobfstr as s;
 use std::fmt;
 
 #[derive(Pod, Copy, Clone, Eq)]

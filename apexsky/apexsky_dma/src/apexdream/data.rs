@@ -1,4 +1,4 @@
-use apexsky::offsets::G_OFFSETS;
+use crate::G_OFFSETS;
 
 #[derive(Debug)]
 pub struct GameData {
@@ -7,7 +7,7 @@ pub struct GameData {
     pub entity_list: u32,
     pub local_entity_handle: u32,
 
-    pub client_state: u32,
+    pub _client_state: u32,
     pub signon_state: u32,
     pub level_name: u32,
 
@@ -24,9 +24,9 @@ pub struct GameData {
     pub network_var_table_ptr: u32,
     pub network_var_table_len: u32,
 
-    pub thirdperson_override: u32,
-    pub mouse_sensitivity: u32,
-    pub fps_max: u32,
+    pub _thirdperson_override: u32,
+    pub _mouse_sensitivity: u32,
+    pub _fps_max: u32,
     pub mp_gamemode: u32,
 
     pub in_attack: u32,
@@ -49,8 +49,8 @@ pub struct GameData {
     pub entity_team_num: u32,
     pub entity_velocity: u32,
     pub entity_owner_entity: u32,
-    pub entity_collision: u32,
-    pub entity_collision_group: u32,
+    pub _entity_collision: u32,
+    pub _entity_collision_group: u32,
     pub entity_max_health: u32,
     pub entity_life_state: u32,
 
@@ -58,13 +58,13 @@ pub struct GameData {
     pub animating_bone_array: u32, // m_bSequenceFinished - 0x1C
     pub animating_studiohdr: u32,  // m_flModelScale + 0x1D0
 
-    pub collision_property_vec_mins: u32,
-    pub collision_property_vec_maxs: u32,
+    pub _collision_property_vec_mins: u32,
+    pub _collision_property_vec_maxs: u32,
 
     pub bcc_next_attack: u32,
     pub bcc_inventory: u32,
     pub bcc_selected_weapons: u32,
-    pub bcc_last_visible_time: u32, // m_hudInfo_visibilityTestAlwaysPasses + 0x3
+    pub _bcc_last_visible_time: u32, // m_hudInfo_visibilityTestAlwaysPasses + 0x3
     pub player_last_visible_time: u32,
 
     pub player_zoom_state: u32,
@@ -76,9 +76,9 @@ pub struct GameData {
     pub player_consumables: u32,
     pub player_platform_uid: u32,
     pub player_bleedout_state: u32,
-    pub player_movement_state: u32,
+    pub _player_movement_state: u32,
     pub player_observer_state: u32,
-    pub player_third_person_shoulder_view: u32,
+    pub _player_third_person_shoulder_view: u32,
     pub player_script_net_data: u32,
     pub player_helmet_armor_type: u32,
     pub player_shadow_shield_active: u32,
@@ -123,7 +123,7 @@ impl Default for GameData {
             global_vars: G_OFFSETS.global_vars.try_into().unwrap(),
             entity_list: G_OFFSETS.entitylist.try_into().unwrap(),
             local_entity_handle: G_OFFSETS.local_entity_handle.try_into().unwrap(),
-            client_state: G_OFFSETS.client_state.try_into().unwrap(),
+            _client_state: G_OFFSETS.client_state.try_into().unwrap(),
             signon_state: G_OFFSETS.signon_state.try_into().unwrap(),
             level_name: G_OFFSETS.level_name.try_into().unwrap(),
             nst_weapon_names: G_OFFSETS.nst_weapon_names.try_into().unwrap(),
@@ -134,9 +134,9 @@ impl Default for GameData {
             name_list: G_OFFSETS.name_list.try_into().unwrap(),
             network_var_table_ptr: G_OFFSETS.network_var_table_ptr.try_into().unwrap(),
             network_var_table_len: G_OFFSETS.network_var_table_len.try_into().unwrap(),
-            thirdperson_override: G_OFFSETS.thirdperson_override.try_into().unwrap(),
-            mouse_sensitivity: G_OFFSETS.mouse_sensitivity.try_into().unwrap(),
-            fps_max: G_OFFSETS.fps_max.try_into().unwrap(),
+            _thirdperson_override: G_OFFSETS.thirdperson_override.try_into().unwrap(),
+            _mouse_sensitivity: G_OFFSETS.mouse_sensitivity.try_into().unwrap(),
+            _fps_max: G_OFFSETS.fps_max.try_into().unwrap(),
             mp_gamemode: G_OFFSETS.mp_gamemode.try_into().unwrap(),
             in_attack: G_OFFSETS.in_attack.try_into().unwrap(),
             in_jump: G_OFFSETS.in_jump.try_into().unwrap(),
@@ -157,19 +157,19 @@ impl Default for GameData {
             entity_team_num: G_OFFSETS.entity_team_num.try_into().unwrap(),
             entity_velocity: G_OFFSETS.centity_velocity.try_into().unwrap(),
             entity_owner_entity: G_OFFSETS.entity_owner_entity.try_into().unwrap(),
-            entity_collision: G_OFFSETS.entity_collision.try_into().unwrap(),
-            entity_collision_group: G_OFFSETS.entity_collision_group.try_into().unwrap(),
+            _entity_collision: G_OFFSETS.entity_collision.try_into().unwrap(),
+            _entity_collision_group: G_OFFSETS.entity_collision_group.try_into().unwrap(),
             entity_max_health: G_OFFSETS.player_maxhealth.try_into().unwrap(),
             entity_life_state: G_OFFSETS.player_life_state.try_into().unwrap(),
             animating_skin: G_OFFSETS.animating_skin.try_into().unwrap(),
             animating_bone_array: G_OFFSETS.animating_bone_array.try_into().unwrap(),
             animating_studiohdr: G_OFFSETS.animating_studiohdr.try_into().unwrap(),
-            collision_property_vec_mins: G_OFFSETS.collision_property_vec_mins.try_into().unwrap(),
-            collision_property_vec_maxs: G_OFFSETS.collision_property_vec_maxs.try_into().unwrap(),
+            _collision_property_vec_mins: G_OFFSETS.collision_property_vec_mins.try_into().unwrap(),
+            _collision_property_vec_maxs: G_OFFSETS.collision_property_vec_maxs.try_into().unwrap(),
             bcc_next_attack: G_OFFSETS.bcc_next_attack.try_into().unwrap(),
             bcc_inventory: G_OFFSETS.bcc_inventory.try_into().unwrap(),
             bcc_selected_weapons: G_OFFSETS.bcc_selected_weapons.try_into().unwrap(),
-            bcc_last_visible_time: G_OFFSETS.bcc_last_visible_time.try_into().unwrap(),
+            _bcc_last_visible_time: G_OFFSETS.bcc_last_visible_time.try_into().unwrap(),
             player_last_visible_time: G_OFFSETS.player_last_visible_time.try_into().unwrap(),
             player_zoom_state: G_OFFSETS.player_zooming.try_into().unwrap(),
             player_camera_data: G_OFFSETS.cplayer_camerapos.try_into().unwrap(),
@@ -180,9 +180,9 @@ impl Default for GameData {
             player_consumables: G_OFFSETS.player_consumables.try_into().unwrap(),
             player_platform_uid: G_OFFSETS.player_platform_uid.try_into().unwrap(),
             player_bleedout_state: G_OFFSETS.player_bleed_out_state.try_into().unwrap(),
-            player_movement_state: G_OFFSETS.player_duck_state.try_into().unwrap(),
+            _player_movement_state: G_OFFSETS.player_duck_state.try_into().unwrap(),
             player_observer_state: G_OFFSETS.player_observer_state.try_into().unwrap(),
-            player_third_person_shoulder_view: G_OFFSETS
+            _player_third_person_shoulder_view: G_OFFSETS
                 .player_third_person_shoulder_view
                 .try_into()
                 .unwrap(),

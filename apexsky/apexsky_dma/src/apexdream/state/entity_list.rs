@@ -1,23 +1,39 @@
-use parking_lot::Mutex;
+use dashmap::DashMap;
 
 use self::entities::{
     AnimatingEntity, BaseNPCEntity, DeathboxEntity, Entity, LootEntity, ScriptNetDataEntity,
     VehicleEntity, WorldEntity,
 };
-use std::{collections::HashMap, mem};
 
 use super::*;
 use crate::noobfstr as s;
+
+const REQUEST_ID_UPDATE: usize = 0; //obfstr::random!(usize);
+const REQUEST_ID_RECREATE: usize = 0; //obfstr::random!(usize);
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum EntityStatus {
+    Invalid = 0,
+    #[default]
+    RetryCreate,
+    Retry2,
+    Retry4,
+    Retry8,
+    Valid = 255,
+}
 
 #[derive(Debug)]
 pub struct EntityList {
     pub entities: Box<[Option<Box<dyn Entity>>]>,
     ent_info: Box<[sdk::CEntInfo]>,
     prev_info: Box<[sdk::CEntInfo]>,
+    ent_status: Box<[EntityStatus]>,
     pub updates: u32,
-    next_index: u32,
+    next_update_index: u32,
+    next_recreate_index: u32,
     gce: GetClientEntity,
 }
+
 impl Default for EntityList {
     fn default() -> EntityList {
         let mut entities = Vec::new();
@@ -26,8 +42,10 @@ impl Default for EntityList {
             entities: entities.into_boxed_slice(),
             ent_info: vec![sdk::CEntInfo::default(); sdk::NUM_ENT_ENTRIES].into_boxed_slice(),
             prev_info: vec![sdk::CEntInfo::default(); sdk::NUM_ENT_ENTRIES].into_boxed_slice(),
+            ent_status: vec![EntityStatus::default(); sdk::NUM_ENT_ENTRIES].into_boxed_slice(),
             updates: 0,
-            next_index: 0,
+            next_update_index: 0,
+            next_recreate_index: 0,
             gce: GetClientEntity::default(),
         }
     }
@@ -38,57 +56,68 @@ impl EntityList {
     #[inline(never)]
     pub async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         let base_addr = api.apex_base;
+        // self.gce.config.full_recreate = ctx.is_io_fast;
 
         self.updates = 0;
 
         // Update entity list in smaller chunks over time
-        let count;
+        let update_count;
         if self.gce.config.full_entlist {
-            self.next_index = 0;
-            count = sdk::NUM_ENT_ENTRIES;
+            self.next_update_index = 0;
+            update_count = sdk::NUM_ENT_ENTRIES;
         } else {
-            count = sdk::NUM_ENT_ENTRIES / 32;
+            update_count = sdk::NUM_ENT_ENTRIES / 32;
         }
+        let update_start = self.next_update_index as usize;
+        let update_end = usize::min(update_start + update_count, sdk::NUM_ENT_ENTRIES);
 
-        let start = self.next_index as usize;
-        let end = usize::min(start + count, sdk::NUM_ENT_ENTRIES);
-        self.next_index = if end == sdk::NUM_ENT_ENTRIES {
-            0
+        let recreate_count;
+        if self.gce.config.full_recreate {
+            self.next_recreate_index = 0;
+            recreate_count = sdk::NUM_ENT_ENTRIES;
         } else {
-            end as u32
-        };
+            recreate_count = sdk::NUM_ENT_ENTRIES / 32;
+        }
+        let recreate_start = self.next_recreate_index as usize;
+        let recreate_end = usize::min(recreate_start + recreate_count, sdk::NUM_ENT_ENTRIES);
 
         // Read a chunk of the game's ent info array
-        if let Some(ent_info_slice) = self.ent_info.get_mut(start..end) {
-            let _ = api
+        if let Some(ent_info_slice) = self.ent_info.get_mut(update_start..update_end) {
+            let Ok(()) = api
                 .vm_read_into(
-                    base_addr.field(ctx.data.entity_list + start as u32 * 32),
+                    base_addr.field(ctx.data.entity_list + update_start as u32 * 32),
                     ent_info_slice,
                 )
-                .await;
+                .await
+            else {
+                return;
+            };
         }
 
         // Update the entities
         let prev_info = unsafe { self.prev_info.get_unchecked(..sdk::NUM_ENT_ENTRIES) };
-        let ent_info = unsafe { self.ent_info.get_unchecked(..sdk::NUM_ENT_ENTRIES) };
+        let ent_info = unsafe { self.ent_info.get_unchecked_mut(..sdk::NUM_ENT_ENTRIES) };
+        let ent_status = unsafe { self.ent_status.get_unchecked_mut(..sdk::NUM_ENT_ENTRIES) };
         let entities = unsafe { self.entities.get_unchecked_mut(..sdk::NUM_ENT_ENTRIES) };
-        let mut futs_recreate = Vec::new();
-        let mut futs_update = Vec::with_capacity(sdk::MAX_PLAYERS);
+
+        let mut tasks_recreate = Vec::new();
+        let mut tasks_update = Vec::with_capacity(sdk::MAX_PLAYERS);
+
         let mut start_recreate = |index: usize, entity_ptr: sdk::Ptr| {
-            futs_recreate.push((
+            tasks_recreate.push((
                 index,
                 tokio::spawn({
-                    let api = api.clone();
+                    let api = api.clone_new(REQUEST_ID_RECREATE);
                     let gce = self.gce.clone();
                     async move { gce.create_entity(&api, entity_ptr, index as u32).await }
                 }),
             ));
         };
         let mut start_update = |index, mut entity: Box<dyn Entity>| {
-            futs_update.push((
+            tasks_update.push((
                 index,
                 tokio::spawn({
-                    let api = api.clone();
+                    let api = api.clone_new(REQUEST_ID_UPDATE);
                     let ctx = ctx.clone();
                     async move {
                         entity.update(&api, &ctx).await;
@@ -97,43 +126,110 @@ impl EntityList {
                 }),
             ));
         };
-        //for index in 0..sdk::NUM_ENT_ENTRIES
-        for index in start..end {
-            //let in_range = index >= start && index < end;
-            let ptr_changed = prev_info[index].pEntity != ent_info[index].pEntity;
 
-            // If entity pointer has changed
-            if ptr_changed {
-                // Recreate the entity object with the correct type
-                let entity_ptr = ent_info[index].pEntity;
-                start_recreate(index, entity_ptr);
+        let retry2 = ctx.ticked(2, 0);
+        let retry4 = ctx.ticked(4, 0);
+        let retry8 = ctx.ticked(8, 0);
+        for index in update_start..update_end {
+            let entity_ptr = ent_info[index].pEntity;
+            let status = &mut ent_status[index];
+
+            if entity_ptr.is_null() {
+                *status = EntityStatus::Invalid;
+                entities[index] = None;
+                continue;
             }
-            // Update the entity at their specified rate if we are tracking it
-            else if let Some(entity) = entities[index].take_if(|entity| {
-                ctx.ticked(entity.get_info().rate, index as u32) && (!ptr_changed)
-            }) {
-                start_update(index, entity);
+
+            let ptr_changed = prev_info[index].pEntity != entity_ptr;
+            if ptr_changed {
+                *status = EntityStatus::RetryCreate;
+            }
+
+            if *status == EntityStatus::Valid {
+                // Update the entity at their specified rate if we are tracking it
+                if let Some(entity) = entities[index]
+                    .take_if(|entity| ctx.ticked(entity.get_info().rate, index as u32))
+                {
+                    start_update(index, entity);
+                }
+                continue;
+            }
+
+            match *status {
+                _ if !(index < sdk::MAX_PLAYERS
+                    || (recreate_start..recreate_end).contains(&index)) =>
+                {
+                    continue
+                }
+
+                EntityStatus::RetryCreate => {
+                    // Recreate the entity object with the correct type
+                    // tracing::warn!(?index, "recreate");
+                    start_recreate(index, entity_ptr);
+                }
+
+                EntityStatus::Retry2 if retry2 => {
+                    start_recreate(index, entity_ptr);
+                }
+                EntityStatus::Retry4 if retry4 => {
+                    start_recreate(index, entity_ptr);
+                }
+                EntityStatus::Retry8 if retry8 => {
+                    start_recreate(index, entity_ptr);
+                }
+
+                _ => continue,
             }
         }
 
         // Place the updated entity back in the list
-        for (index, fut_recreate) in futs_recreate {
-            entities[index] = fut_recreate.await.unwrap();
-            // Always update the entity when created
-            if let Some(entity) = entities[index].take() {
+        // tracing::trace!(ent_recreate = tasks_recreate.len());
+        for (index, fut_recreate) in tasks_recreate {
+            let (item, _status) = fut_recreate.await.unwrap();
+
+            if let Some(entity) = item {
+                ent_status[index] = EntityStatus::Valid;
+
+                // Always update the entity when created
                 start_update(index, entity);
+            } else if index < sdk::MAX_PLAYERS {
+                // Always retry for player entities
+                ent_status[index] = EntityStatus::Retry2;
+            } else {
+                // Gradually increase the retry interval with failure
+                ent_status[index] = match ent_status[index] {
+                    EntityStatus::Invalid => EntityStatus::RetryCreate,
+                    _ if ctx.is_io_fast => EntityStatus::Retry2,
+                    EntityStatus::RetryCreate => EntityStatus::Retry2,
+                    EntityStatus::Retry2 => EntityStatus::Retry4,
+                    EntityStatus::Retry4 => EntityStatus::Retry8,
+                    EntityStatus::Retry8 => EntityStatus::Retry8,
+                    EntityStatus::Valid => unreachable!(),
+                };
             }
         }
-        for (index, fut_update) in futs_update {
+        // tracing::trace!(ent_update = tasks_update.len());
+        for (index, fut_update) in tasks_update {
             let entity = fut_update.await.unwrap();
             entities[index].replace(entity);
             self.updates += 1;
         }
 
         // If we reached the end, swap the entity infos
-        if end == sdk::NUM_ENT_ENTRIES {
-            mem::swap(&mut self.ent_info, &mut self.prev_info);
+        if update_end == sdk::NUM_ENT_ENTRIES {
+            std::mem::swap(&mut self.ent_info, &mut self.prev_info);
         }
+
+        self.next_update_index = if update_end == sdk::NUM_ENT_ENTRIES {
+            0
+        } else {
+            update_end as u32
+        };
+        self.next_recreate_index = if recreate_end == sdk::NUM_ENT_ENTRIES {
+            0
+        } else {
+            recreate_end as u32
+        };
     }
 }
 
@@ -145,6 +241,7 @@ struct Config {
     log_errors: bool,
     log_uninteresting: bool,
     full_entlist: bool,
+    full_recreate: bool,
 }
 impl Default for Config {
     fn default() -> Self {
@@ -152,6 +249,7 @@ impl Default for Config {
             log_errors: false,
             log_uninteresting: false,
             full_entlist: true,
+            full_recreate: false,
         }
     }
 }
@@ -166,7 +264,8 @@ struct ClientClassData {
 #[derive(Debug, Default, Clone)]
 struct GetClientEntity {
     config: Config,
-    lookup: Arc<Mutex<HashMap<sdk::Ptr<[sdk::Ptr]>, ClientClassData>>>,
+    lookup: Arc<DashMap<sdk::Ptr<[sdk::Ptr]>, ClientClassData>>,
+    directory: Arc<DashMap<String, String>>,
 }
 
 impl GetClientEntity {
@@ -176,22 +275,46 @@ impl GetClientEntity {
         api: &Api,
         entity_ptr: sdk::Ptr,
         index: u32,
-    ) -> Option<Box<dyn Entity>> {
+    ) -> (Option<Box<dyn Entity>>, EntityStatus) {
         if entity_ptr.is_null() {
-            return None;
+            return (None, EntityStatus::Invalid);
+            // anyhow::bail!("{}", s!("entity_ptr is null"));
         }
         // Filter out bad addresses (mainly from running the hack before the game has decrypted itself)
         if entity_ptr.into_raw() & 7 != 0 || entity_ptr.into_raw() >= (1 << 48) {
-            return None;
+            return (None, EntityStatus::Invalid);
+            // anyhow::bail!("{}", s!("bad address for entity"));
         }
 
         // Borrowck error avoidance :)
         let log_uninteresting = self.config.log_uninteresting;
 
         // Get the entity type name
-        let data = self.get_client_class(api, entity_ptr).await?;
+        let data = match self.get_client_class(api, entity_ptr).await {
+            Ok(Some(data)) => data,
+            Ok(None) => return (None, EntityStatus::RetryCreate),
+            Err(_) => return (None, EntityStatus::Invalid),
+        };
 
-        match data.name_hash {
+        const GEN_DIR: bool = false;
+        if GEN_DIR {
+            let mut entity_name = [0u8; 128];
+            if let Ok(entity_name) = api
+                .vm_read_cstr(
+                    entity_ptr.field(crate::G_OFFSETS.entiry_name as u32),
+                    &mut entity_name,
+                )
+                .await
+            {
+                if !self.directory.contains_key(entity_name) {
+                    let class_name = base::from_utf8_buf(&data.name_buf).unwrap_or_default();
+                    self.directory
+                        .insert(entity_name.to_string(), class_name.to_string());
+                }
+            }
+        }
+
+        let entity = match data.name_hash {
             sdk::CPlayer => {
                 if let Some(name) = crate::apexdream::base::from_utf8_buf(&data.name_buf) {
                     if name != s!("CPlayer") {
@@ -244,35 +367,48 @@ impl GetClientEntity {
                 }
                 None
             }
+        };
+
+        match entity {
+            Some(ent) => (Some(ent), EntityStatus::Valid),
+            None => (None, EntityStatus::Invalid),
         }
     }
 
+    #[tracing::instrument(skip_all)]
     #[inline(never)]
-    async fn get_client_class(&self, api: &Api, entity_ptr: sdk::Ptr) -> Option<ClientClassData> {
+    async fn get_client_class(
+        &self,
+        api: &Api,
+        entity_ptr: sdk::Ptr,
+    ) -> anyhow::Result<Option<ClientClassData>> {
         // Read the IClientNetworkable vtable at entity_ptr + 3 * 8
         let client_networkable: sdk::Ptr<[sdk::Ptr]> =
             match api.vm_read(entity_ptr.field(3 * 8)).await {
                 Ok(p) => p,
-                Err(_) => {
+                Err(e) => {
                     if self.config.log_errors {
-                        api.log(format!(
+                        tracing::warn!(
+                            ?e,
                             "{}{}{}",
                             s!("get_client_class("),
                             entity_ptr,
                             s!("): IClientNetworkable")
-                        ));
+                        );
                     }
-                    return None;
+                    // return Err(e);
+                    return Ok(None);
                 }
             };
 
         // This can be null?!?
         if client_networkable.is_null() {
-            return None;
+            //return Ok(None);
+            anyhow::bail!("{}", s!("client_networkable is null"));
         }
 
-        if let Some(value) = self.lookup.lock().get(&client_networkable) {
-            return Some(value.to_owned());
+        if let Some(value) = self.lookup.get(&client_networkable) {
+            return Ok(Some(value.to_owned()));
         }
 
         // Aggressively cache these lookups
@@ -280,36 +416,38 @@ impl GetClientEntity {
             // Read the GetClientEntity function ptr
             let get_client_entity = match api.vm_read(client_networkable.at(3)).await {
                 Ok(pgce) => pgce,
-                Err(_) => {
+                Err(e) => {
                     if self.config.log_errors {
-                        api.log(format!(
+                        tracing::warn!(
+                            ?e,
                             "{}{}{}{}{}",
                             s!("get_client_class("),
                             entity_ptr,
                             s!("): GetClientEntity {client_networkable="),
                             client_networkable,
                             s!("}")
-                        ));
+                        );
                     }
-                    return None;
+                    return Err(e);
                 }
             };
 
             // Read the offset out of the lea rax, offset instruction
             let offset = match api.vm_read::<i32>(get_client_entity.field(3)).await {
                 Ok(offset) => offset,
-                Err(_) => {
+                Err(e) => {
                     if self.config.log_errors {
-                        api.log(format!(
+                        tracing::warn!(
+                            ?e,
                             "{}{}{}{}{}",
                             s!("get_client_class("),
                             entity_ptr,
                             s!("): lea rax, offset {get_client_entity="),
                             get_client_entity,
                             s!("}")
-                        ));
+                        );
                     }
-                    return None;
+                    return Err(e);
                 }
             };
 
@@ -319,24 +457,25 @@ impl GetClientEntity {
             // Read ClientClass instance
             let client_class = match api.vm_read::<sdk::ClientClass>(client_class_ptr).await {
                 Ok(cc) => cc,
-                Err(_) => {
+                Err(e) => {
                     if self.config.log_errors {
-                        api.log(format!(
+                        tracing::warn!(
                             "{}{}{}{}{}",
                             s!("get_client_class("),
                             entity_ptr,
                             s!("): ClientClass {get_client_entity="),
                             get_client_entity,
                             s!("}")
-                        ));
+                        );
                     }
-                    return None;
+                    return Err(e);
                 }
             };
 
             // FIXME! Figure out why CParticleSystem is horribly broken...
             if client_class.ClassID < 0 || client_class.ClassID > 500 {
-                return None;
+                //return Ok(None);
+                anyhow::bail!("{}{}", s!("client_class.ClassID="), client_class.ClassID);
             }
 
             // Read pNetworkName
@@ -346,9 +485,10 @@ impl GetClientEntity {
                 .await
             {
                 Ok(name) => name,
-                Err(_) => {
+                Err(e) => {
                     if self.config.log_errors {
-                        api.log(format!(
+                        tracing::warn!(
+                            ?e,
                             "{}{}{}{}{}{}{}",
                             s!("get_client_class("),
                             entity_ptr,
@@ -357,25 +497,22 @@ impl GetClientEntity {
                             s!(", ClassID="),
                             client_class.ClassID,
                             s!("}")
-                        ));
+                        );
                     }
-                    return None;
+                    return Err(e);
                 }
             };
 
             let name_hash = crate::apexdream::base::hash(name);
             // Cache the lookup
             {
-                let mut lookup = self.lookup.lock();
-                lookup.insert(
-                    client_networkable,
-                    ClientClassData {
-                        client_class,
-                        name_hash,
-                        name_buf,
-                    },
-                );
-                lookup.get(&client_networkable).cloned()
+                let data = ClientClassData {
+                    client_class,
+                    name_hash,
+                    name_buf,
+                };
+                self.lookup.insert(client_networkable, data.clone());
+                Ok(Some(data))
             }
         }
     }
@@ -436,6 +573,13 @@ impl super::GameState {
             .ent_info
             .iter()
             .position(|ent_info| ent_info.pEntity == entity_ptr)
+    }
+    /// Given the entity index, find its entity pointer
+    pub fn entity_ptr(&self, entity_index: u32) -> Option<sdk::Ptr> {
+        self.entity_list
+            .ent_info
+            .get(entity_index as usize)
+            .map(|info| info.pEntity)
     }
     /// Returns the local player entity if it exists.
     pub fn local_player(&self) -> Option<&PlayerEntity> {

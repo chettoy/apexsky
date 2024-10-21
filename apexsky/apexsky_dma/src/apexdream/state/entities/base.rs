@@ -1,3 +1,5 @@
+use tracing::Instrument;
+
 use super::*;
 use std::str;
 
@@ -12,6 +14,7 @@ pub struct BaseEntity {
     pub model_name: ModelName,
 }
 impl BaseEntity {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(entity_ptr: sdk::Ptr, index: u32, client_class_rva: u32) -> Box<dyn Entity> {
         Box::new(BaseEntity {
             entity_ptr,
@@ -61,7 +64,8 @@ impl Entity for BaseEntity {
                         .await;
                 }
             }
-        };
+        }
+        .instrument(tracing::info_span!("0"));
 
         let entity_ptr = self.entity_ptr;
         // let _ = process.vm_read_into(entity_ptr.field(data.entity_signifier_name + 9), &mut self.signifier_name).await;
@@ -70,7 +74,8 @@ impl Entity for BaseEntity {
             let _ = api
                 .vm_read_into(entity_ptr.field(data.entity_origin), &mut self.origin)
                 .await;
-        };
+        }
+        .instrument(tracing::info_span!("1"));
 
         let task_update_model_name = async {
             if let Ok(model_name_ptr) = api
@@ -79,7 +84,8 @@ impl Entity for BaseEntity {
             {
                 self.model_name.update(api, model_name_ptr).await;
             }
-        };
+        }
+        .instrument(tracing::info_span!("2"));
 
         tokio::join!(
             task_update_network_name,

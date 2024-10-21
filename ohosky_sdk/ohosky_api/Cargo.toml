@@ -1,0 +1,38 @@
+[package]
+name = "ohosky_api"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "ohosky_api"
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+anyhow = { version = "1.0.95", features = ["backtrace"] }
+async-ffi = { version = "0.5.0", features = ["macros"], optional = true }
+async-trait = "0.1.84"
+cxx = { version = "1.0.136", features = ["c++20"], optional = true }
+dataview = "1.0.1"
+obfstr = "0.4.4"
+rkyv = "0.8.9"
+safer-ffi = { version = "0.1.13", features = ["async-fn", "nightly", "serde", "tokio"], optional = true }
+serde = { version = "1.0.217", features = ["derive"] }
+secrecy = "0.10.3"
+tokio = { version = "1.42.0", features = [
+    "sync",
+    "macros",
+    "io-util",
+    "rt",
+    "time",
+] }
+tracing = "0.1.41"
+wit-bindgen = { version = "0.36.0", optional = true }
+
+[build-dependencies]
+cxx-build = "1.0.136"
+
+[features]
+default = []
+cxx = ["dep:cxx"]
+ohosky = ["wit-bindgen"]
+skydream = ["async-ffi", "safer-ffi"]

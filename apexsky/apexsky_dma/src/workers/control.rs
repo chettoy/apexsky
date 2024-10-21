@@ -1,10 +1,11 @@
 use std::time::Duration;
 
-use apexsky::kbd_backlight_blink;
 use obfstr::obfstr as s;
 use tokio::{sync::watch, time::sleep};
 use tracing::instrument;
 
+use crate::global_state::G_CONTEXT;
+use crate::lock_config;
 use crate::SharedStateWrapper;
 
 #[instrument(skip_all)]
@@ -24,4 +25,20 @@ pub async fn control_loop(
     }
     tracing::debug!("{}", s!("task end"));
     Ok(())
+}
+
+pub fn kbd_backlight_blink(count: i32) -> bool {
+    if !(1..=10).contains(&count)
+        || !lock_config!()
+            .settings
+            .feature_settings
+            .kbd_backlight_control
+    {
+        return false;
+    }
+    (|| -> anyhow::Result<()> {
+        G_CONTEXT.lock().unwrap().kbd_blink(count.try_into()?)?;
+        Ok(())
+    })()
+    .is_ok()
 }

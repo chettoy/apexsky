@@ -1,16 +1,18 @@
-use std::mem::size_of;
-
-use apexsky::{aimbot::normalize_angles, offsets::G_OFFSETS};
-use apexsky_dmalib::access::{AccessType, MemApi, PendingAccessRequest, PendingMemRead};
+use apex1_common::aimbot::normalize_angles;
 use obfstr::obfstr as s;
+use ohosky_api::common::dmalib::IMemAccess;
 
+use crate::G_OFFSETS;
 use crate::apexdream::base::math;
+use crate::skyapi::dmalib;
 
 use super::{AimActuator, AimbotAction};
 
+const DEFAULT_REQ_ID: usize = 0;
+
 #[derive(Debug)]
 pub struct MemAimHelper {
-    pub mem: MemApi,
+    pub mem: dmalib::MemAccess,
     pub apex_base: u64,
     pub lplayer_ptr: u64,
 }
@@ -46,45 +48,35 @@ impl MemAimHelper {
         }
     }
 
-    async fn read_ptr(mem: &MemApi) -> Option<(u64, u64)> {
-        let apex_base = AccessType::mem_baseaddr()
-            .with_priority(1)
-            .dispatch(&mem)
+    async fn read_ptr(mem: &dmalib::MemAccess) -> Option<(u64, u64)> {
+        let apex_base = mem.get_baseaddr(dmalib::PRIO_HIGH).await.ok()??;
+        let lplayer_ptr = mem
+            .read::<u64>(
+                apex_base + G_OFFSETS.local_ent,
+                dmalib::PRIO_HIGH,
+                DEFAULT_REQ_ID,
+            )
             .await
-            .ok()?
-            .await
-            .ok()??;
-        let lplayer_ptr =
-            AccessType::mem_read(apex_base + G_OFFSETS.local_ent, size_of::<u64>(), 0)
-                .with_priority(1)
-                .dispatch(&mem)
-                .await
-                .ok()?
-                .recv_for::<u64>()
-                .await
-                .ok()?;
+            .ok()?;
         Some((apex_base, lplayer_ptr))
     }
 
-    pub async fn read_viewangles(mem: &MemApi, ptr: u64) -> anyhow::Result<[f32; 3]> {
-        AccessType::mem_read(ptr + G_OFFSETS.player_viewangles, size_of::<[f32; 3]>(), 0)
-            .with_priority(50)
-            .dispatch(mem)
-            .await?
-            .recv_for::<[f32; 3]>()
+    pub async fn read_viewangles(mem: &dmalib::MemAccess, ptr: u64) -> anyhow::Result<[f32; 3]> {
+        mem.read::<[f32; 3]>(ptr + G_OFFSETS.player_viewangles, 50, DEFAULT_REQ_ID)
             .await
     }
 
-    pub async fn write_viewangles(mem: &MemApi, ptr: u64, data: &[f32; 3]) -> anyhow::Result<()> {
-        AccessType::mem_write_typed::<[f32; 3]>(ptr + G_OFFSETS.player_viewangles, data, 0)
-            .with_priority(50)
-            .dispatch(mem)
-            .await?
-            .await?
+    pub async fn write_viewangles(
+        mem: &dmalib::MemAccess,
+        ptr: u64,
+        data: &[f32; 3],
+    ) -> anyhow::Result<()> {
+        mem.write::<[f32; 3]>(ptr + G_OFFSETS.player_viewangles, data, 50, DEFAULT_REQ_ID)
+            .await
     }
 
     pub async fn write_attack_button(
-        mem: &MemApi,
+        mem: &dmalib::MemAccess,
         apex_base: u64,
         force_attack_state: i32,
     ) -> anyhow::Result<()> {
@@ -93,19 +85,17 @@ impl MemAimHelper {
             return Ok(());
         }
 
-        AccessType::mem_write_typed::<i32>(
+        mem.write::<i32>(
             apex_base + G_OFFSETS.in_attack + 0x8,
             &force_attack_state,
-            0,
+            50,
+            DEFAULT_REQ_ID,
         )
-        .with_priority(50)
-        .dispatch(mem)
-        .await?
-        .await?
+        .await
     }
 
     pub async fn write_use_button(
-        mem: &MemApi,
+        mem: &dmalib::MemAccess,
         apex_base: u64,
         force_use_state: i32,
     ) -> anyhow::Result<()> {
@@ -114,11 +104,13 @@ impl MemAimHelper {
             return Ok(());
         }
 
-        AccessType::mem_write_typed::<i32>(apex_base + G_OFFSETS.in_use + 0x8, &force_use_state, 0)
-            .with_priority(50)
-            .dispatch(mem)
-            .await?
-            .await?
+        mem.write(
+            apex_base + G_OFFSETS.in_use + 0x8,
+            &force_use_state,
+            50,
+            DEFAULT_REQ_ID,
+        )
+        .await
     }
 }
 

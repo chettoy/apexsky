@@ -1,15 +1,15 @@
 use std::time::Duration;
 
-use apexsky::global_state::G_STATE;
-use apexsky_proto::pb::apexlegends::{
+use apex1_common::pb::apexlegends::{
     AimEntityData, AimResultData, AimTargetHitbox, AimTargetItem, AimTargetList, AimbotState,
     EspData, EspDataOption, EspSettings, EspVisualsFlag, GSettings, Loots, Matrix4x4, Players,
     SpectatorList,
 };
-use apexsky_proto::pb::esp_service::esp_service_server::{EspService, EspServiceServer};
-use apexsky_proto::pb::esp_service::{
+use apex1_common::pb::esp_service::esp_service_server::{EspService, EspServiceServer};
+use apex1_common::pb::esp_service::{
     EchoRequest, EchoResponse, GetLootsRequest, GetPlayersRequest,
 };
+use apex1_common::utils::get_unix_timestamp_in_millis;
 use futures_util::FutureExt;
 use obfstr::obfstr as s;
 use tokio::sync::oneshot;
@@ -19,8 +19,9 @@ use tonic::codec::CompressionEncoding;
 use tonic::{transport::Server, Request, Response, Status};
 use tracing::instrument;
 
-use crate::api_impl::GameApiHandle;
 use crate::game::data::ItemId;
+use crate::global_state::G_STATE;
+use crate::GameApiHandle;
 use crate::PRINT_LATENCY;
 
 #[tonic::async_trait]
@@ -46,8 +47,8 @@ impl EspService for GameApiHandle {
             Players {
                 version: 0,
                 players: players
-                    .into_iter()
-                    .map(|(_, pl)| pl.get_buf().clone())
+                    .into_values()
+                    .map(|pl| pl.get_buf().clone())
                     .collect(),
                 data_timestamp,
             }
@@ -120,7 +121,7 @@ impl EspService for GameApiHandle {
                 println!(
                     "{}{:.1}",
                     s!("esp_service data latency "),
-                    apexsky::aimbot::get_unix_timestamp_in_millis() as f64 - update_time * 1000.0
+                    get_unix_timestamp_in_millis() as f64 - update_time * 1000.0
                 );
             }
 
@@ -138,9 +139,7 @@ impl EspService for GameApiHandle {
                 .borrow()
                 .iter()
                 .filter_map(|target_info| {
-                    let Some(entity) = aim_entities.get(&target_info.entity_ptr) else {
-                        return None;
-                    };
+                    let entity = aim_entities.get(&target_info.entity_ptr)?;
                     Some(AimTargetItem {
                         id: target_info.entity_ptr,
                         info: Some(target_info).cloned(),
@@ -163,6 +162,7 @@ impl EspService for GameApiHandle {
                             is_knocked: entity.is_knocked(),
                             is_player: entity.is_player(),
                             is_visible: entity.is_visible(),
+                            visible_duration: entity.get_visible_duration(),
                         }),
                         player_data: if target_info.is_npc {
                             None
@@ -266,7 +266,7 @@ impl EspService for GameApiHandle {
                     .actions_duration
                     .load(std::sync::atomic::Ordering::Relaxed),
                 data_timestamp: update_time,
-                game_fps: game_fps,
+                game_fps,
                 current_zoom_fov: {
                     aimbot_state
                         .is_some_and(|(aimbot, _)| aimbot.get_zoom_state() > 0)
@@ -298,7 +298,7 @@ impl EspService for GameApiHandle {
         let reply = {
             let g_settings = G_STATE.lock().unwrap().config.settings.clone();
             EspSettings {
-                esp: if g_settings.no_overlay { 0 } else { 1 },
+                esp: if g_settings.no_esp_service { 0 } else { 1 },
                 screen_width: g_settings.screen_width,
                 screen_height: g_settings.screen_height,
                 yuan_p: g_settings.yuan_p,
@@ -335,24 +335,24 @@ impl EspService for GameApiHandle {
                         0
                     })
                 },
-                mini_map_radar: g_settings.mini_map_radar,
-                main_map_radar: g_settings.main_radar_map,
+                mini_map_radar: g_settings.feature_settings.mini_map_radar,
+                main_map_radar: g_settings.feature_settings.main_radar_map,
                 max_dist: g_settings.max_dist,
                 aim_distance: g_settings.aimbot_settings.aim_dist,
-                show_aim_target: g_settings.show_aim_target,
+                show_aim_target: g_settings.feature_settings.show_aim_target,
                 glow_color_viz: Some(
                     [
-                        g_settings.glow_r_viz,
-                        g_settings.glow_g_viz,
-                        g_settings.glow_b_viz,
+                        g_settings.color_settings.glow_r_viz,
+                        g_settings.color_settings.glow_g_viz,
+                        g_settings.color_settings.glow_b_viz,
                     ]
                     .into(),
                 ),
                 glow_color_notviz: Some(
                     [
-                        g_settings.glow_r_not,
-                        g_settings.glow_g_not,
-                        g_settings.glow_b_not,
+                        g_settings.color_settings.glow_r_not,
+                        g_settings.color_settings.glow_g_not,
+                        g_settings.color_settings.glow_b_not,
                     ]
                     .into(),
                 ),
@@ -370,7 +370,12 @@ impl EspService for GameApiHandle {
                     ItemId::EnergyAmmoMag3.0,
                     ItemId::EnergyAmmoMag4.0,
                     ItemId::StockRegular3.0,
-                    ItemId::TurboCharger.0,
+                    // ItemId::TurboCharger.0,
+                    ItemId::SelectfireReceiver.0,
+                    ItemId::HammerPoint.0,
+                    ItemId::BoostedLoader.0,
+                    // ItemId::DisruptorRounds.0,
+                    ItemId::GunShieldGenerator.0,
                 ],
             }
         };
@@ -403,7 +408,7 @@ pub async fn esp_loop(
 
     while *active.borrow_and_update() {
         sleep(Duration::from_secs(1)).await;
-        if G_STATE.lock().unwrap().config.settings.no_overlay {
+        if G_STATE.lock().unwrap().config.settings.no_esp_service {
             if let Some((task, shutdown_tx)) = server_task {
                 // Stop server
                 if !task.is_finished() {
@@ -432,6 +437,7 @@ pub async fn esp_loop(
                 server_task = None;
             }
         } else {
+            #[allow(clippy::collapsible_else_if)]
             if let Some((task, _)) = &server_task {
                 // Check task
                 if task.is_finished() {

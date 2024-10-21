@@ -55,6 +55,7 @@ pub struct CNetStringTable {
     /*0x50*/ pub items_client_side: sdk::Ptr<CNetStringDict>,
 }
 
+#[instrument(skip_all)]
 pub async fn load_string_table(
     st: &mut Box<[String]>,
     api: &Api,
@@ -62,9 +63,8 @@ pub async fn load_string_table(
     offset: u32,
 ) -> anyhow::Result<()> {
     let mut ptr = sdk::Ptr::<CNetStringTable>::NULL;
-    let _ = api
-        .vm_read_into(api.apex_base.field(offset), &mut ptr)
-        .await;
+    api.vm_read_into(api.apex_base.field(offset), &mut ptr)
+        .await?;
     if ptr.is_null() {
         return Ok(());
     }
@@ -72,7 +72,7 @@ pub async fn load_string_table(
     let dict = api.vm_read(table.items).await?;
     *st = vec![String::new(); dict.used as usize].into_boxed_slice();
 
-    async fn read_item(api: &Api, ptr: intptr::IntPtr<CNetStringTableItem>) -> Option<String> {
+    async fn read_item(api: &Api, ptr: sdk::Ptr<CNetStringTableItem>) -> Option<String> {
         if let Ok(item) = api.vm_read(ptr).await {
             let mut buffer = [0u8; 64];
             if let Ok(string) = api.vm_read_cstr(item.string, &mut buffer).await {
@@ -108,18 +108,21 @@ pub async fn load_string_table(
 #[derive(Default)]
 pub struct StringTables {
     pub weapon_names: Box<[String]>,
+    retry: bool,
 }
 impl StringTables {
     #[instrument(skip_all)]
     pub async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
         // Read stringtable once on connect
-        if ctx.connected {
+        if ctx.connected || self.retry {
+            if self.retry {
+                tracing::warn!("{}", s!("retry load string tables"));
+            }
             let data = &ctx.data;
-            load_string_table(&mut self.weapon_names, api, ctx, data.nst_weapon_names)
+            self.retry = load_string_table(&mut self.weapon_names, api, ctx, data.nst_weapon_names)
                 .await
-                .unwrap_or_else(|e| {
-                    tracing::warn!(?e);
-                });
+                .inspect_err(|e| tracing::warn!(?e))
+                .is_err();
         }
     }
 }
@@ -127,8 +130,7 @@ impl StringTables {
 impl GameState {
     pub fn weapon_string(&self, weapon_name_index: i32) -> Option<&str> {
         Some(
-            &*self
-                .string_tables
+            self.string_tables
                 .weapon_names
                 .get(weapon_name_index as usize)?,
         )
@@ -162,17 +164,17 @@ impl GameState {
         if weapon_name.ends_with(s!("_primary")) {
             return true;
         }
-        return false;
+        false
     }
     pub fn weapon_is_charged(&self, weapon_name_index: i32) -> bool {
-        match self.weapon_name(weapon_name_index) {
-            sdk::WeaponName::BOCEK_BOW => true,
-            sdk::WeaponName::THERMITE_GRENADE => true,
-            sdk::WeaponName::FRAG_GRENADE => true,
-            sdk::WeaponName::ARC_STAR => true,
-            sdk::WeaponName::CLUSTER_BOMB_LAUNCHER => true,
-            sdk::WeaponName::THROWING_KNIFE => true,
-            _ => false,
-        }
+        matches!(
+            self.weapon_name(weapon_name_index),
+            sdk::WeaponName::BOCEK_BOW
+                | sdk::WeaponName::THERMITE_GRENADE
+                | sdk::WeaponName::FRAG_GRENADE
+                | sdk::WeaponName::ARC_STAR
+                | sdk::WeaponName::CLUSTER_BOMB_LAUNCHER
+                | sdk::WeaponName::THROWING_KNIFE
+        )
     }
 }
