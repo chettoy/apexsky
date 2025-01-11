@@ -10,12 +10,12 @@ use tracing::instrument;
 
 use crate::game::data::*;
 use crate::global_state::G_STATE;
-use crate::SharedStateWrapper;
+use crate::SharedStateType;
 
 #[instrument]
 pub async fn items_loop(
     mut active: watch::Receiver<bool>,
-    shared_state: SharedStateWrapper,
+    shared_state: SharedStateType,
     items_glow_tx: watch::Sender<Vec<(u64, u8)>>,
 ) -> anyhow::Result<()> {
     let mut start_instant = Instant::now();

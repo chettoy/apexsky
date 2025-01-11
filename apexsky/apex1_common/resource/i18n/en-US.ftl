@@ -273,3 +273,4 @@ menu-item-triggerbot-smooth = Triggerbot Smooth
 menu-item-glow-features = Glow Settings
 glow-features-menu-title = Glow Menu
 menu-item-weapon-model-transparent = Weapon Model Transparent
+menu-item-toggle-esp-web-server = ESP Web

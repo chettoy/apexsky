@@ -26,7 +26,7 @@ use crate::{
     skyapi,
     skyapi::dmalib,
     workers::items::LootInt,
-    SharedStateWrapper,
+    SharedStateType,
 };
 use crate::{
     apexdream::state::GameState,
@@ -46,7 +46,7 @@ const REQUEST_ID: usize = 0; //obfstr::random!(usize);
 #[tracing::instrument(skip_all)]
 pub async fn actions_loop(
     mut active: watch::Receiver<bool>,
-    shared_state: SharedStateWrapper,
+    shared_state: SharedStateType,
     access_tx: dmalib::MemAccess,
     aim_key_tx: watch::Sender<AimKeyState>,
     aim_select_tx: watch::Sender<Vec<AimTargetInfo>>,
@@ -880,7 +880,7 @@ pub async fn actions_loop(
 
 #[tracing::instrument(skip_all)]
 fn collect_aim_targets(
-    state: SharedStateWrapper,
+    state: SharedStateType,
     apex_state: &GameState,
     g_settings: &Settings,
     items_glow_rx: watch::Receiver<Vec<(u64, u8)>>,

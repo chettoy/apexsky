@@ -30,6 +30,7 @@ use crate::game::player::GamePlayer;
 
 pub use apex1_common::common::{get_config_file_path, load_settings, save_settings};
 pub use apex1_common::{config, lock_config, love_players, noobfstr};
+pub use obfstr::obfstr;
 pub use ohosky_api::skydream as skyapi;
 
 mod actuator;
@@ -77,13 +78,13 @@ struct SharedState {
     aimbot_state: Mutex<Option<(Aimbot, Duration)>>,
 }
 
-pub(crate) type SharedStateWrapper = Arc<SharedState>;
+pub(crate) type SharedStateType = Arc<SharedState>;
 
 #[derive(Debug)]
 struct State {
     active: bool,
     active_tx: watch::Sender<bool>,
-    shared_state: SharedStateWrapper,
+    shared_state: SharedStateType,
     actions_t: Option<JoinHandle<anyhow::Result<()>>>,
     aim_t: Option<JoinHandle<anyhow::Result<()>>>,
     control_t: Option<JoinHandle<anyhow::Result<()>>>,
@@ -91,7 +92,7 @@ struct State {
     items_t: Option<JoinHandle<anyhow::Result<()>>>,
     remote_t: Option<JoinHandle<anyhow::Result<()>>>,
     terminal_task: Option<JoinHandle<()>>,
-    usermod_t: Option<JoinHandle<anyhow::Result<()>>>,
+    web_t: Option<JoinHandle<anyhow::Result<()>>>,
 }
 
 impl State {
@@ -109,7 +110,7 @@ impl State {
             items_t: None,
             remote_t: None,
             terminal_task: None,
-            usermod_t: None,
+            web_t: None,
         }
     }
 
@@ -160,7 +161,7 @@ pub(crate) struct TaskChannels {
 
 #[derive(Debug, Clone)]
 pub struct GameApiHandle {
-    pub(crate) state: SharedStateWrapper,
+    pub(crate) state: SharedStateType,
     pub(crate) channels: TaskChannels,
     pub(crate) access_tx: skyapi::dmalib::MemAccess,
 }
@@ -253,6 +254,9 @@ impl TaskManager for State {
             self.active_tx.subscribe(),
             game_api,
         )));
+        self.web_t = Some(task::spawn(workers::web::web_loop(
+            self.active_tx.subscribe(),
+        )));
     }
 
     async fn stop_tasks(&mut self) {
@@ -272,7 +276,10 @@ impl TaskManager for State {
         if let Some(handle) = self.items_t.take() {
             handle.await.ok();
         }
-        if let Some(handle) = self.usermod_t.take() {
+        if let Some(handle) = self.remote_t.take() {
+            handle.await.ok();
+        }
+        if let Some(handle) = self.web_t.take() {
             handle.await.ok();
         }
     }
@@ -314,12 +321,13 @@ impl TaskManager for State {
                 }
             }
         }
-        check_task(&mut self.usermod_t, s!("usermod_thread")).await;
         check_task(&mut self.actions_t, s!("actions_t")).await;
         check_task(&mut self.aim_t, s!("aim_t")).await;
         check_task(&mut self.control_t, s!("control_t")).await;
         check_task(&mut self.esp_t, s!("esp_t")).await;
         check_task(&mut self.items_t, s!("items_t")).await;
+        check_task(&mut self.remote_t, s!("remote_t")).await;
+        check_task(&mut self.web_t, s!("web_t")).await;
     }
 }
 
@@ -395,7 +403,7 @@ fn init_logger(print: bool) -> tracing_appender::non_blocking::WorkerGuard {
     let filter_layer = EnvFilter::try_from_default_env()
         .or_else(|_| {
             EnvFilter::try_new(s!(
-                "apexsky_dma=warn,apex1_common=warn,apexsky_dma::apexdream=warn,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::workers::items=info"
+                "apexsky_dma=warn,apex1_common=warn,apexsky_dma::apexdream=warn,apexsky_dma::actuator=info,apexsky_dma::workers::aim=warn,apexsky_dma::workers::actions=warn,apexsky_dma::workers::esp=warn,apexsky_dma::workers::web=warn,apexsky_dma::workers::items=info"
             ))
         })
         .unwrap();

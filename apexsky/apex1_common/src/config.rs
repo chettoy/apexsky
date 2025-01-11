@@ -21,6 +21,11 @@ pub struct Config {
 pub struct EspServiceConfig {
     pub listen: SocketAddr,
     pub accept_http1: bool,
+    pub web_server_listen: SocketAddr,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub service_serving: Option<SocketAddr>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub web_serving: Option<SocketAddr>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -41,6 +46,7 @@ pub struct DeviceConfig {
 pub struct Settings {
     pub load_settings: bool,
     pub no_esp_service: bool,
+    pub esp_web_server: bool,
     pub game_ver_dx11: bool,
     pub screen_width: u32,
     pub screen_height: u32,
@@ -284,6 +290,9 @@ impl Default for EspServiceConfig {
         EspServiceConfig {
             listen: s!("[::1]:50051").parse().unwrap(),
             accept_http1: true,
+            web_server_listen: s!("[::1]:8051").parse().unwrap(),
+            service_serving: None,
+            web_serving: None,
         }
     }
 }
@@ -312,6 +321,7 @@ impl Default for Settings {
         Settings {
             load_settings: true,
             no_esp_service: true,
+            esp_web_server: false,
             game_ver_dx11: false,
             screen_width: 1920,
             screen_height: 1080,

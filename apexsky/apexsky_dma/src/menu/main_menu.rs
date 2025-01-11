@@ -1,8 +1,12 @@
+use std::io::Write;
+
 use super::{
     handler_toggle_settings, ratatui, GeneralMenu, GeneralMenuFormat, MenuBuilder, MenuBuilderExt,
     MenuFormatter, MenuLevel, TerminalMenu,
 };
-use crate::{config, global_state::G_CONTEXT, i18n::I18nBundle, i18n_msg, lock_config};
+use crate::{
+    config, global_state::G_CONTEXT, i18n::I18nBundle, i18n_msg, lock_config, obfstr as s,
+};
 use ratatui::{
     style::{Style, Stylize},
     text::Span,
@@ -250,12 +254,99 @@ pub(super) fn build_main_menu(
                     )
                 },
             ),
-            |_, _| {
-                let settings = &mut lock_config!().settings;
-                settings.no_esp_service = !settings.no_esp_service;
+            handler_toggle_settings!(.no_esp_service),
+            (),
+        )
+        .add_item(
+            menu_fmt.format_item(
+                format!("33 - {}", i18n_msg!(menu_fmt, MenuItemToggleEspWebServer)),
+                if settings.esp_web_server {
+                    Span::styled(
+                        i18n_msg!(menu_fmt, MenuValueEnabled).to_string(),
+                        Style::default().green(),
+                    )
+                } else {
+                    Span::from(i18n_msg!(menu_fmt, MenuValueDisabled).to_string())
+                },
+            ),
+            |ctx, _| {
+                let start = {
+                    let settings = &mut lock_config!().settings;
+                    settings.esp_web_server = !settings.esp_web_server;
+                    settings.esp_web_server
+                };
+                if start {
+                    // Set the current menu to pause
+                    let pause = ctx.pause_menu();
+                    // Do not block the handler from returning
+                    std::thread::spawn(move || {
+                        pause.wait_pause();
+
+                        let mut web_addr = None;
+                        let mut connect_addr = None;
+                        for _ in 0..5 {
+                            let state = lock_config!().esp_service.clone();
+                            if state.web_serving.is_some() {
+                                web_addr = state.web_serving;
+                                connect_addr = state.service_serving;
+                                break;
+                            }
+                            println!("{}", s!("Starting web server.."));
+                            std::thread::sleep(std::time::Duration::from_secs(1));
+                        }
+                        let Some(web_addr) = web_addr else {
+                            println!("{}", s!("Failed to start web server."));
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                            pause.resume();
+                            return;
+                        };
+                        let Some(connect_addr) = connect_addr else {
+                            println!("{}", s!("ESP Service not running."));
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                            pause.resume();
+                            return;
+                        };
+                        let url = format!(
+                            "{}{}{}{}",
+                            s!("http://"),
+                            web_addr,
+                            s!("/?connect=http://"),
+                            connect_addr
+                        );
+
+                        println!("{url}");
+                        print_qr_code(&url);
+                        println!();
+
+                        for i in 0..10 {
+                            print!(" {} ", 10 - i);
+                            std::io::stdout().flush().unwrap();
+                            std::thread::sleep(std::time::Duration::from_secs(1));
+                        }
+                        println!();
+
+                        pause.resume();
+                    });
+                }
+
                 None
             },
             (),
         )
         .into()
+}
+
+fn print_qr_code<D>(data: D)
+where
+    D: AsRef<[u8]>,
+{
+    use qrcode::render::unicode;
+    use qrcode::QrCode;
+    let code = QrCode::new(data).unwrap();
+    let image = code
+        .render::<unicode::Dense1x2>()
+        .dark_color(unicode::Dense1x2::Light)
+        .light_color(unicode::Dense1x2::Dark)
+        .build();
+    println!("{}", image);
 }

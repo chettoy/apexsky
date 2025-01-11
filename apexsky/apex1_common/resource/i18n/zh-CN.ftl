@@ -275,3 +275,4 @@ menu-item-triggerbot-smooth = 自动扳机平滑度
 menu-item-glow-features = 发光选项
 glow-features-menu-title = 发光菜单
 menu-item-weapon-model-transparent = 武器模型透明
+menu-item-toggle-esp-web-server = ESP网页

@@ -436,6 +436,7 @@ pub async fn esp_loop(
                 }
                 server_task = None;
             }
+            G_STATE.lock().unwrap().config.esp_service.service_serving = None;
         } else {
             #[allow(clippy::collapsible_else_if)]
             if let Some((task, _)) = &server_task {
@@ -468,13 +469,24 @@ pub async fn esp_loop(
                     .send_compressed(CompressionEncoding::Zstd)
                     .send_compressed(CompressionEncoding::Gzip);
                 let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
-                let task = tokio::spawn(
+                let task: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
+                    let listener = tokio::net::TcpListener::bind(config.listen).await?;
+
+                    let listen_addr = listener.local_addr()?;
+                    tracing::info!("esp service listening on {}", listen_addr);
+                    G_STATE.lock().unwrap().config.esp_service.service_serving = Some(listen_addr);
+
+                    let stream = tokio_stream::wrappers::TcpListenerStream::new(listener);
+
                     Server::builder()
                         .trace_fn(|_| tracing::info_span!("esp_server"))
                         .accept_http1(config.accept_http1)
                         .add_service(tonic_web::enable(service))
-                        .serve_with_shutdown(config.listen, shutdown_rx.map(drop)),
-                );
+                        .serve_with_incoming_shutdown(stream, shutdown_rx.map(drop))
+                        .await?;
+
+                    Ok(())
+                });
                 server_task = Some((task, shutdown_tx));
             }
         }

@@ -19,7 +19,7 @@ use tokio::sync::watch;
 use tokio::time::{Instant, sleep, sleep_until};
 use tracing::{instrument, trace};
 
-use crate::SharedStateWrapper;
+use crate::SharedStateType;
 use crate::actuator::{
     AimActuator, AimbotAction, DeviceAimActuator, KmboxAimActuator, MemAimHelper, QmpAimActuator,
 };
@@ -67,7 +67,7 @@ async fn create_aim_actuator_from_device(
 #[instrument(skip_all)]
 pub async fn aimbot_loop(
     mut active: watch::Receiver<bool>,
-    mut state: SharedStateWrapper,
+    mut state: SharedStateType,
     access_tx: dmalib::MemAccess,
     mut aim_key_rx: watch::Receiver<AimKeyState>,
     mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,

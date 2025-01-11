@@ -6,12 +6,12 @@ use tracing::instrument;
 
 use crate::global_state::G_CONTEXT;
 use crate::lock_config;
-use crate::SharedStateWrapper;
+use crate::SharedStateType;
 
 #[instrument(skip_all)]
 pub async fn control_loop(
     mut active: watch::Receiver<bool>,
-    shared_state: SharedStateWrapper,
+    shared_state: SharedStateType,
 ) -> anyhow::Result<()> {
     tracing::debug!("{}", s!("task start"));
     while *active.borrow_and_update() {

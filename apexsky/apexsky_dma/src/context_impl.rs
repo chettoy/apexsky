@@ -8,7 +8,7 @@ use crate::{
     apexdream::base::solver::ProjectileWeapon,
     game::{data::WeaponId, player::GamePlayer},
     workers::aim::ContextForAimbot,
-    SharedState, SharedStateWrapper,
+    SharedState, SharedStateType,
 };
 
 impl SharedState {
@@ -77,7 +77,7 @@ impl SharedState {
     }
 }
 
-impl ContextForAimbot for SharedStateWrapper {
+impl ContextForAimbot for SharedStateType {
     #[instrument]
     async fn get_aimbot_settings(&self) -> Option<apex1_common::aimbot::AimbotSettings> {
         G_STATE

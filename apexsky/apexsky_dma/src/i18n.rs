@@ -255,6 +255,7 @@ pub enum MessageId {
     MenuItemGlowFeatures,
     GlowFeaturesMenuTitle,
     MenuItemWeaponModelTransparent,
+    MenuItemToggleEspWebServer,
 }
 
 pub struct I18nBundle(pub FluentBundle<FluentResource>);
