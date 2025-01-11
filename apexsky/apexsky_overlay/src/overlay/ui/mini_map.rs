@@ -1,6 +1,6 @@
 use bevy::math::Vec3;
 use bevy_egui::egui;
-use egui::{pos2, Color32};
+use egui::{Color32, pos2};
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
 
@@ -9,15 +9,7 @@ use super::ID_RADAR_WINDOW;
 struct RadarSettings {
     radar: bool,
     radar_guides: bool,
-    team_radar: bool,
-    enemy_radar: bool,
-    x_axis_radar: i32,
-    y_axis_radar: i32,
-    radar_type: i32,
-    width_radar: i32,
-    height_radar: i32,
     distance_radar: i32,
-    distance_radar2: i32,
 }
 
 impl Default for RadarSettings {
@@ -25,15 +17,7 @@ impl Default for RadarSettings {
         Self {
             radar: true,
             radar_guides: true,
-            team_radar: true,
-            enemy_radar: true,
-            x_axis_radar: 0,
-            y_axis_radar: 400,
-            radar_type: 0,
-            width_radar: 400,
-            height_radar: 400,
             distance_radar: 250,
-            distance_radar2: 1000,
         }
     }
 }

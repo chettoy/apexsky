@@ -154,6 +154,7 @@ pub(crate) fn main() {
         )
         .add_systems(Update, system::game_esp::despawn_dead_targets)
         .add_systems(Update, ui::toggle_mouse_passthrough)
+        .add_systems(Update, ui::resize_canvas)
         .add_systems(
             Update,
             ui::ui_system.after(system::game_esp::follow_game_state),
@@ -166,7 +167,54 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut overlay_state: ResMut<MyOverlayState>,
+    #[cfg(feature = "web-wasm")] mut windows: Query<&mut Window>,
 ) {
+    #[cfg(feature = "web-wasm")]
+    {
+        let screen = web_sys::window().unwrap().screen().unwrap();
+        let mut window = windows.single_mut();
+
+        let scale_factor = window.resolution.base_scale_factor();
+
+        let web_wh: (u32, u32) = (
+            screen.width().unwrap().try_into().unwrap(),
+            screen.height().unwrap().try_into().unwrap(),
+        );
+        let web_phys_wh: (u32, u32) = (
+            (web_wh.0 as f32 * scale_factor) as u32,
+            (web_wh.1 as f32 * scale_factor) as u32,
+        );
+        tracing::info!(?web_wh, scale_factor, ?web_phys_wh);
+
+        window.resolution.set_scale_factor(1.0);
+        window
+            .resolution
+            .set_physical_resolution(web_phys_wh.0, web_phys_wh.1);
+    }
+
+    if cfg!(feature = "web-wasm") {
+        overlay_state.black_background = true;
+        commands.insert_resource(ClearColor(Color::BLACK));
+    }
+    if cfg!(feature = "native") {
+        //overlay_state.user_gesture = true;
+
+        #[cfg(feature = "native")]
+        match ui::UiPersistance::load_persistance() {
+            Ok(saved_ui_state) => {
+                commands.insert_resource(saved_ui_state);
+            }
+            Err(e) => match e.downcast::<std::io::Error>() {
+                Ok(e) => {
+                    if e.kind() != std::io::ErrorKind::NotFound {
+                        tracing::error!(%e, ?e)
+                    }
+                }
+                Err(e) => tracing::error!(%e, ?e),
+            },
+        }
+    }
+
     // Space between the two ears
     let gap = 12.0;
 
@@ -235,27 +283,4 @@ fn setup(
         Transform::from_xyz(0.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         model::MyCameraMarker,
     ));
-
-    if cfg!(feature = "web-wasm") {
-        overlay_state.black_background = true;
-        commands.insert_resource(ClearColor(Color::BLACK));
-    }
-    if cfg!(feature = "native") {
-        //overlay_state.user_gesture = true;
-
-        #[cfg(feature = "native")]
-        match ui::UiPersistance::load_persistance() {
-            Ok(saved_ui_state) => {
-                commands.insert_resource(saved_ui_state);
-            }
-            Err(e) => match e.downcast::<std::io::Error>() {
-                Ok(e) => {
-                    if e.kind() != std::io::ErrorKind::NotFound {
-                        tracing::error!(%e, ?e)
-                    }
-                }
-                Err(e) => tracing::error!(%e, ?e),
-            },
-        }
-    }
 }

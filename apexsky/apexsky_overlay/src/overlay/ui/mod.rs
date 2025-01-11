@@ -39,17 +39,47 @@ mod mini_map;
 static ID_HELLO_WINDOW: Lazy<egui::Id> = Lazy::new(|| egui::Id::new(s!("#hello_window")));
 static ID_RADAR_WINDOW: Lazy<egui::Id> = Lazy::new(|| egui::Id::new(s!("#radar_window")));
 
-// A simple system to handle some keyboard input and toggle on/off the hittest.
+pub fn resize_canvas(esp_system: Option<ResMut<EspSystem>>, mut windows: Query<&mut Window>) {
+    let Some(esp_settings) = esp_system.as_ref().and_then(|v| v.get_esp_settings()) else {
+        return;
+    };
+
+    let game_wh = (
+        esp_settings.screen_width as f32,
+        esp_settings.screen_height as f32,
+    );
+    let game_screen_size = (game_wh.0.powi(2) + game_wh.1.powi(2)).sqrt();
+
+    let mut window = windows.single_mut();
+
+    let mut window_size =
+        (window.resolution.width().powi(2) + window.resolution.height().powi(2)).sqrt();
+
+    if (window_size - game_screen_size).abs() < 1.0 {
+        return;
+    }
+    tracing::info!(?game_wh, game_screen_size, window_size, ?window.resolution);
+
+    let scale = window_size * window.resolution.base_scale_factor() / game_screen_size;
+    window.resolution.set_scale_factor(scale);
+
+    window_size = (window.resolution.width().powi(2) + window.resolution.height().powi(2)).sqrt();
+    tracing::info!(?game_wh, game_screen_size, window_size, ?window.resolution);
+    assert!((window_size - game_screen_size).abs() < 1.0);
+}
+
+/// A simple system to handle some keyboard input and toggle on/off the hittest.
+#[cfg(feature = "native")]
 pub fn toggle_mouse_passthrough(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut windows: Query<&mut Window>,
 ) {
-    #[cfg(feature = "native")]
-    {
-        let mut window = windows.single_mut();
-        window.cursor_options.hit_test = keyboard_input.pressed(KeyCode::Insert);
-    }
+    let mut window = windows.single_mut();
+    window.cursor_options.hit_test = keyboard_input.pressed(KeyCode::Insert);
 }
+
+#[cfg(not(feature = "native"))]
+pub fn toggle_mouse_passthrough() {}
 
 #[derive(Debug, Resource, Serialize, Deserialize)]
 pub(crate) struct UiPersistance {
@@ -198,7 +228,6 @@ pub fn ui_system(
     mut ui_state: ResMut<UiState>,
     mut show_entity_ball: ResMut<ShowEntityBall>,
     mut esp_system: Option<ResMut<EspSystem>>,
-    #[cfg(not(feature = "native"))] mut windows: Query<&mut Window>,
     time: Res<Time>,
     diagnostics: Res<DiagnosticsStore>,
     blobs: Res<Assets<Blob>>,
@@ -235,20 +264,6 @@ pub fn ui_system(
             ctx.set_fonts(egui_fonts);
 
             commands.remove_resource::<embedded::FontBlob>();
-        }
-    }
-
-    #[cfg(not(feature = "native"))]
-    if let Some(esp_settings) = esp_system.as_ref().and_then(|v| v.get_esp_settings()) {
-        let screen_wh = (
-            esp_settings.screen_width as f32,
-            esp_settings.screen_height as f32,
-        );
-        let mut window = windows.single_mut();
-        if (window.resolution.width() - screen_wh.0).abs() > f32::EPSILON
-            || (window.resolution.height() - screen_wh.1).abs() > f32::EPSILON
-        {
-            window.resolution = screen_wh.into();
         }
     }
 
