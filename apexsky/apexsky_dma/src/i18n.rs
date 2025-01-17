@@ -256,6 +256,8 @@ pub enum MessageId {
     GlowFeaturesMenuTitle,
     MenuItemWeaponModelTransparent,
     MenuItemToggleEspWebServer,
+    MenuItemPlayerGlowBrightness,
+    InputPromptPlayerGlowBrightness,
 }
 
 pub struct I18nBundle(pub FluentBundle<FluentResource>);

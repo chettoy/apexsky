@@ -74,19 +74,36 @@ pub(super) fn build_glow_features_menu(
             },
             (),
         )
+        .add_input_item(
+            menu_fmt.format_item(
+                format!(" 6 - {}", i18n_msg!(menu_fmt, MenuItemPlayerGlowBrightness)),
+                format!("{}", settings.glow_settings.player_brightness).into(),
+            ),
+            &i18n_msg!(menu_fmt, InputPromptPlayerGlowBrightness),
+            |_ctx, val, _| {
+                let i18n_bundle = &I18nBundle::new();
+                if let Ok(new_val) = val.parse::<u8>() {
+                    let settings = &mut lock_config!().settings;
+                    settings.glow_settings.player_brightness = new_val; //[0, 255]
+                    return None;
+                }
+                Some(i18n_msg!(i18n_bundle, InfoInvalidValue).to_string())
+            },
+            (),
+        )
         .add_toggle_item(
-            format!(" 6 - {}", i18n_msg!(menu_fmt, MenuItemPlayerArmorGlowColor)),
+            format!(" 7 - {}", i18n_msg!(menu_fmt, MenuItemPlayerArmorGlowColor)),
             settings.glow_settings.player_glow_armor_color,
             handler_toggle_settings!(.glow_settings.player_glow_armor_color),
         )
         .add_toggle_item(
-            format!(" 7 - {}", i18n_msg!(menu_fmt, MenuItemFavoritePlayerGlow)),
+            format!(" 8 - {}", i18n_msg!(menu_fmt, MenuItemFavoritePlayerGlow)),
             settings.glow_settings.player_glow_love_user,
             handler_toggle_settings!(.glow_settings.player_glow_love_user),
         )
         .add_item(
             menu_fmt.item_enabled(
-                format!(" 8 - {}", i18n_msg!(menu_fmt, MenuItemWeaponModelGlow)),
+                format!(" 9 - {}", i18n_msg!(menu_fmt, MenuItemWeaponModelGlow)),
                 settings.glow_settings.weapon_model_glow,
             ),
             |_handle: &mut TerminalMenu, _| {
@@ -113,7 +130,7 @@ pub(super) fn build_glow_features_menu(
         .add_dummy_item()
         .add_item(
             menu_fmt.item_text(format!(
-                "10 - {}",
+                "11 - {}",
                 i18n_msg!(menu_fmt, MenuItemBackToMainMenu)
             )),
             |handle: &mut TerminalMenu, _| {

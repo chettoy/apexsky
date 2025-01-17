@@ -7,7 +7,7 @@ menu-item-tdm-toggle = 团队模式
 menu-item-keyboard = 键鼠模式
 menu-item-gamepad = 手柄模式
 menu-item-item-glow = 物品透视
-menu-item-player-glow = 玩家热能
+menu-item-player-glow = 玩家发光
 menu-item-smooth-value = 平滑
 input-prompt-smooth-value = 瞄准平滑值 (50~500):
 info-invalid-smooth-value = 输入无效。
@@ -32,13 +32,13 @@ info-invalid-bone-value = 输入无效。
     瞄准部位可设置值: x, 0, 1, 2, 3
 info-invalid-value = 输入无效。
 menu-item-loot-glow-filled = 物品发光填充
-menu-item-player-glow-filled = 热能发光填充
-menu-item-player-outline-size = 热能轮廓尺寸
-input-prompt-player-outlines = 热能轮廓半径 (0~255):
-info-player-outline-updated = "热能轮廓半径" 已更新至: {$value}
+menu-item-player-glow-filled = 玩家发光填充
+menu-item-player-outline-size = 玩家发光轮廓尺寸
+input-prompt-player-outlines = 玩家发光轮廓半径 (0~255):
+info-player-outline-updated = "玩家发光轮廓半径" 已更新至: {$value}
 info-invalid-outline-size = 输入无效。
-    "热能轮廓大小" 只能介于 0 到 255 之间。
-menu-item-update-glow-colors = 热能颜色设置
+    "玩家发光轮廓大小" 只能介于 0 到 255 之间。
+menu-item-update-glow-colors = 发光颜色设置
 menu-item-change-ads-fov = 开镜FOV
 input-prompt-ads-fov = 设置 "开镜自瞄FOV" 值:
     (1~50)
@@ -276,3 +276,6 @@ menu-item-glow-features = 发光选项
 glow-features-menu-title = 发光菜单
 menu-item-weapon-model-transparent = 武器模型透明
 menu-item-toggle-esp-web-server = ESP网页
+menu-item-player-glow-brightness = 玩家发光亮度
+input-prompt-player-glow-brightness = 玩家发光亮度:
+    (0~255)

@@ -32,13 +32,13 @@ info-invalid-bone-value = 輸入無效。
     瞄準部位可設置爲: x, 0, 1, 2, 3
 info-invalid-value = 輸入無效。
 menu-item-loot-glow-filled = 物品發光填充
-menu-item-player-glow-filled = 熱能發光填充
-menu-item-player-outline-size = 熱能輪廓設置
-input-prompt-player-outlines = 熱能輪廓半徑 (0~255):
-info-player-outline-updated = "熱能輪廓半徑" 已設爲: {$value}
+menu-item-player-glow-filled = 玩家發光填充
+menu-item-player-outline-size = 玩家發光輪廓尺寸
+input-prompt-player-outlines = 玩家發光輪廓半徑 (0~255):
+info-player-outline-updated = "玩家發光輪廓半徑" 已設爲: {$value}
 info-invalid-outline-size = 輸入無效。
-    「熱能輪廓大小」必須介於 0 到 255 之間。
-menu-item-update-glow-colors = 熱能顏色設置
+    「玩家發光輪廓大小」必須介於 0 到 255 之間。
+menu-item-update-glow-colors = 發光顏色設置
 menu-item-change-ads-fov = 開鏡FOV
 input-prompt-ads-fov = 設置 "開鏡自瞄FOV" 值:
     (1~50)
@@ -276,3 +276,6 @@ menu-item-glow-features = 發光選項
 glow-features-menu-title = 發光選單
 menu-item-weapon-model-transparent = 武器模型透明
 menu-item-toggle-esp-web-server = ESP網頁
+menu-item-player-glow-brightness = 玩家發光亮度
+input-prompt-player-glow-brightness = 玩家發光亮度:
+    (0~255)

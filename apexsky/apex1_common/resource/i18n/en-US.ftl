@@ -274,3 +274,6 @@ menu-item-glow-features = Glow Settings
 glow-features-menu-title = Glow Menu
 menu-item-weapon-model-transparent = Weapon Model Transparent
 menu-item-toggle-esp-web-server = ESP Web
+menu-item-player-glow-brightness = Player Glow Brightness
+input-prompt-player-glow-brightness = Player Glow Brightness:
+    (0 to 255)

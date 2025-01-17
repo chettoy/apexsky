@@ -133,8 +133,11 @@ pub struct GlowSettings {
     pub player_glow_love_user: bool,
     pub weapon_model_glow: bool,
     pub weapon_model_transparent: bool,
+    pub player_brightness: u8,
     pub player_glow_inside_value: u8,
+    pub player_glow_outline_value: u8,
     pub player_glow_outline_size: u8,
+    pub player_glow_inside_opacity: u8,
     pub loot_filled: u8,
     pub loot_outline: u8,
 }
@@ -413,14 +416,11 @@ impl Default for GlowSettings {
             player_glow_love_user: true,
             weapon_model_glow: false,
             weapon_model_transparent: true,
-
-            // Player Glow Color and Brightness.
-            // inside fill
+            player_brightness: 1,
             player_glow_inside_value: 101, //12, // 0 = no fill, 14 = full fill
+            player_glow_outline_value: 125,
             player_glow_outline_size: 32,  // 0-255
-
-            // Item Configs
-            // loot Fill
+            player_glow_inside_opacity: 7,
             loot_filled: 0, // 0 no fill, 14 100% fill
             loot_outline: 0,
         }

@@ -1149,17 +1149,17 @@ async fn inject_highlight(
     let bits_outline = HighlightBits::new(0, 125, 64, 7, true, false);
     let bits_player_fill = HighlightBits::new(
         g_settings.glow_settings.player_glow_inside_value,
-        125,
+        g_settings.glow_settings.player_glow_outline_value,
         g_settings.glow_settings.player_glow_outline_size,
-        7,
+        g_settings.glow_settings.player_glow_inside_opacity,
         true,
         false,
     );
     let bits_player_outline = HighlightBits::new(
         0,
-        125,
+        g_settings.glow_settings.player_glow_outline_value,
         g_settings.glow_settings.player_glow_outline_size,
-        7,
+        g_settings.glow_settings.player_glow_inside_opacity,
         true,
         false,
     );
@@ -1190,60 +1190,101 @@ async fn inject_highlight(
             HIGHLIGHT_PLAYER_KNOCKED,
             &bits_player_outline,
             [
-                g_settings.color_settings.glow_r_knocked,
-                g_settings.color_settings.glow_g_knocked,
-                g_settings.color_settings.glow_b_knocked,
+                g_settings.color_settings.glow_r_knocked
+                    * g_settings.glow_settings.player_brightness as f32,
+                g_settings.color_settings.glow_g_knocked
+                    * g_settings.glow_settings.player_brightness as f32,
+                g_settings.color_settings.glow_b_knocked
+                    * g_settings.glow_settings.player_brightness as f32,
             ],
         ),
         (
             HIGHLIGHT_PLAYER_VISIBLE,
             &bits_player_outline,
             [
-                g_settings.color_settings.glow_r_viz,
-                g_settings.color_settings.glow_g_viz,
-                g_settings.color_settings.glow_b_viz,
+                g_settings.color_settings.glow_r_viz
+                    * g_settings.glow_settings.player_brightness as f32,
+                g_settings.color_settings.glow_g_viz
+                    * g_settings.glow_settings.player_brightness as f32,
+                g_settings.color_settings.glow_b_viz
+                    * g_settings.glow_settings.player_brightness as f32,
             ],
         ),
         (
             HIGHLIGHT_PLAYER_NOTVIZ,
             &bits_player_fill,
             [
-                g_settings.color_settings.glow_r_not,
-                g_settings.color_settings.glow_g_not,
-                g_settings.color_settings.glow_b_not,
+                g_settings.color_settings.glow_r_not
+                    * g_settings.glow_settings.player_brightness as f32,
+                g_settings.color_settings.glow_g_not
+                    * g_settings.glow_settings.player_brightness as f32,
+                g_settings.color_settings.glow_b_not
+                    * g_settings.glow_settings.player_brightness as f32,
             ],
         ),
         (
             HIGHLIGHT_PLAYER_BLACK,
             &bits_player_fill,
-            [2.0 / 256.0, 2.0 / 256.0, 2.0 / 256.0],
+            [
+                2.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                2.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                2.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+            ],
         ),
         (
             HIGHLIGHT_PLAYER_ORANGE,
             &bits_player_fill,
-            [255.0 / 256.0, 165.0 / 256.0, 0.0 / 256.0],
+            [
+                255.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                165.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                0.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+            ],
         ),
         (
             HIGHLIGHT_PLAYER_WHITE,
             &bits_player_fill,
-            [247.0 / 256.0, 247.0 / 256.0, 247.0 / 256.0],
+            [
+                247.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                247.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                247.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+            ],
         ),
         (
             HIGHLIGHT_PLAYER_BLUE,
             &bits_player_fill,
-            [39.0 / 256.0, 178.0 / 256.0, 255.0 / 256.0],
+            [
+                39.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                178.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                255.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+            ],
         ),
         (
             HIGHLIGHT_PLAYER_PURPLE,
             &bits_player_fill,
-            [206.0 / 256.0, 59.0 / 256.0, 255.0 / 256.0],
+            [
+                206.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                59.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                255.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+            ],
         ),
         (
             HIGHLIGHT_PLAYER_RED,
             &bits_player_fill,
-            [219.0 / 256.0, 2.0 / 256.0, 2.0 / 256.0],
+            [
+                219.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                2.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+                2.0 / 256.0 * g_settings.glow_settings.player_brightness as f32,
+            ],
         ),
-        (HIGHLIGHT_PLAYER_RAINBOW, &bits_player_fill, rainbow_col),
+        (
+            HIGHLIGHT_PLAYER_RAINBOW,
+            &bits_player_fill,
+            [
+                rainbow_col[0] * g_settings.glow_settings.player_brightness as f32,
+                rainbow_col[1] * g_settings.glow_settings.player_brightness as f32,
+                rainbow_col[2] * g_settings.glow_settings.player_brightness as f32,
+            ],
+        ),
     ];
 
     let Some(base) = mem.get_baseaddr(dmalib::PRIO_HIGH).await? else {
