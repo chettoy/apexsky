@@ -96,6 +96,10 @@
         "model": "mdl/weapons/sentinel/w_sentinel.rmdl"
     },
     {
+	"int": 232,
+	"model": "mdl/weapons/epg/w_epg.rmdl"
+    },
+    {
         "int": 234,
         "model": "mdl/weapons/compound_bow/w_compound_bow.rmdl"
     },

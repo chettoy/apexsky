@@ -689,7 +689,13 @@ mod test {
     #[test]
     fn test_parse_offsets() {
         let offsets = export_offsets_from_file(Some(
-            obfstr::obfstr!("../apex1_common/resource/default/offsets.ini").to_string(),
+            obfstr::obfstr!("../apex1_common/resource/default/offsets-dx12.ini").to_string(),
+        ))
+        .unwrap();
+        println!("{:?}", offsets.var_damage);
+
+        let offsets = export_offsets_from_file(Some(
+            obfstr::obfstr!("../apex1_common/resource/default/offsets-dx11.ini").to_string(),
         ))
         .unwrap();
         println!("{:?}", offsets.var_damage);
