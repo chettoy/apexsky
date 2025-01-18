@@ -20,9 +20,10 @@ runner = "wasm-server-runner"
 [target.x86_64-unknown-linux-gnu]
 linker = "clang"
 rustflags = [
-  "-Clink-arg=-fuse-ld=lld", # Use LLD Linker
-  "-Zshare-generics=y",      # (Nightly) Make the current crate share its generic instantiations
-  "-Zthreads=0",             # (Nightly) Use improved multithreading with the recommended amount of threads.
+  "-Clink-arg=-fuse-ld=lld",      # Use LLD Linker
+  "-Ctarget-feature=+avx2,+fma",  # Use AVX2
+  "-Zshare-generics=y",           # (Nightly) Make the current crate share its generic instantiations
+  "-Zthreads=0",                  # (Nightly) Use improved multithreading with the recommended amount of threads.
   "-Zmacro-backtrace",
 ]
 
@@ -31,6 +32,7 @@ rustflags = [
 [target.x86_64-apple-darwin]
 rustflags = [
   "-Clink-arg=-fuse-ld=/usr/local/opt/llvm/bin/ld64.lld", # Use LLD Linker
+  "-Ctarget-feature=+avx2,+fma",                          # Use AVX2
   "-Zshare-generics=y",                                   # (Nightly) Make the current crate share its generic instantiations
   "-Zthreads=0",                                          # (Nightly) Use improved multithreading with the recommended amount of threads.
 ]
@@ -43,13 +45,33 @@ rustflags = [
 ]
 
 [target.x86_64-pc-windows-msvc]
-linker = "rust-lld.exe" # Use LLD Linker
+linker = "rust-lld.exe"           # Use LLD Linker
 rustflags = [
+  "-Ctarget-feature=+avx2,+fma",  # Use AVX2
   "-Zshare-generics=n",
-  "-Zthreads=0",        # (Nightly) Use improved multithreading with the recommended amount of threads.
+  "-Zthreads=0",                  # (Nightly) Use improved multithreading with the recommended amount of threads.
 ]
 
 # Optional: Uncommenting the following improves compile times, but reduces the amount of debug info to 'line number tables only'
 # In most cases the gains are negligible, but if you are on macos and have slow compile times you should see significant gains.
 #[profile.dev]
 #debug = 1
+
+# Enable more optimization in the release profile at the cost of compile time.
+[profile.release]
+# Compile the entire crate as one unit.
+# Slows compile times, marginal improvements.
+codegen-units = 1
+# Do a second optimization pass over the entire program, including dependencies.
+# Slows compile times, marginal improvements.
+lto = "thin"
+
+# Optimize for size in the wasm-release profile to reduce load times and bandwidth usage on web.
+[profile.wasm-release]
+# Default to release profile values.
+inherits = "release"
+# Optimize with size in mind (also try "z", sometimes it is better).
+# Slightly slows compile times, great improvements to file size and runtime performance.
+opt-level = "s"
+# Strip all debugging information from the binary to slightly reduce file size.
+strip = "debuginfo"
