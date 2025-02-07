@@ -1,7 +1,8 @@
-use dataview::Pod;
+use core::slice;
 use obfstr::obfstr as s;
 use std::{collections::HashSet, fmt, mem};
 use tracing::instrument;
+use zerocopy::{FromBytes, Immutable, IntoBytes};
 
 use ohosky_api::{common::dmalib::IMemAccess, skydream::dmalib};
 
@@ -40,55 +41,71 @@ impl Api {
     /// Reads memory from the process.
     #[instrument]
     #[inline]
-    pub async fn vm_read<T: Pod>(&self, ptr: Ptr<T>) -> anyhow::Result<T> {
-        let mut dest: T = unsafe { mem::MaybeUninit::zeroed().assume_init() };
-        let result = {
-            let dest = dataview::bytes_mut(&mut dest);
-            self.mem_access
-                .read_raw(ptr.into_raw(), dest.len(), dmalib::PRIO_LOW, self.req_id)
-                .await
-                .map(|data| dest.copy_from_slice(&data))
-        };
-        result.map(|_| dest).map_err(|e| {
-            tracing::debug!(?ptr, ?e);
-            e
-        })
+    pub async fn vm_read<T: FromBytes>(&self, ptr: Ptr<T>) -> anyhow::Result<T> {
+        self.mem_access
+            .read_raw(
+                ptr.into_raw(),
+                size_of::<T>(),
+                dmalib::PRIO_LOW,
+                self.req_id,
+            )
+            .await
+            .map(|bytes| T::read_from_bytes(&bytes).unwrap())
+            .inspect_err(|e| {
+                tracing::debug!(?ptr, ?e);
+            })
     }
 
     /// Reads memory into the destination from the process.
     #[instrument(skip(dest))]
     #[inline]
-    pub async fn vm_read_into<T: Pod + ?Sized>(
+    pub async fn vm_read_into<T: FromBytes + IntoBytes + ?Sized>(
         &self,
         ptr: Ptr<T>,
         dest: &mut T,
     ) -> anyhow::Result<()> {
         let result = {
-            let dest = dataview::bytes_mut(dest);
+            let dest = dest.as_mut_bytes();
             self.mem_access
                 .read_raw(ptr.into_raw(), dest.len(), dmalib::PRIO_LOW, self.req_id)
                 .await
-                .map(|data| dest.copy_from_slice(&data))
+                .map(|bytes| dest.copy_from_slice(&bytes))
         };
-        result.map_err(|e| {
-            tracing::debug!(?ptr, ?e);
-            e
-        })
+        result.inspect_err(|e| tracing::debug!(?ptr, ?e))
     }
 
     /// Gathers memory from the process.
     /// This routine is optimized for reading small pieces of large objects.
     #[instrument(skip_all)]
     #[inline]
-    pub async fn vm_gatherd<'a, T: Pod>(
+    pub async fn vm_gatherd<'a, T: FromBytes + IntoBytes>(
         &self,
         ptr: Ptr,
         _size: u32,
         ignore_zero_offset: bool,
         indices: &'a mut T,
     ) -> anyhow::Result<&'a T> {
-        let view_mut = dataview::DataView::from_mut(indices);
-        let view_mut = view_mut.slice_mut::<u32>(0, view_mut.tail_len::<u32>(0));
+        fn is_aligned<U>(ptr: *const U) -> bool {
+            let addr: usize = unsafe { mem::transmute(ptr) };
+            addr % mem::align_of::<U>() == 0
+        }
+
+        /// Gets an aligned mutable slice into the view
+        #[inline]
+        fn try_slice_mut<U>(bytes: &mut [u8], offset: usize, len: usize) -> Option<&mut [U]> {
+            let index = offset..offset + usize::checked_mul(len, size_of::<U>())?;
+            let bytes = bytes.get_mut(index)?;
+            let unaligned_ptr = bytes.as_mut_ptr() as *mut U;
+            if !is_aligned(unaligned_ptr) {
+                return None;
+            }
+            unsafe { Some(slice::from_raw_parts_mut(unaligned_ptr, len)) }
+        }
+
+        let view_mut = indices.as_mut_bytes();
+        let view_mut =
+            try_slice_mut::<u32>(view_mut, 0, view_mut.len() / size_of::<u32>()).unwrap();
+
         self.gather_memory(ptr.into_raw(), ignore_zero_offset, view_mut)
             .await
             .map(|_| &*indices)
@@ -126,25 +143,16 @@ impl Api {
             .map(|&addr| addr & !0xfff)
             .collect();
 
-        let read_pages: Vec<_> = page_address
+        let mut read_pages: Vec<(u64, usize, Option<_>)> = page_address
             .into_iter()
-            .map(|va| {
-                let mem = self.mem_access.clone();
-                let req_id = self.req_id;
-                tokio::spawn(async move {
-                    let ret = mem
-                        .read_raw(va, 0x1000, dmalib::PRIO_LOW, req_id)
-                        .await
-                        .ok();
-                    anyhow::Ok((va, ret))
-                })
-            })
+            .map(|va| (va, 0x1000, None))
             .collect();
 
-        for fut in read_pages {
-            // Get a page of data
-            let (page_addr, data) = fut.await??;
+        self.mem_access
+            .read_raw_list(&mut read_pages, dmalib::PRIO_LOW, self.req_id)
+            .await?;
 
+        for (page_addr, _len, data) in read_pages {
             if data.is_none() {
                 anyhow::bail!("{}{:x}", s!("err read page 0x"), page_addr);
             }
@@ -198,13 +206,14 @@ impl Api {
     /// Writes memory into the process.
     #[instrument(skip(data))]
     #[inline]
-    pub async fn vm_write<T: Pod>(&self, ptr: Ptr<T>, data: &T) -> anyhow::Result<()> {
+    pub async fn vm_write<T: IntoBytes + Immutable>(
+        &self,
+        ptr: Ptr<T>,
+        data: &T,
+    ) -> anyhow::Result<()> {
         self.mem_access
             .write(ptr.into_raw(), data, dmalib::PRIO_LOW, self.req_id)
             .await
-            .map_err(|e| {
-                tracing::debug!(?ptr, ?e);
-                e
-            })
+            .inspect_err(|e| tracing::debug!(?ptr, ?e))
     }
 }

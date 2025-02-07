@@ -57,10 +57,10 @@ pub struct VoicePrompt {
 impl VoicePrompt {
     pub fn new(src_id: ContentId, position: [f32; 3]) -> Self {
         let alter_id = match src_id {
-            ContentId::Connected => rand::thread_rng().gen_range(1..=3),
+            ContentId::Connected => rand::rng().random_range(1..=3),
             ContentId::DualTeamsNearby => 1,
-            ContentId::EnemyInTheRear => rand::thread_rng().gen_range(1..=5),
-            ContentId::UnderObservation => rand::thread_rng().gen_range(1..=4),
+            ContentId::EnemyInTheRear => rand::rng().random_range(1..=5),
+            ContentId::UnderObservation => rand::rng().random_range(1..=4),
         };
         Self {
             src_id,

@@ -578,7 +578,7 @@ impl Aimbot {
             } else {
                 20..200
             };
-            rand::thread_rng().gen_range(delay)
+            rand::rng().random_range(delay)
         } else {
             0
         }
@@ -717,7 +717,7 @@ impl TriggerBot for Aimbot {
                     if semi_auto {
                         // No continuous triggering for headshot weapons
                         self.triggerbot_release_time =
-                            now_ms + rand::thread_rng().gen_range(10..100);
+                            now_ms + rand::rng().random_range(10..100);
                         self.triggerbot_state = TriggerState::WaitRelease;
                     } else {
                         // Keep triggering the trigger.
@@ -732,7 +732,7 @@ impl TriggerBot for Aimbot {
                 TriggerState::WaitTriggerLooting => (),
                 TriggerState::TriggerLooting => {
                     // No long press for button_use
-                    self.triggerbot_release_time = now_ms + rand::thread_rng().gen_range(10..100);
+                    self.triggerbot_release_time = now_ms + rand::rng().random_range(10..100);
                     self.triggerbot_state = TriggerState::WaitReleaseLooting;
                 }
                 TriggerState::WaitReleaseLooting => (),
@@ -747,7 +747,7 @@ impl TriggerBot for Aimbot {
                 }
                 TriggerState::Trigger => {
                     // It's time to release
-                    self.triggerbot_release_time = now_ms + rand::thread_rng().gen_range(10..100);
+                    self.triggerbot_release_time = now_ms + rand::rng().random_range(10..100);
                     self.triggerbot_state = TriggerState::WaitRelease;
                 }
                 TriggerState::WaitRelease => (),
@@ -755,7 +755,7 @@ impl TriggerBot for Aimbot {
                     self.triggerbot_state = TriggerState::Idle;
                 }
                 TriggerState::TriggerLooting => {
-                    self.triggerbot_release_time = now_ms + rand::thread_rng().gen_range(10..100);
+                    self.triggerbot_release_time = now_ms + rand::rng().random_range(10..100);
                     self.triggerbot_state = TriggerState::WaitReleaseLooting;
                 }
                 TriggerState::WaitReleaseLooting => (),

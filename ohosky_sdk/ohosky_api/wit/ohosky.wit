@@ -40,6 +40,7 @@ interface store {
     child-del: func(id: u64, child-id: u64) -> bool;
     insert-children: func(id: u64, entries: list<tuple<u64, list<u8>>>);
     swap-children: func(id: u64, entries: list<tuple<u64, list<u8>>>);
+    count-children: func(id: u64) -> u64;
     get-children: func(id: u64) -> list<tuple<u64, list<u8>>>;
     list-children: func(id: u64) -> list<u64>;
     clear-children: func(id: u64) -> u64;
@@ -59,4 +60,3 @@ world ohosky {
     export add: func(x: s32, y: s32) -> s32;
     export load: func();
 }
-

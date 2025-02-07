@@ -1,6 +1,14 @@
 use std::{fmt, hash, marker, mem, ops};
 
-#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+    zerocopy::FromBytes,
+    zerocopy::Immutable,
+    zerocopy::IntoBytes,
+    zerocopy::KnownLayout,
+)]
 #[repr(transparent)]
 pub struct IntPtr64<T: ?Sized = ()> {
     address: u64,
@@ -312,8 +320,6 @@ impl<T: ?Sized> fmt::Display for IntPtr64<T> {
         }
     }
 }
-
-unsafe impl<T: ?Sized + 'static> dataview::Pod for IntPtr64<T> {}
 
 #[test]
 fn units() {

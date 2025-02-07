@@ -40,7 +40,9 @@ pub trait Record<T: StoreValue> {
     fn set<S: StoreBackend>(val: T) -> anyhow::Result<()> {
         S::set(
             Self::name_id(),
-            T::into_store_data(val).inspect_err(|e| tracing::error!(?e))?,
+            T::into_store_data(val)
+                .inspect_err(|e| tracing::error!(?e))?
+                .into(),
         );
         Ok(())
     }
@@ -48,7 +50,7 @@ pub trait Record<T: StoreValue> {
     #[inline]
     fn get<S: StoreBackend>() -> anyhow::Result<Option<T>> {
         match S::get(Self::name_id()) {
-            Some(bin) => T::from_store_data(bin)
+            Some(bin) => T::from_store_data(bin.into())
                 .inspect_err(|e| tracing::error!(?e))
                 .map(Some),
             None => Ok(None),
@@ -70,7 +72,9 @@ pub trait Record<T: StoreValue> {
         S::set_child(
             Self::name_id(),
             sub_idx,
-            T::into_store_data(val).inspect_err(|e| tracing::error!(?e))?,
+            T::into_store_data(val)
+                .inspect_err(|e| tracing::error!(?e))?
+                .into(),
         );
         Ok(())
     }
@@ -78,7 +82,7 @@ pub trait Record<T: StoreValue> {
     #[inline]
     fn get_child<S: StoreBackend>(sub_idx: u64) -> anyhow::Result<Option<T>> {
         match S::get_child(Self::name_id(), sub_idx) {
-            Some(bin) => T::from_store_data(bin)
+            Some(bin) => T::from_store_data(bin.into())
                 .inspect_err(|e| tracing::error!(?e))
                 .map(Some),
             None => Ok(None),
@@ -100,7 +104,7 @@ pub trait Record<T: StoreValue> {
         S::get_children(Self::name_id())
             .into_iter()
             .map(|(k, bin)| {
-                T::from_store_data(bin)
+                T::from_store_data(bin.into())
                     .inspect_err(|e| tracing::error!(?e))
                     .map(|v| (k, v))
             })
@@ -116,7 +120,7 @@ pub trait Record<T: StoreValue> {
     fn reset_children<S: StoreBackend>(children: Vec<(u64, T)>) -> anyhow::Result<()> {
         let children: Vec<_> = children
             .into_iter()
-            .map(|(k, v)| T::into_store_data(v).map(|v| (k, v)))
+            .map(|(k, v)| T::into_store_data(v).map(|v| (k, v.into())))
             .try_collect()
             .inspect_err(|e| tracing::error!(?e))?;
         S::swap_children(Self::name_id(), children);

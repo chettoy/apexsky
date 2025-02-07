@@ -14,23 +14,28 @@ impl IHostApi for HostApi {
         let Some(path) = path.to_str() else {
             return false;
         };
-        sky!(.host.check_file_permission)(path.as_bytes().to_vec().into())
+        sky!(.host.check_file_permission)(path.into())
     }
 
     fn get_base_dir() -> PathBuf {
-        sky!(.host.get_base_dir)().to_string().into()
+        let ret = sky!(.host.get_base_dir)();
+        String::from_utf8(ret.to_vec().into()).unwrap().into()
     }
 
     fn get_config_dir() -> PathBuf {
-        sky!(.host.get_config_dir)().to_string().into()
+        let ret = sky!(.host.get_config_dir)();
+        String::from_utf8(ret.to_vec().into()).unwrap().into()
     }
 
     fn get_temp_dir() -> PathBuf {
-        sky!(.host.get_temp_dir)().to_string().into()
+        let ret = sky!(.host.get_temp_dir)();
+        String::from_utf8(ret.to_vec().into()).unwrap().into()
     }
 
     fn get_locale() -> Option<String> {
-        sky!(.host.get_locale)().into_rust().map(Into::into)
+        sky!(.host.get_locale)()
+            .into_rust()
+            .map(|ret| String::from_utf8(ret.to_vec()).unwrap())
     }
 
     fn sky_module_args() -> Vec<String> {

@@ -1,10 +1,12 @@
+use zerocopy::{FromBytes, Immutable, IntoBytes};
+
 use crate::G_OFFSETS;
 
 use self::sdk::EHandle;
 
 use super::*;
 
-#[derive(Debug, Default, Clone, sdk::Pod)]
+#[derive(Debug, Default, Clone, FromBytes, Immutable, IntoBytes)]
 #[repr(C)]
 pub struct CObserverMode {
     pub observer_mode: i32,

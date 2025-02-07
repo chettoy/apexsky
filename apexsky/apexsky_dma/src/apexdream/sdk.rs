@@ -19,8 +19,8 @@ mod script_net_name;
 mod studio;
 mod tier1;
 
-pub use dataview::Pod;
 pub use intptr::IntPtr64 as Ptr;
+pub use zerocopy::{FromBytes, IntoBytes};
 
 pub use super::base::math::*;
 
@@ -80,7 +80,17 @@ pub const HARDWARE_PS4_1: u32 = 257;
 pub const HARDWARE_PS4_2: u32 = 2056;
 pub const HARDWARE_SWITCH: u32 = 2313;
 
-#[derive(Copy, Clone, Default, Debug, Pod, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(
+    Copy,
+    Clone,
+    Default,
+    Debug,
+    FromBytes,
+    IntoBytes,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+)]
 #[rkyv(derive(Debug))]
 #[repr(C)]
 pub struct ConsumableItem {

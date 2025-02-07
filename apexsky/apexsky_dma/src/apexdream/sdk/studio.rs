@@ -1,7 +1,9 @@
-use super::{CUtlVector, Pod, Ptr};
+use zerocopy::{FromBytes, FromZeros, Immutable, IntoBytes, KnownLayout};
+
+use super::{CUtlVector, Ptr};
 use std::mem;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, FromBytes, Immutable, KnownLayout)]
 #[repr(C)]
 pub struct CStudioHdr {
     pub m_pVModel: Ptr,
@@ -11,7 +13,7 @@ pub struct CStudioHdr {
     pub m_pFrameUnlockCounter: Ptr<i32>,
 }
 
-#[derive(Pod, Debug, Clone)]
+#[derive(Debug, Clone, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct studiohdr_t {
     pub pad1: [u8; 50],
@@ -23,7 +25,7 @@ pub struct studiohdr_t {
 }
 impl Default for studiohdr_t {
     fn default() -> Self {
-        dataview::zeroed()
+        Self::new_zeroed()
     }
 }
 impl studiohdr_t {
@@ -37,7 +39,7 @@ impl studiohdr_t {
 const _: [(); 0x32] = [(); dataview::offset_of!(studiohdr_t.numhitboxsets)];
 const _: [(); 0x74] = [(); dataview::offset_of!(studiohdr_t.numbones)];
 
-#[derive(Pod, Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct mstudiobone_t {
     pub one: i32,
@@ -48,7 +50,7 @@ pub struct mstudiobone_t {
 }
 const _: [(); 12] = [(); mem::size_of::<mstudiobone_t>()];
 
-#[derive(Pod, Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct mstudiohitboxset_t {
     pub sznameindex: u16,
@@ -61,7 +63,7 @@ impl mstudiohitboxset_t {
     }
 }
 
-#[derive(Pod, Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct mstudiobbox_t {
     pub bone: u16,
@@ -79,5 +81,3 @@ impl mstudiobbox_t {
     }
 }
 const _: [(); 0x20] = [(); mem::size_of::<mstudiobbox_t>()];
-
-unsafe impl Pod for CStudioHdr {}

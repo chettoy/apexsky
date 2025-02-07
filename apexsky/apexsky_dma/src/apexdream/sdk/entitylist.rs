@@ -1,7 +1,9 @@
-use super::{Pod, Ptr};
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
+
+use super::Ptr;
 
 pub const NUM_ENT_ENTRIES: usize = 0x10000;
-#[derive(Pod, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct CEntInfo {
     pub pEntity: Ptr, // IHandleEntity*

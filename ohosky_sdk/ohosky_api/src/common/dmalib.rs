@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-
 pub const PRIO_PREEMPT: i32 = 0x10;
 pub const PRIO_HIGH: i32 = 1;
 pub const PRIO_LOW: i32 = 0;
@@ -17,12 +15,12 @@ pub struct DmalibAccessTarget {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct FindSigResult {
     pub address: u64,
-    pub data: Vec<u8>,
+    pub data: bytes::Bytes,
 }
 
-#[async_trait]
+#[allow(async_fn_in_trait)]
 pub trait IMemAccess: Sized {
-    fn open(target: DmalibAccessTarget) -> anyhow::Result<Self>;
+    fn open(target: &DmalibAccessTarget) -> anyhow::Result<Self>;
 
     async fn get_baseaddr(&self, priority: i32) -> anyhow::Result<Option<u64>>;
 
@@ -34,7 +32,7 @@ pub trait IMemAccess: Sized {
         len: usize,
         priority: i32,
         req_id: usize,
-    ) -> anyhow::Result<Vec<u8>>;
+    ) -> anyhow::Result<bytes::Bytes>;
 
     fn read_raw_blocking(
         &self,
@@ -42,9 +40,24 @@ pub trait IMemAccess: Sized {
         len: usize,
         priority: i32,
         req_id: usize,
-    ) -> anyhow::Result<Vec<u8>>;
+    ) -> anyhow::Result<bytes::Bytes>;
 
-    async fn read<T: dataview::Pod + Default>(
+    async fn read_raw_list(
+        &self,
+        list: &mut Vec<(u64, usize, Option<bytes::Bytes>)>,
+        priority: i32,
+        req_id: usize,
+    ) -> anyhow::Result<()>;
+
+    fn read_raw_list_blocking(
+        &self,
+        list: &mut Vec<(u64, usize, Option<bytes::Bytes>)>,
+        priority: i32,
+        req_id: usize,
+    ) -> anyhow::Result<()>;
+
+    #[inline]
+    async fn read<T: zerocopy::FromBytes>(
         &self,
         addr: u64,
         priority: i32,
@@ -52,21 +65,13 @@ pub trait IMemAccess: Sized {
     ) -> anyhow::Result<T> {
         self.read_raw(addr, size_of::<T>(), priority, req_id)
             .await
-            .map(|data| {
-                let mut out: T = T::default();
-                dataview::bytes_mut(&mut out).copy_from_slice(&data);
-                out
-            })
-            .map_err(|e| {
-                tracing::error!(%e, ?e);
-                e
-            })
+            .map(|bytes| T::read_from_bytes(&bytes).unwrap())
     }
 
     async fn write_raw(
         &self,
         addr: u64,
-        data: Vec<u8>,
+        data: &[u8],
         priority: i32,
         req_id: usize,
     ) -> anyhow::Result<()>;
@@ -74,37 +79,38 @@ pub trait IMemAccess: Sized {
     fn write_raw_blocking(
         &self,
         addr: u64,
-        data: Vec<u8>,
+        data: &[u8],
         priority: i32,
         req_id: usize,
     ) -> anyhow::Result<()>;
 
-    fn write<T: dataview::Pod>(
+    #[inline]
+    async fn write<T: zerocopy::IntoBytes + zerocopy::Immutable>(
         &self,
         addr: u64,
         data: &T,
         priority: i32,
         req_id: usize,
-    ) -> impl std::future::Future<Output = anyhow::Result<()>> {
-        let data = dataview::bytes(data);
-        self.write_raw(addr, data.to_vec(), priority, req_id)
+    ) -> anyhow::Result<()> {
+        self.write_raw(addr, data.as_bytes(), priority, req_id)
+            .await
     }
 
     async fn find_sig(
         &self,
-        sig: String,
+        sig: &str,
         start: u64,
         end: u64,
     ) -> anyhow::Result<Option<FindSigResult>>;
 
     fn find_sig_blocking(
         &self,
-        sig: String,
+        sig: &str,
         start: u64,
         end: u64,
     ) -> anyhow::Result<Option<FindSigResult>>;
 
-    async fn dump(&self) -> anyhow::Result<Vec<u8>>;
+    async fn dump(&self) -> anyhow::Result<bytes::Bytes>;
 
-    fn dump_blocking(&self) -> anyhow::Result<Vec<u8>>;
+    fn dump_blocking(&self) -> anyhow::Result<bytes::Bytes>;
 }

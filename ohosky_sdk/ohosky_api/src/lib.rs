@@ -11,10 +11,8 @@ pub mod skydream;
 macro_rules! skydream_main {
     ($main:ident) => {
         use $crate::skydream::api::safer_ffi;
-        // // rust 2021
-        #[no_mangle]
-        // rust 2024
-        // #[unsafe(no_mangle)]
+
+        #[unsafe(no_mangle)]
         pub extern "C" fn _skydream_start(
             host_api: $crate::skydream::api::SkydreamApi,
             module_token: safer_ffi::String,
@@ -62,7 +60,7 @@ macro_rules! ohosky_main {
 }
 
 #[cfg(all(feature = "skydream", feature = "cxx"))]
-extern "C" {
+unsafe extern "C" {
     fn sky_main();
 }
 #[cfg(all(feature = "skydream", feature = "cxx"))]

@@ -6,11 +6,11 @@ use crate::common::{
     share::ISharableValue,
 };
 
-pub fn reg_rpc(name: String) -> u64 {
+pub fn reg_rpc(name: &str) -> u64 {
     sky!(.rpc.reg_rpc)(name.into())
 }
 
-pub fn use_rpc(name: String) -> u64 {
+pub fn use_rpc(name: &str) -> u64 {
     sky!(.rpc.use_rpc)(name.into())
 }
 
@@ -18,17 +18,19 @@ pub async fn recv(id: u64) -> anyhow::Result<Vec<u8>> {
     sky!(.rpc.recv_async)(id)
         .await
         .into_anyhow()
-        .map(Into::into)
+        .map(|data| data.to_vec())
 }
 
 pub fn recv_blocking(id: u64) -> anyhow::Result<Vec<u8>> {
-    sky!(.rpc.recv_blocking)(id).into_anyhow().map(Into::into)
+    sky!(.rpc.recv_blocking)(id)
+        .into_anyhow()
+        .map(|data| data.to_vec())
 }
 
 pub fn try_recv(id: u64) -> anyhow::Result<Option<Vec<u8>>> {
     sky!(.rpc.try_recv)(id)
         .into_anyhow()
-        .map(|ret| ret.into_rust().map(Into::into))
+        .map(|ret| ret.into_rust().map(|data| data.to_vec()))
 }
 
 pub fn reply(id: u64, ret_value: Vec<u8>) -> anyhow::Result<()> {
@@ -51,13 +53,13 @@ pub async fn call(id: u64, arg_value: Vec<u8>) -> anyhow::Result<Vec<u8>> {
     sky!(.rpc.call_async)(id, arg_value.into())
         .await
         .into_anyhow()
-        .map(Into::into)
+        .map(|data| data.to_vec())
 }
 
 pub fn call_blocking(id: u64, arg_value: Vec<u8>) -> anyhow::Result<Vec<u8>> {
     sky!(.rpc.call_blocking)(id, arg_value.into())
         .into_anyhow()
-        .map(Into::into)
+        .map(|data| data.to_vec())
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +79,7 @@ pub struct SharedRpcClient<T: ISharableValue, R: ISharableValue> {
 impl<T: ISharableValue, R: ISharableValue> ISharedRpcService<T, R> for SharedRpcService<T, R> {
     fn register(name: &str) -> Self {
         Self {
-            id: reg_rpc(name.to_string()),
+            id: reg_rpc(name),
             _arg_type: PhantomData,
             _ret_type: PhantomData,
         }
@@ -106,7 +108,7 @@ impl<T: ISharableValue, R: ISharableValue> ISharedRpcService<T, R> for SharedRpc
 impl<T: ISharableValue, R: ISharableValue> ISharedRpcClient<T, R> for SharedRpcClient<T, R> {
     fn new(name: &str) -> Self {
         Self {
-            id: use_rpc(name.to_string()),
+            id: use_rpc(name),
             _arg_type: PhantomData,
             _ret_type: PhantomData,
         }

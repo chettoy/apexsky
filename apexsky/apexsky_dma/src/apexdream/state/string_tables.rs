@@ -1,8 +1,9 @@
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
+
 use super::*;
 use crate::noobfstr as s;
-use dataview::Pod;
 
-#[derive(Default, Debug, Pod)]
+#[derive(Default, Debug, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct CNetStringTableItem {
     /*0x00*/ pub unk00: u64,
@@ -17,7 +18,7 @@ pub struct CNetStringTableItem {
 }
 const _: [(); 0x48] = [(); std::mem::size_of::<CNetStringTableItem>()];
 
-#[derive(Default, Debug, Pod)]
+#[derive(Default, Debug, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct CNetStringDict {
     /*0x00*/ pub vtable: sdk::Ptr,
@@ -34,7 +35,7 @@ pub struct CNetStringDict {
     /*0x36*/ pub highest: u16,
 }
 
-#[derive(Default, Debug, Pod)]
+#[derive(Default, Debug, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct CNetStringTable {
     /*0x00*/ pub vtable: sdk::Ptr,

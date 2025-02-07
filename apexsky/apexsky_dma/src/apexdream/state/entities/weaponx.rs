@@ -138,7 +138,7 @@ impl Entity for WeaponXEntity {
     }
     #[instrument(skip_all)]
     async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
-        #[derive(sdk::Pod)]
+        #[derive(sdk::FromBytes, sdk::IntoBytes)]
         #[repr(C)]
         struct Indices {
             weapon_owner: u32,

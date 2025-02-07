@@ -9,17 +9,18 @@ interface access {
     resource access-read-response {
         try-recv: func() -> option<result<list<u8>, string>>;
     }
-    mem-open: func(config: target-config) -> result<u32, string>;
-    mem-baseaddr: func(handle: u32, prio: s32) -> result<option<u64>, string>;
-    mem-read: func(handle: u32, addr: u64, len: u64, prio: s32) -> result<list<u8>, string>;
-    mem-write: func(handle: u32, addr: u64, data: list<u8>, prio: s32) -> result<_, string>;
-    mem-find-sig: func(handle: u32, sig: string, start: u64, end: u64) -> result<option<tuple<u64, list<u8>>>, string>;
-    mem-dump: func(handle: u32) -> result<list<u8>, string>;
+    mem-open: func(config: target-config) -> result<u64, string>;
+    mem-baseaddr: func(handle: u64, prio: s32) -> result<option<u64>, string>;
+    mem-read: func(handle: u64, addr: u64, len: u64, prio: s32) -> result<list<u8>, string>;
+    mem-read-list: func(handle: u64, reads: list<tuple<u64, u64>>, prio: s32) -> result<list<list<u8>>, string>;
+    mem-write: func(handle: u64, addr: u64, data: list<u8>, prio: s32) -> result<_, string>;
+    mem-find-sig: func(handle: u64, sig: string, start: u64, end: u64) -> result<option<tuple<u64, list<u8>>>, string>;
+    mem-dump: func(handle: u64) -> result<list<u8>, string>;
 
-    mem-baseaddr-async-call: func(handle: u32, prio: s32) -> result<u32, string>;
-    mem-read-async-call: func(handle: u32, addr: u64, len: u64, prio: s32) -> result<access-read-response, string>;
-    mem-write-async-call: func(handle: u32, addr: u64, data: list<u8>, prio: s32) -> result<u32, string>;
-    mem-find-sig-async-call: func(handle: u32, sig: string, start: u64, end: u64) -> result<u32, string>;
+    mem-baseaddr-async-call: func(handle: u64, prio: s32) -> result<u32, string>;
+    mem-read-async-call: func(handle: u64, addr: u64, len: u64, prio: s32) -> result<access-read-response, string>;
+    mem-write-async-call: func(handle: u64, addr: u64, data: list<u8>, prio: s32) -> result<u32, string>;
+    mem-find-sig-async-call: func(handle: u64, sig: string, start: u64, end: u64) -> result<u32, string>;
 }
 
 interface access-async-result {

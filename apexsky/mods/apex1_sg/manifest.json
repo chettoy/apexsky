@@ -1,13 +1,13 @@
 {
     "manifest_version": 1,
     "package_name": "com.chettoy.apexsky.apexsg",
-    "version_code": 6,
-    "version": "0.3.0",
+    "version_code": 7,
+    "version": "0.4.0",
     "label": "Apex SG",
     "description": "Auto SG extension",
     "icons": {},
     "target_api": {
-        "runtime": 1
+        "runtime": 2
     },
     "components": [
         {

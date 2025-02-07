@@ -1,8 +1,8 @@
-use super::Pod;
+use zerocopy::{FromBytes, Immutable};
 
 pub type CSaveRestoreData = ();
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, FromBytes, Immutable)]
 #[repr(C)]
 pub struct CGlobalVars {
     pub realtime: f64,
@@ -17,4 +17,3 @@ pub struct CGlobalVars {
     pub curtime4: f32, // same as curtime?
     pub curtime5: f32,
 }
-unsafe impl Pod for CGlobalVars {}

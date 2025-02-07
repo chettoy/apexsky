@@ -1,3 +1,5 @@
+use zerocopy::IntoBytes;
+
 use crate::game::data::OFFSET_YAW;
 
 use super::*;
@@ -276,7 +278,7 @@ impl Entity for PlayerEntity {
     }
     #[instrument(skip_all, fields(index = self.index))]
     async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
-        #[derive(sdk::Pod)]
+        #[derive(sdk::FromBytes, sdk::IntoBytes)]
         #[repr(C)]
         struct Indices {
             origin: [u32; 6],
@@ -576,8 +578,9 @@ impl Entity for PlayerEntity {
             ]);
             self.view_origin = sdk::add(self.origin, self.view_offset);
 
-            dataview::bytes_mut(&mut self.consumables)
-                .copy_from_slice(dataview::bytes(&fields.consumables));
+            self.consumables
+                .as_mut_bytes()
+                .copy_from_slice(fields.consumables.as_bytes());
 
             self.observer_mode = fields.observer[0] as i32;
             self.observer_target = sdk::EHandle::from(fields.observer[1]);

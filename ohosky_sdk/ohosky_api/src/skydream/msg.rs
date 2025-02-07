@@ -4,7 +4,7 @@ use super::sky;
 use crate::common::msg::{ISharedMessageChannel, ISharedValueWatcher, ISharedWatchValue};
 use crate::common::share::ISharableValue;
 
-pub fn reg_msg(name: String) -> u64 {
+pub fn reg_msg(name: &str) -> u64 {
     sky!(.msg.reg_msg)(name.into())
 }
 
@@ -27,7 +27,7 @@ pub fn send_blocking(id: u64, value: Vec<u8>) -> anyhow::Result<()> {
 pub async fn recv(id: u64) -> anyhow::Result<Vec<u8>> {
     let ret = sky!(.msg.recv_async)(id).await;
     match ret.into_rust() {
-        Some(data) => Ok(data.into()),
+        Some(data) => Ok(data.to_vec()),
         None => anyhow::bail!("fail"),
     }
 }
@@ -35,7 +35,7 @@ pub async fn recv(id: u64) -> anyhow::Result<Vec<u8>> {
 pub fn recv_blocking(id: u64) -> anyhow::Result<Vec<u8>> {
     let ret = sky!(.msg.recv_blocking)(id);
     match ret.into_rust() {
-        Some(data) => Ok(data.into()),
+        Some(data) => Ok(data.to_vec()),
         None => anyhow::bail!("fail"),
     }
 }
@@ -43,7 +43,7 @@ pub fn recv_blocking(id: u64) -> anyhow::Result<Vec<u8>> {
 pub fn try_recv(id: u64) -> anyhow::Result<Option<Vec<u8>>> {
     let ret = sky!(.msg.try_recv)(id);
     match ret.into_rust() {
-        Some(result) => Ok(result.into_rust().map(|data| data.into())),
+        Some(result) => Ok(result.into_rust().map(|data| data.to_vec())),
         None => anyhow::bail!("fail"),
     }
 }
@@ -62,17 +62,17 @@ pub fn update_value(sender_id: u64, value: Vec<u8>) -> bool {
 }
 
 pub fn fetch_value(watcher_id: u64) -> Vec<u8> {
-    sky!(.msg.fetch_value)(watcher_id).into()
+    sky!(.msg.fetch_value)(watcher_id).to_vec()
 }
 
 pub async fn next_value_async(watcher_id: u64) -> Vec<u8> {
-    sky!(.msg.next_value_async)(watcher_id).await.into()
+    sky!(.msg.next_value_async)(watcher_id).await.to_vec()
 }
 
 pub fn try_next_value(watcher_id: u64) -> Option<Vec<u8>> {
     sky!(.msg.try_next_value)(watcher_id)
         .into_rust()
-        .map(|data| data.into())
+        .map(|data| data.to_vec())
 }
 
 #[derive(Debug, Clone)]
@@ -96,7 +96,7 @@ pub struct SharedValueWatcher<T: ISharableValue> {
 impl<T: ISharableValue> ISharedMessageChannel<T> for SharedMessageChannel<T> {
     fn new(name: &str) -> Self {
         Self {
-            id: reg_msg(name.to_string()),
+            id: reg_msg(name),
             _value_type: PhantomData,
         }
     }

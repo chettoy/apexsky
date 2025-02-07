@@ -1,8 +1,11 @@
-use super::{Pod, NUM_ENT_ENTRIES};
+use dataview::Pod;
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
+
+use super::NUM_ENT_ENTRIES;
 use crate::noobfstr as s;
 use std::fmt;
 
-#[derive(Pod, Copy, Clone, Eq)]
+#[derive(Copy, Clone, Eq, FromBytes, Immutable, IntoBytes, KnownLayout, Pod)]
 #[repr(transparent)]
 pub struct EHandle(u32);
 impl Default for EHandle {

@@ -1,3 +1,5 @@
+use zerocopy::{FromBytes, Immutable, IntoBytes};
+
 use self::entities::ScriptNetDataEntity;
 
 use super::*;
@@ -5,7 +7,7 @@ use super::*;
 // Discussion on UnknownCheats:
 // https://www.unknowncheats.me/forum/apex-legends/319804-apex-legends-reversal-structs-offsets-447.html#post3397260
 
-#[derive(Debug, Default, sdk::Pod)]
+#[derive(Debug, Default, FromBytes, Immutable, IntoBytes)]
 #[repr(C)]
 pub struct NetVarEntry {
     // Index = name_hash % 300 (+1 on collision)
@@ -27,7 +29,7 @@ pub struct NetVarEntry {
 }
 const _: [(); 0x38] = [(); std::mem::size_of::<NetVarEntry>()];
 
-#[derive(sdk::Pod)]
+#[derive(sdk::FromBytes, sdk::IntoBytes)]
 #[repr(C)]
 pub struct NetVarData {
     pub ptr: sdk::Ptr, // Pointer to CScriptNetData instance

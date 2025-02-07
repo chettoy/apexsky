@@ -40,6 +40,6 @@ impl ffi::Host {
     }
 
     fn get_locale(&self) -> String {
-        HostApi::get_locale().unwrap_or("".to_string())
+        HostApi::get_locale().unwrap_or_default()
     }
 }

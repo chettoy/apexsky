@@ -1,10 +1,11 @@
-use super::Pod;
 use crate::noobfstr as s;
 use std::fmt;
 
+use zerocopy::{FromBytes, Immutable, IntoBytes};
+
 // https://www.unknowncheats.me/forum/apex-legends/446349-script-highlight.html
 
-#[derive(Copy, Clone, Pod)]
+#[derive(Copy, Clone, FromBytes, Immutable, IntoBytes)]
 #[repr(C)]
 pub struct HighlightParams {
     pub color: [f32; 3],
@@ -19,7 +20,7 @@ impl fmt::Debug for HighlightParams {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, Pod)]
+#[derive(Copy, Clone, Debug, Default, FromBytes, Immutable, IntoBytes)]
 #[repr(C)]
 pub struct HighlightBits {
     pub inside_function: u8,
@@ -70,7 +71,7 @@ impl HighlightBits {
     }
 }
 
-#[derive(Copy, Clone, Pod)]
+#[derive(Copy, Clone, FromBytes, Immutable, IntoBytes)]
 #[repr(C)]
 pub struct HighlightFadeSlot {
     pub inside: f32,

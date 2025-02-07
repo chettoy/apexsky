@@ -64,11 +64,7 @@ impl BaseNPCEntity {
         self.flags & 0x2 != 0
     }
     pub fn height(&self) -> f32 {
-        if self.is_ducking() {
-            36.0
-        } else {
-            60.0
-        }
+        if self.is_ducking() { 36.0 } else { 60.0 }
     }
     pub fn get_bone_pos(&self, bone: usize) -> [f32; 3] {
         sdk::add(self.origin, self.bones.get_pos(bone))
@@ -95,7 +91,7 @@ impl Entity for BaseNPCEntity {
     }
     #[instrument(skip_all, fields(index = self.index))]
     async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
-        #[derive(sdk::Pod)]
+        #[derive(sdk::FromBytes, sdk::IntoBytes)]
         #[repr(C)]
         struct Indices {
             origin: [u32; 6],

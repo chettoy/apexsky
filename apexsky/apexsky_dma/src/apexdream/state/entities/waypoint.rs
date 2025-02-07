@@ -49,7 +49,7 @@ impl Entity for WaypointEntity {
     }
     #[instrument(skip_all)]
     async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
-        #[derive(sdk::Pod)]
+        #[derive(sdk::FromBytes, sdk::IntoBytes)]
         #[repr(C)]
         struct Indices {
             origin: [u32; 3],

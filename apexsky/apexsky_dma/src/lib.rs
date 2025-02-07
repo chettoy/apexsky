@@ -188,7 +188,7 @@ impl TaskManager for State {
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
         let (update_time_tx, update_time_rx) = watch::channel(0.0);
 
-        let access_tx = skyapi::dmalib::MemAccess::open(DmalibAccessTarget {
+        let access_tx = skyapi::dmalib::MemAccess::open(&DmalibAccessTarget {
             target_process_name: if *G_TARGET_GAME_VER_DX11 {
                 game::data::GAME_VER_DX11_PROCESS_NAME
                     .expose_secret()

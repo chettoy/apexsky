@@ -1,3 +1,5 @@
+use bytes::Bytes;
+
 use super::sky;
 use crate::common::store::ISharedStore;
 
@@ -5,13 +7,15 @@ pub struct SharedStoreApi;
 
 impl ISharedStore for SharedStoreApi {
     #[inline]
-    fn set(id: u64, value: Vec<u8>) {
-        sky!(.store.set)(id, value.into())
+    fn set(id: u64, value: Bytes) {
+        sky!(.store.set)(id, Vec::from(value).into())
     }
 
     #[inline]
-    fn get(id: u64) -> Option<Vec<u8>> {
-        sky!(.store.get)(id).into_rust().map(Into::into)
+    fn get(id: u64) -> Option<Bytes> {
+        sky!(.store.get)(id)
+            .into_rust()
+            .map(|data| data.to_vec().into())
     }
 
     #[inline]
@@ -25,15 +29,15 @@ impl ISharedStore for SharedStoreApi {
     }
 
     #[inline]
-    fn set_child(id: u64, child_id: u64, value: Vec<u8>) {
-        sky!(.store.child_set)(id, child_id, value.into())
+    fn set_child(id: u64, child_id: u64, value: Bytes) {
+        sky!(.store.child_set)(id, child_id, Vec::from(value).into())
     }
 
     #[inline]
-    fn get_child(id: u64, child_id: u64) -> Option<Vec<u8>> {
+    fn get_child(id: u64, child_id: u64) -> Option<Bytes> {
         sky!(.store.child_get)(id, child_id)
             .into_rust()
-            .map(Into::into)
+            .map(|data| data.to_vec().into())
     }
 
     #[inline]
@@ -47,36 +51,53 @@ impl ISharedStore for SharedStoreApi {
     }
 
     #[inline]
-    fn insert_children(id: u64, entries: Vec<(u64, Vec<u8>)>) {
+    fn insert_children(id: u64, entries: Vec<(u64, Bytes)>) {
         let entries = entries
             .into_iter()
-            .map(|(_0, _1)| safer_ffi::Tuple2 { _0, _1: _1.into() })
-            .collect::<Vec<_>>()
-            .into();
+            .map(|(_0, _1)| safer_ffi::Tuple2 {
+                _0,
+                _1: Vec::from(_1).into(),
+            })
+            .collect::<Vec<_>>();
+        let entries = safer_ffi::slice::Ref::from(entries.as_slice());
         sky!(.store.insert_children)(id, entries)
     }
 
     #[inline]
-    fn swap_children(id: u64, entries: Vec<(u64, Vec<u8>)>) {
+    fn swap_children(id: u64, entries: Vec<(u64, Bytes)>) {
         let entries = entries
             .into_iter()
-            .map(|(_0, _1)| safer_ffi::Tuple2 { _0, _1: _1.into() })
-            .collect::<Vec<_>>()
-            .into();
+            .map(|(_0, _1)| safer_ffi::Tuple2 {
+                _0,
+                _1: Vec::from(_1).into(),
+            })
+            .collect::<Vec<_>>();
+        let entries = safer_ffi::slice::Ref::from(entries.as_slice());
         sky!(.store.swap_children)(id, entries)
     }
 
     #[inline]
-    fn get_children(id: u64) -> Vec<(u64, Vec<u8>)> {
-        Into::<Vec<_>>::into(sky!(.store.get_children)(id))
+    fn count_children(id: u64) -> usize {
+        sky!(.store.count_children)(id)
+    }
+
+    #[inline]
+    fn get_children(id: u64) -> Vec<(u64, Bytes)> {
+        let count = Self::count_children(id);
+        let buf: safer_ffi::Vec<_> = Vec::with_capacity(count).into();
+        let buf = sky!(.store.get_children)(id, buf);
+        Vec::from(buf)
             .into_iter()
-            .map(|safer_ffi::Tuple2 { _0, _1 }| (_0, _1.into()))
+            .map(|safer_ffi::Tuple2 { _0, _1 }| (_0, _1.to_vec().into()))
             .collect::<Vec<_>>()
     }
 
     #[inline]
     fn list_children(id: u64) -> Vec<u64> {
-        sky!(.store.list_children)(id).into()
+        let count = Self::count_children(id);
+        let buf: safer_ffi::Vec<u64> = Vec::with_capacity(count).into();
+        let buf = sky!(.store.list_children)(id, buf);
+        buf.into()
     }
 
     #[inline]

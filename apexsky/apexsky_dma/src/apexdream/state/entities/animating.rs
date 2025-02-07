@@ -58,7 +58,7 @@ impl Entity for AnimatingEntity {
             self.spawn_time = ctx.time;
         }
 
-        #[derive(sdk::Pod)]
+        #[derive(sdk::FromBytes, sdk::IntoBytes)]
         #[repr(C)]
         struct Indices {
             origin: [u32; 3],

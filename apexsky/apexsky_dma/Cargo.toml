@@ -1,7 +1,7 @@
 [package]
 name = "apexsky_dma"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 [dependencies]
 anyhow = "1.0.95"
 apex1_common = { path = "../apex1_common", features = ["skydream"] }
-async-trait = "0.1.85"
+async-trait = "0.1.86"
 axum = { version = "0.8.1", features = ["tracing"] }
 bitset-core = "0.1.1"
 chrono = "0.4.39"
@@ -22,7 +22,7 @@ fluent = "0.16.1"
 futures-util = "0.3.31"
 hex = { version = "0.4.3", features = ["serde"] }
 include-flate = { git = "https://github.com/SOF3/include-flate", rev = "fe2e113" }
-indexmap = "2.7.0"
+indexmap = "2.7.1"
 itertools = "0.14.0"
 named_constants = "0.2.0"
 ndarray = "0.16.1"
@@ -35,15 +35,15 @@ parking_lot = { version = "0.12.3", features = ["nightly"] }
 prost = "0.13.4"
 qapi = { version = "0.15.0", features = ["qmp", "async-tokio-all"] }
 qrcode = "0.14.1"
-rand = "0.8.5"
+rand = "0.9.0"
 regex = "1.11.1"
-rkyv = "0.8.9"
+rkyv = "0.8.10"
 secrecy = "0.10.3"
 serde = { version = "1.0.217", features = ["derive"] }
-serde_json = { version = "1.0.135", features = ["preserve_order"] }
+serde_json = { version = "1.0.138", features = ["preserve_order"] }
 strum = { version = "0.26.3", features = ["derive"] }
 strum_macros = "0.26.4"
-thiserror = "2.0.10"
+thiserror = "2.0.11"
 tokio = { version = "1.43.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tonic = { version = "0.12.3", features = ["zstd", "gzip"] }
@@ -54,4 +54,5 @@ tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["json", "chrono", "env-filter"] }
 tracing-appender = "0.2.3"
 unic-langid = "0.9.5"
-zbus = { version = "5.2.0", default-features = false, features = ["tokio", "blocking-api"] }
+zbus = { version = "5.3.1", default-features = false, features = ["tokio", "blocking-api"] }
+zerocopy = { version = "0.8.16", features = ["simd-nightly", "derive", "std"] }

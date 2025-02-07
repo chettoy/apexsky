@@ -1,3 +1,5 @@
+use zerocopy::IntoBytes;
+
 use super::*;
 
 const SIZE: usize = 32;
@@ -163,8 +165,9 @@ impl Entity for ScriptNetDataEntity {
 
         let start_offset = self.offsets.iter().cloned().min().unwrap_or(0);
 
-        let Some(buf) =
-            dataview::bytes_mut(&mut buf).get_mut(..(self.entity_size - start_offset) as usize)
+        let Some(buf) = buf
+            .as_mut_bytes()
+            .get_mut(..(self.entity_size - start_offset) as usize)
         else {
             return;
         };

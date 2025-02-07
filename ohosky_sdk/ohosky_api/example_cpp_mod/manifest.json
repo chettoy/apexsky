@@ -2,12 +2,12 @@
     "manifest_version": 1,
     "package_name": "app.ohos.example.cpp.mod",
     "version_code": 0,
-    "version": "0.1.0",
+    "version": "0.2.0",
     "label": "example_cpp_mod",
     "description": "",
     "icons": {},
     "target_api": {
-        "runtime": 1
+        "runtime": 2
     },
     "components": [
         {

@@ -1,6 +1,8 @@
-use super::{Pod, Ptr};
+use zerocopy::{FromBytes, Immutable, KnownLayout};
 
-#[derive(Debug, Default)]
+use super::Ptr;
+
+#[derive(Debug, Default, FromBytes, Immutable, KnownLayout)]
 #[repr(C)]
 pub struct CUtlMemory<T> {
     pub pMemory: Ptr<[T]>,
@@ -8,13 +10,10 @@ pub struct CUtlMemory<T> {
     pub nGrowSize: i32,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, FromBytes, Immutable, KnownLayout)]
 #[repr(C)]
 pub struct CUtlVector<T> {
     pub Memory: CUtlMemory<T>,
     pub Size: i32,
     pub pElements: Ptr<[T]>,
 }
-
-unsafe impl<T: 'static> Pod for CUtlMemory<T> {}
-unsafe impl<T: 'static> Pod for CUtlVector<T> {}

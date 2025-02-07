@@ -1,7 +1,7 @@
-use super::Pod;
 use crate::apexdream::base::hash;
 use crate::noobfstr as s;
 use bitset_core::*;
+use dataview::Pod;
 use named_constants::named_constants;
 use std::fmt;
 
@@ -190,7 +190,7 @@ pub enum ModelName {
 //----------------------------------------------------------------
 
 #[named_constants]
-#[derive(Pod, Copy, Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Pod)]
 #[repr(i32)]
 pub enum WeapState {
     READY = 0,

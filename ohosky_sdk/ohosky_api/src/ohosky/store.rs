@@ -1,3 +1,5 @@
+use bytes::Bytes;
+
 use crate::common::store::ISharedStore;
 
 use super::api::bindings::ohosky::main::store as shared_storage;
@@ -6,14 +8,14 @@ pub struct SharedStoreApi;
 
 impl ISharedStore for SharedStoreApi {
     #[inline]
-    fn set(id: u64, data: Vec<u8>) {
+    fn set(id: u64, data: Bytes) {
         tracing::debug!(?id, ?data);
         shared_storage::set(id, &data);
     }
 
     #[inline]
-    fn get(id: u64) -> Option<Vec<u8>> {
-        shared_storage::get(id)
+    fn get(id: u64) -> Option<Bytes> {
+        shared_storage::get(id).map(Bytes::from)
     }
 
     #[inline]
@@ -27,13 +29,13 @@ impl ISharedStore for SharedStoreApi {
     }
 
     #[inline]
-    fn set_child(id: u64, child_id: u64, data: Vec<u8>) {
+    fn set_child(id: u64, child_id: u64, data: Bytes) {
         shared_storage::child_set(id, child_id, &data);
     }
 
     #[inline]
-    fn get_child(id: u64, child_id: u64) -> Option<Vec<u8>> {
-        shared_storage::child_get(id, child_id)
+    fn get_child(id: u64, child_id: u64) -> Option<Bytes> {
+        shared_storage::child_get(id, child_id).map(Bytes::from)
     }
 
     #[inline]
@@ -47,18 +49,34 @@ impl ISharedStore for SharedStoreApi {
     }
 
     #[inline]
-    fn insert_children(id: u64, entries: Vec<(u64, Vec<u8>)>) {
+    fn insert_children(id: u64, entries: Vec<(u64, Bytes)>) {
+        let entries = entries
+            .into_iter()
+            .map(|(id, data)| (id, Vec::from(data)))
+            .collect::<Vec<_>>();
         shared_storage::insert_children(id, &entries)
     }
 
     #[inline]
-    fn swap_children(id: u64, entries: Vec<(u64, Vec<u8>)>) {
+    fn swap_children(id: u64, entries: Vec<(u64, Bytes)>) {
+        let entries = entries
+            .into_iter()
+            .map(|(id, data)| (id, Vec::from(data)))
+            .collect::<Vec<_>>();
         shared_storage::swap_children(id, &entries)
     }
 
     #[inline]
-    fn get_children(id: u64) -> Vec<(u64, Vec<u8>)> {
+    fn count_children(id: u64) -> usize {
+        shared_storage::count_children(id) as usize
+    }
+
+    #[inline]
+    fn get_children(id: u64) -> Vec<(u64, Bytes)> {
         shared_storage::get_children(id)
+            .into_iter()
+            .map(|(id, data)| (id, Bytes::from(data)))
+            .collect()
     }
 
     #[inline]

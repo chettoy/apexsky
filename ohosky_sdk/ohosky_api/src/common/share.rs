@@ -3,6 +3,12 @@ pub trait ISharableValue: Sized {
     fn from_value(value: Self::ValueType) -> anyhow::Result<Self>;
     fn from_raw(data: Vec<u8>) -> Self;
     fn into_raw(self) -> Vec<u8>;
+    fn from_bytes(data: bytes::Bytes) -> Self {
+        Self::from_raw(data.into())
+    }
+    fn into_bytes(self) -> bytes::Bytes {
+        bytes::Bytes::from(self.into_raw())
+    }
     fn into_value(self) -> anyhow::Result<Self::ValueType>;
 }
 

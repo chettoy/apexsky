@@ -1,7 +1,8 @@
-use super::{Pod, Ptr};
-use std::mem;
+use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
-#[derive(Copy, Clone, Debug, Default, Pod)]
+use super::Ptr;
+
+#[derive(Copy, Clone, Debug, Default, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct ClientClass {
     pub pCreateFn: Ptr,
@@ -13,7 +14,7 @@ pub struct ClientClass {
     pub ClassSize: u32,
 }
 
-#[derive(Copy, Clone, Debug, Default, Pod)]
+#[derive(Copy, Clone, Debug, Default, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct RecvTableRedux {
     pub inst: Ptr,
@@ -22,7 +23,7 @@ pub struct RecvTableRedux {
     pub pad: u32,
 }
 
-#[derive(Copy, Clone, Debug, Pod)]
+#[derive(Copy, Clone, Debug, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct RecvTable {
     pub inst: Ptr,
@@ -36,9 +37,9 @@ pub struct RecvTable {
     pub in_main_list: u8,
     _unk2: [u8; 6],
 }
-const _: [(); 0x4D8] = [(); mem::size_of::<RecvTable>()];
+const _: [(); 0x4D8] = [(); size_of::<RecvTable>()];
 
-#[derive(Copy, Clone, Debug, Default, Pod)]
+#[derive(Copy, Clone, Debug, Default, FromBytes, Immutable, IntoBytes, KnownLayout)]
 #[repr(C)]
 pub struct RecvProp {
     pub ty: i32,
@@ -56,4 +57,4 @@ pub struct RecvProp {
     pub num_elements: i32,
     _unk5: u32,
 }
-const _: [(); 0x68] = [(); mem::size_of::<RecvProp>()];
+const _: [(); 0x68] = [(); size_of::<RecvProp>()];
