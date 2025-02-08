@@ -42,6 +42,22 @@ pub trait IMemAccess: Sized {
         req_id: usize,
     ) -> anyhow::Result<bytes::Bytes>;
 
+    async fn read_raw_into(
+        &self,
+        addr: u64,
+        out: &mut [u8],
+        priority: i32,
+        req_id: usize,
+    ) -> anyhow::Result<()>;
+
+    fn read_raw_into_blocking(
+        &self,
+        addr: u64,
+        out: &mut [u8],
+        priority: i32,
+        req_id: usize,
+    ) -> anyhow::Result<()>;
+
     async fn read_raw_list(
         &self,
         list: &mut Vec<(u64, usize, Option<bytes::Bytes>)>,

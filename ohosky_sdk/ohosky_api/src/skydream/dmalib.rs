@@ -85,6 +85,36 @@ impl IMemAccess for MemAccess {
         Ok(convert_ffi_bytes(ret))
     }
 
+    async fn read_raw_into(
+        &self,
+        addr: u64,
+        out: &mut [u8],
+        priority: i32,
+        req_id: usize,
+    ) -> anyhow::Result<()> {
+        let ret = sky!(.dmalib.mem_read_async)(self.0, addr, out.len(), priority, req_id).await;
+        if ret.is_empty() {
+            anyhow::bail!("fail");
+        }
+        out.copy_from_slice(&ret);
+        Ok(())
+    }
+
+    fn read_raw_into_blocking(
+        &self,
+        addr: u64,
+        out: &mut [u8],
+        priority: i32,
+        req_id: usize,
+    ) -> anyhow::Result<()> {
+        let ret = sky!(.dmalib.mem_read_blocking)(self.0, addr, out.len(), priority, req_id);
+        if ret.is_empty() {
+            anyhow::bail!("fail");
+        }
+        out.copy_from_slice(&ret);
+        Ok(())
+    }
+
     async fn read_raw_list(
         &self,
         list: &mut Vec<(u64, usize, Option<bytes::Bytes>)>,

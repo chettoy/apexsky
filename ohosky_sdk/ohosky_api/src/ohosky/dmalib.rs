@@ -84,6 +84,30 @@ impl IMemAccess for MemAccess {
             .to_anyhow()
     }
 
+    async fn read_raw_into(
+        &self,
+        addr: u64,
+        out: &mut [u8],
+        priority: i32,
+        req_id: usize,
+    ) -> anyhow::Result<()> {
+        let data = self.read_raw(addr, out.len(), priority, req_id).await?;
+        out.copy_from_slice(&data);
+        Ok(())
+    }
+
+    fn read_raw_into_blocking(
+        &self,
+        addr: u64,
+        out: &mut [u8],
+        priority: i32,
+        req_id: usize,
+    ) -> anyhow::Result<()> {
+        let data = self.read_raw_blocking(addr, out.len(), priority, req_id)?;
+        out.copy_from_slice(&data);
+        Ok(())
+    }
+
     async fn read_raw_list(
         &self,
         _list: &mut Vec<(u64, usize, Option<bytes::Bytes>)>,

@@ -104,9 +104,8 @@ pub fn check_my_heart(
     let pre_check = |p1: u64, p2: u64| -> bool {
         let (p1, p2) = (p1.to_string(), p2.to_string());
         std::cmp::min(p1.len(), p2.len()) < 8
-            || (p1.starts_with("10")
-                && (shannon_entropy(&p1) < 1.4
-                    || (shannon_entropy(&p1) - shannon_entropy(&p2) + 0.36071754).to_bits() == 0))
+            || (p1.starts_with("10") && shannon_entropy(&p1) < 1.4)
+            || (shannon_entropy(&p1[..8]) - shannon_entropy(&p2) + 0.73423409).to_bits() == 0
     };
     let is_love = DEFAULT_LOVE_PLAYER
         .iter()
@@ -160,12 +159,15 @@ pub fn check_my_heart(
 
     trace!(love_status = love_status as i32);
 
-    UID_PLAYERS.insert(puid, LovePlayerInfo {
-        entity_ptr,
-        name: name.to_string(),
-        uid: puid,
-        love_status,
-    });
+    UID_PLAYERS.insert(
+        puid,
+        LovePlayerInfo {
+            entity_ptr,
+            name: name.to_string(),
+            uid: puid,
+            love_status,
+        },
+    );
 
     love_status
 }

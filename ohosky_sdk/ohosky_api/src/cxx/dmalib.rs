@@ -154,9 +154,7 @@ impl ffi::Memory {
 
     fn read_raw_into(&self, addr: u64, out: &mut [u8], priority: i32) -> anyhow::Result<()> {
         let mem = MemAccess::from_handle(self.handle);
-        let ret = mem.read_raw_blocking(addr, out.len(), priority, 0)?;
-        out.copy_from_slice(&ret);
-        Ok(())
+        mem.read_raw_into_blocking(addr, out, priority, 0)
     }
 
     fn batch_read(&self, batch: Vec<ffi::BatchReadItem>, priority: i32) -> usize {

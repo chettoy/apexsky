@@ -39,7 +39,6 @@ impl Api {
     }
 
     /// Reads memory from the process.
-    #[instrument]
     #[inline]
     pub async fn vm_read<T: FromBytes>(&self, ptr: Ptr<T>) -> anyhow::Result<T> {
         self.mem_access
@@ -57,26 +56,22 @@ impl Api {
     }
 
     /// Reads memory into the destination from the process.
-    #[instrument(skip(dest))]
     #[inline]
     pub async fn vm_read_into<T: FromBytes + IntoBytes + ?Sized>(
         &self,
         ptr: Ptr<T>,
         dest: &mut T,
     ) -> anyhow::Result<()> {
-        let result = {
-            let dest = dest.as_mut_bytes();
-            self.mem_access
-                .read_raw(ptr.into_raw(), dest.len(), dmalib::PRIO_LOW, self.req_id)
-                .await
-                .map(|bytes| dest.copy_from_slice(&bytes))
-        };
-        result.inspect_err(|e| tracing::debug!(?ptr, ?e))
+        let dest = dest.as_mut_bytes();
+        self.mem_access
+            .read_raw(ptr.into_raw(), dest.len(), dmalib::PRIO_LOW, self.req_id)
+            .await
+            .map(|bytes| dest.copy_from_slice(&bytes))
+            .inspect_err(|e| tracing::debug!(?ptr, ?e))
     }
 
     /// Gathers memory from the process.
     /// This routine is optimized for reading small pieces of large objects.
-    #[instrument(skip_all)]
     #[inline]
     pub async fn vm_gatherd<'a, T: FromBytes + IntoBytes>(
         &self,
@@ -193,7 +188,6 @@ impl Api {
     }
 
     /// Reads bytes to be interpreted as a c-string.
-    #[instrument]
     pub async fn vm_read_cstr<'a>(
         &self,
         ptr: Ptr<[u8]>,
@@ -204,7 +198,6 @@ impl Api {
     }
 
     /// Writes memory into the process.
-    #[instrument(skip(data))]
     #[inline]
     pub async fn vm_write<T: IntoBytes + Immutable>(
         &self,

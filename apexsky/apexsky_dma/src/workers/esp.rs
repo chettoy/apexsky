@@ -14,15 +14,16 @@ use futures_util::FutureExt;
 use obfstr::obfstr as s;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
+use tokio::time::Instant;
 use tokio::{sync::watch, time::sleep};
 use tonic::codec::CompressionEncoding;
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{Request, Response, Status, transport::Server};
 use tracing::instrument;
 
-use crate::game::data::ItemId;
-use crate::global_state::G_STATE;
 use crate::GameApiHandle;
 use crate::PRINT_LATENCY;
+use crate::game::data::ItemId;
+use crate::global_state::G_STATE;
 
 #[tonic::async_trait]
 impl EspService for GameApiHandle {
@@ -94,6 +95,7 @@ impl EspService for GameApiHandle {
         request: Request<EspDataOption>,
     ) -> Result<Response<EspData>, Status> {
         let op = request.into_inner();
+        let handle_time = Instant::now();
 
         let update_time = {
             let mut rx = self.channels.update_time_rx.clone();
@@ -105,6 +107,9 @@ impl EspService for GameApiHandle {
             let x = rx.borrow().to_owned();
             x
         };
+        if PRINT_LATENCY {
+            println!("wait refresh {}ms", handle_time.elapsed().as_millis_f32());
+        }
 
         let reply = {
             let state = &self.state;
@@ -132,6 +137,10 @@ impl EspService for GameApiHandle {
             let view_player = state
                 .get_view_player_ptr()
                 .and_then(|ptr| players.get(&ptr));
+
+            if PRINT_LATENCY {
+                println!("read state {}ms", handle_time.elapsed().as_millis_f32());
+            }
 
             let aim_targets: Vec<AimTargetItem> = self
                 .channels
@@ -191,6 +200,13 @@ impl EspService for GameApiHandle {
                     })
                 })
                 .collect();
+
+            if PRINT_LATENCY {
+                println!(
+                    "pack aim_targets {}ms",
+                    handle_time.elapsed().as_millis_f32()
+                );
+            }
 
             EspData {
                 ready: state.get_game_baseaddr().is_some(),
@@ -288,6 +304,14 @@ impl EspService for GameApiHandle {
                 },
             }
         };
+
+        if PRINT_LATENCY {
+            println!(
+                "finish esp_data {}ms",
+                handle_time.elapsed().as_millis_f32()
+            );
+        }
+
         Ok(Response::new(reply))
     }
 

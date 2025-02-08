@@ -19,17 +19,17 @@ impl IHostApi for HostApi {
 
     fn get_base_dir() -> PathBuf {
         let ret = sky!(.host.get_base_dir)();
-        String::from_utf8(ret.to_vec().into()).unwrap().into()
+        String::from_utf8(ret.to_vec()).unwrap().into()
     }
 
     fn get_config_dir() -> PathBuf {
         let ret = sky!(.host.get_config_dir)();
-        String::from_utf8(ret.to_vec().into()).unwrap().into()
+        String::from_utf8(ret.to_vec()).unwrap().into()
     }
 
     fn get_temp_dir() -> PathBuf {
         let ret = sky!(.host.get_temp_dir)();
-        String::from_utf8(ret.to_vec().into()).unwrap().into()
+        String::from_utf8(ret.to_vec()).unwrap().into()
     }
 
     fn get_locale() -> Option<String> {

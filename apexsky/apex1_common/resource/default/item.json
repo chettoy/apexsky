@@ -96,8 +96,8 @@
         "model": "mdl/weapons/sentinel/w_sentinel.rmdl"
     },
     {
-	"int": 232,
-	"model": "mdl/weapons/epg/w_epg.rmdl"
+        "int": 232,
+        "model": "mdl/weapons/epg/w_epg.rmdl"
     },
     {
         "int": 234,
@@ -422,6 +422,10 @@
     {
         "int": 409,
         "model": "mdl/props/evac_tower_loot/evac_tower_loot.rmdl"
+    },
+    {
+        "int": 420,
+        "model": "mdl/weapons/titansword/w_loot_titansword.rmdl"
     },
     {
         "int": 421,

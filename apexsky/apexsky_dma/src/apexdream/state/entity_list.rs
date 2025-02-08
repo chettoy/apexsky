@@ -159,7 +159,7 @@ impl EntityList {
                 _ if !(index < sdk::MAX_PLAYERS
                     || (recreate_start..recreate_end).contains(&index)) =>
                 {
-                    continue
+                    continue;
                 }
 
                 EntityStatus::RetryCreate => {
@@ -192,9 +192,11 @@ impl EntityList {
 
                 // Always update the entity when created
                 start_update(index, entity);
-            } else if index < sdk::MAX_PLAYERS {
-                // Always retry for player entities
+            } else if Some(index) == ctx.local_entity.index() {
+                // Always retry for local player
                 ent_status[index] = EntityStatus::Retry2;
+            } else if index > 15000 {
+                ent_status[index] = EntityStatus::Invalid;
             } else {
                 // Gradually increase the retry interval with failure
                 ent_status[index] = match ent_status[index] {
@@ -203,7 +205,7 @@ impl EntityList {
                     EntityStatus::RetryCreate => EntityStatus::Retry2,
                     EntityStatus::Retry2 => EntityStatus::Retry4,
                     EntityStatus::Retry4 => EntityStatus::Retry8,
-                    EntityStatus::Retry8 => EntityStatus::Retry8,
+                    EntityStatus::Retry8 => EntityStatus::Invalid,
                     EntityStatus::Valid => unreachable!(),
                 };
             }

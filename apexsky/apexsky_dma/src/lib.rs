@@ -1,7 +1,9 @@
+#![feature(duration_millis_float)]
+
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU64};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU64};
 use std::time::Duration;
 
 use crate::global_state::G_STATE;
@@ -21,10 +23,10 @@ use secrecy::ExposeSecret;
 use tokio::sync::watch;
 use tokio::task::{self, JoinHandle};
 use tokio::time::sleep;
-use tracing::{instrument, Level};
+use tracing::{Level, instrument};
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::EnvFilter;
 
 use crate::game::player::GamePlayer;
 
