@@ -19,7 +19,7 @@ impl Modifiers {
     #[allow(unused)]
     #[instrument(skip_all)]
     pub async fn visit(&mut self, api: &Api, ctx: &UpdateContext, entity_ref: EntityRef<'_>) {
-        if ctx.data.mods_names == 0 {
+        if ctx.data.mods_names == 0 || ctx.data.mods_list == 0 || ctx.data.mods_count == 0 {
             return;
         }
 

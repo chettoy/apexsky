@@ -1,6 +1,5 @@
-use core::slice;
 use obfstr::obfstr as s;
-use std::{collections::HashSet, fmt, mem};
+use std::{collections::HashSet, fmt};
 use tracing::instrument;
 use zerocopy::{FromBytes, Immutable, IntoBytes};
 
@@ -80,26 +79,8 @@ impl Api {
         ignore_zero_offset: bool,
         indices: &'a mut T,
     ) -> anyhow::Result<&'a T> {
-        fn is_aligned<U>(ptr: *const U) -> bool {
-            let addr: usize = unsafe { mem::transmute(ptr) };
-            addr % mem::align_of::<U>() == 0
-        }
-
-        /// Gets an aligned mutable slice into the view
-        #[inline]
-        fn try_slice_mut<U>(bytes: &mut [u8], offset: usize, len: usize) -> Option<&mut [U]> {
-            let index = offset..offset + usize::checked_mul(len, size_of::<U>())?;
-            let bytes = bytes.get_mut(index)?;
-            let unaligned_ptr = bytes.as_mut_ptr() as *mut U;
-            if !is_aligned(unaligned_ptr) {
-                return None;
-            }
-            unsafe { Some(slice::from_raw_parts_mut(unaligned_ptr, len)) }
-        }
-
-        let view_mut = indices.as_mut_bytes();
-        let view_mut =
-            try_slice_mut::<u32>(view_mut, 0, view_mut.len() / size_of::<u32>()).unwrap();
+        let view_mut = dataview::DataView::from_mut(indices.as_mut_bytes());
+        let view_mut = view_mut.slice_mut::<u32>(0, view_mut.tail_len::<u32>(0));
 
         self.gather_memory(ptr.into_raw(), ignore_zero_offset, view_mut)
             .await

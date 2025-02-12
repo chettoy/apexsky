@@ -385,7 +385,7 @@ impl EspService for GameApiHandle {
                     ItemId::ShieldBatteryLarge.0,
                     ItemId::ShieldUpgradeHead3.0,
                     ItemId::ShieldUpgradeHead4.0,
-                    ItemId::ShieldDown4.0,
+                    // ItemId::ShieldDown4.0,
                     ItemId::HeavyBackpack.0,
                     ItemId::GoldBackpack.0,
                     ItemId::LightAmmoMag3.0,

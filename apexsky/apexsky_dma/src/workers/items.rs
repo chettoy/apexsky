@@ -81,8 +81,8 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
         ItemId::ArmorCore2 if select.shieldupgrade2 => Some(HIGHLIGHT_LOOT_BLUE),
         ItemId::ArmorCore3 if select.shieldupgrade3 => Some(HIGHLIGHT_LOOT_PURPLE),
         ItemId::ArmorCore4 if select.shieldupgrade5 => Some(HIGHLIGHT_LOOT_RED),
-        ItemId::ShieldUpgradeHead1 if select.shieldupgradehead1 => Some(HIGHLIGHT_LOOT_WHITE),
-        ItemId::ShieldUpgradeHead2 if select.shieldupgradehead2 => Some(HIGHLIGHT_LOOT_BLUE),
+        // ItemId::ShieldUpgradeHead1 if select.shieldupgradehead1 => Some(HIGHLIGHT_LOOT_WHITE),
+        // ItemId::ShieldUpgradeHead2 if select.shieldupgradehead2 => Some(HIGHLIGHT_LOOT_BLUE),
         ItemId::ShieldUpgradeHead3 if select.shieldupgradehead3 => Some(HIGHLIGHT_LOOT_PURPLE),
         ItemId::ShieldUpgradeHead4 if select.shieldupgradehead4 => Some(HIGHLIGHT_LOOT_GOLD),
 
@@ -131,12 +131,12 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
         ItemId::ShieldDown1 if select.shielddown1 => Some(HIGHLIGHT_LOOT_WHITE),
         ItemId::ShieldDown2 if select.shielddown2 => Some(HIGHLIGHT_LOOT_BLUE),
         ItemId::ShieldDown3 if select.shielddown3 => Some(HIGHLIGHT_LOOT_PURPLE),
-        ItemId::ShieldDown4 if select.shielddown4 => Some(HIGHLIGHT_LOOT_GOLD),
+        // ItemId::ShieldDown4 if select.shielddown4 => Some(HIGHLIGHT_LOOT_GOLD),
 
         // Optics
         ItemId::Optic1xHCOG if select.optic1xhcog => Some(HIGHLIGHT_LOOT_WHITE),
         ItemId::Optic2xHCOG if select.optic2xhcog => Some(HIGHLIGHT_LOOT_BLUE),
-        ItemId::OpticHolo1x if select.opticholo1x => Some(HIGHLIGHT_LOOT_WHITE),
+        // ItemId::OpticHolo1x if select.opticholo1x => Some(HIGHLIGHT_LOOT_WHITE),
         ItemId::OpticHolo1x2x if select.opticholo1x2x => Some(HIGHLIGHT_LOOT_BLUE),
         ItemId::OpticThreat if select.opticthreat => Some(HIGHLIGHT_LOOT_GOLD),
         ItemId::Optic3xHCOG if select.optic3xhcog => Some(HIGHLIGHT_LOOT_PURPLE),

@@ -67,11 +67,15 @@ impl Entity for VehicleEntity {
                 data.entity_origin + 32,
             ],
             driver: data.vehicle_driver,
-            vehicle_velocity: [
-                data.vehicle_velocity,
-                data.vehicle_velocity + 4,
-                data.vehicle_velocity + 8,
-            ],
+            vehicle_velocity: if data.vehicle_velocity != 0 {
+                [
+                    data.vehicle_velocity,
+                    data.vehicle_velocity + 4,
+                    data.vehicle_velocity + 8,
+                ]
+            } else {
+                [0; 3]
+            },
         };
 
         if let Ok(fields) = api

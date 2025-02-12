@@ -80,18 +80,22 @@ impl Entity for ProjectileEntity {
             ],
             team_num: data.entity_team_num,
             owner_entity: data.entity_owner_entity,
-            projectile: [
-                data.projectile,
-                data.projectile + 0x04,
-                data.projectile + 0x08,
-                data.projectile + 0x0c,
-                data.projectile + 0x10,
-                data.projectile + 0x14,
-                data.projectile + 0x28,
-                data.projectile + 0x44 + 0,
-                data.projectile + 0x44 + 4,
-                data.projectile + 0x44 + 8,
-            ],
+            projectile: if data.projectile != 0 {
+                [
+                    data.projectile,
+                    data.projectile + 0x04,
+                    data.projectile + 0x08,
+                    data.projectile + 0x0c,
+                    data.projectile + 0x10,
+                    data.projectile + 0x14,
+                    data.projectile + 0x28,
+                    data.projectile + 0x44 + 0,
+                    data.projectile + 0x44 + 4,
+                    data.projectile + 0x44 + 8,
+                ]
+            } else {
+                [0; 10]
+            },
         };
 
         if let Ok(fields) = api
