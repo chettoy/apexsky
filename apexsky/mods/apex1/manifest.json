@@ -1,10 +1,10 @@
 {
     "manifest_version": 1,
     "package_name": "com.chettoy.apex1",
-    "version_code": 5,
-    "version": "0.6.0",
+    "version_code": 6,
+    "version": "0.7.0",
     "label": "apex1",
-    "description": "Game v3.0.2.14",
+    "description": "Game v3.0.1.25",
     "icons": {},
     "target_api": {
         "runtime": 2
