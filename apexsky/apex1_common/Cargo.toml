@@ -8,9 +8,9 @@ name = "apex1_common"
 crate-type = ["rlib", "staticlib"]
 
 [dependencies]
-anyhow = { version = "1.0.95", features = ["backtrace"] }
+anyhow = { version = "1.0.96", features = ["backtrace"] }
 chrono = "0.4.39"
-config = { version = "0.15.7", default-features = false, features = ["toml"] }
+config = { version = "0.15.8", default-features = false, features = ["toml"] }
 dashmap = { version = "6.1.0", features = ["serde"] }
 entropy = "0.4.2"
 hex = { version = "0.4.3", features = ["serde"] }
@@ -20,13 +20,13 @@ named_constants = "0.2.0"
 obfstr = "0.4.4"
 ohosky_api = { path = "../../ohosky_sdk/ohosky_api", default-features = false }
 parking_lot = { version = "0.12.3", features = ["nightly"] }
-prost = "0.13.4"
+prost = "0.13.5"
 rand = "0.9.0"
 rkyv = "0.8.10"
 secrecy = "0.10.3"
-serde = { version = "1.0.217", features = ["derive"] }
-serde_json = { version = "1.0.138", features = ["preserve_order"] }
-toml = "0.8.19"
+serde = { version = "1.0.218", features = ["derive"] }
+serde_json = { version = "1.0.139", features = ["preserve_order"] }
+toml = "0.8.20"
 tonic = { version = "0.12.3", optional = true }
 tracing = "0.1.41"
 

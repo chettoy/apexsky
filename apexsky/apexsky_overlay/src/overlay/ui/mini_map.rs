@@ -63,7 +63,7 @@ pub(super) fn mini_map_radar(
         .resizable(false)
         .title_bar(true)
         .movable(true)
-        .frame(egui::Frame::none())
+        .frame(egui::Frame::NONE)
         .default_pos(default_position)
         .fixed_size((radar_rect_size, radar_rect_size))
         .show(ctx, |ui| {

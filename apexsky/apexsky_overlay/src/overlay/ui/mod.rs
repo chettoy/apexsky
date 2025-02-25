@@ -411,14 +411,14 @@ pub fn ui_system(
         .auto_sized()
         .default_pos(ui_persistance.hello_position.unwrap_or((1600.0, 320.0)))
         .frame(egui::Frame {
-            inner_margin: egui::Margin::same(8.0),
+            inner_margin: egui::Margin::same(8),
             outer_margin: egui::Margin::ZERO,
-            rounding: egui::Rounding::same(6.0),
+            corner_radius: egui::CornerRadius::same(6),
             shadow: egui::epaint::Shadow {
-                offset: [0.0, 0.0].into(),
-                spread: 3.0,
+                offset: [0, 0],
+                spread: 3,
                 color: Color32::from_black_alpha(61),
-                blur: 0.0,
+                blur: 0,
             },
             fill: Color32::from_rgba_premultiplied(13, 13, 13, 138),
             stroke: egui::Stroke::new(1.0, Color32::from_rgba_premultiplied(48, 48, 48, 74)),
@@ -429,7 +429,7 @@ pub fn ui_system(
                 visuals.override_text_color =
                     Some(Color32::from_rgba_premultiplied(255, 255, 255, 222));
                 visuals.window_fill = Color32::from_rgba_premultiplied(26, 26, 26, 153);
-                visuals.window_rounding = egui::Rounding::same(7.0);
+                visuals.window_corner_radius = egui::CornerRadius::same(7);
             }
 
             ui.label(format!(
@@ -726,7 +726,7 @@ pub fn ui_system(
     {
         let panel_frame = egui::Frame {
             fill: Color32::TRANSPARENT, //ctx.style().visuals.window_fill(),
-            rounding: 10.0.into(),
+            corner_radius: 10.into(),
             stroke: egui::Stroke::NONE, //ctx.style().visuals.widgets.noninteractive.fg_stroke,
             outer_margin: 0.5.into(),   // so the stroke is within the bounds
             ..Default::default()
@@ -1296,8 +1296,9 @@ fn esp_2d_ui(
                                 min: pos_min,
                                 max: pos_max,
                             },
-                            0.0,
+                            0,
                             stroke,
+                            egui::StrokeKind::Middle,
                         );
                     }
                 }
@@ -1389,6 +1390,7 @@ fn esp_2d_ui(
                 Rect { min: p2, max: p4 },
                 INDICATOR_RADIUS,
                 (1.6726, indicator_color),
+                egui::StrokeKind::Middle,
             );
             if aimbot_target_locked {
                 let stroke = (2.718, Color32::RED);
@@ -1529,8 +1531,13 @@ fn toggle_ui_compact(ui: &mut egui::Ui, on: &mut bool) -> egui::Response {
         let visuals = ui.style().interact_selectable(&response, *on);
         let rect = rect.expand(visuals.expansion);
         let radius = 0.5 * rect.height();
-        ui.painter()
-            .rect(rect, radius, visuals.bg_fill, visuals.bg_stroke);
+        ui.painter().rect(
+            rect,
+            radius,
+            visuals.bg_fill,
+            visuals.bg_stroke,
+            egui::StrokeKind::Middle,
+        );
         let circle_x = egui::lerp((rect.left() + radius)..=(rect.right() - radius), how_on);
         let center = egui::pos2(circle_x, rect.center().y);
         ui.painter()
