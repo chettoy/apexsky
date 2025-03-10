@@ -9,6 +9,10 @@
     },
     {
         "int": 11,
+        "model": "mdl/weapons/lstar/w_lstar.rmdl"
+    },
+    {
+        "int": 11,
         "model": "mdl/techart/mshop/weapons/class/lmg/lstar/lstar_lgnd_v23_resdopa_w.rmdl"
     },
     {
@@ -25,11 +29,11 @@
     },
     {
         "int": 41,
-        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_base_w.rmdl"
+        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_v19_grimreaper_w.rmdl"
     },
     {
         "int": 41,
-        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_v19_grimreaper_w.rmdl"
+        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_base_w.rmdl"
     },
     {
         "int": 47,
@@ -62,6 +66,10 @@
     {
         "int": 86,
         "model": "mdl/techart/mshop/weapons/class/smg/volt/volt_lgnd_v22_queensguard_w.rmdl"
+    },
+    {
+        "int": 86,
+        "model": "mdl/weapons/hemlok_smg/w_hemlok_smg.rmdl"
     },
     {
         "int": 91,
@@ -101,11 +109,11 @@
     },
     {
         "int": 141,
-        "model": "mdl/weapons/pstl_sa3/w_pstl_sa3_legendary_01.rmdl"
+        "model": "mdl/weapons/pstl_sa3/w_pstl_sa3.rmdl"
     },
     {
         "int": 141,
-        "model": "mdl/weapons/pstl_sa3/w_pstl_sa3.rmdl"
+        "model": "mdl/weapons/pstl_sa3/w_pstl_sa3_legendary_01.rmdl"
     },
     {
         "int": 155,
@@ -138,6 +146,10 @@
     {
         "int": 191,
         "model": "mdl/weapons/3030repeater/w_3030repeater.rmdl"
+    },
+    {
+        "int": 198,
+        "model": "mdl/techart/mshop/weapons/class/assault/nemesis/nemesis_base_w.rmdl"
     },
     {
         "int": 198,

@@ -7,12 +7,12 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-anyhow = "1.0.96"
+anyhow = "1.0.97"
 apex1_common = { path = "../apex1_common", features = ["skydream"] }
-async-trait = "0.1.86"
+async-trait = "0.1.87"
 axum = { version = "0.8.1", features = ["tracing"] }
 bitset-core = "0.1.1"
-chrono = "0.4.39"
+chrono = "0.4.40"
 #console-subscriber = "0.1.5"
 crossterm = "0.28.1"
 dataview = "1.0.1"
@@ -39,12 +39,12 @@ rand = "0.9.0"
 regex = "1.11.1"
 rkyv = "0.8.10"
 secrecy = "0.10.3"
-serde = { version = "1.0.218", features = ["derive"] }
-serde_json = { version = "1.0.139", features = ["preserve_order"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = { version = "1.0.140", features = ["preserve_order"] }
 strum = { version = "0.27.1", features = ["derive"] }
 strum_macros = "0.27.1"
-thiserror = "2.0.11"
-tokio = { version = "1.43.0", features = ["full"] }
+thiserror = "2.0.12"
+tokio = { version = "1.44.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tonic = { version = "0.12.3", features = ["zstd", "gzip"] }
 tonic-web = "0.12.3"
@@ -55,4 +55,4 @@ tracing-subscriber = { version = "0.3.19", features = ["json", "chrono", "env-fi
 tracing-appender = "0.2.3"
 unic-langid = "0.9.5"
 zbus = { version = "5.5.0", default-features = false, features = ["tokio", "blocking-api"] }
-zerocopy = { version = "0.8.20", features = ["simd-nightly", "derive", "std"] }
+zerocopy = { version = "0.8.23", features = ["simd-nightly", "derive", "std"] }

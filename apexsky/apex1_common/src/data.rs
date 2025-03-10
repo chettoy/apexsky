@@ -4,13 +4,11 @@ use named_constants::named_constants;
 use secrecy::SecretString;
 
 /*
- * GameVersion=v3.0.1.25
+ * GameVersion=v3.0.2.31
  */
 
 pub static GAME_VER_DX12_PROCESS_NAME: Lazy<SecretString> =
     Lazy::new(|| SecretString::from(obfstr::obfstr!("r5apex_dx12.exe")));
-pub static GAME_VER_DX11_PROCESS_NAME: Lazy<SecretString> =
-    Lazy::new(|| SecretString::from(obfstr::obfstr!("r5apex.exe")));
 
 // m_ammoPoolCount - 0x8
 pub const OFFSET_YAW: u64 = 0x229c - 0x8;

@@ -1,10 +1,10 @@
-use crate::global_state::G_STATE;
 use crate::G_OFFSETS;
+use crate::global_state::G_STATE;
 use anyhow::Context;
 use apex1_common::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
 use apex1_common::utils::get_unix_timestamp_in_millis;
 use apex1_common::{
-    aimbot::{calc_angle, calc_fov, AimEntity},
+    aimbot::{AimEntity, calc_angle, calc_fov},
     config::Settings,
     love_players::LoveStatus,
 };
@@ -12,33 +12,33 @@ use ndarray::arr1;
 use ohosky_api::common::dmalib::IMemAccess;
 use ohosky_api::common::msg::ISharedWatchValue;
 use ohosky_api::common::share::ISharableValue;
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 //use obfstr::obfstr as s;
 use crate::noobfstr as s;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use std::{collections::HashSet, sync::atomic::Ordering};
 use tokio::sync::watch;
-use tokio::time::{sleep, Instant};
+use tokio::time::{Instant, sleep};
 
 use crate::{
-    apexdream::state::entities::{DeathboxEntity, Entity},
-    game::player::QuickLooting,
-    skyapi,
-    skyapi::dmalib,
-    workers::items::LootInt,
-    SharedStateType,
-};
-use crate::{
-    apexdream::state::GameState,
-    game::{data::*, player::GamePlayer},
-};
-use crate::{
+    PRINT_LATENCY,
     apexdream::{
         base::math,
         sdk::HighlightBits,
         state::entities::{BaseNPCEntity, LootEntity},
     },
-    PRINT_LATENCY,
+};
+use crate::{
+    SharedStateType,
+    apexdream::state::entities::{DeathboxEntity, Entity},
+    game::player::QuickLooting,
+    skyapi,
+    skyapi::dmalib,
+    workers::items::LootInt,
+};
+use crate::{
+    apexdream::state::GameState,
+    game::{data::*, player::GamePlayer},
 };
 
 const REQUEST_ID: usize = 0; //obfstr::random!(usize);
@@ -515,6 +515,11 @@ pub async fn actions_loop(
             }
 
             /* Cold Variables Update Start */
+
+            // // Debug reading game_state.ClientState
+            // if actions_tick % 100 == 0 {
+            //     tracing::warn!(?apex_state.client);
+            // }
 
             tracing::trace_span!("Update state in global settings").in_scope(|| {
                 let firing_range_mode = apex_state.is_firing_range();

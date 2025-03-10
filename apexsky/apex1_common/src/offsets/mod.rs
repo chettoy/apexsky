@@ -17,10 +17,14 @@ pub fn load_offsets(game_ver_dx11: bool) -> CustomOffsets {
         );
         CustomOffsets::from_string(std::fs::read_to_string(offsets_file_path).unwrap())
     } else if game_ver_dx11 {
-        include_flate::flate!(static OFFSETS_DX11_INI: str from "../apex1_common/resource/default/offsets-dx11.ini" with zstd);
-        CustomOffsets::from_string(OFFSETS_DX11_INI.to_owned())
+        panic!(
+            "{}",
+            s!(
+                "Support for the DX11 version of the game is deprecated, please use the DX12 version!"
+            )
+        );
     } else {
-        include_flate::flate!(static OFFSETS_DX12_INI: str from "../apex1_common/resource/default/offsets-dx12.ini" with zstd);
+        include_flate::flate!(static OFFSETS_DX12_INI: str from "../apex1_common/resource/default/offsets.ini" with zstd);
         CustomOffsets::from_string(OFFSETS_DX12_INI.to_owned())
     }
 }

@@ -220,14 +220,15 @@ new GameApi().waitMainMod().then(async (game) => {
       const tickNum = new DataView(data.buffer).getBigInt64(0, true);
       // console.log("tickNum=" + tickNum);
       // await sleep(200);
-      try {
-        await action(game, mem, offsets, tickNum);
-      } catch (err) {
-        // Do not print memory read/write failure error messages
-        if (err.message !== "fail") {
-          console.error(err.name + ": " + err.message);
-        }
-      }
+
+      // try {
+      await action(game, mem, offsets, tickNum);
+      // } catch (err) {
+      //   // Do not print memory read/write failure error messages
+      //   if (err.message !== "fail") {
+      //     console.error(err.name + ": " + err.message);
+      //   }
+      // }
     }
   } finally {
     actionTick.close();

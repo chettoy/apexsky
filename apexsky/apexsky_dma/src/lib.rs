@@ -192,9 +192,12 @@ impl TaskManager for State {
 
         let access_tx = skyapi::dmalib::MemAccess::open(&DmalibAccessTarget {
             target_process_name: if *G_TARGET_GAME_VER_DX11 {
-                game::data::GAME_VER_DX11_PROCESS_NAME
-                    .expose_secret()
-                    .to_string()
+                panic!(
+                    "{}",
+                    s!(
+                        "Support for the DX11 version of the game is deprecated, please use the DX12 version!"
+                    )
+                );
             } else {
                 game::data::GAME_VER_DX12_PROCESS_NAME
                     .expose_secret()
