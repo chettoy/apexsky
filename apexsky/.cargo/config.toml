@@ -57,8 +57,9 @@ rustflags = [
 #[profile.dev]
 #debug = 1
 
-# Enable more optimization in the release profile at the cost of compile time.
 [profile.release]
+debug = "full"
+# Enable more optimization in the release profile at the cost of compile time.
 # Compile the entire crate as one unit.
 # Slows compile times, marginal improvements.
 codegen-units = 1
