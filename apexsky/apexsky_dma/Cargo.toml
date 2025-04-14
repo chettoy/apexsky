@@ -9,12 +9,12 @@ crate-type = ["cdylib"]
 [dependencies]
 anyhow = "1.0.97"
 apex1_common = { path = "../apex1_common", features = ["skydream"] }
-async-trait = "0.1.87"
-axum = { version = "0.8.1", features = ["tracing"] }
+async-trait = "0.1.88"
+axum = { version = "0.8.3", features = ["tracing"] }
 bitset-core = "0.1.1"
 chrono = "0.4.40"
 #console-subscriber = "0.1.5"
-crossterm = "0.28.1"
+crossterm = "0.29.0"
 dataview = "1.0.1"
 dashmap = "6.1.0"
 enum_dispatch = "0.3.13"
@@ -22,7 +22,7 @@ fluent = "0.16.1"
 futures-util = "0.3.31"
 hex = { version = "0.4.3", features = ["serde"] }
 include-flate = { git = "https://github.com/SOF3/include-flate", rev = "fe2e113" }
-indexmap = "2.7.1"
+indexmap = "2.9.0"
 itertools = "0.14.0"
 named_constants = "0.2.0"
 ndarray = "0.16.1"
@@ -30,7 +30,7 @@ obfstr = "0.4.4"
 ohosky_api = { path = "../../ohosky_sdk/ohosky_api", default-features = false, features = ["skydream"] }
 ohosky_kmbox = { path = "../../ohosky_sdk/ohosky_kmbox" }
 ohosky_menu = { path = "../../ohosky_sdk/ohosky_menu" }
-once_cell = "1.20.3"
+once_cell = "1.21.3"
 parking_lot = { version = "0.12.3", features = ["nightly"] }
 prost = "0.13.5"
 qapi = { version = "0.15.0", features = ["qmp", "async-tokio-all"] }
@@ -44,10 +44,10 @@ serde_json = { version = "1.0.140", features = ["preserve_order"] }
 strum = { version = "0.27.1", features = ["derive"] }
 strum_macros = "0.27.1"
 thiserror = "2.0.12"
-tokio = { version = "1.44.0", features = ["full"] }
+tokio = { version = "1.44.2", features = ["full"] }
 tokio-stream = "0.1.17"
-tonic = { version = "0.12.3", features = ["zstd", "gzip"] }
-tonic-web = "0.12.3"
+tonic = { version = "0.13.0", features = ["zstd", "gzip"] }
+tonic-web = "0.13.0"
 tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.2", features = ["compression-full", "decompression-full", "fs", "timeout", "trace"] }
 tracing = "0.1.41"
@@ -55,4 +55,4 @@ tracing-subscriber = { version = "0.3.19", features = ["json", "chrono", "env-fi
 tracing-appender = "0.2.3"
 unic-langid = "0.9.5"
 zbus = { version = "5.5.0", default-features = false, features = ["tokio", "blocking-api"] }
-zerocopy = { version = "0.8.23", features = ["simd-nightly", "derive", "std"] }
+zerocopy = { version = "0.8.24", features = ["simd-nightly", "derive", "std"] }

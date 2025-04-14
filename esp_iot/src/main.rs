@@ -88,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
             break;
         }
 
-        if !esp_data.in_game || !esp_data.local_player.is_some() {
+        if !esp_data.in_game || esp_data.local_player.is_none() {
             println!("Waiting for the game to be ready..");
             sleep(Duration::from_secs(2)).await;
             continue;

@@ -394,11 +394,11 @@ impl EspService for GameApiHandle {
                     ItemId::EnergyAmmoMag3.0,
                     ItemId::EnergyAmmoMag4.0,
                     ItemId::StockRegular3.0,
-                    // ItemId::TurboCharger.0,
+                    ItemId::TurboCharger.0,
                     ItemId::SelectfireReceiver.0,
                     ItemId::HammerPoint.0,
                     ItemId::BoostedLoader.0,
-                    // ItemId::DisruptorRounds.0,
+                    ItemId::DisruptorRounds.0,
                     ItemId::GunShieldGenerator.0,
                 ],
             }
@@ -505,7 +505,8 @@ pub async fn esp_loop(
                     Server::builder()
                         .trace_fn(|_| tracing::info_span!("esp_server"))
                         .accept_http1(config.accept_http1)
-                        .add_service(tonic_web::enable(service))
+                        .layer(tonic_web::GrpcWebLayer::new())
+                        .add_service(service)
                         .serve_with_incoming_shutdown(stream, shutdown_rx.map(drop))
                         .await?;
 

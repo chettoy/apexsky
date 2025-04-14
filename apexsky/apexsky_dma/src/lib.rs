@@ -53,8 +53,7 @@ pub(crate) static LOG_DIR: Lazy<PathBuf> = Lazy::new(|| DATA_DIR.join(s!("log"))
 
 pub(crate) static G_TARGET_GAME_VER_DX11: Lazy<bool> =
     Lazy::new(|| global_settings().game_ver_dx11);
-pub(crate) static G_OFFSETS: Lazy<CustomOffsets> =
-    Lazy::new(|| apex1_common::offsets::load_offsets(*G_TARGET_GAME_VER_DX11));
+pub(crate) static G_OFFSETS: Lazy<CustomOffsets> = Lazy::new(apex1_common::offsets::load_offsets);
 
 #[derive(Debug, Default)]
 struct SharedState {

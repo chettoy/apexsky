@@ -114,12 +114,16 @@ pub struct StringTables {
 impl StringTables {
     #[instrument(skip_all)]
     pub async fn update(&mut self, api: &Api, ctx: &UpdateContext) {
+        let data = &ctx.data;
+        if data.nst_weapon_names == 0 {
+            return;
+        }
         // Read stringtable once on connect
         if ctx.connected || self.retry {
             if self.retry {
                 tracing::warn!("{}", s!("retry load string tables"));
             }
-            let data = &ctx.data;
+
             self.retry = load_string_table(&mut self.weapon_names, api, ctx, data.nst_weapon_names)
                 .await
                 .inspect_err(|e| tracing::warn!(?e))

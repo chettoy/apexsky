@@ -6,7 +6,7 @@ use ohosky_api::common::share::{ISharableValue, RkyvValue};
 
 #[cfg(any(feature = "skydream", feature = "ohosky"))]
 #[cfg(feature = "data")]
-pub fn load_offsets(game_ver_dx11: bool) -> CustomOffsets {
+pub fn load_offsets() -> CustomOffsets {
     let offsets_file_path = std::env::current_dir().unwrap().join(s!("offsets.ini"));
     if offsets_file_path.exists() {
         tracing::warn!(
@@ -16,13 +16,6 @@ pub fn load_offsets(game_ver_dx11: bool) -> CustomOffsets {
             s!("`")
         );
         CustomOffsets::from_string(std::fs::read_to_string(offsets_file_path).unwrap())
-    } else if game_ver_dx11 {
-        panic!(
-            "{}",
-            s!(
-                "Support for the DX11 version of the game is deprecated, please use the DX12 version!"
-            )
-        );
     } else {
         include_flate::flate!(static OFFSETS_DX12_INI: str from "../apex1_common/resource/default/offsets.ini" with zstd);
         CustomOffsets::from_string(OFFSETS_DX12_INI.to_owned())
@@ -233,6 +226,6 @@ pub fn check_offsets_date(offsets: &CustomOffsets) {
 #[cfg(feature = "data")]
 #[unsafe(no_mangle)]
 #[tracing::instrument]
-pub extern "C" fn import_offsets(game_ver_dx11: bool) -> CustomOffsets {
-    load_offsets(game_ver_dx11)
+pub extern "C" fn import_offsets() -> CustomOffsets {
+    load_offsets()
 }
