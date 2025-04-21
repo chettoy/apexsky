@@ -37,5 +37,6 @@ tonic-build = "0.13.0"
 default = []
 data = []
 tonic = ["dep:tonic"]
+native = ["data", "tonic"]
 ohosky = ["ohosky_api/ohosky", "data"]
-skydream = ["ohosky_api/skydream", "data", "tonic"]
+skydream = ["ohosky_api/skydream", "native"]

@@ -1,14 +1,14 @@
-use obfstr::obfstr as s;
 use tokio::sync::watch;
 use tracing::instrument;
 
 use apex1_common::{global::JsonValue, global_state::G_STATE, pb::apexlegends::AimEntityData};
 use ohosky_api::common::{rpc::ISharedRpcService, share::ISharableValue};
 
-use crate::game::player::ArcAimEntity;
-use crate::skyapi::rpc::SharedRpcService;
-use crate::GameApiHandle;
 use crate::G_OFFSETS;
+use crate::GameApiHandle;
+use crate::game::player::ArcAimEntity;
+use crate::obfstr as s;
+use crate::skyapi::rpc::SharedRpcService;
 
 #[instrument(skip_all)]
 pub async fn remote_loop(

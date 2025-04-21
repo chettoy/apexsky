@@ -1,12 +1,12 @@
 use std::time::Duration;
 
-use obfstr::obfstr as s;
 use tokio::{sync::watch, time::sleep};
 use tracing::instrument;
 
+use crate::SharedStateType;
 use crate::global_state::G_CONTEXT;
 use crate::lock_config;
-use crate::SharedStateType;
+use crate::obfstr as s;
 
 #[instrument(skip_all)]
 pub async fn control_loop(

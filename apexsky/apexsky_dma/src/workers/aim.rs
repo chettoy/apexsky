@@ -10,7 +10,6 @@ use apex1_common::aimbot::{
 use apex1_common::config::DeviceConfig;
 use apex1_common::love_players::LoveStatus;
 use apex1_common::pb::apexlegends::{AimKeyState, AimTargetInfo};
-use obfstr::obfstr as s;
 use ohosky_api::common::msg::ISharedMessageChannel;
 use ohosky_api::common::rpc::ISharedRpcClient;
 use ohosky_api::common::share::{ISharableValue, RkyvValue};
@@ -25,8 +24,9 @@ use crate::actuator::{
 };
 use crate::apexdream::base::math;
 use crate::global_state::G_STATE;
+use crate::obfstr as s;
+use crate::skyapi;
 use crate::skyapi::SharedRpcClient;
-use crate::{skyapi, skyapi::dmalib};
 
 const ENABLE_MEM_AIM: bool = true;
 
@@ -68,14 +68,13 @@ async fn create_aim_actuator_from_device(
 pub async fn aimbot_loop(
     mut active: watch::Receiver<bool>,
     mut state: SharedStateType,
-    access_tx: dmalib::MemAccess,
+    access_tx: crate::MemAccess,
     mut aim_key_rx: watch::Receiver<AimKeyState>,
     mut aim_select_rx: watch::Receiver<Vec<AimTargetInfo>>,
 ) -> anyhow::Result<()> {
     tracing::debug!("{}", s!("task start"));
 
-    let event_tick =
-        skyapi::SharedMessageChannel::new(&apex1_common::global::MSG.aimbot_tick);
+    let event_tick = skyapi::SharedMessageChannel::new(&apex1_common::global::MSG.aimbot_tick);
     async fn usermod_send_event(tx: &impl ISharedMessageChannel<()>) {
         if let Err(e) = tx.send(()).await {
             tracing::error!(%e, "{}", s!("usermod_send_event"));

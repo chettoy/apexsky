@@ -2,14 +2,12 @@ use std::sync::Arc;
 use std::vec;
 
 use apex1_common::aimbot::{AimEntity, BoneHitboxData, HitboxData};
-use apex1_common::pb::apexlegends::{
-    AimEntityData, Badge, GradeFlag, PlayerState, TreasureClue,
-};
+use apex1_common::pb::apexlegends::{AimEntityData, Badge, GradeFlag, PlayerState, TreasureClue};
 use apex1_common::utils::get_unix_timestamp_in_millis;
-use obfstr::obfstr as s;
 
 use crate::apexdream::sdk::ScriptNetVarName;
 use crate::apexdream::*;
+use crate::obfstr as s;
 
 use self::base::math;
 use self::state::GameState;

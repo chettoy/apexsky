@@ -1,12 +1,11 @@
 use std::time::Duration;
 
+use axum::Router;
 use axum::handler::HandlerWithoutStateExt;
 use axum::http::StatusCode;
 use axum::response::Html;
 use axum::routing::get;
-use axum::Router;
 use futures_util::FutureExt;
-use obfstr::obfstr as s;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::{sync::watch, time::sleep};
@@ -19,6 +18,7 @@ use tower_http::trace::TraceLayer;
 use tracing::instrument;
 
 use crate::global_state::G_STATE;
+use crate::obfstr as s;
 
 #[instrument(skip_all)]
 pub async fn web_loop(mut active: watch::Receiver<bool>) -> anyhow::Result<()> {

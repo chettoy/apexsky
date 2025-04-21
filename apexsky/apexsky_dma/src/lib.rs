@@ -6,7 +6,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU64};
 use std::time::Duration;
 
-use crate::global_state::G_STATE;
 use apex1_common::aimbot::{AimAngles, AimEntity, Aimbot, HitScanReport};
 use apex1_common::config::Settings;
 use apex1_common::offsets::CustomOffsets;
@@ -29,11 +28,13 @@ use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 
 use crate::game::player::GamePlayer;
+use crate::global_state::G_STATE;
 
 pub use apex1_common::common::{get_config_file_path, load_settings, save_settings};
 pub use apex1_common::{config, lock_config, love_players, noobfstr};
-pub use obfstr::obfstr;
 pub use ohosky_api::skydream as skyapi;
+
+pub use noobfstr as obfstr;
 
 mod actuator;
 mod apexdream;
@@ -41,6 +42,8 @@ mod context_impl;
 mod game;
 mod global_state;
 mod i18n;
+#[cfg(feature = "ohosky_dmalib")]
+mod mem_access;
 mod menu;
 mod system;
 mod workers;
@@ -54,6 +57,11 @@ pub(crate) static LOG_DIR: Lazy<PathBuf> = Lazy::new(|| DATA_DIR.join(s!("log"))
 pub(crate) static G_TARGET_GAME_VER_DX11: Lazy<bool> =
     Lazy::new(|| global_settings().game_ver_dx11);
 pub(crate) static G_OFFSETS: Lazy<CustomOffsets> = Lazy::new(apex1_common::offsets::load_offsets);
+
+#[cfg(feature = "ohosky_dmalib")]
+pub(crate) type MemAccess = self::mem_access::SimpleMemAccess;
+#[cfg(feature = "skydream")]
+pub(crate) type MemAccess = skyapi::dmalib::MemAccess;
 
 #[derive(Debug, Default)]
 struct SharedState {
@@ -94,6 +102,8 @@ struct State {
     remote_t: Option<JoinHandle<anyhow::Result<()>>>,
     terminal_task: Option<JoinHandle<()>>,
     web_t: Option<JoinHandle<anyhow::Result<()>>>,
+    #[cfg(feature = "ohosky_dmalib")]
+    io_thread: Option<std::thread::JoinHandle<anyhow::Result<()>>>,
 }
 
 impl State {
@@ -112,6 +122,8 @@ impl State {
             remote_t: None,
             terminal_task: None,
             web_t: None,
+            #[cfg(feature = "ohosky_dmalib")]
+            io_thread: None,
         }
     }
 
@@ -164,7 +176,7 @@ pub(crate) struct TaskChannels {
 pub struct GameApiHandle {
     pub(crate) state: SharedStateType,
     pub(crate) channels: TaskChannels,
-    pub(crate) access_tx: skyapi::dmalib::MemAccess,
+    pub(crate) access_tx: crate::MemAccess,
 }
 
 trait TaskManager {
@@ -189,29 +201,82 @@ impl TaskManager for State {
         let (items_glow_tx, items_glow_rx) = watch::channel(vec![]);
         let (update_time_tx, update_time_rx) = watch::channel(0.0);
 
-        let access_tx = skyapi::dmalib::MemAccess::open(&DmalibAccessTarget {
-            target_process_name: if *G_TARGET_GAME_VER_DX11 {
-                panic!(
-                    "{}",
-                    s!(
-                        "Support for the DX11 version of the game is deprecated, please use the DX12 version!"
-                    )
-                );
-            } else {
-                game::data::GAME_VER_DX12_PROCESS_NAME
-                    .expose_secret()
-                    .to_string()
-            },
-            override_module_base: None,
-            check_time_date_stamp: match G_OFFSETS.time_date_stamp {
-                0 => None,
-                x => Some(x.try_into().inspect_err(|e| tracing::error!(?e)).unwrap()),
-            },
-            speed_test: true,
-            cache_phys_addr: true,
-        })
-        .inspect_err(|e| tracing::error!(?e))
-        .unwrap();
+        #[cfg(feature = "skydream")]
+        let access_tx = 
+            skyapi::dmalib::MemAccess::open(&DmalibAccessTarget {
+                target_process_name: if *G_TARGET_GAME_VER_DX11 {
+                    panic!(
+                        "{}",
+                        s!(
+                            "Support for the DX11 version of the game is deprecated, please use the DX12 version!"
+                        )
+                    );
+                } else {
+                    game::data::GAME_VER_DX12_PROCESS_NAME
+                        .expose_secret()
+                        .to_string()
+                },
+                override_module_base: None,
+                check_time_date_stamp: match G_OFFSETS.time_date_stamp {
+                    0 => None,
+                    x => Some(x.try_into().inspect_err(|e| tracing::error!(?e)).unwrap()),
+                },
+                speed_test: true,
+                cache_phys_addr: true,
+            })
+            .inspect_err(|e| tracing::error!(?e))
+            .unwrap();
+        #[cfg(feature = "ohosky_dmalib")]
+        let access_tx = {
+            let (access_tx, access_rx) = ohosky_dmalib::access::create_api();
+            let active_rx = self.active_tx.subscribe();
+            self.io_thread = Some(std::thread::spawn(move || {
+                use ohosky_dmalib::AccessError;
+                use ohosky_dmalib::access::{ConnectConfig, io_thread};
+                match io_thread(
+                    active_rx,
+                    access_rx,
+                    ConnectConfig {
+                        mem_connector: ohosky_dmalib::MemConnector::MemflowKvm,
+                        target_proc_name: if *G_TARGET_GAME_VER_DX11 {
+                            panic!(
+                                "{}",
+                                s!(
+                                    "Support for the DX11 version of the game is deprecated, please use the DX12 version!"
+                                )
+                            );
+                        } else {
+                            game::data::GAME_VER_DX12_PROCESS_NAME
+                                .expose_secret()
+                                .to_string()
+                        },
+                        specify_module_base: None,
+                        check_time_date_stamp: match G_OFFSETS.time_date_stamp {
+                            0 => None,
+                            x => Some(x.try_into().inspect_err(|e| tracing::error!(?e)).unwrap()),
+                        },
+                        speed_test: true,
+                        cache_phys_addr: true,
+                    },
+                ) {
+                    Ok(_) => Ok(()),
+                    Err(e) => match e {
+                        AccessError::Connector(connector, e) => {
+                            tracing::error!(?connector, ?e);
+                            press_to_exit();
+                            Ok(())
+                        }
+                        AccessError::InvalidTimeDateStamp(_got, _except) => {
+                            tracing::error!(%e);
+                            press_to_exit();
+                            Ok(())
+                        }
+                        AccessError::AnyError(e) => Err(e),
+                    },
+                }
+            }));
+            self::mem_access::SimpleMemAccess(access_tx)
+        };
 
         let game_api = GameApiHandle {
             state: self.shared_state.clone(),
@@ -325,13 +390,21 @@ impl TaskManager for State {
                 }
             }
         }
-        check_task(&mut self.actions_t, s!("actions_t")).await;
-        check_task(&mut self.aim_t, s!("aim_t")).await;
-        check_task(&mut self.control_t, s!("control_t")).await;
-        check_task(&mut self.esp_t, s!("esp_t")).await;
-        check_task(&mut self.items_t, s!("items_t")).await;
-        check_task(&mut self.remote_t, s!("remote_t")).await;
-        check_task(&mut self.web_t, s!("web_t")).await;
+        check_task(&mut self.actions_t, "actions_t").await;
+        check_task(&mut self.aim_t, "aim_t").await;
+        check_task(&mut self.control_t, "control_t").await;
+        check_task(&mut self.esp_t, "esp_t").await;
+        check_task(&mut self.items_t, "items_t").await;
+        check_task(&mut self.remote_t, "remote_t").await;
+        check_task(&mut self.web_t, "web_t").await;
+
+        #[cfg(feature = "ohosky_dmalib")]
+        if let Some(handle) = self.io_thread.take_if(|handle| handle.is_finished()) {
+            let ret = handle.join().unwrap();
+            if let Err(e) = ret {
+                tracing::error!(%e, ?e, "{}", s!("io_thread"));
+            }
+        }
     }
 }
 
@@ -339,7 +412,12 @@ pub(crate) fn main() {
     let _log_appender_guard = init_logger(true);
 
     let args: Vec<String> = std::env::args().collect();
-    tracing::info!(?args, "{}", s!("start T2dN9alaUDm8"));
+    tracing::info!(
+        ?args,
+        r = obfstr::random!(u32),
+        "{}",
+        s!("start T2dN9alaUDm8")
+    );
 
     // Create tokio runtime
     let rt = tokio::runtime::Builder::new_multi_thread()

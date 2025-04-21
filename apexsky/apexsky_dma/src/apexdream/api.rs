@@ -1,16 +1,15 @@
-use obfstr::obfstr as s;
+use ohosky_api::common::dmalib::{self, IMemAccess};
 use std::{collections::HashSet, fmt};
 use tracing::instrument;
 use zerocopy::{FromBytes, Immutable, IntoBytes};
 
-use ohosky_api::{common::dmalib::IMemAccess, skydream::dmalib};
-
 use super::sdk::Ptr;
+use crate::obfstr as s;
 
 #[derive(Debug, Clone)]
 pub struct Api {
     pub apex_base: Ptr,
-    pub mem_access: dmalib::MemAccess,
+    pub mem_access: crate::MemAccess,
     pub req_id: usize,
 }
 
@@ -175,7 +174,8 @@ impl Api {
         buf: &'a mut [u8],
     ) -> anyhow::Result<&'a str> {
         self.vm_read_into(ptr, buf).await?;
-        crate::apexdream::base::from_utf8_buf(buf).ok_or(anyhow::anyhow!("{}", s!("from_utf8_buf")))
+        crate::apexdream::base::from_utf8_buf(buf)
+            .ok_or_else(|| anyhow::anyhow!("{}", s!("from_utf8_buf")))
     }
 
     /// Writes memory into the process.

@@ -1,12 +1,12 @@
 #![feature(iterator_try_collect)]
 
 pub mod aimbot;
-#[cfg(any(feature = "skydream", feature = "ohosky"))]
+#[cfg(any(feature = "skydream", feature = "ohosky", feature = "native"))]
 pub mod common;
 pub mod config;
 pub mod data;
 pub mod global;
-#[cfg(any(feature = "skydream", feature = "ohosky"))]
+#[cfg(any(feature = "skydream", feature = "ohosky", feature = "native"))]
 pub mod global_state;
 pub mod love_players;
 pub mod offsets;

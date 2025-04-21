@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use bitset_core::BitSet;
-use obfstr::obfstr as s;
 use tracing::instrument;
 
 use crate::apexdream::*;
+use crate::obfstr as s;
 
 mod buttons;
 mod client_state;
@@ -108,7 +108,7 @@ impl GameState {
                     }
                 }
             }
-            if self.gamemode_retry > 64 {
+            if self.gamemode_retry > 16 {
                 tracing::warn!("{}", s!("Failed to read gamemode"));
                 self.gamemode_retry = 0;
             }
@@ -155,10 +155,10 @@ pub struct UpdateContext {
     /// Connection state changed to fully connected
     pub connected: bool,
     pub world_ready: bool,
-    
+
     /// Prioritize updating local player related information
     pub local_entity: sdk::EHandle,
-    
+
     /// Update full bones instead of only spine
     pub full_bones: bool,
 

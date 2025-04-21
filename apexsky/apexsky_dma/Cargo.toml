@@ -12,6 +12,7 @@ apex1_common = { path = "../apex1_common", features = ["skydream"] }
 async-trait = "0.1.88"
 axum = { version = "0.8.3", features = ["tracing"] }
 bitset-core = "0.1.1"
+bytes = "1.10.1"
 chrono = "0.4.40"
 #console-subscriber = "0.1.5"
 crossterm = "0.29.0"
@@ -28,6 +29,7 @@ named_constants = "0.2.0"
 ndarray = "0.16.1"
 obfstr = "0.4.4"
 ohosky_api = { path = "../../ohosky_sdk/ohosky_api", default-features = false, features = ["skydream"] }
+#ohosky_dmalib = { path = "../../ohosky_sdk/ohosky_dmalib" }
 ohosky_kmbox = { path = "../../ohosky_sdk/ohosky_kmbox" }
 ohosky_menu = { path = "../../ohosky_sdk/ohosky_menu" }
 once_cell = "1.21.3"
@@ -56,3 +58,8 @@ tracing-appender = "0.2.3"
 unic-langid = "0.9.5"
 zbus = { version = "5.5.0", default-features = false, features = ["tokio", "blocking-api"] }
 zerocopy = { version = "0.8.24", features = ["simd-nightly", "derive", "std"] }
+
+[features]
+default = ["skydream"]
+ohosky_dmalib = []
+skydream = []

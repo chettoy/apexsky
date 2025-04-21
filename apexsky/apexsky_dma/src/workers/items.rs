@@ -2,15 +2,15 @@ use std::time::Duration;
 
 use apex1_common::config::Settings;
 use apex1_common::pb::apexlegends::TreasureClue;
-use obfstr::obfstr as s;
 use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
-use tokio::time::{sleep_until, Instant};
+use tokio::time::{Instant, sleep_until};
 use tracing::instrument;
 
+use crate::SharedStateType;
 use crate::game::data::*;
 use crate::global_state::G_STATE;
-use crate::SharedStateType;
+use crate::obfstr as s;
 
 #[instrument]
 pub async fn items_loop(

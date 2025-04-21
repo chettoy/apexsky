@@ -1,5 +1,5 @@
 use super::*;
-use obfstr::obfstr as s;
+use crate::obfstr as s;
 
 #[derive(Default, Debug, Clone)]
 pub struct StudioModel {

@@ -16,6 +16,7 @@ use ratatui::{prelude::*, widgets::*};
 use unicode_width::UnicodeWidthChar;
 
 pub use self::state::{MenuState, TerminalMenu};
+pub use crossterm;
 pub use ratatui;
 pub use unicode_width;
 

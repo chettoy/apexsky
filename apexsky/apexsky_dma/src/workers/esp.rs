@@ -11,7 +11,6 @@ use apex1_common::pb::esp_service::{
 };
 use apex1_common::utils::get_unix_timestamp_in_millis;
 use futures_util::FutureExt;
-use obfstr::obfstr as s;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
@@ -24,6 +23,7 @@ use crate::GameApiHandle;
 use crate::PRINT_LATENCY;
 use crate::game::data::ItemId;
 use crate::global_state::G_STATE;
+use crate::obfstr as s;
 
 #[tonic::async_trait]
 impl EspService for GameApiHandle {
@@ -432,7 +432,8 @@ pub async fn esp_loop(
 
     while *active.borrow_and_update() {
         sleep(Duration::from_secs(1)).await;
-        if G_STATE.lock().unwrap().config.settings.no_esp_service {
+        let deactivate = G_STATE.lock().unwrap().config.settings.no_esp_service;
+        if deactivate {
             if let Some((task, shutdown_tx)) = server_task {
                 // Stop server
                 if !task.is_finished() {
@@ -500,14 +501,15 @@ pub async fn esp_loop(
                     tracing::info!("esp service listening on {}", listen_addr);
                     G_STATE.lock().unwrap().config.esp_service.service_serving = Some(listen_addr);
 
-                    let stream = tokio_stream::wrappers::TcpListenerStream::new(listener);
+                    // let stream = tokio_stream::wrappers::TcpListenerStream::new(listener);
+                    drop(listener);
 
                     Server::builder()
                         .trace_fn(|_| tracing::info_span!("esp_server"))
                         .accept_http1(config.accept_http1)
                         .layer(tonic_web::GrpcWebLayer::new())
                         .add_service(service)
-                        .serve_with_incoming_shutdown(stream, shutdown_rx.map(drop))
+                        .serve_with_shutdown(config.listen, shutdown_rx.map(drop))
                         .await?;
 
                     Ok(())

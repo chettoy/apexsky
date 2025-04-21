@@ -1,0 +1,13 @@
+[package]
+name = "ohosky_utils"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+homedir = "0.3.4"
+itertools = "0.14.0"
+obfstr = "0.4.4"
+
+[target.'cfg(unix)'.dependencies]
+nix = "0.29.0"
+uzers = "0.12.1"

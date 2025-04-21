@@ -1,5 +1,3 @@
-use crate::G_OFFSETS;
-use crate::global_state::G_STATE;
 use anyhow::Context;
 use apex1_common::pb::apexlegends::{AimKeyState, AimTargetInfo, SpectatorInfo, TreasureClue};
 use apex1_common::utils::get_unix_timestamp_in_millis;
@@ -12,34 +10,26 @@ use ndarray::arr1;
 use ohosky_api::common::dmalib::IMemAccess;
 use ohosky_api::common::msg::ISharedWatchValue;
 use ohosky_api::common::share::ISharableValue;
-use tracing::{Instrument, info_span};
-//use obfstr::obfstr as s;
-use crate::noobfstr as s;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use std::{collections::HashSet, sync::atomic::Ordering};
 use tokio::sync::watch;
 use tokio::time::{Instant, sleep};
+use tracing::{Instrument, info_span};
 
-use crate::{
-    PRINT_LATENCY,
-    apexdream::{
-        base::math,
-        sdk::HighlightBits,
-        state::entities::{BaseNPCEntity, LootEntity},
-    },
+use crate::G_OFFSETS;
+use crate::PRINT_LATENCY;
+use crate::SharedStateType;
+use crate::apexdream::{
+    base::math,
+    sdk::HighlightBits,
+    state::GameState,
+    state::entities::{BaseNPCEntity, DeathboxEntity, Entity, LootEntity},
 };
-use crate::{
-    SharedStateType,
-    apexdream::state::entities::{DeathboxEntity, Entity},
-    game::player::QuickLooting,
-    skyapi,
-    skyapi::dmalib,
-    workers::items::LootInt,
-};
-use crate::{
-    apexdream::state::GameState,
-    game::{data::*, player::GamePlayer},
-};
+use crate::game::{data::*, player::GamePlayer, player::QuickLooting};
+use crate::global_state::G_STATE;
+use crate::obfstr as s;
+use crate::skyapi::{self, dmalib};
+use crate::workers::items::LootInt;
 
 const REQUEST_ID: usize = 0; //obfstr::random!(usize);
 
@@ -47,7 +37,7 @@ const REQUEST_ID: usize = 0; //obfstr::random!(usize);
 pub async fn actions_loop(
     mut active: watch::Receiver<bool>,
     shared_state: SharedStateType,
-    access_tx: dmalib::MemAccess,
+    access_tx: crate::MemAccess,
     aim_key_tx: watch::Sender<AimKeyState>,
     aim_select_tx: watch::Sender<Vec<AimTargetInfo>>,
     update_time_tx: watch::Sender<f64>,
@@ -1139,7 +1129,7 @@ fn player_glow(
 
 #[tracing::instrument(skip_all)]
 async fn inject_highlight(
-    mem: &dmalib::MemAccess,
+    mem: &crate::MemAccess,
     frame_count: i32,
     g_settings: &Settings,
 ) -> anyhow::Result<()> {

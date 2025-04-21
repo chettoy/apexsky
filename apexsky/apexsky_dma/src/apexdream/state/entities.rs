@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
-use super::*;
-use crate::noobfstr as s;
 use async_trait::async_trait;
 use std::any::Any;
+
+use super::*;
+use crate::obfstr as s;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct EntityInfo {
