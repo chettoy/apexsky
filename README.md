@@ -54,7 +54,7 @@ It accesses game memory via DMA or virtual machine.
 
 **Mod Features**
 
- * Apex Legends v3.0.4.25
+ * Apex Legends v3.0.1.29
    
    UnknownCheats thread: <https://www.unknowncheats.me/forum/apex-legends/406426-kvm-vmread-apex-esp-aimbot.html>
    

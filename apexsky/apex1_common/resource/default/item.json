@@ -17,6 +17,10 @@
     },
     {
         "int": 8,
+        "model": "mdl/techart/mshop/weapons/class/lmg/lstar/lstar_lgnd_v23_resdopa_w.rmdl"
+    },
+    {
+        "int": 8,
         "model": "mdl/weapons/lstar/w_lstar.rmdl"
     },
     {
@@ -37,15 +41,19 @@
     },
     {
         "int": 31,
-        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_base_w.rmdl"
+        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_v19_grimreaper_w.rmdl"
     },
     {
         "int": 31,
-        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_v19_grimreaper_w.rmdl"
+        "model": "mdl/techart/mshop/weapons/class/assault/flatline/flatline_base_w.rmdl"
     },
     {
         "int": 36,
         "model": "mdl/weapons/m1a1_hemlok/w_hemlok.rmdl"
+    },
+    {
+        "int": 36,
+        "model": "mdl/weapons/m1a1_hemlok/w_hemlok_legendary_01.rmdl"
     },
     {
         "int": 36,
@@ -65,11 +73,23 @@
     },
     {
         "int": 58,
+        "model": "mdl/weapons/prowler_smg/w_prowler_smg_deco.rmdl"
+    },
+    {
+        "int": 58,
         "model": "mdl/techart/mshop/weapons/class/smg/prowler/prowler_base_w.rmdl"
     },
     {
         "int": 64,
+        "model": "mdl/techart/mshop/weapons/class/smg/volt/volt_lgnd_v22_queensguard_w.rmdl"
+    },
+    {
+        "int": 64,
         "model": "mdl/weapons/hemlok_smg/w_hemlok_smg.rmdl"
+    },
+    {
+        "int": 69,
+        "model": "mdl/weapons/rspn101_dmr/w_rspn101_dmr_deco.rmdl"
     },
     {
         "int": 69,
@@ -85,19 +105,23 @@
     },
     {
         "int": 84,
-        "model": "mdl/techart/mshop/weapons/class/assault/r301/r301_base_w.rmdl"
-    },
-    {
-        "int": 92,
-        "model": "mdl/techart/mshop/weapons/class/shotgun/eva8/eva8_base_w.rmdl"
+        "model": "mdl/content/r2/models/weapons/rspn101/dmx/r301_lgnd_v21_monsters_w.rmdl"
     },
     {
         "int": 92,
         "model": "mdl/techart/mshop/weapons/class/shotgun/eva8/eva8_lgnd_v22_magicwitch_w.rmdl"
     },
     {
+        "int": 92,
+        "model": "mdl/techart/mshop/weapons/class/shotgun/eva8/eva8_base_w.rmdl"
+    },
+    {
         "int": 99,
-        "model": "mdl/weapons/peacekeeper/w_peacekeeper.rmdl"
+        "model": "mdl/techart/mshop/weapons/class/shotgun/peacekeeper/peacekeeper_lgnd_v24_manialight_w.rmdl"
+    },
+    {
+        "int": 104,
+        "model": "mdl/weapons/pstl_sa3/w_pstl_sa3_legendary_01.rmdl"
     },
     {
         "int": 104,
@@ -116,6 +140,10 @@
         "model": "mdl/weapons/p2011_auto/w_p2011_auto.rmdl"
     },
     {
+        "int": 135,
+        "model": "mdl/weapons/p2011_auto/w_p2011_auto_legendary_03.rmdl"
+    },
+    {
         "int": 141,
         "model": "mdl/weapons/sentinel/w_sentinel_legendary_03.rmdl"
     },
@@ -132,8 +160,16 @@
         "model": "mdl/weapons/3030repeater/w_3030repeater.rmdl"
     },
     {
+        "int": 150,
+        "model": "mdl/weapons/3030repeater/w_3030repeater_supersonic.rmdl"
+    },
+    {
         "int": 155,
         "model": "mdl/techart/mshop/weapons/class/assault/nemesis/nemesis_base_w.rmdl"
+    },
+    {
+        "int": 155,
+        "model": "mdl/techart/mshop/weapons/class/assault/nemesis/nemesis_lgnd_v22_racer_w.rmdl"
     },
     {
         "int": 160,
@@ -438,9 +474,5 @@
     {
         "int": 349,
         "model": "mdl/props/evo_cache_prop_w/evo_cache_prop_w.rmdl"
-    },
-    {
-        "int": 359,
-        "model": "mdl/techart/mshop/weapons/class/heirloom/agnostic/v24_riseego/heirloom_agnostic_v24_powersword_w.rmdl"
     }
 ]
