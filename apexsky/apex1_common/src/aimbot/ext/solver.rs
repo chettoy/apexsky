@@ -133,7 +133,7 @@ impl Collection<'_> {
         let time = low_ta.time + fract * (high_ta.time - low_ta.time);
         let pitch = low_t.pitch + fract * (high_t.pitch - low_t.pitch);
 
-        return Some(TimeAngle { time, pitch });
+        Some(TimeAngle { time, pitch })
     }
 }
 

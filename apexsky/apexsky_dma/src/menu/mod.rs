@@ -1,12 +1,12 @@
 use crate::{
-    i18n::{load_fluent_bundle, I18nBundle, MessageId},
+    i18n::{I18nBundle, MessageId, load_fluent_bundle},
     i18n_msg, lock_config,
 };
 
 pub use ohosky_menu::ratatui;
 use ohosky_menu::{
-    general_menu::{GeneralMenu, GeneralMenuBuilder, GeneralMenuFormat, GeneralMenuName},
     MenuState, TerminalMenu,
+    general_menu::{GeneralMenu, GeneralMenuBuilder, GeneralMenuFormat, GeneralMenuName},
 };
 
 mod aimbot_menu;
@@ -106,7 +106,7 @@ impl MenuFormatter {
         ratatui::widgets::ListItem::new(Line::from(vec![
             self.format_label(label),
             Span::styled(
-                format!("{},{},{}", r, g, b),
+                format!("{r},{g},{b}"),
                 Style::default()
                     .bg(Color::Rgb(
                         (r * 255.0) as u8,
@@ -297,8 +297,8 @@ impl MenuBuilderLootsExt for MenuBuilder<'_> {
         self.add_item(
             ratatui::widgets::ListItem::new(Line::from(vec![
                 Span::from(label_prefix.into()),
-                Span::styled(format!("{}: ", label), Style::default().fg(pick_color)),
-                Span::styled(format!("{} ", color_label), Style::default().fg(color)),
+                Span::styled(format!("{label}: "), Style::default().fg(pick_color)),
+                Span::styled(format!("{color_label} "), Style::default().fg(color)),
                 Span::from(pick_mark),
             ])),
             handler,

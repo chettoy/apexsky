@@ -104,8 +104,7 @@ impl EspService for GameApiHandle {
                     tracing::error!(%e, ?e);
                 }
             }
-            let x = rx.borrow().to_owned();
-            x
+            rx.borrow().to_owned()
         };
         if PRINT_LATENCY {
             println!("wait refresh {}ms", handle_time.elapsed().as_millis_f32());
@@ -284,23 +283,21 @@ impl EspService for GameApiHandle {
                 data_timestamp: update_time,
                 game_fps,
                 current_zoom_fov: {
-                    aimbot_state
-                        .is_some_and(|(aimbot, _)| aimbot.get_zoom_state() > 0)
-                        .then(|| {
-                            view_player
-                                .and_then(|pl| pl.get_active_weapon())
-                                .map(|weapon| {
-                                    let zoom_fov = weapon.cur_zoom_fov;
-                                    if zoom_fov.is_normal() && (zoom_fov - 1.0).abs() > f32::EPSILON
-                                    {
-                                        zoom_fov
-                                    } else {
-                                        90.0
-                                    }
-                                })
-                                .unwrap_or(90.0)
-                        })
-                        .unwrap_or(90.0)
+                    if aimbot_state.is_some_and(|(aimbot, _)| aimbot.get_zoom_state() > 0) {
+                        view_player
+                            .and_then(|pl| pl.get_active_weapon())
+                            .map(|weapon| {
+                                let zoom_fov = weapon.cur_zoom_fov;
+                                if zoom_fov.is_normal() && (zoom_fov - 1.0).abs() > f32::EPSILON {
+                                    zoom_fov
+                                } else {
+                                    90.0
+                                }
+                            })
+                            .unwrap_or(90.0)
+                    } else {
+                        90.0
+                    }
                 },
             }
         };

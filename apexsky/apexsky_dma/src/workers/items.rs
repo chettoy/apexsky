@@ -235,7 +235,7 @@ pub fn export_new_items(loots: Vec<LootInt>) -> anyhow::Result<()> {
             .write(true)
             .truncate(true)
             .open(path)?;
-        write!(json_file, "{}", items_json)?;
+        write!(json_file, "{items_json}")?;
     }
 
     Ok(())

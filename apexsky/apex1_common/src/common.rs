@@ -41,7 +41,7 @@ pub extern "C" fn save_settings() -> bool {
         })
         .unwrap_or_else(|e| {
             tracing::warn!(%e, "{}", s!("Failed to save settings"));
-            println!("{}", e);
+            println!("{e}");
             false
         })
 }

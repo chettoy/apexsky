@@ -419,7 +419,7 @@ impl Default for GlowSettings {
             player_brightness: 1,
             player_glow_inside_value: 101, //12, // 0 = no fill, 14 = full fill
             player_glow_outline_value: 125,
-            player_glow_outline_size: 32,  // 0-255
+            player_glow_outline_size: 32, // 0-255
             player_glow_inside_opacity: 7,
             loot_filled: 0, // 0 no fill, 14 100% fill
             loot_outline: 0,
@@ -596,7 +596,7 @@ pub fn save_configuration(file_path: &Path, config_state: Config) -> Result<(), 
         .write(true)
         .truncate(true)
         .open(file_path)?;
-    let toml_con = toml::to_string(&config_state).unwrap();
-    write!(config_write, "{}", toml_con)?;
+    let toml_str = toml::to_string(&config_state).unwrap();
+    write!(config_write, "{toml_str}")?;
     Ok(())
 }

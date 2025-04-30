@@ -427,7 +427,7 @@ pub async fn actions_loop(
                             .write(true)
                             .truncate(true)
                             .open(path)?;
-                        write!(json_file, "{}", weapons_json)?;
+                        write!(json_file, "{weapons_json}")?;
                         Ok(())
                     })() {
                         Ok(()) => {
@@ -1300,7 +1300,7 @@ async fn inject_highlight(
                     mem.write::<HighlightBits>(context_offset, &bits, dmalib::PRIO_HIGH, 0),
                     mem.write::<[f32; 3]>(context_offset + 4, &color, dmalib::PRIO_HIGH, 0),
                 )
-                .context(format!("{:?}", context_id))?;
+                .context(format!("{context_id:?}"))?;
                 Ok(())
             }
         }));

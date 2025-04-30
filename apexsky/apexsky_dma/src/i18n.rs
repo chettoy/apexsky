@@ -277,11 +277,10 @@ impl I18nBundle {
         let msg = self
             .0
             .get_message(&id.to_string())
-            .unwrap_or_else(|| panic!("Message `{:?}` doesn't exist.", id));
+            .unwrap_or_else(|| panic!("Message `{id:?}` doesn't exist."));
         let mut errors = vec![];
         let pattern = msg.value().expect("Message has no value.");
-        let value = self.0.format_pattern(pattern, args, &mut errors);
-        value
+        self.0.format_pattern(pattern, args, &mut errors)
     }
 }
 

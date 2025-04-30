@@ -1,8 +1,8 @@
 use std::io::Write;
 
 use super::{
-    handler_toggle_settings, ratatui, GeneralMenu, GeneralMenuFormat, MenuBuilder, MenuBuilderExt,
-    MenuFormatter, MenuLevel, TerminalMenu,
+    GeneralMenu, GeneralMenuFormat, MenuBuilder, MenuBuilderExt, MenuFormatter, MenuLevel,
+    TerminalMenu, handler_toggle_settings, ratatui,
 };
 use crate::{
     config, global_state::G_CONTEXT, i18n::I18nBundle, i18n_msg, lock_config, obfstr as s,
@@ -340,13 +340,13 @@ fn print_qr_code<D>(data: D)
 where
     D: AsRef<[u8]>,
 {
-    use qrcode::render::unicode;
     use qrcode::QrCode;
+    use qrcode::render::unicode;
     let code = QrCode::new(data).unwrap();
     let image = code
         .render::<unicode::Dense1x2>()
         .dark_color(unicode::Dense1x2::Light)
         .light_color(unicode::Dense1x2::Dark)
         .build();
-    println!("{}", image);
+    println!("{image}");
 }
