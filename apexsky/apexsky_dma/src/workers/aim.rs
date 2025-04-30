@@ -29,6 +29,7 @@ use crate::skyapi;
 use crate::skyapi::SharedRpcClient;
 
 const ENABLE_MEM_AIM: bool = true;
+const USE_TRAJECTORY_DATA: bool = false;
 
 pub trait ContextForAimbot {
     async fn get_aimbot_settings(&self) -> Option<AimbotSettings>;
@@ -1028,6 +1029,7 @@ fn linear_predict(
     use crate::game::data::WeaponId;
 
     let projectile = match WeaponId(weapon_info.weapon_id) {
+        _ if !USE_TRAJECTORY_DATA => None,
         WeaponId::Bow => Some(projectiles::BOCEK),
         WeaponId::Devotion => Some(projectiles::DEVOTION),
         WeaponId::Flatline => Some(projectiles::FLATLINE),
