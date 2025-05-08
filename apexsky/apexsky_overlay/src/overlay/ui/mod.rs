@@ -50,7 +50,9 @@ pub fn resize_canvas(esp_system: Option<ResMut<EspSystem>>, mut windows: Query<&
     );
     let game_screen_size = (game_wh.0.powi(2) + game_wh.1.powi(2)).sqrt();
 
-    let mut window = windows.single_mut();
+    let mut window = windows
+        .single_mut()
+        .expect("Error: Could not find a single window.");
 
     let mut window_size =
         (window.resolution.width().powi(2) + window.resolution.height().powi(2)).sqrt();
@@ -74,7 +76,9 @@ pub fn toggle_mouse_passthrough(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut windows: Query<&mut Window>,
 ) {
-    let mut window = windows.single_mut();
+    let mut window = windows
+        .single_mut()
+        .expect("Error: Could not find a single window.");
     window.cursor_options.hit_test = keyboard_input.pressed(KeyCode::Insert);
 }
 

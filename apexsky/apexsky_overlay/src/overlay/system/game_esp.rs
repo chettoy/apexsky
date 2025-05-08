@@ -531,8 +531,12 @@ pub(crate) fn follow_game_state(
         );
     }
 
-    let (cam_proj, cam_trans) = query_camera.single_mut();
-    let listener_trans = listeners.single_mut();
+    let (cam_proj, cam_trans) = query_camera
+        .single_mut()
+        .expect("Error: Could not find a single camera.");
+    let listener_trans = listeners
+        .single_mut()
+        .expect("Error: Could not find a single listener_transform.");
     // assume perspective. do nothing if orthographic.
     let Projection::Perspective(persp) = cam_proj.into_inner() else {
         unreachable!()
@@ -625,31 +629,34 @@ pub(crate) fn follow_game_state(
         if health < 1.0 {
             [].into()
         } else {
-            [(0, UpdateTarget {
-                info: AimTargetInfo {
-                    fov: 1.0,
-                    distance: 40.0,
-                    is_visible: true,
-                    is_knocked: false,
-                    health_points: 150,
-                    love_status: LoveStatusCode::Normal.into(),
-                    is_kill_leader: false,
-                    entity_ptr: 0,
-                    is_npc: true,
-                    is_loot: false,
-                    is_crosshair_target: false,
+            [(
+                0,
+                UpdateTarget {
+                    info: AimTargetInfo {
+                        fov: 1.0,
+                        distance: 40.0,
+                        is_visible: true,
+                        is_knocked: false,
+                        health_points: 150,
+                        love_status: LoveStatusCode::Normal.into(),
+                        is_kill_leader: false,
+                        entity_ptr: 0,
+                        is_npc: true,
+                        is_loot: false,
+                        is_crosshair_target: false,
+                    },
+                    data: None,
+                    point_pos: Vec3 {
+                        x: 0.,
+                        y: -40.,
+                        z: -40.,
+                    },
+                    health,
+                    max_health: 100.,
+                    shield: 50.,
+                    max_shield: 150.,
                 },
-                data: None,
-                point_pos: Vec3 {
-                    x: 0.,
-                    y: -40.,
-                    z: -40.,
-                },
-                health,
-                max_health: 100.,
-                shield: 50.,
-                max_shield: 150.,
-            })]
+            )]
             .into()
         }
     };
@@ -710,20 +717,20 @@ pub(crate) fn follow_game_state(
             ));
         }
         if esp_system.esp_settings.esp_visuals & EspVisualsFlag::HealthBar as i32 != 0 {
-            spawn_cmd.insert((
-                hpbar::BarSettings::<Health> {
-                    width: 12.,
-                    offset: 9.,
-                    orientation: hpbar::BarOrientation::Vertical,
-                    ..default()
-                },
-                hpbar::BarSettings::<Mana> {
-                    width: 12.,
-                    offset: 12.,
-                    orientation: hpbar::BarOrientation::Vertical,
-                    ..default()
-                },
-            ));
+            // spawn_cmd.insert((
+            //     hpbar::BarSettings::<Health> {
+            //         width: 12.,
+            //         offset: 9.,
+            //         orientation: hpbar::BarOrientation::Vertical,
+            //         ..default()
+            //     },
+            //     hpbar::BarSettings::<Mana> {
+            //         width: 12.,
+            //         offset: 12.,
+            //         orientation: hpbar::BarOrientation::Vertical,
+            //         ..default()
+            //     },
+            // ));
         }
     });
 }

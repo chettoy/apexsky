@@ -1,5 +1,3 @@
-#![feature(slice_as_chunks)]
-
 pub mod kmbox;
 
 pub fn add(left: u64, right: u64) -> u64 {

@@ -1,8 +1,8 @@
 use bevy::{
-    asset::{io::Reader, ron, AssetLoader, LoadContext},
+    asset::{AssetLoader, LoadContext, io::Reader, ron},
     prelude::*,
     reflect::TypePath,
-    utils::ConditionalSendFuture,
+    tasks::ConditionalSendFuture,
 };
 use serde::Deserialize;
 use thiserror::Error;

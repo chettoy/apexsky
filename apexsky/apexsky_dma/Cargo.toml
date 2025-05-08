@@ -7,13 +7,13 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 apex1_common = { path = "../apex1_common", features = ["skydream"] }
 async-trait = "0.1.88"
-axum = { version = "0.8.3", features = ["tracing"] }
+axum = { version = "0.8.4", features = ["tracing"] }
 bitset-core = "0.1.1"
 bytes = "1.10.1"
-chrono = "0.4.40"
+chrono = "0.4.41"
 #console-subscriber = "0.1.5"
 crossterm = "0.29.0"
 dataview = "1.0.1"
@@ -37,7 +37,7 @@ parking_lot = { version = "0.12.3", features = ["nightly"] }
 prost = "0.13.5"
 qapi = { version = "0.15.0", features = ["qmp", "async-tokio-all"] }
 qrcode = "0.14.1"
-rand = "0.9.0"
+rand = "0.9.1"
 regex = "1.11.1"
 rkyv = "0.8.10"
 secrecy = "0.10.3"
@@ -46,18 +46,18 @@ serde_json = { version = "1.0.140", features = ["preserve_order"] }
 strum = { version = "0.27.1", features = ["derive"] }
 strum_macros = "0.27.1"
 thiserror = "2.0.12"
-tokio = { version = "1.44.2", features = ["full"] }
+tokio = { version = "1.45.0", features = ["full"] }
 tokio-stream = "0.1.17"
-tonic = { version = "0.13.0", features = ["zstd", "gzip"] }
-tonic-web = "0.13.0"
+tonic = { version = "0.13.1", features = ["zstd", "gzip"] }
+tonic-web = "0.13.1"
 tower = { version = "0.5.2", features = ["util"] }
-tower-http = { version = "0.6.2", features = ["compression-full", "decompression-full", "fs", "timeout", "trace"] }
+tower-http = { version = "0.6.3", features = ["compression-full", "decompression-full", "fs", "timeout", "trace"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["json", "chrono", "env-filter"] }
 tracing-appender = "0.2.3"
 unic-langid = "0.9.5"
-zbus = { version = "5.5.0", default-features = false, features = ["tokio", "blocking-api"] }
-zerocopy = { version = "0.8.24", features = ["simd-nightly", "derive", "std"] }
+zbus = { version = "5.6.0", default-features = false, features = ["tokio", "blocking-api"] }
+zerocopy = { version = "0.8.25", features = ["simd-nightly", "derive", "std"] }
 
 [features]
 default = ["skydream"]

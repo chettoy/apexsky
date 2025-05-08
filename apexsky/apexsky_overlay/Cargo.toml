@@ -4,18 +4,18 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 apex1_common = { path = "../apex1_common", default-features = false, optional = true }
 async-trait = "0.1.88"
-bevy = { version = "0.15.3", features = ["wayland"] }
-bevy_async_task = "0.5.0"
-bevy_egui = "0.33.0"
+bevy = { version = "0.16.0", features = ["wayland"] }
+bevy_async_task = "0.8.0"
+bevy_egui = "0.34.1"
 bevy_health_bar3d = "3.4.0"
-chrono = "0.4.40"
+chrono = "0.4.41"
 #console-subscriber = "0.4.0"
 homedir = { version = "0.3.4", optional = true }
 fyrox-sound = "0.36.2"
-rand = "0.9.0"
+rand = "0.9.1"
 indexmap = "2.9.0"
 instant = "0.1.13"
 ndarray = "0.16.1"
@@ -26,8 +26,8 @@ prost = "0.13.5"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140", features = ["preserve_order"] }
 thiserror = "2.0.12"
-tokio = { version = "1.44.2", features = ["rt", "macros"] }
-tonic = { version = "0.13.0", default-features = false, features = [
+tokio = { version = "1.45.0", features = ["rt", "macros"] }
+tonic = { version = "0.13.1", default-features = false, features = [
     "prost",
     "codegen",
 ] }
@@ -53,8 +53,11 @@ web-sys = { version = "0.3.77", optional = true, features = [
 [target.'cfg(unix)'.dependencies]
 uzers = "0.12.1"
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3.2", default-features = false, features = ["wasm_js"] }
+
 [build-dependencies]
-tonic-build = "0.13.0"
+tonic-build = "0.13.1"
 
 [features]
 default = ["native"]
