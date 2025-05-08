@@ -756,10 +756,6 @@ impl BestAim for Aimbot {
                 if zoom_fov.is_normal() && (zoom_fov - 1.0).abs() > f32::EPSILON {
                     fov *= zoom_fov / 90.0
                 }
-                // When autofire is enabled, add up to an additional 30 fov to meet the requirement
-                if aimbot_settings.auto_shoot && self.is_triggerbot_ready() {
-                    fov = f32::max(f32::min(fov + 30.0, target_fov), fov);
-                }
                 fov
             };
 

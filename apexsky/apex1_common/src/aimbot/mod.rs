@@ -25,6 +25,7 @@ pub struct AimbotSettings {
     pub auto_shoot: bool,
     pub ads_fov: f32,
     pub non_ads_fov: f32,
+    pub triggerbot_fov: f32,
     pub auto_nade_aim: bool,
     pub no_recoil: bool,
     pub bone: i32,
@@ -52,6 +53,7 @@ impl Default for AimbotSettings {
             auto_shoot: true,
             ads_fov: 12.0,
             non_ads_fov: 50.0,
+            triggerbot_fov: 60.0,
             auto_nade_aim: true,
             no_recoil: false,
             bone: 2,
@@ -482,24 +484,20 @@ impl Aimbot {
         self.local_entity = local_entity;
         self.game_fps = game_fps;
 
+        // Update gun safety for grenade
         if self.is_grenade() {
-            // Update grenade safety state
             self.gun_safety = (!self.settings.auto_nade_aim && self.zoom_state == 0)
                 || (self.settings.auto_nade_aim && self.zoom_state > 0);
-
-            // Update aimbot fov for grenade
-            self.max_fov = 999.9;
-        } else if self.quick_looting_ready {
-            // Update aimbot fov for quick looting
-            self.max_fov = 999.9;
-        } else {
-            // Update aimbot fov
-            self.max_fov = if self.zoom_state > 0 {
-                self.settings.ads_fov
-            } else {
-                self.settings.non_ads_fov
-            };
         }
+
+        // Update max fov
+        self.max_fov = match () {
+            _ if self.is_grenade() => 999.9,
+            _ if self.quick_looting_ready => 999.9,
+            _ if self.settings.auto_shoot && self.triggerbot_ready => self.settings.triggerbot_fov,
+            _ if self.zoom_state > 0 => self.settings.ads_fov,
+            _ => self.settings.non_ads_fov,
+        };
 
         // Update aiming state
         self.aiming = self.settings.aim_mode > 0
@@ -716,8 +714,7 @@ impl TriggerBot for Aimbot {
                 TriggerState::Trigger => {
                     if semi_auto {
                         // No continuous triggering for headshot weapons
-                        self.triggerbot_release_time =
-                            now_ms + rand::rng().random_range(10..100);
+                        self.triggerbot_release_time = now_ms + rand::rng().random_range(10..100);
                         self.triggerbot_state = TriggerState::WaitRelease;
                     } else {
                         // Keep triggering the trigger.
