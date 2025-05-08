@@ -50,7 +50,6 @@ pub struct WeaponXEntity {
     pub ammo_clip_size: i32,
     pub projectile_scale: f32,
     pub projectile_speed: f32,
-    pub projectile_air_fiction: f32,
 }
 impl WeaponXEntity {
     #[allow(clippy::new_ret_no_self)]
@@ -150,7 +149,7 @@ impl Entity for WeaponXEntity {
             weapon_name_index: [u32; 3],
             mod_bitfield: [u32; 3],
             data: [u32; 2],
-            projectile: [u32; 3],
+            projectile: [u32; 2],
         }
 
         let data = &ctx.data;
@@ -194,11 +193,7 @@ impl Entity for WeaponXEntity {
                 data.weaponx_mod_bitfield + 8,
             ],
             data: [data.weaponx_is_semi_auto & !3, data.weaponx_ammo_clip_size],
-            projectile: [
-                data.weaponx_projectile_speed,
-                data.weaponx_projectile_scale,
-                data.weaponx_projectile_air_friction,
-            ],
+            projectile: [data.weaponx_projectile_speed, data.weaponx_projectile_scale],
         };
 
         if let Ok(fields) = api
@@ -246,7 +241,6 @@ impl Entity for WeaponXEntity {
             self.ammo_clip_size = fields.data[1] as i32;
             self.projectile_speed = f32::from_bits(fields.projectile[0]);
             self.projectile_scale = f32::from_bits(fields.projectile[1]);
-            self.projectile_air_fiction = f32::from_bits(fields.projectile[2]);
 
             if !(-1..=999).contains(&self.ammo_clip_size) {
                 self.ammo_clip_size = -1;

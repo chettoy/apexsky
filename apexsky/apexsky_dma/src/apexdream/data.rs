@@ -62,6 +62,9 @@ pub struct GameData {
     pub _collision_property_vec_maxs: u32,
 
     pub bcc_next_attack: u32,
+    pub bcc_last_fired_time: u32,
+    pub bcc_last_fired_weapon: u32,
+    pub bcc_raise_from_melee_end_time: u32,
     pub bcc_inventory: u32,
     pub bcc_selected_weapons: u32,
     pub _bcc_last_visible_time: u32, // m_hudInfo_visibilityTestAlwaysPasses + 0x3
@@ -100,7 +103,6 @@ pub struct GameData {
     pub weaponx_ammo_clip_size: u32,
     pub weaponx_projectile_speed: u32,
     pub weaponx_projectile_scale: u32,
-    pub weaponx_projectile_air_friction: u32,
     pub weaponx_charge_start_time: u32,
     pub weaponx_burst_fire: u32,
 
@@ -167,6 +169,12 @@ impl Default for GameData {
             _collision_property_vec_mins: G_OFFSETS.collision_property_vec_mins.try_into().unwrap(),
             _collision_property_vec_maxs: G_OFFSETS.collision_property_vec_maxs.try_into().unwrap(),
             bcc_next_attack: G_OFFSETS.bcc_next_attack.try_into().unwrap(),
+            bcc_last_fired_time: G_OFFSETS.bcc_last_fired_time.try_into().unwrap(),
+            bcc_last_fired_weapon: G_OFFSETS.bcc_last_fired_weapon.try_into().unwrap(),
+            bcc_raise_from_melee_end_time: G_OFFSETS
+                .bcc_raise_from_melee_end_time
+                .try_into()
+                .unwrap(),
             bcc_inventory: G_OFFSETS.bcc_inventory.try_into().unwrap(),
             bcc_selected_weapons: G_OFFSETS.bcc_selected_weapons.try_into().unwrap(),
             _bcc_last_visible_time: G_OFFSETS.bcc_last_visible_time.try_into().unwrap(),
@@ -213,10 +221,6 @@ impl Default for GameData {
                 .unwrap(),
             weaponx_projectile_scale: G_OFFSETS
                 .weaponx_projectile_gravity_scale
-                .try_into()
-                .unwrap(),
-            weaponx_projectile_air_friction: G_OFFSETS
-                .weaponx_projectile_air_friction
                 .try_into()
                 .unwrap(),
             weaponx_charge_start_time: G_OFFSETS.weaponx_charge_start_time.try_into().unwrap(),

@@ -299,7 +299,10 @@ impl Entity for PlayerEntity {
             zoom_state: u32,
             armor_type: [u32; 2],
             skydive_state: u32,
-            next_attack: [u32; 4],
+            next_attack: u32,
+            last_fired_time: u32,
+            last_fired_weapon: u32,
+            raise_from_melee_end_time: u32,
             selected: [u32; 3],
             uid: [u32; 4],
             model_name: [u32; 2],
@@ -420,12 +423,10 @@ impl Entity for PlayerEntity {
                 data.player_helmet_armor_type + 4,
             ],
             skydive_state: data.player_skydive_state,
-            next_attack: [
-                data.bcc_next_attack,
-                data.bcc_next_attack + 4,
-                data.bcc_next_attack + 8,
-                data.bcc_next_attack + 12,
-            ],
+            next_attack: data.bcc_next_attack,
+            last_fired_time: data.bcc_last_fired_time,
+            last_fired_weapon: data.bcc_last_fired_weapon,
+            raise_from_melee_end_time: data.bcc_raise_from_melee_end_time,
             selected: [
                 data.bcc_selected_weapons,
                 data.bcc_selected_weapons + 4,
@@ -614,10 +615,10 @@ impl Entity for PlayerEntity {
 
             self.skydive_state = fields.skydive_state as i32;
 
-            self.next_attack = f32::from_bits(fields.next_attack[0]);
-            self.last_fired_time = f32::from_bits(fields.next_attack[1]);
-            self.last_fired_weapon = sdk::EHandle::from(fields.next_attack[2]);
-            self.raise_from_melee_end_time = f32::from_bits(fields.next_attack[3]);
+            self.next_attack = f32::from_bits(fields.next_attack);
+            self.last_fired_time = f32::from_bits(fields.last_fired_time);
+            self.last_fired_weapon = sdk::EHandle::from(fields.last_fired_weapon);
+            self.raise_from_melee_end_time = f32::from_bits(fields.raise_from_melee_end_time);
 
             self.switchto_slot = fields.selected[0].to_ne_bytes()[0];
             self.primary_weapon = fields.selected[1].into();

@@ -116,6 +116,9 @@ def_offsets!(OffsetsDtBaseAnimating: ["RecvTable.DT_BaseAnimating"] {
 });
 
 def_offsets!(OffsetsDtBaseCombatCharacter: ["RecvTable.DT_BaseCombatCharacter"] {
+    m_last_fired_time: "m_lastFiredTime",
+    m_last_fired_weapon: "m_lastFiredWeapon",
+    m_raise_from_melee_end_time: "m_raiseFromMeleeEndTime",
     m_selected_weapons: "m_selectedWeapons",
     m_latest_primary_weapons: "m_latestPrimaryWeapons",
     m_latest_non_offhand_weapons: "m_latestNonOffhandWeapons",
@@ -252,37 +255,8 @@ def_offsets!(OffsetsWeaponSettings: ["WeaponSettings"] {
     printname: "printname",
     shortprintname: "shortprintname",
     description: "description",
-    fire_rate: "fire_rate",
-    fire_rate_max: "fire_rate_max",
-    fire_rate_max_use_ads: "fire_rate_max_use_ads",
-    fire_duration: "fire_duration",
-    red_crosshair_range: "red_crosshair_range",
     is_semi_auto: "is_semi_auto",
     ammo_clip_size: "ammo_clip_size",
-    damage_near_distance: "damage_near_distance",
-    damage_far_distance: "damage_far_distance",
-    damage_very_far_distance: "damage_very_far_distance",
-    damage_inverse_distance: "damage_inverse_distance",
-    damage_near_value: "damage_near_value",
-    damage_near_value_titanarmor: "damage_near_value_titanarmor",
-    damage_far_value: "damage_far_value",
-    damage_far_value_titanarmor: "damage_far_value_titanarmor",
-    damage_very_far_value: "damage_very_far_value",
-    damage_very_far_value_titanarmor: "damage_very_far_value_titanarmor",
-    damage_headshot_scale: "damage_headshot_scale",
-    damage_unshielded_scale: "damage_unshielded_scale",
-    damage_shield_scale: "damage_shield_scale",
-    explosion_damage: "explosion_damage",
-    explosion_damage_heavy_armor: "explosion_damage_heavy_armor",
-    critical_hit: "critical_hit",
-    critical_hit_damage_scale: "critical_hit_damage_scale",
-    grenade_view_launch_offset: "grenade_view_launch_offset",
-    projectile_launch_speed: "projectile_launch_speed",
-    projectile_launch_pitch_offset: "projectile_launch_pitch_offset",
-    projectile_gravity_scale: "projectile_gravity_scale",
-    projectile_air_friction: "projectile_air_friction",
-    reload_time: "reload_time",
-    reloadempty_time: "reloadempty_time",
 });
 
 def_offsets!(OffsetsDtGlobalNonRewinding: ["RecvTable.DT_GlobalNonRewinding"] {
@@ -411,14 +385,14 @@ pub fn read_offsets(conf: ini::Ini) -> anyhow::Result<OffsetsData> {
         c_player: OffsetsDataMapCPlayer::from_ini(&conf)?,
     };
 
-    assert_offsets_eq!(
-        off!(data.miscellaneous.cweapon_x_m_fl_projectile_speed),
-        off!(data.weapon_settings_meta.base) + off!(data.weapon_settings.projectile_launch_speed)
-    );
-    assert_offsets_eq!(
-        off!(data.miscellaneous.cweapon_x_m_fl_projectile_scale),
-        off!(data.weapon_settings_meta.base) + off!(data.weapon_settings.projectile_gravity_scale)
-    );
+    // assert_offsets_eq!(
+    //     off!(data.miscellaneous.cweapon_x_m_fl_projectile_speed),
+    //     off!(data.weapon_settings_meta.base) + off!(data.weapon_settings.projectile_launch_speed)
+    // );
+    // assert_offsets_eq!(
+    //     off!(data.miscellaneous.cweapon_x_m_fl_projectile_scale),
+    //     off!(data.weapon_settings_meta.base) + off!(data.weapon_settings.projectile_gravity_scale)
+    // );
     assert_offsets_eq!(
         off!(data.c_base_combat_character.m_inventory),
         off!(data.dt_player.m_inventory)
@@ -576,6 +550,9 @@ export_custom_offsets!(
         bones: 0x48 + off!(offsets.dt_base_animating.m_n_force_bone),
         animating_studiohdr: off!(offsets.miscellaneous.cbase_animating_m_p_studio_hdr),
         bcc_next_attack: off!(offsets.c_base_combat_character.m_fl_next_attack),
+        bcc_last_fired_time: off!(offsets.dt_base_combat_character.m_last_fired_time),
+        bcc_last_fired_weapon: off!(offsets.dt_base_combat_character.m_last_fired_weapon),
+        bcc_raise_from_melee_end_time: off!(offsets.dt_base_combat_character.m_raise_from_melee_end_time),
         bcc_inventory: off!(offsets.c_base_combat_character.m_inventory),
         bcc_selected_weapons: off!(offsets.c_base_combat_character.m_selected_weapons),
         bcc_off_weapon: off!(offsets.c_base_combat_character.m_latest_non_offhand_weapons),
@@ -633,15 +610,10 @@ export_custom_offsets!(
         weaponx_weapon_name_index: off!(offsets.dt_weapon_x.m_weapon_name_index),
         weaponx_printname: off!(offsets.weapon_settings_meta.base) + off!(offsets.weapon_settings.printname),
         weaponx_shortprintname: off!(offsets.weapon_settings_meta.base) + off!(offsets.weapon_settings.shortprintname),
-        weaponx_fire_rate: off!(offsets.weapon_settings_meta.base) + off!(offsets.weapon_settings.fire_rate),
-        weaponx_fire_duration: off!(offsets.weapon_settings_meta.base) + off!(offsets.weapon_settings.fire_duration),
         weaponx_is_semi_auto: off!(offsets.weapon_settings_meta.base) + off!(offsets.weapon_settings.is_semi_auto),
         weaponx_ammo_clip_size: off!(offsets.weapon_settings_meta.base) + off!(offsets.weapon_settings.ammo_clip_size),
-        weaponx_grenade_view_launch_offset: off!(offsets.weapon_settings_meta.base) + off!(offsets.weapon_settings.grenade_view_launch_offset),
-        weaponx_projectile_launch_speed: off!(offsets.weapon_settings_meta.base) + off!(offsets.weapon_settings.projectile_launch_speed),
-        weaponx_projectile_launch_pitch_offset: off!(offsets.weapon_settings_meta.base) + off!(offsets.weapon_settings.projectile_launch_pitch_offset),
-        weaponx_projectile_gravity_scale: off!(offsets.weapon_settings_meta.base) + off!(offsets.weapon_settings.projectile_gravity_scale),
-        weaponx_projectile_air_friction: off!(offsets.weapon_settings_meta.base) + off!(offsets.weapon_settings.projectile_air_friction),
+        weaponx_projectile_launch_speed: off!(offsets.miscellaneous.cweapon_x_m_fl_projectile_speed),
+        weaponx_projectile_gravity_scale: off!(offsets.miscellaneous.cweapon_x_m_fl_projectile_scale),
         vehicle_driver: off!(offsets.dt_player_vehicle.m_vehicle_driver),
         vehicle_velocity: off!(offsets.dt_player_vehicle.m_vehicle_velocity),
         prop_survival: off!(offsets.dt_prop_survival.m_ammo_in_clip),
@@ -653,7 +625,6 @@ export_custom_offsets!(
         mods_count: off!(offsets.modifier_offsets.mods_count),
         grapple_attached: off!(offsets.dt_grapple_data.m_grapple_attached),
         grapple_pulling: off!(offsets.dt_grapple_data.m_grapple_pulling),
-        var_damage: off!(offsets.miscellaneous.network_var_table_ptr) + 153 * 56 + 8 + 4 + 4,
         global_observer_mode: off!(offsets.dt_global_non_rewinding.m_player_observer),
     }
 );
@@ -692,6 +663,5 @@ mod test {
             obfstr::obfstr!("../apex1_common/resource/default/offsets.ini").to_string(),
         ))
         .unwrap();
-        println!("{:?}", offsets.var_damage);
     }
 }
