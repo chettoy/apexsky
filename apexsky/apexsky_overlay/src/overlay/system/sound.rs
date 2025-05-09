@@ -7,7 +7,7 @@ use fyrox_sound::renderer::hrtf::{HrirSphereResource, HrirSphereResourceExt};
 use instant::Instant;
 use obfstr::obfstr as s;
 
-use crate::overlay::model::MyOverlayState;
+use crate::overlay::model::StartTestSound;
 
 pub type SoundSrcHandle = fyrox_sound::pool::Handle<fyrox_sound::source::SoundSource>;
 
@@ -79,13 +79,15 @@ impl Default for SoundBufRes {
 #[tracing::instrument(skip_all)]
 pub fn load_test_sound(
     mut commands: Commands,
-    mut overlay_state: ResMut<MyOverlayState>,
+    test_sound: Option<ResMut<StartTestSound>>,
     sound_buffer: NonSend<SoundBufRes>,
     sound_system: Res<SoundSystem>,
 ) {
     use fyrox_sound::source::SoundSourceBuilder;
 
-    if !overlay_state.test_sound {
+    if test_sound.is_some() {
+        commands.remove_resource::<StartTestSound>();
+    } else {
         return;
     }
 
@@ -119,8 +121,6 @@ pub fn load_test_sound(
         angle,
         stopped: false,
     });
-
-    overlay_state.test_sound = false;
 }
 
 #[derive(Component)]

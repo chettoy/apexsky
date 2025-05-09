@@ -10,10 +10,11 @@ use bevy_egui::{EguiContexts, egui};
 use instant::Instant;
 use obfstr::obfstr as s;
 use once_cell::sync::Lazy;
-use parking_lot::Mutex;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::overlay::model::HasUserGesture;
+use crate::overlay::model::StartTestSound;
 use crate::overlay::system::game_esp::ShowEntityBall;
 use crate::overlay::ui::mini_map::RadarTarget;
 use crate::overlay::ui::mini_map::mini_map_radar;
@@ -223,6 +224,25 @@ struct DialogEsp {
     teammates_info: Vec<PlayerState>,
 }
 
+#[derive(Resource)]
+pub struct FontBlob(Handle<Blob>);
+
+pub fn configure_egui_res_system(
+    mut commands: Commands,
+    mut egui_user_textures: ResMut<bevy_egui::EguiUserTextures>,
+    asset_server: Res<AssetServer>,
+) {
+    let font_blob_handle: Handle<Blob> = asset_server.load(&*embedded::EMBED_FONT_PATH);
+    let image_handle: Handle<Image> = asset_server.load(&*embedded::EMBED_ESP_HUD_IMAGE_PATH);
+
+    // Insert FontBlob handle
+    commands.insert_resource(FontBlob(font_blob_handle));
+
+    // Insert HUD res
+    let hud_texture = egui_user_textures.add_image(image_handle);
+    commands.insert_resource(hud::Hud::new(hud_texture));
+}
+
 #[tracing::instrument(skip_all)]
 pub fn ui_system(
     mut commands: Commands,
@@ -232,20 +252,14 @@ pub fn ui_system(
     mut ui_state: ResMut<UiState>,
     mut show_entity_ball: ResMut<ShowEntityBall>,
     mut esp_system: Option<ResMut<EspSystem>>,
+    mut hud: ResMut<hud::Hud>,
+    blobs: Res<Assets<Blob>>,
+    font_blob: Option<Res<FontBlob>>,
+    user_gesture: Option<Res<HasUserGesture>>,
     time: Res<Time>,
     diagnostics: Res<DiagnosticsStore>,
-    blobs: Res<Assets<Blob>>,
-    font_blob: Option<Res<embedded::FontBlob>>,
-    hud_image_handle: Res<embedded::EspHudImage>,
 ) {
     use egui::{CentralPanel, Color32, ScrollArea};
-
-    let hud_image = contexts.image_id(&hud_image_handle).unwrap();
-    let mut hud = hud::HUD
-        .get_or_init(|| Mutex::new(hud::Hud::new(hud_image)))
-        .lock();
-
-    let ctx = contexts.ctx_mut();
 
     // Set default font
     if let Some(font_blob_handle) = font_blob {
@@ -265,11 +279,15 @@ pub fn ui_system(
                 .entry(egui::FontFamily::Monospace)
                 .or_default()
                 .push("my_font".to_owned());
-            ctx.set_fonts(egui_fonts);
+            contexts.ctx_mut().set_fonts(egui_fonts);
 
-            commands.remove_resource::<embedded::FontBlob>();
+            commands.remove_resource::<FontBlob>();
         }
     }
+
+    let Some(ctx) = contexts.try_ctx_mut() else {
+        return;
+    };
 
     let (allied_spectators, spectators): (Vec<_>, Vec<_>) = esp_system
         .as_ref()
@@ -580,7 +598,9 @@ pub fn ui_system(
                     .clicked()
                 {
                     // For audio in browser
-                    overlay_state.user_gesture = true;
+                    if user_gesture.is_none() {
+                        commands.insert_resource(HasUserGesture);
+                    }
 
                     // Toggle address TextEdit
                     if ui_state.toggle_bar != DialogUiBar::InputAddr {
@@ -613,20 +633,22 @@ pub fn ui_system(
                     }
                 }
                 if ui
-                    .add(egui::Button::new(if !overlay_state.user_gesture {
+                    .add(egui::Button::new(if user_gesture.is_none() {
                         egui::RichText::new(s!("Click me"))
                     } else {
                         egui::RichText::new(s!(" Ready  ")).color(Color32::LIGHT_GREEN)
                     }))
                     .clicked()
                 {
-                    overlay_state.user_gesture = true;
+                    commands.insert_resource(HasUserGesture);
                 }
                 if ui.add(egui::Button::new(s!("Test sound"))).clicked() {
-                    overlay_state.test_sound = true;
+                    commands.insert_resource(StartTestSound);
                 }
                 if ui.add(egui::Button::new(s!("Settings"))).clicked() {
-                    overlay_state.user_gesture = true;
+                    if user_gesture.is_none() {
+                        commands.insert_resource(HasUserGesture);
+                    }
                     if ui_state.toggle_bar == DialogUiBar::SettingsBar {
                         ui_state.toggle_bar = DialogUiBar::NotShown;
                     } else {

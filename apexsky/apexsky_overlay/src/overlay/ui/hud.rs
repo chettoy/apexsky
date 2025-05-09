@@ -1,16 +1,13 @@
+use bevy::ecs::resource::Resource;
 use bevy_egui::egui;
-use egui::{pos2, Color32, Rect, RichText, TextureId};
-use once_cell::sync::OnceCell;
-use parking_lot::Mutex;
+use egui::{Color32, Rect, RichText, TextureId, pos2};
 
 use crate::{
     overlay::{ui::world_to_screen, utils::game_coords_to_engine_coords},
     pb::apexlegends::EspData,
 };
 
-pub static HUD: OnceCell<Mutex<Hud>> = OnceCell::new();
-
-#[derive(Debug)]
+#[derive(Debug, Resource)]
 pub struct Hud {
     hud_texture: TextureId,
     screen_width: f32,
@@ -35,7 +32,7 @@ impl Hud {
             screen_width: 1920.0,
             screen_height: 1080.0,
             hud_size: 900.0,
-            data: Default::default(),
+            data: HudData::default(),
         }
     }
 

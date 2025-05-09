@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use bevy::window::{WindowLevel, WindowMode};
 use bevy::{color::palettes, window::CompositeAlphaMode};
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, winit::WinitSettings};
-use bevy_egui::EguiPlugin;
+use bevy_egui::{EguiContextPass, EguiPlugin};
 // use bevy_health_bar3d::prelude as hpbar;
 use model::{MyOverlayState, TokioRuntime};
 use obfstr::obfstr as s;
@@ -146,23 +146,24 @@ pub(crate) fn main() {
         //         hpbar::ForegroundColor::Static(Color::Srgba(palettes::css::BISQUE)),
         //     ),
         // ))
-        .add_systems(Startup, (embedded::setup, setup))
+        .add_systems(Startup, setup)
+        .add_systems(Startup, ui::configure_egui_res_system)
         .add_systems(Startup, system::navigator::setup_voice_navigator)
-        .add_systems(Update, system::navigator::update_voice_navigator)
-        .add_systems(Update, system::sound::load_test_sound)
-        .add_systems(Update, system::sound::update_sound_objects)
         .add_systems(Update, system::game_esp::request_game_state)
         .add_systems(
             Update,
             system::game_esp::follow_game_state.after(system::game_esp::request_game_state),
         )
-        .add_systems(Update, system::game_esp::despawn_dead_targets)
-        .add_systems(Update, ui::toggle_mouse_passthrough)
         .add_systems(Update, ui::resize_canvas)
         .add_systems(
-            Update,
+            EguiContextPass,
             ui::ui_system.after(system::game_esp::follow_game_state),
         )
+        .add_systems(Update, system::game_esp::despawn_dead_targets)
+        .add_systems(Update, ui::toggle_mouse_passthrough)
+        .add_systems(Update, system::navigator::update_voice_navigator)
+        .add_systems(Update, system::sound::load_test_sound)
+        .add_systems(Update, system::sound::update_sound_objects)
         .run();
 }
 

@@ -7,7 +7,7 @@ use obfstr::obfstr as s;
 use super::game_esp::EspSystem;
 use super::sound::{SoundSrcHandle, SoundSystem};
 use crate::navigator::{SonicMessage, VoiceNavigator};
-use crate::overlay::model::MyOverlayState;
+use crate::overlay::model::HasUserGesture;
 
 #[derive(Resource, Default)]
 pub struct NavigatorSystem {
@@ -48,7 +48,7 @@ pub fn setup_voice_navigator(
 }
 
 pub fn update_voice_navigator(
-    overlay_state: Res<MyOverlayState>,
+    user_gesture: Option<Res<HasUserGesture>>,
     sound_system: Res<SoundSystem>,
     esp_system: Option<Res<EspSystem>>,
     mut navigator_system: ResMut<NavigatorSystem>,
@@ -60,7 +60,7 @@ pub fn update_voice_navigator(
         navigator_system.messages.append(&mut new_msg);
     }
 
-    if !overlay_state.user_gesture {
+    if user_gesture.is_none() {
         return;
     }
 

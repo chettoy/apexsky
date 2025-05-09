@@ -28,12 +28,16 @@ impl FromWorld for TokioRuntime {
 
 #[derive(Resource, Default)]
 pub(crate) struct MyOverlayState {
-    pub(crate) user_gesture: bool,
-    pub(crate) test_sound: bool,
     pub(crate) override_esp_addr: Option<EspServiceAddr>,
     pub(crate) data_latency: f64,
     pub(crate) black_background: bool,
 }
+
+#[derive(Resource)]
+pub struct HasUserGesture;
+
+#[derive(Resource)]
+pub struct StartTestSound;
 
 #[derive(Component)]
 pub(crate) struct MyCameraMarker;
