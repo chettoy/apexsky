@@ -219,19 +219,20 @@ pub const HIGHLIGHT_PLAYER_BLACK: u8 = 80;
 pub const HIGHLIGHT_WEAPON_RAINBOW: u8 = 81;
 
 #[derive(Debug, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct LootInt {
+pub struct LootModelsItem {
     pub int: i32,
-    pub model: String,
+    pub models: Vec<String>,
 }
 
 #[cfg(feature = "data")]
-pub static ITEM_LIST: Lazy<std::collections::HashMap<i32, String>> = Lazy::new(|| {
-    include_flate::flate!(static ITEM_JSON: [u8] from "resource/default/item.json" with zstd);
-    let data: Vec<LootInt> = serde_json::from_slice(&ITEM_JSON).unwrap();
-    data.into_iter()
-        .map(|item| (item.int, item.model))
-        .collect()
-});
+pub static ITEM_LIST: Lazy<std::collections::HashMap<i32, std::collections::HashSet<String>>> =
+    Lazy::new(|| {
+        include_flate::flate!(static ITEM_JSON: [u8] from "resource/default/item.json" with zstd);
+        let data: Vec<LootModelsItem> = serde_json::from_slice(&ITEM_JSON).unwrap();
+        data.into_iter()
+            .map(|item| (item.int, std::collections::HashSet::from_iter(item.models)))
+            .collect()
+    });
 #[cfg(feature = "data")]
 pub static WEAPON_LIST: Lazy<Vec<String>> = Lazy::new(|| {
     include_flate::flate!(static WEAPON_JSON: [u8] from "resource/default/weapon.json" with zstd);

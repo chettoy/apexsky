@@ -431,7 +431,7 @@ pub async fn actions_loop(
                         Ok(())
                     })() {
                         Ok(()) => {
-                            tracing::info!("{}", s!("Exported to updated_item.json"));
+                            tracing::info!("{}", s!("Exported to updated_weapon.json"));
                         }
                         Err(e) => {
                             tracing::warn!(%e, ?e);

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::time::Duration;
 
 use apex1_common::config::Settings;
@@ -205,9 +206,9 @@ fn process_loot(clue: &TreasureClue, g_settings: &Settings) -> Option<u8> {
 }
 
 #[derive(Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub(crate) struct LootInt {
-    pub(crate) int: i32,
-    pub(crate) model: String,
+pub struct LootInt {
+    pub int: i32,
+    pub model: String,
 }
 
 pub fn export_new_items(loots: Vec<LootInt>) -> anyhow::Result<()> {
@@ -221,21 +222,32 @@ pub fn export_new_items(loots: Vec<LootInt>) -> anyhow::Result<()> {
             tracing::info!(?item, "{}", s!("new loot item"));
             continue;
         };
-        if *model != item.model && !item.model.is_empty() {
+        if !model.contains(&item.model) && !item.model.is_empty() {
             modify = true;
             //tracing::info!(?item, "{}", s!("loot model changed"));
         }
     }
 
     if modify {
-        let items_json = serde_json::to_string(&loots)?;
+        let mut grouped: BTreeMap<i32, Vec<String>> = BTreeMap::new();
+        for LootInt { int, model } in loots {
+            grouped.entry(int).or_insert_with(Vec::new).push(model);
+        }
+        let item_list: Vec<LootModelsItem> = grouped
+            .into_iter()
+            .map(|(int, mut models)| {
+                models.sort();
+                LootModelsItem { int, models }
+            })
+            .collect();
+        let item_list_json = serde_json::to_string(&item_list)?;
         let path = crate::DATA_DIR.join(s!("updated_item.json"));
         let mut json_file = fs::OpenOptions::new()
             .create(true)
             .write(true)
             .truncate(true)
             .open(path)?;
-        write!(json_file, "{items_json}")?;
+        write!(json_file, "{item_list_json}")?;
     }
 
     Ok(())
