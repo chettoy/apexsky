@@ -98,15 +98,11 @@ impl GameState {
             if let Ok(gamemode_ptr) = api
                 .vm_read::<sdk::Ptr<[u8]>>(api.apex_base.field(ctx.data.mp_gamemode + 0x50))
                 .await
+                && !gamemode_ptr.is_null()
+                && let Ok(gamemode) = api.vm_read_cstr(gamemode_ptr, &mut self.gamemode_buf).await
             {
-                if !gamemode_ptr.is_null() {
-                    if let Ok(gamemode) =
-                        api.vm_read_cstr(gamemode_ptr, &mut self.gamemode_buf).await
-                    {
-                        self.gamemode_hash = crate::apexdream::base::hash(gamemode);
-                        self.gamemode_retry = 0;
-                    }
-                }
+                self.gamemode_hash = crate::apexdream::base::hash(gamemode);
+                self.gamemode_retry = 0;
             }
             if self.gamemode_retry > 16 {
                 tracing::warn!("{}", s!("Failed to read gamemode"));
@@ -183,14 +179,14 @@ impl UpdateContext {
 
 impl GameState {
     pub fn get_fov(&self, player: &PlayerEntity) -> f32 {
-        if player.zooming {
-            if let Some(weapon) = self.entity_as::<WeaponXEntity>(player.active_weapon) {
-                if weapon.target_zoom_fov > 1.0 && weapon.target_zoom_fov <= 90.0 {
-                    return weapon.target_zoom_fov;
-                }
-            }
+        if player.zooming
+            && let Some(weapon) = self.entity_as::<WeaponXEntity>(player.active_weapon)
+            && (1.0..=90.0).contains(&weapon.target_zoom_fov)
+        {
+            weapon.target_zoom_fov
+        } else {
+            90.0
         }
-        90.0
     }
     pub fn desired_items(&self, player: &PlayerEntity) -> sdk::ItemSet {
         // Start by collecting desired items from the player

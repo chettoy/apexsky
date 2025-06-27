@@ -268,12 +268,12 @@ impl I18nBundle {
     }
 
     #[inline]
-    pub fn msg(&self, id: MessageId) -> Cow<str> {
+    pub fn msg(&'_ self, id: MessageId) -> Cow<'_, str> {
         self.msg_fmt(id, None)
     }
 
     #[inline]
-    pub fn msg_fmt(&self, id: MessageId, args: Option<&FluentArgs>) -> Cow<str> {
+    pub fn msg_fmt(&'_ self, id: MessageId, args: Option<&FluentArgs>) -> Cow<'_, str> {
         let msg = self
             .0
             .get_message(&id.to_string())

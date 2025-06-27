@@ -659,7 +659,7 @@ mod test {
 
     #[test]
     fn test_parse_offsets() {
-        let offsets = export_offsets_from_file(Some(
+        let _offsets = export_offsets_from_file(Some(
             obfstr::obfstr!("../apex1_common/resource/default/offsets.ini").to_string(),
         ))
         .unwrap();

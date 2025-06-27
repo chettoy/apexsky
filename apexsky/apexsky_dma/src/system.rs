@@ -46,7 +46,7 @@ impl SysContext {
         Ok(SysContext { zbus_conn })
     }
 
-    fn kbd_backlight_proxy(&self) -> Result<KbdBacklightProxyBlocking> {
+    fn kbd_backlight_proxy(&'_ self) -> Result<KbdBacklightProxyBlocking<'_>> {
         KbdBacklightProxyBlocking::new(&self.zbus_conn)
     }
 

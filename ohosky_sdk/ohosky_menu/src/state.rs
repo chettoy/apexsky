@@ -156,19 +156,23 @@ impl TerminalMenu {
             return;
         }
 
-        if mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
-            self.mouse_down = Some((mouse_event.column, mouse_event.row));
-        } else if mouse_event.kind == MouseEventKind::Up(MouseButton::Left) {
-            if let Some((col, row)) = self.mouse_down {
-                if mouse_event.column == col && mouse_event.row == row {
+        match mouse_event.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                self.mouse_down = Some((mouse_event.column, mouse_event.row));
+            }
+            MouseEventKind::Up(MouseButton::Left) => {
+                if let Some((col, row)) = self.mouse_down
+                    && mouse_event.column == col
+                    && mouse_event.row == row
+                {
                     let Some(mut menu_state) = self.take_current() else {
                         return;
                     };
                     menu_state.on_click(self, col, row);
                     self.revert_current(menu_state);
-                    return;
                 }
             }
+            _ => (),
         }
     }
 

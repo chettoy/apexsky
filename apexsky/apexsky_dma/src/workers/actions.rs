@@ -528,10 +528,10 @@ pub async fn actions_loop(
                     g_state.config.settings.team_death_match = tdm;
                     update_menu = true;
                 }
-                if g_state.config.settings.calc_game_fps {
-                    if let Some(fps_update) = game_fps_update {
-                        g_state.config.settings.game_fps = fps_update;
-                    }
+                if g_state.config.settings.calc_game_fps
+                    && let Some(fps_update) = game_fps_update
+                {
+                    g_state.config.settings.game_fps = fps_update;
                 }
                 if update_menu {
                     crate::global_state::G_TUI_FORCE_UPDATE.store(true, Ordering::Release);

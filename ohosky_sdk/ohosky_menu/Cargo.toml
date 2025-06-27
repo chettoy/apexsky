@@ -6,8 +6,8 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.98"
 chinese-lunisolar-calendar = "0.2.0"
-chrono = "0.4.40"
+chrono = "0.4.41"
 crossterm = "0.29.0"
 ratatui = { version = "0.29.0", features = ["all-widgets", "serde"] }
 tracing = "0.1.41"
-unicode-width = "0.2.0"
+unicode-width = "0.2"

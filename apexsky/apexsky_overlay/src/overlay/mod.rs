@@ -4,7 +4,7 @@ use bevy::window::{WindowLevel, WindowMode};
 use bevy::{color::palettes, window::CompositeAlphaMode};
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, winit::WinitSettings};
 use bevy_egui::{EguiContextPass, EguiPlugin};
-// use bevy_health_bar3d::prelude as hpbar;
+use bevy_health_bar3d::prelude as hpbar;
 use model::{MyOverlayState, TokioRuntime};
 use obfstr::obfstr as s;
 use system::game_esp::EspServiceAddr;
@@ -117,10 +117,10 @@ pub(crate) fn main() {
         .add_plugins(EguiPlugin {
             enable_multipass_for_primary_context: true,
         })
-        // .add_plugins((
-        //     hpbar::HealthBarPlugin::<model::Health>::default(),
-        //     hpbar::HealthBarPlugin::<model::Mana>::default(),
-        // ))
+        .add_plugins((
+            hpbar::HealthBarPlugin::<model::Health>::default(),
+            hpbar::HealthBarPlugin::<model::Mana>::default(),
+        ))
         .init_asset::<Blob>()
         .init_asset_loader::<BlobAssetLoader>()
         .init_resource::<TokioRuntime>()
@@ -136,16 +136,16 @@ pub(crate) fn main() {
             focused_mode: bevy::winit::UpdateMode::Continuous,
             unfocused_mode: bevy::winit::UpdateMode::Continuous,
         })
-        // .insert_resource((
-        //     hpbar::ColorScheme::<model::Health>::new()
-        //         .foreground_color(hpbar::ForegroundColor::Static(Color::Srgba(
-        //             palettes::css::LIGHT_GREEN,
-        //         )))
-        //         .background_color(Color::Srgba(palettes::css::RED)),
-        //     hpbar::ColorScheme::<model::Mana>::new().foreground_color(
-        //         hpbar::ForegroundColor::Static(Color::Srgba(palettes::css::BISQUE)),
-        //     ),
-        // ))
+        .insert_resource(
+            hpbar::ColorScheme::<model::Health>::new()
+                .foreground_color(hpbar::ForegroundColor::Static(Color::Srgba(
+                    palettes::css::LIGHT_GREEN,
+                )))
+                .background_color(Color::Srgba(palettes::css::RED)),
+        )
+        .insert_resource(hpbar::ColorScheme::<model::Mana>::new().foreground_color(
+            hpbar::ForegroundColor::Static(Color::Srgba(palettes::css::BISQUE)),
+        ))
         .add_systems(Startup, setup)
         .add_systems(Startup, ui::configure_egui_res_system)
         .add_systems(Startup, system::navigator::setup_voice_navigator)

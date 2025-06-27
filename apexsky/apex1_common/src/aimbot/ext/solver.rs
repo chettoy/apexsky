@@ -149,7 +149,7 @@ pub trait ProjectileWeapon {
         let dz = target[2] - origin[2];
         [dx, dy, dz]
     }
-    fn projectile_collection(&self) -> Option<Collection> {
+    fn projectile_collection(&'_ self) -> Option<Collection<'_>> {
         None
     }
 }

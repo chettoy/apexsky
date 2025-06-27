@@ -19,11 +19,11 @@ crossterm = "0.29.0"
 dataview = "1.0.1"
 dashmap = "6.1.0"
 enum_dispatch = "0.3.13"
-fluent = "0.16.1"
+fluent = "0.17.0"
 futures-util = "0.3.31"
 hex = { version = "0.4.3", features = ["serde"] }
 include-flate = { git = "https://github.com/SOF3/include-flate", rev = "fe2e113" }
-indexmap = "2.9.0"
+indexmap = "2.10.0"
 itertools = "0.14.0"
 named_constants = "0.2.0"
 ndarray = "0.16.1"
@@ -33,8 +33,8 @@ ohosky_api = { path = "../../ohosky_sdk/ohosky_api", default-features = false, f
 ohosky_kmbox = { path = "../../ohosky_sdk/ohosky_kmbox" }
 ohosky_menu = { path = "../../ohosky_sdk/ohosky_menu" }
 once_cell = "1.21.3"
-parking_lot = { version = "0.12.3", features = ["nightly"] }
-prost = "0.13.5"
+parking_lot = { version = "0.12.4", features = ["nightly"] }
+prost = "=0.13"
 qapi = { version = "0.15.0", features = ["qmp", "async-tokio-all"] }
 qrcode = "0.14.1"
 rand = "0.9.1"
@@ -46,18 +46,18 @@ serde_json = { version = "1.0.140", features = ["preserve_order"] }
 strum = { version = "0.27.1", features = ["derive"] }
 strum_macros = "0.27.1"
 thiserror = "2.0.12"
-tokio = { version = "1.45.0", features = ["full"] }
+tokio = { version = "1.45.1", features = ["full"] }
 tokio-stream = "0.1.17"
 tonic = { version = "0.13.1", features = ["zstd", "gzip"] }
 tonic-web = "0.13.1"
 tower = { version = "0.5.2", features = ["util"] }
-tower-http = { version = "0.6.3", features = ["compression-full", "decompression-full", "fs", "timeout", "trace"] }
+tower-http = { version = "0.6.6", features = ["compression-full", "decompression-full", "fs", "timeout", "trace"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["json", "chrono", "env-filter"] }
 tracing-appender = "0.2.3"
-unic-langid = "0.9.5"
-zbus = { version = "5.6.0", default-features = false, features = ["tokio", "blocking-api"] }
-zerocopy = { version = "0.8.25", features = ["simd-nightly", "derive", "std"] }
+unic-langid = "0.9.6"
+zbus = { version = "5.7.1", default-features = false, features = ["tokio", "blocking-api"] }
+zerocopy = { version = "0.8.26", features = ["simd-nightly", "derive", "std"] }
 
 [features]
 default = ["skydream"]

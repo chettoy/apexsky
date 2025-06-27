@@ -130,7 +130,7 @@ where
         unsafe { rkyv::access_unchecked(&self.data) }
     }
 
-    pub fn access_mut(&mut self) -> anyhow::Result<rkyv::seal::Seal<T::Archived>> {
+    pub fn access_mut(&'_ mut self) -> anyhow::Result<rkyv::seal::Seal<'_, T::Archived>> {
         Ok(rkyv::access_mut(&mut self.data)?)
     }
 

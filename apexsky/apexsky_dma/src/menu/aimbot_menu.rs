@@ -1,6 +1,6 @@
 use super::{
-    ratatui, GeneralMenu, GeneralMenuFormat, MenuBuilder, MenuBuilderExt, MenuFormatter, MenuLevel,
-    TerminalMenu,
+    GeneralMenu, GeneralMenuFormat, MenuBuilder, MenuBuilderExt, MenuFormatter, MenuLevel,
+    TerminalMenu, ratatui,
 };
 use crate::{config, i18n::I18nBundle, i18n_msg, lock_config};
 use ratatui::{
@@ -115,12 +115,12 @@ pub(super) fn build_aimbot_menu(
             ),
             &i18n_msg!(&menu_fmt, InputPromptAdsFov),
             |_ctx, val, _| {
-                if let Ok(new_val) = val.parse::<f32>() {
-                    if (1.0..=50.0).contains(&new_val) {
-                        let settings = &mut lock_config!().settings;
-                        settings.aimbot_settings.ads_fov = new_val;
-                        return None;
-                    }
+                if let Ok(new_val) = val.parse::<f32>()
+                    && (1.0..=50.0).contains(&new_val)
+                {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.ads_fov = new_val;
+                    return None;
                 }
                 let i18n = I18nBundle::new();
                 Some(i18n_msg!(&i18n, InfoInvalidAdsFov).to_string())
@@ -134,12 +134,12 @@ pub(super) fn build_aimbot_menu(
             ),
             &i18n_msg!(&menu_fmt, InputPromptNonAdsFov),
             |_ctx, val, _| {
-                if let Ok(new_val) = val.parse::<f32>() {
-                    if (1.0..=50.0).contains(&new_val) {
-                        let settings = &mut lock_config!().settings;
-                        settings.aimbot_settings.non_ads_fov = new_val;
-                        return None;
-                    }
+                if let Ok(new_val) = val.parse::<f32>()
+                    && (1.0..=50.0).contains(&new_val)
+                {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.non_ads_fov = new_val;
+                    return None;
                 }
                 let i18n = I18nBundle::new();
                 Some(i18n_msg!(&i18n, InfoInvalidNonAdsFov).to_string())
@@ -220,12 +220,12 @@ pub(super) fn build_aimbot_menu(
             ),
             &i18n_msg!(&menu_fmt, InputPromptAimDist),
             |_ctx, val, _| {
-                if let Ok(new_val) = val.parse::<f32>() {
-                    if (10.0..=1600.0).contains(&new_val) {
-                        let settings = &mut lock_config!().settings;
-                        settings.aimbot_settings.aim_dist = new_val * 39.62;
-                        return None;
-                    }
+                if let Ok(new_val) = val.parse::<f32>()
+                    && (10.0..=1600.0).contains(&new_val)
+                {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.aim_dist = new_val * 39.62;
+                    return None;
                 }
                 None
             },
@@ -241,12 +241,12 @@ pub(super) fn build_aimbot_menu(
             ),
             &i18n_msg!(&menu_fmt, InputPromptHeadshotDist),
             |_ctx, val, _| {
-                if let Ok(new_val) = val.parse::<f32>() {
-                    if (0.0..=1600.0).contains(&new_val) {
-                        let settings = &mut lock_config!().settings;
-                        settings.aimbot_settings.headshot_dist = new_val * 39.62;
-                        return None;
-                    }
+                if let Ok(new_val) = val.parse::<f32>()
+                    && (0.0..=1600.0).contains(&new_val)
+                {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.headshot_dist = new_val * 39.62;
+                    return None;
                 }
                 None
             },
@@ -271,12 +271,12 @@ pub(super) fn build_aimbot_menu(
             ),
             &i18n_msg!(&menu_fmt, InputPromptSmoothValue),
             |_ctx, val, _| {
-                if let Ok(new_val) = val.parse::<u16>() {
-                    if (50..=1000).contains(&new_val) {
-                        let settings = &mut lock_config!().settings;
-                        settings.aimbot_settings.smooth = new_val.into();
-                        return None;
-                    }
+                if let Ok(new_val) = val.parse::<u16>()
+                    && (50..=1000).contains(&new_val)
+                {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.smooth = new_val.into();
+                    return None;
                 }
                 let i18n = I18nBundle::new();
                 Some(i18n_msg!(&i18n, InfoInvalidSmoothValue).to_string())
@@ -302,12 +302,12 @@ pub(super) fn build_aimbot_menu(
             ),
             &i18n_msg!(&menu_fmt, InputPromptSmoothValue),
             |_ctx, val, _| {
-                if let Ok(new_val) = val.parse::<u16>() {
-                    if (50..=1000).contains(&new_val) {
-                        let settings = &mut lock_config!().settings;
-                        settings.aimbot_settings.skynade_smooth = new_val.into();
-                        return None;
-                    }
+                if let Ok(new_val) = val.parse::<u16>()
+                    && (50..=1000).contains(&new_val)
+                {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.skynade_smooth = new_val.into();
+                    return None;
                 }
                 let i18n = I18nBundle::new();
                 Some(i18n_msg!(&i18n, InfoInvalidSmoothValue).to_string())
@@ -333,12 +333,12 @@ pub(super) fn build_aimbot_menu(
             ),
             &i18n_msg!(&menu_fmt, InputPromptSmoothValue),
             |_ctx, val, _| {
-                if let Ok(new_val) = val.parse::<u16>() {
-                    if (50..=1000).contains(&new_val) {
-                        let settings = &mut lock_config!().settings;
-                        settings.aimbot_settings.triggerbot_smooth = new_val.into();
-                        return None;
-                    }
+                if let Ok(new_val) = val.parse::<u16>()
+                    && (50..=1000).contains(&new_val)
+                {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.triggerbot_smooth = new_val.into();
+                    return None;
                 }
                 let i18n = I18nBundle::new();
                 Some(i18n_msg!(&i18n, InfoInvalidSmoothValue).to_string())
@@ -373,12 +373,12 @@ pub(super) fn build_aimbot_menu(
             ),
             &i18n_msg!(&menu_fmt, InputPromptRecoilValue),
             |_ctx, val, _| {
-                if let Ok(new_val) = val.parse::<f32>() {
-                    if (0.0..=200.0).contains(&new_val) {
-                        let settings = &mut lock_config!().settings;
-                        settings.aimbot_settings.recoil_smooth_x = new_val;
-                        return None;
-                    }
+                if let Ok(new_val) = val.parse::<f32>()
+                    && (0.0..=200.0).contains(&new_val)
+                {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.recoil_smooth_x = new_val;
+                    return None;
                 }
                 let i18n = I18nBundle::new();
                 Some(i18n_msg!(&i18n, InfoInvalidRecoilValue).to_string())
@@ -404,12 +404,12 @@ pub(super) fn build_aimbot_menu(
             ),
             &i18n_msg!(&menu_fmt, InputPromptRecoilValue),
             |_ctx, val, _| {
-                if let Ok(new_val) = val.parse::<f32>() {
-                    if (0.0..=200.0).contains(&new_val) {
-                        let settings = &mut lock_config!().settings;
-                        settings.aimbot_settings.recoil_smooth_y = new_val;
-                        return None;
-                    }
+                if let Ok(new_val) = val.parse::<f32>()
+                    && (0.0..=200.0).contains(&new_val)
+                {
+                    let settings = &mut lock_config!().settings;
+                    settings.aimbot_settings.recoil_smooth_y = new_val;
+                    return None;
                 }
                 let i18n = I18nBundle::new();
                 Some(i18n_msg!(&i18n, InfoInvalidRecoilValue).to_string())

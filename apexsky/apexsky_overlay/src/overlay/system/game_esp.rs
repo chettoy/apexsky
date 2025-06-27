@@ -717,20 +717,20 @@ pub(crate) fn follow_game_state(
             ));
         }
         if esp_system.esp_settings.esp_visuals & EspVisualsFlag::HealthBar as i32 != 0 {
-            // spawn_cmd.insert((
-            //     hpbar::BarSettings::<Health> {
-            //         width: 12.,
-            //         offset: 9.,
-            //         orientation: hpbar::BarOrientation::Vertical,
-            //         ..default()
-            //     },
-            //     hpbar::BarSettings::<Mana> {
-            //         width: 12.,
-            //         offset: 12.,
-            //         orientation: hpbar::BarOrientation::Vertical,
-            //         ..default()
-            //     },
-            // ));
+            spawn_cmd.insert((
+                hpbar::BarSettings::<Health> {
+                    width: 12.,
+                    offset: 9.,
+                    orientation: hpbar::BarOrientation::Vertical,
+                    ..default()
+                },
+                hpbar::BarSettings::<Mana> {
+                    width: 12.,
+                    offset: 12.,
+                    orientation: hpbar::BarOrientation::Vertical,
+                    ..default()
+                },
+            ));
         }
     });
 }

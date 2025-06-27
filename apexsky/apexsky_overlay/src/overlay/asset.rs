@@ -13,6 +13,7 @@ struct CustomAsset {
     value: i32,
 }
 
+#[allow(unused)]
 #[derive(Default)]
 struct CustomAssetLoader;
 

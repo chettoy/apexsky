@@ -75,3 +75,9 @@ impl AimActuator for KmboxAimActuator<KmboxB> {
         }
     }
 }
+
+impl AimActuator for Box<KmboxAimActuator<KmboxNet>> {
+    async fn perform(&mut self, action: super::AimbotAction) -> anyhow::Result<()> {
+        self.as_mut().perform(action).await
+    }
+}

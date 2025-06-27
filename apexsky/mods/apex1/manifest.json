@@ -1,8 +1,8 @@
 {
     "manifest_version": 1,
     "package_name": "com.chettoy.apex1",
-    "version_code": 13,
-    "version": "0.11.3",
+    "version_code": 14,
+    "version": "0.12.0",
     "label": "apex1",
     "description": "Game 3.0.2.23",
     "icons": {},

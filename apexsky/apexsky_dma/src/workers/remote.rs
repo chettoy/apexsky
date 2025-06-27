@@ -155,10 +155,10 @@ pub async fn remote_loop(
 fn fix_big_number(value: &mut serde_json::Value) {
     if let Some(obj) = value.as_object_mut() {
         for v in obj.values_mut() {
-            if let Some(num) = v.as_u64() {
-                if num > (2 << 52) - 1 {
-                    *v = serde_json::Value::String(num.to_string());
-                }
+            if let Some(num) = v.as_u64()
+                && num > (2 << 52) - 1
+            {
+                *v = serde_json::Value::String(num.to_string());
             }
         }
     }

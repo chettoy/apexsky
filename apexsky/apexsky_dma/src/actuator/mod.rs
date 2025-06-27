@@ -23,7 +23,7 @@ pub trait AimActuator {
 
 #[enum_dispatch(AimActuator)]
 pub enum DeviceAimActuator {
-    KmboxNet(KmboxAimActuator<KmboxNet>),
+    KmboxNet(Box<KmboxAimActuator<KmboxNet>>),
     KmboxB(KmboxAimActuator<KmboxB>),
     QemuQmp(QmpAimActuator),
 }

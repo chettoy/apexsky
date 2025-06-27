@@ -231,7 +231,8 @@ pub fn export_new_items(loots: Vec<LootInt>) -> anyhow::Result<()> {
     if modify {
         let mut grouped: BTreeMap<i32, Vec<String>> = BTreeMap::new();
         for LootInt { int, model } in loots {
-            grouped.entry(int).or_insert_with(Vec::new).push(model);
+            let entry: &mut Vec<String> = grouped.entry(int).or_default();
+            entry.push(model);
         }
         let item_list: Vec<LootModelsItem> = grouped
             .into_iter()

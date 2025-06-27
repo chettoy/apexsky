@@ -51,7 +51,7 @@ async fn create_aim_actuator_from_device(
         let (addr, mac) = (config.kmbox_net_addr, config.kmbox_net_mac);
         let mac = u32::from_str_radix(&hex::encode(mac), 16)?;
         let kmbox_aim = KmboxAimActuator::<KmboxNet>::connect(addr, mac).await?;
-        Ok(Some(kmbox_aim.into()))
+        Ok(Some(Box::new(kmbox_aim).into()))
     } else if config.use_kmbox_b {
         let (serialport, baud) = (&config.kmbox_b_serialport, config.kmbox_b_baud);
         let kmbox_aim = KmboxAimActuator::<KmboxB>::connect(serialport, baud).await?;
@@ -204,11 +204,11 @@ pub async fn aimbot_loop(
 
         // Update aimbot settings
         // Lower update frequency to reduce cpu usage
-        if state.get_frame_count() % 30 == 0 {
-            if let Some(aimbot_settings) = state.get_aimbot_settings().await {
-                aimbot.settings(aimbot_settings);
-                trace!("{}", s!("aimbot_settings reload"));
-            }
+        if state.get_frame_count() % 30 == 0
+            && let Some(aimbot_settings) = state.get_aimbot_settings().await
+        {
+            aimbot.settings(aimbot_settings);
+            trace!("{}", s!("aimbot_settings reload"));
         }
 
         // Update Aimbot state
@@ -1052,7 +1052,7 @@ fn linear_predict(
         fn projectile_gravity(&self) -> f32 {
             self.1
         }
-        fn projectile_collection(&self) -> Option<Collection> {
+        fn projectile_collection(&'_ self) -> Option<Collection<'_>> {
             self.2
         }
     }

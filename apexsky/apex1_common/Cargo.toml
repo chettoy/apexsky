@@ -8,30 +8,30 @@ name = "apex1_common"
 crate-type = ["rlib", "staticlib"]
 
 [dependencies]
-anyhow = { version = "1.0.97", features = ["backtrace"] }
-chrono = "0.4.40"
+anyhow = { version = "1.0.98", features = ["backtrace"] }
+chrono = "0.4.41"
 config = { version = "0.15.11", default-features = false, features = ["toml"] }
 dashmap = { version = "6.1.0", features = ["serde"] }
 entropy = "0.4.2"
 hex = { version = "0.4.3", features = ["serde"] }
 include-flate = { git = "https://github.com/SOF3/include-flate", rev = "fe2e113" }
-indexmap = { version = "2.9.0", features = ["serde"] }
+indexmap = { version = "2.10.0", features = ["serde"] }
 named_constants = "0.2.0"
 obfstr = "0.4.4"
 ohosky_api = { path = "../../ohosky_sdk/ohosky_api", default-features = false }
-parking_lot = { version = "0.12.3", features = ["nightly"] }
-prost = "0.13.5"
-rand = "0.9.0"
+parking_lot = { version = "0.12.4", features = ["nightly"] }
+prost = "=0.13"
+rand = "0.9.1"
 rkyv = "0.8.10"
 secrecy = "0.10.3"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140", features = ["preserve_order"] }
-toml = "0.8.20"
-tonic = { version = "0.13.0", optional = true }
+toml = "0.8.23"
+tonic = { version = "0.13.1", optional = true }
 tracing = "0.1.41"
 
 [build-dependencies]
-tonic-build = "0.13.0"
+tonic-build = "0.13.1"
 
 [features]
 default = []

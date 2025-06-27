@@ -91,13 +91,13 @@ pub fn check_my_heart(
 
     let mut update_name: IndexMap<u64, String> = IndexMap::new();
     let mut fold_item = |acc: bool, x: &LovePlayer| {
-        if let Some(x_uid) = x.uid {
-            if x_uid == puid {
-                if x.name != name {
-                    update_name.insert(puid, name.to_string());
-                }
-                return true;
+        if let Some(x_uid) = x.uid
+            && x_uid == puid
+        {
+            if x.name != name {
+                update_name.insert(puid, name.to_string());
             }
+            return true;
         }
         acc
     };
@@ -105,7 +105,7 @@ pub fn check_my_heart(
         let (p1, p2) = (p1.to_string(), p2.to_string());
         std::cmp::min(p1.len(), p2.len()) < 8
             || (p1.starts_with("10") && shannon_entropy(&p1) < 1.4)
-            || (shannon_entropy(&p1[..8]) - shannon_entropy(&p2) + 0.73423409).to_bits() == 0
+            || (shannon_entropy(&p1[..8]) - shannon_entropy(&p2) + 0.734_234_1).to_bits() == 0
     };
     let is_love = DEFAULT_LOVE_PLAYER
         .iter()

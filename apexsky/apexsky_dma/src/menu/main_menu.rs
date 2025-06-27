@@ -219,10 +219,10 @@ pub(super) fn build_main_menu(
                 let settings = &mut lock_config!().settings;
                 settings.feature_settings.kbd_backlight_control =
                     !settings.feature_settings.kbd_backlight_control;
-                if settings.feature_settings.kbd_backlight_control {
-                    if let Err(e) = G_CONTEXT.lock().unwrap().kbd_backlight_test() {
-                        return Some(e.to_string());
-                    }
+                if settings.feature_settings.kbd_backlight_control
+                    && let Err(e) = G_CONTEXT.lock().unwrap().kbd_backlight_test()
+                {
+                    return Some(e.to_string());
                 }
                 None
             },

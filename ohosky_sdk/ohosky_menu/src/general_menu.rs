@@ -135,12 +135,12 @@ where
     #[tracing::instrument(skip_all)]
     fn on_create(&mut self, saved_state: Option<Box<dyn Any>>) {
         // println!("menu {} on_create {:?}", self.menu_id(), saved_state);
-        if let Some(saved_state) = saved_state {
-            if let Ok(data) = saved_state.downcast::<GereralMenuState>() {
-                self.nav_index = data.nav_index;
-                self.scroll_top = data.scroll_top;
-                self.scroll_height = data.scroll_height;
-            }
+        if let Some(saved_state) = saved_state
+            && let Ok(data) = saved_state.downcast::<GereralMenuState>()
+        {
+            self.nav_index = data.nav_index;
+            self.scroll_top = data.scroll_top;
+            self.scroll_height = data.scroll_height;
         }
     }
 
@@ -170,10 +170,10 @@ where
 
     #[tracing::instrument(skip_all)]
     fn on_nav_jump(&mut self, num: usize) {
-        if let Some(&index) = self.num_ids.get(&num) {
-            if index < self.items.len() {
-                self.nav_index = index;
-            }
+        if let Some(&index) = self.num_ids.get(&num)
+            && index < self.items.len()
+        {
+            self.nav_index = index;
         }
     }
 
@@ -181,11 +181,7 @@ where
         match mouse.kind {
             MouseEventKind::ScrollDown => {
                 let items_row = self.items.len();
-                let scroll_max = if items_row > self.scroll_height {
-                    items_row - self.scroll_height
-                } else {
-                    0
-                };
+                let scroll_max = items_row.saturating_sub(self.scroll_height);
                 if self.scroll_top < scroll_max && self.nav_index < items_row - 1 {
                     self.scroll_top += 1;
                     self.nav_index += 1;
@@ -512,10 +508,9 @@ where
         .borders(Borders::ALL)
         .style(Style::default());
 
-    let title = Paragraph::new(Text::styled(
+    Paragraph::new(Text::styled(
         title.into(),
         Style::default().fg(Color::Green),
     ))
-    .block(title_block);
-    title
+    .block(title_block)
 }

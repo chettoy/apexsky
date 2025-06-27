@@ -280,7 +280,7 @@ impl crate::apexdream::base::solver::ProjectileWeapon for WeaponXEntity {
         /*sv_gravity*/
         750.0 * self.projectile_scale
     }
-    fn projectile_collection(&self) -> Option<crate::apexdream::base::solver::Collection> {
+    fn projectile_collection(&'_ self) -> Option<crate::apexdream::base::solver::Collection<'_>> {
         use sdk::WeaponName as W;
         match self.weapon_name {
             W::SENTINEL => Some(sdk::projectiles::SENTINEL),

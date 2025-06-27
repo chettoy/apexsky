@@ -1,5 +1,5 @@
 use super::{
-    ratatui, GeneralMenu, GeneralMenuFormat, MenuBuilder, MenuFormatter, MenuLevel, TerminalMenu,
+    GeneralMenu, GeneralMenuFormat, MenuBuilder, MenuFormatter, MenuLevel, TerminalMenu, ratatui,
 };
 use crate::{config, i18n_msg, lock_config, love_players::LovePlayer};
 use ratatui::{
@@ -51,10 +51,10 @@ pub(super) fn build_players_menu(
     let list = &lock_config!().hate_player;
     for (uid, spec) in specs.into_iter() {
         let selected = list.iter().fold(false, |acc: bool, x: &LovePlayer| {
-            if let Some(x_uid) = x.uid {
-                if x_uid == uid {
-                    return true;
-                }
+            if let Some(x_uid) = x.uid
+                && x_uid == uid
+            {
+                return true;
             }
             acc
         });

@@ -307,12 +307,11 @@ impl GetClientEntity {
                     &mut entity_name,
                 )
                 .await
+                && !self.directory.contains_key(entity_name)
             {
-                if !self.directory.contains_key(entity_name) {
-                    let class_name = base::from_utf8_buf(&data.name_buf).unwrap_or_default();
-                    self.directory
-                        .insert(entity_name.to_string(), class_name.to_string());
-                }
+                let class_name = base::from_utf8_buf(&data.name_buf).unwrap_or_default();
+                self.directory
+                    .insert(entity_name.to_string(), class_name.to_string());
             }
         }
 

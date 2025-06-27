@@ -40,7 +40,7 @@ impl MemAimHelper {
         self.apex_base != 0 && self.lplayer_ptr != 0
     }
 
-    pub fn get_actuator(&self, view_angles: [f32; 3]) -> MemAimActuator {
+    pub fn get_actuator(&'_ self, view_angles: [f32; 3]) -> MemAimActuator<'_> {
         MemAimActuator {
             father: self,
             view_angles,

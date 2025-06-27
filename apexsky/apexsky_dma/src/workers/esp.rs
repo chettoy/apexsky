@@ -99,10 +99,10 @@ impl EspService for GameApiHandle {
 
         let update_time = {
             let mut rx = self.channels.update_time_rx.clone();
-            if op.sync {
-                if let Err(e) = rx.changed().await {
-                    tracing::error!(%e, ?e);
-                }
+            if op.sync
+                && let Err(e) = rx.changed().await
+            {
+                tracing::error!(%e, ?e);
             }
             rx.borrow().to_owned()
         };
@@ -463,21 +463,21 @@ pub async fn esp_loop(
             #[allow(clippy::collapsible_else_if)]
             if let Some((task, _)) = &server_task {
                 // Check task
-                if task.is_finished() {
-                    if let Some((task, _)) = server_task.take() {
-                        match task.await {
-                            Ok(r) => {
-                                if let Err(e) = r {
-                                    tracing::error!(%e, ?e);
-                                } else {
-                                    tracing::warn!("{}", s!("esp_server finished"));
-                                }
-                            }
-                            Err(e) => {
+                if task.is_finished()
+                    && let Some((task, _)) = server_task.take()
+                {
+                    match task.await {
+                        Ok(r) => {
+                            if let Err(e) = r {
                                 tracing::error!(%e, ?e);
-                                if let Ok(reason) = e.try_into_panic() {
-                                    tracing::error!(?reason);
-                                }
+                            } else {
+                                tracing::warn!("{}", s!("esp_server finished"));
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!(%e, ?e);
+                            if let Ok(reason) = e.try_into_panic() {
+                                tracing::error!(?reason);
                             }
                         }
                     }
