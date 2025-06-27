@@ -504,6 +504,14 @@ pub async fn esp_loop(
                     Server::builder()
                         .trace_fn(|_| tracing::info_span!("esp_server"))
                         .accept_http1(config.accept_http1)
+                        .layer(
+                            tower_http::cors::CorsLayer::new()
+                                .allow_origin(tower_http::cors::AllowOrigin::mirror_request())
+                                .allow_credentials(true)
+                                .max_age(Duration::from_secs(3600))
+                                .expose_headers(tower_http::cors::Any)
+                                .allow_headers(tower_http::cors::Any),
+                        )
                         .layer(tonic_web::GrpcWebLayer::new())
                         .add_service(service)
                         .serve_with_shutdown(config.listen, shutdown_rx.map(drop))

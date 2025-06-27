@@ -51,7 +51,7 @@ tokio-stream = "0.1.17"
 tonic = { version = "0.13.1", features = ["zstd", "gzip"] }
 tonic-web = "0.13.1"
 tower = { version = "0.5.2", features = ["util"] }
-tower-http = { version = "0.6.6", features = ["compression-full", "decompression-full", "fs", "timeout", "trace"] }
+tower-http = { version = "0.6.6", features = ["compression-full", "cors", "decompression-full", "fs", "timeout", "trace"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["json", "chrono", "env-filter"] }
 tracing-appender = "0.2.3"
