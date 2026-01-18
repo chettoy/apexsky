@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-homedir = "0.3.4"
+homedir = "0.3.6"
 itertools = "0.14.0"
 obfstr = "0.4.4"
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.30.1", features = ["user"] }
-uzers = "0.12.1"
+uzers = "0.12.2"

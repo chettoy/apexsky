@@ -50,7 +50,7 @@ pub(super) fn mini_map_radar(
         let egui::Vec2 {
             x: screen_width,
             y: screen_height,
-        } = ctx.screen_rect().size();
+        } = ctx.content_rect().size();
 
         let screen_size = (screen_width.powi(2) + screen_height.powi(2)).sqrt();
         screen_size / screen_size_default
@@ -176,7 +176,7 @@ fn draw_radar_dot(
         [158, 178, 199],
     ];
 
-    let color = if team_id < 2 || team_id > 22 {
+    let color = if !(2..=22).contains(&team_id) {
         [255, 0, 0]
     } else {
         TEAM_COLORS[team_id as usize - 2]

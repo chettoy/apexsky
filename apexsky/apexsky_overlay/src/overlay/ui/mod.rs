@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
+#[cfg(feature = "native")]
+use bevy::window::CursorOptions;
 use bevy_egui::egui::Align2;
 use bevy_egui::egui::UiBuilder;
 use bevy_egui::egui::pos2;
@@ -75,12 +77,9 @@ pub fn resize_canvas(esp_system: Option<ResMut<EspSystem>>, mut windows: Query<&
 #[cfg(feature = "native")]
 pub fn toggle_mouse_passthrough(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut windows: Query<&mut Window>,
+    mut cursor_options: Single<&mut CursorOptions>,
 ) {
-    let mut window = windows
-        .single_mut()
-        .expect("Error: Could not find a single window.");
-    window.cursor_options.hit_test = keyboard_input.pressed(KeyCode::Insert);
+    cursor_options.hit_test = keyboard_input.pressed(KeyCode::Insert);
 }
 
 #[cfg(not(feature = "native"))]
@@ -164,13 +163,13 @@ impl UiPersistance {
                 self.change_time = Some(Instant::now());
             }
         }
-        if let Some(change_time) = self.change_time {
-            if change_time.elapsed().as_millis() > 500 {
-                if let Err(e) = self.persistance() {
-                    tracing::error!(%e, ?e);
-                }
-                self.change_time = None;
+        if let Some(change_time) = self.change_time
+            && change_time.elapsed().as_millis() > 500
+        {
+            if let Err(e) = self.persistance() {
+                tracing::error!(%e, ?e);
             }
+            self.change_time = None;
         }
     }
     #[cfg(feature = "native")]
@@ -239,7 +238,8 @@ pub fn configure_egui_res_system(
     commands.insert_resource(FontBlob(font_blob_handle));
 
     // Insert HUD res
-    let hud_texture = egui_user_textures.add_image(image_handle);
+    let hud_texture =
+        egui_user_textures.add_image(bevy_egui::EguiTextureHandle::Strong(image_handle));
     commands.insert_resource(hud::Hud::new(hud_texture));
 }
 
@@ -261,33 +261,33 @@ pub fn ui_system(
 ) {
     use egui::{CentralPanel, Color32, ScrollArea};
 
-    // Set default font
-    if let Some(font_blob_handle) = font_blob {
-        if let Some(font_blob) = blobs.get(&font_blob_handle.0) {
-            let mut egui_fonts = egui::FontDefinitions::default();
-            egui_fonts.font_data.insert(
-                "my_font".to_owned(),
-                egui::FontData::from_owned(font_blob.bytes.to_owned()).into(),
-            );
-            egui_fonts
-                .families
-                .entry(egui::FontFamily::Proportional)
-                .or_default()
-                .insert(0, "my_font".to_owned());
-            egui_fonts
-                .families
-                .entry(egui::FontFamily::Monospace)
-                .or_default()
-                .push("my_font".to_owned());
-            contexts.ctx_mut().set_fonts(egui_fonts);
-
-            commands.remove_resource::<FontBlob>();
-        }
-    }
-
-    let Some(ctx) = contexts.try_ctx_mut() else {
+    let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
+
+    // Set default font
+    if let Some(font_blob_handle) = font_blob
+        && let Some(font_blob) = blobs.get(&font_blob_handle.0)
+    {
+        let mut egui_fonts = egui::FontDefinitions::default();
+        egui_fonts.font_data.insert(
+            "my_font".to_owned(),
+            egui::FontData::from_owned(font_blob.bytes.to_owned()).into(),
+        );
+        egui_fonts
+            .families
+            .entry(egui::FontFamily::Proportional)
+            .or_default()
+            .insert(0, "my_font".to_owned());
+        egui_fonts
+            .families
+            .entry(egui::FontFamily::Monospace)
+            .or_default()
+            .push("my_font".to_owned());
+        ctx.set_fonts(egui_fonts);
+
+        commands.remove_resource::<FontBlob>();
+    }
 
     let (allied_spectators, spectators): (Vec<_>, Vec<_>) = esp_system
         .as_ref()
@@ -404,8 +404,7 @@ pub fn ui_system(
                 .unwrap_or_default(),
             aim_position: esp_system
                 .and_then(|v| v.get_esp_data().aimbot.as_ref())
-                .map(|aimbot| aimbot.target_position.as_ref())
-                .flatten()
+                .and_then(|aimbot| aimbot.target_position.as_ref())
                 .map(|aim_target| {
                     format!(
                         "{}{:.2}{}{:.2}{}{:.2}{}",
@@ -669,11 +668,12 @@ pub fn ui_system(
                     ui_state.input_addr_valid = EspServiceAddr::from_str(&ui_state.input_esp_addr);
                 }
                 // Submit input and dismiss
-                if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                    if ui_state.input_addr_valid.is_some() {
-                        overlay_state.override_esp_addr = ui_state.input_addr_valid.clone();
-                        ui_state.input_esp_addr.clear();
-                    }
+                if response.lost_focus()
+                    && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                    && ui_state.input_addr_valid.is_some()
+                {
+                    overlay_state.override_esp_addr = ui_state.input_addr_valid.clone();
+                    ui_state.input_esp_addr.clear();
                 }
                 // Quick input button
                 ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
@@ -784,45 +784,46 @@ pub fn ui_system(
         });
 
         // Radar Stuff
-        if esp_data.in_game && esp_settings.mini_map_radar {
-            if let Some((base_pos, base_yaw)) = view_player.map(|pl| {
+        if esp_data.in_game
+            && esp_settings.mini_map_radar
+            && let Some((base_pos, base_yaw)) = view_player.map(|pl| {
                 (
                     pl.origin.clone().unwrap().into(),
                     pl.view_angles.as_ref().map(|v| v.y).unwrap_or(pl.yaw),
                 )
-            }) {
-                let radar_targets = esp_data
-                    .targets
-                    .as_ref()
-                    .map(|list| &list.elements)
-                    .unwrap_or(&vec![])
-                    .iter()
-                    .filter_map(|item| Some((item.info.as_ref()?, item.player_data.as_ref()?)))
-                    .map(|(player_info, player_buf)| RadarTarget {
-                        pos: player_buf.origin.clone().unwrap().into(),
-                        yaw: player_buf
-                            .view_angles
-                            .as_ref()
-                            .map(|view_angles| {
-                                let yaw = view_angles.y;
-                                if yaw < 0.0 { yaw + 360.0 } else { yaw }
-                            })
-                            .unwrap_or(player_buf.yaw),
-                        distance: player_info.distance / 39.62,
-                        team_id: player_buf.team_num,
-                    })
-                    .collect();
-                let default_position = ui_persistance.radar_position.unwrap_or((45.0, 45.0));
-                mini_map_radar(
-                    ctx,
-                    base_pos,
-                    base_yaw,
-                    radar_targets,
-                    default_position,
-                    5.,
-                    1.,
-                );
-            }
+            })
+        {
+            let radar_targets = esp_data
+                .targets
+                .as_ref()
+                .map(|list| &list.elements)
+                .unwrap_or(&vec![])
+                .iter()
+                .filter_map(|item| Some((item.info.as_ref()?, item.player_data.as_ref()?)))
+                .map(|(player_info, player_buf)| RadarTarget {
+                    pos: player_buf.origin.clone().unwrap().into(),
+                    yaw: player_buf
+                        .view_angles
+                        .as_ref()
+                        .map(|view_angles| {
+                            let yaw = view_angles.y;
+                            if yaw < 0.0 { yaw + 360.0 } else { yaw }
+                        })
+                        .unwrap_or(player_buf.yaw),
+                    distance: player_info.distance / 39.62,
+                    team_id: player_buf.team_num,
+                })
+                .collect();
+            let default_position = ui_persistance.radar_position.unwrap_or((45.0, 45.0));
+            mini_map_radar(
+                ctx,
+                base_pos,
+                base_yaw,
+                radar_targets,
+                default_position,
+                5.,
+                1.,
+            );
         }
     }
 
@@ -900,8 +901,8 @@ fn info_bar_ui(
 
     // Draw rectangle
     let info_bar_rect = Rect::from_min_max(Pos2::ZERO, pos2(280.0, 30.0));
-    ui.allocate_new_ui(UiBuilder::new().max_rect(info_bar_rect), |ui| {
-        let background_color = Color32::from_black_alpha((0.4 * 255.0 as f32).round() as u8);
+    ui.scope_builder(UiBuilder::new().max_rect(info_bar_rect), |ui| {
+        let background_color = Color32::from_black_alpha((0.4 * 255.0_f32).round() as u8);
         let rounding = 2.0;
         ui.painter()
             .rect_filled(info_bar_rect, rounding, background_color);
@@ -1201,7 +1202,7 @@ fn esp_2d_ui(
                                 [(4, 5), (5, 7), (7, 6), (6, 4)], // top face
                                 [(0, 4), (1, 5), (2, 6), (3, 7)], // vertical edges
                             ];
-                            for &(start, end) in edges.iter().flat_map(|lines| lines) {
+                            for &(start, end) in edges.iter().flatten() {
                                 ui.painter().line_segment(
                                     [projected_vertices[start], projected_vertices[end]],
                                     (1.0, box_color),
@@ -1216,10 +1217,8 @@ fn esp_2d_ui(
 
                     if esp_bone {
                         // draw bone points
-                        for point in bone_plots.values() {
-                            if let Some((pos, radius)) = point {
-                                ui.painter().circle_filled(*pos, *radius, Color32::WHITE);
-                            }
+                        for (pos, radius) in bone_plots.values().flatten() {
+                            ui.painter().circle_filled(*pos, *radius, Color32::WHITE);
                         }
 
                         // set bone lines
@@ -1285,12 +1284,18 @@ fn esp_2d_ui(
                             }
                         }
 
-                        (|| Some(bone_lines.push((head?.0, upper_body?.0))))();
-                        (|| Some(bone_lines.push((upper_body?.1, lower_body?.0))))();
-                        (|| Some(bone_lines.push((upper_body?.1, left_hand?.0))))();
-                        (|| Some(bone_lines.push((upper_body?.1, right_hand?.0))))();
-                        (|| Some(bone_lines.push((lower_body?.1, left_leg?.0))))();
-                        (|| Some(bone_lines.push((lower_body?.1, right_leg?.0))))();
+                        bone_lines.extend(
+                            [
+                                (|| Some((head?.0, upper_body?.0)))(),
+                                (|| Some((upper_body?.1, lower_body?.0)))(),
+                                (|| Some((upper_body?.1, left_hand?.0)))(),
+                                (|| Some((upper_body?.1, right_hand?.0)))(),
+                                (|| Some((lower_body?.1, left_leg?.0)))(),
+                                (|| Some((lower_body?.1, right_leg?.0)))(),
+                            ]
+                            .into_iter()
+                            .flatten(),
+                        );
 
                         // draw bone lines
                         for draw_line in bone_lines {
@@ -1308,13 +1313,12 @@ fn esp_2d_ui(
                     if esp_box {
                         let mut pos_min = pos2(box_middle_x - box_width / 2.0, head_screen_pos.y);
                         let mut pos_max = pos2(pos_min.x + box_width, pos_min.y + box_height);
-                        for point in bone_plots.values() {
-                            if let Some((pos, _)) = point {
-                                pos_min.x = f32::min(pos_min.x, pos.x);
-                                pos_min.y = f32::min(pos_min.y, pos.y);
-                                pos_max.x = f32::max(pos_max.x, pos.x);
-                                pos_max.y = f32::max(pos_max.y, pos.y);
-                            }
+                        for point in bone_plots.values().flatten() {
+                            let (pos, _) = point;
+                            pos_min.x = f32::min(pos_min.x, pos.x);
+                            pos_min.y = f32::min(pos_min.y, pos.y);
+                            pos_max.x = f32::max(pos_max.x, pos.x);
+                            pos_max.y = f32::max(pos_max.y, pos.y);
                         }
                         let stroke = (1.0, box_color);
                         ui.painter().rect_stroke(
@@ -1388,47 +1392,48 @@ fn esp_2d_ui(
         });
 
     // Draw aim target indicator
-    if esp_settings.show_aim_target {
-        if let Some(aim_pos) = (|| {
+    if esp_settings.show_aim_target
+        && let Some(aim_pos) = (|| {
             let pos: [f32; 3] = esp_data.aimbot.as_ref()?.target_position.clone()?.into();
             Some(pos)
-        })() {
-            let bs = world_to_screen(aim_pos, &view_matrix, screen_width, screen_height)
-                .unwrap_or(pos2(screen_width / 2.0, screen_height / 2.0));
+        })()
+    {
+        let bs = world_to_screen(aim_pos, &view_matrix, screen_width, screen_height)
+            .unwrap_or(pos2(screen_width / 2.0, screen_height / 2.0));
 
-            const INDICATOR_RADIUS: f32 = 10.0;
+        const INDICATOR_RADIUS: f32 = 10.0;
 
-            let aimbot_target_locked = esp_data
-                .aimbot
-                .as_ref()
-                .map(|a| a.target_locked)
-                .unwrap_or(false);
-            let indicator_color = if aimbot_target_locked {
-                Color32::from_rgba_unmultiplied(255, 165, 0, 158)
-            } else {
-                Color32::from_rgba_unmultiplied(255, 255, 255, 158)
-            };
-            let p1 = pos2(bs.x + INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
-            let p2 = pos2(bs.x - INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
-            let p3 = pos2(bs.x - INDICATOR_RADIUS, bs.y + INDICATOR_RADIUS);
-            let p4 = pos2(bs.x + INDICATOR_RADIUS, bs.y + INDICATOR_RADIUS);
-            ui.painter().rect_stroke(
-                Rect { min: p2, max: p4 },
-                INDICATOR_RADIUS,
-                (1.6726, indicator_color),
-                egui::StrokeKind::Middle,
-            );
-            if aimbot_target_locked {
-                let stroke = (2.718, Color32::RED);
-                ui.painter().line_segment([p1, p3], stroke);
-                ui.painter().line_segment([p2, p4], stroke);
-            }
+        let aimbot_target_locked = esp_data
+            .aimbot
+            .as_ref()
+            .map(|a| a.target_locked)
+            .unwrap_or(false);
+        let indicator_color = if aimbot_target_locked {
+            Color32::from_rgba_unmultiplied(255, 165, 0, 158)
+        } else {
+            Color32::from_rgba_unmultiplied(255, 255, 255, 158)
+        };
+        let p1 = pos2(bs.x + INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
+        let p2 = pos2(bs.x - INDICATOR_RADIUS, bs.y - INDICATOR_RADIUS);
+        let p3 = pos2(bs.x - INDICATOR_RADIUS, bs.y + INDICATOR_RADIUS);
+        let p4 = pos2(bs.x + INDICATOR_RADIUS, bs.y + INDICATOR_RADIUS);
+        ui.painter().rect_stroke(
+            Rect { min: p2, max: p4 },
+            INDICATOR_RADIUS,
+            (1.6726, indicator_color),
+            egui::StrokeKind::Middle,
+        );
+        if aimbot_target_locked {
+            let stroke = (std::f32::consts::E, Color32::RED);
+            ui.painter().line_segment([p1, p3], stroke);
+            ui.painter().line_segment([p2, p4], stroke);
         }
     }
 
     // Drow loots label
-    if ui_persistance.draw_loots && !esp_loots.loots.is_empty() {
-        if let Some(bs_local) = world_to_screen(
+    if ui_persistance.draw_loots
+        && !esp_loots.loots.is_empty()
+        && let Some(bs_local) = world_to_screen(
             view_player
                 .and_then(|p| p.origin.clone())
                 .unwrap_or_default()
@@ -1436,37 +1441,37 @@ fn esp_2d_ui(
             &view_matrix,
             screen_width,
             screen_height,
-        ) {
-            for clue in &esp_loots.loots {
-                let Some(position) = clue.position.clone() else {
-                    continue;
-                };
-                let Some(bs_loot) =
-                    world_to_screen(position.into(), &view_matrix, screen_width, screen_height)
-                else {
-                    continue;
-                };
-                let (scr_pos_local, scr_pos_loot) =
-                    (pos2(bs_local.x, bs_local.y), pos2(bs_loot.x, bs_loot.y));
-                let distance_text = format!(
-                    "{}{}{}{}",
-                    clue.item_id,
-                    s!("("),
-                    (clue.distance / 39.62).round() as i32,
-                    s!("m)")
-                );
-                ui.painter().line_segment(
-                    [scr_pos_local, scr_pos_loot],
-                    (0.5, Color32::from_rgba_unmultiplied(255, 255, 255, 32)),
-                );
-                ui.painter().text(
-                    scr_pos_loot,
-                    Align2::CENTER_CENTER,
-                    distance_text,
-                    font_id.clone(),
-                    Color32::from_rgb(212, 175, 55),
-                );
-            }
+        )
+    {
+        for clue in &esp_loots.loots {
+            let Some(position) = clue.position.clone() else {
+                continue;
+            };
+            let Some(bs_loot) =
+                world_to_screen(position.into(), &view_matrix, screen_width, screen_height)
+            else {
+                continue;
+            };
+            let (scr_pos_local, scr_pos_loot) =
+                (pos2(bs_local.x, bs_local.y), pos2(bs_loot.x, bs_loot.y));
+            let distance_text = format!(
+                "{}{}{}{}",
+                clue.item_id,
+                s!("("),
+                (clue.distance / 39.62).round() as i32,
+                s!("m)")
+            );
+            ui.painter().line_segment(
+                [scr_pos_local, scr_pos_loot],
+                (0.5, Color32::from_rgba_unmultiplied(255, 255, 255, 32)),
+            );
+            ui.painter().text(
+                scr_pos_loot,
+                Align2::CENTER_CENTER,
+                distance_text,
+                font_id.clone(),
+                Color32::from_rgb(212, 175, 55),
+            );
         }
     }
 }
@@ -1529,15 +1534,13 @@ fn xp_level(xp: i32) -> i32 {
         return 0;
     }
 
-    let array_size = LEVELS.len();
-
-    for i in 0..array_size {
-        if xp < LEVELS[i] {
-            return i as i32 + 1;
+    for (level, &level_xp) in LEVELS.iter().enumerate() {
+        if xp < level_xp {
+            return level as i32 + 1;
         }
     }
 
-    1 + array_size as i32 + ((xp - LEVELS[array_size - 1]) / 18000)
+    LEVELS.len() as i32 + 1 + ((xp - LEVELS.last().unwrap()) / 18000)
 }
 
 #[allow(dead_code)]

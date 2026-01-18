@@ -7,57 +7,57 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-anyhow = "1.0.98"
+anyhow = "1.0.100"
 apex1_common = { path = "../apex1_common", features = ["skydream"] }
-async-trait = "0.1.88"
-axum = { version = "0.8.4", features = ["tracing"] }
+async-trait = "0.1.89"
+axum = { version = "0.8.8", features = ["tracing"] }
 bitset-core = "0.1.1"
-bytes = "1.10.1"
-chrono = "0.4.41"
+bytes = "1.11.0"
+chrono = "0.4.43"
 #console-subscriber = "0.1.5"
 crossterm = "0.29.0"
-dataview = "1.0.1"
+dataview = "1.0.2"
 dashmap = "6.1.0"
 enum_dispatch = "0.3.13"
 fluent = "0.17.0"
 futures-util = "0.3.31"
 hex = { version = "0.4.3", features = ["serde"] }
-include-flate = { git = "https://github.com/SOF3/include-flate", rev = "fe2e113" }
-indexmap = "2.10.0"
+include-flate = { git = "https://github.com/SOF3/include-flate", rev = "53fb7480f44fb56b8bda1aadb52fa3bffd69c617" }
+indexmap = "2.13.0"
 itertools = "0.14.0"
 named_constants = "0.2.0"
-ndarray = "0.16.1"
+ndarray = "0.17.2"
 obfstr = "0.4.4"
 ohosky_api = { path = "../../ohosky_sdk/ohosky_api", default-features = false, features = ["skydream"] }
 #ohosky_dmalib = { path = "../../ohosky_sdk/ohosky_dmalib" }
 ohosky_kmbox = { path = "../../ohosky_sdk/ohosky_kmbox" }
 ohosky_menu = { path = "../../ohosky_sdk/ohosky_menu" }
 once_cell = "1.21.3"
-parking_lot = { version = "0.12.4", features = ["nightly"] }
-prost = "=0.13"
+parking_lot = { version = "0.12.5", features = ["nightly"] }
+prost = "0.14.3"
 qapi = { version = "0.15.0", features = ["qmp", "async-tokio-all"] }
 qrcode = "0.14.1"
-rand = "0.9.1"
-regex = "1.11.1"
-rkyv = "0.8.10"
+rand = "0.9.2"
+regex = "1.12.2"
+rkyv = "0.8.14"
 secrecy = "0.10.3"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = { version = "1.0.140", features = ["preserve_order"] }
-strum = { version = "0.27.1", features = ["derive"] }
-strum_macros = "0.27.1"
-thiserror = "2.0.12"
-tokio = { version = "1.45.1", features = ["full"] }
-tokio-stream = "0.1.17"
-tonic = { version = "0.13.1", features = ["zstd", "gzip"] }
-tonic-web = "0.13.1"
-tower = { version = "0.5.2", features = ["util"] }
-tower-http = { version = "0.6.6", features = ["compression-full", "cors", "decompression-full", "fs", "timeout", "trace"] }
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.19", features = ["json", "chrono", "env-filter"] }
-tracing-appender = "0.2.3"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = { version = "1.0.149", features = ["preserve_order"] }
+strum = { version = "0.27.2", features = ["derive"] }
+strum_macros = "0.27.2"
+thiserror = "2.0.17"
+tokio = { version = "1.49.0", features = ["full"] }
+tokio-stream = "0.1.18"
+tonic = { version = "0.14.2", features = ["zstd", "gzip"] }
+tonic-web = "0.14.2"
+tower = { version = "0.5.3", features = ["util"] }
+tower-http = { version = "0.6.8", features = ["compression-full", "cors", "decompression-full", "fs", "timeout", "trace"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["json", "chrono", "env-filter"] }
+tracing-appender = "0.2.4"
 unic-langid = "0.9.6"
-zbus = { version = "5.7.1", default-features = false, features = ["tokio", "blocking-api"] }
-zerocopy = { version = "0.8.26", features = ["simd-nightly", "derive", "std"] }
+zbus = { version = "5.13.1", default-features = false, features = ["tokio", "blocking-api"] }
+zerocopy = { version = "0.8.33", features = ["simd-nightly", "derive", "std"] }
 
 [features]
 default = ["skydream"]

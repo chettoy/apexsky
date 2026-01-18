@@ -18,7 +18,7 @@ impl<T: Ord + Copy + std::fmt::Debug> IntervalSet<T> {
     }
 
     fn validate(&self) -> bool {
-        if self.endpoints.len() % 2 != 0 {
+        if !self.endpoints.len().is_multiple_of(2) {
             println!("{:?}", self.endpoints);
             return false;
         }

@@ -40,7 +40,7 @@ impl Hud {
         let egui::Vec2 {
             x: screen_width,
             y: screen_height,
-        } = ctx.screen_rect().size();
+        } = ctx.content_rect().size();
         let size_scale = {
             let screen_size_default = (1920.0_f32.powi(2) + 1080.0_f32.powi(2)).sqrt();
             let screen_size = (screen_width.powi(2) + screen_height.powi(2)).sqrt();
@@ -168,7 +168,7 @@ impl Hud {
                 size: 2.5 * em,
                 family: egui::FontFamily::Monospace,
             };
-            let stroke = (2.718, hud_color);
+            let stroke = (std::f32::consts::E, hud_color);
             let text_rect_left = Rect {
                 min: pos2(rect.left() + 15. * em, rect.top() + 36. * em),
                 max: pos2(rect.left() + 20. * em, rect.bottom() - 36. * em),

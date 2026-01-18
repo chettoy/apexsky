@@ -26,11 +26,12 @@ pub fn setup_voice_navigator(
     use fyrox_sound::source::SoundSourceBuilder;
 
     for (voice_id, voice_data) in VoiceNavigator::voice_resource() {
-        if let Some(handle) = navigator_system.source_map.get(voice_id) {
-            if sound_system.context.state().is_valid_handle(*handle) {
-                continue;
-            }
+        if let Some(handle) = navigator_system.source_map.get(voice_id)
+            && sound_system.context.state().is_valid_handle(*handle)
+        {
+            continue;
         }
+
         let sound_buf_res =
             SoundBufferResource::new_generic(DataSource::from_memory(voice_data)).unwrap();
         let sound_source = SoundSourceBuilder::new()
@@ -41,6 +42,7 @@ pub fn setup_voice_navigator(
             .build()
             .unwrap();
         let source_handle = sound_system.context.state().add_source(sound_source);
+
         navigator_system
             .source_map
             .insert(voice_id.to_owned(), source_handle);
@@ -64,7 +66,7 @@ pub fn update_voice_navigator(
         return;
     }
 
-    let messages = mem::replace(&mut navigator_system.messages, vec![]);
+    let messages = mem::take(&mut navigator_system.messages);
 
     if messages.is_empty() {
         return;
@@ -73,6 +75,8 @@ pub fn update_voice_navigator(
     for msg in messages.into_iter() {
         let voice_msg = match msg {
             SonicMessage::Voice(inner) => inner,
+            #[allow(unreachable_patterns)]
+            _ => unimplemented!(),
         };
 
         let Some(&source_handle) = navigator_system.source_map.get(&voice_msg.src_id()) else {

@@ -75,7 +75,7 @@ impl State {
             .as_ref()
             .map(|pl| {
                 (
-                    pl.origin.clone().unwrap().into(),
+                    pl.origin.unwrap().into(),
                     pl.view_angles.as_ref().map(|v| v.y).unwrap_or(pl.yaw),
                 )
             })
@@ -85,7 +85,7 @@ impl State {
             .filter_map(|pl| {
                 let pl_data = pl.player_data.clone()?;
                 let (single, _view_check) = rotate_point(
-                    pl_data.origin.clone()?.into(),
+                    pl_data.origin?.into(),
                     local_pos,
                     0.0,
                     0.0,
@@ -146,7 +146,7 @@ pub(crate) struct TeamInfo {
 }
 
 impl TeamInfo {
-    fn from_targets(targets: &Vec<AimTargetItem>) -> IndexMap<i32, Self> {
+    fn from_targets(targets: &[AimTargetItem]) -> IndexMap<i32, Self> {
         let mut teams: IndexMap<i32, TeamInfo> = IndexMap::new();
         targets
             .iter()
@@ -154,14 +154,14 @@ impl TeamInfo {
             .for_each(|(pl_info, pl_data)| {
                 if let Some(team) = teams.get_mut(&pl_data.team_num) {
                     assert_eq!(team.team_num, pl_data.team_num);
-                    let pos = pl_data.origin.clone().unwrap().into();
+                    let pos = pl_data.origin.unwrap().into();
                     team.members.push(pl_data.clone());
                     team.distance_to_self.push((pl_info.distance, pos));
                     team.downed_members += if pl_info.is_knocked { 1 } else { 0 };
                     team.max_distance_each_other = team.members.iter().rev().skip(1).fold(
                         team.max_distance_each_other,
                         |max_dist, member| {
-                            let teammate_pos: [f32; 3] = member.origin.clone().unwrap().into();
+                            let teammate_pos: [f32; 3] = member.origin.unwrap().into();
                             let distance = (arr1(&teammate_pos) - arr1(&pos))
                                 .mapv(|x| x * x)
                                 .sum()
@@ -181,7 +181,7 @@ impl TeamInfo {
                             members: vec![pl_data.clone()],
                             distance_to_self: vec![(
                                 pl_info.distance,
-                                pl_data.origin.clone().unwrap().into(),
+                                pl_data.origin.unwrap().into(),
                             )],
                             downed_members: if pl_info.is_knocked { 1 } else { 0 },
                             max_distance_each_other: 0.0,

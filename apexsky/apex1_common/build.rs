@@ -1,5 +1,5 @@
 fn main() {
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .build_client(cfg!(feature = "tonic"))
         .build_server(cfg!(feature = "tonic"))
         .build_transport(cfg!(feature = "tonic"))

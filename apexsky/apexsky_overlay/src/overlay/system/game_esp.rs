@@ -372,8 +372,7 @@ impl EspSystem {
         &self.esp_data
     }
     pub(crate) fn get_esp_settings(&self) -> Option<&EspSettings> {
-        self.last_settings_fetch_time
-            .and_then(|_| Some(&self.esp_settings))
+        self.last_settings_fetch_time.map(|_| &self.esp_settings)
     }
     pub(crate) fn get_esp_loots(&self) -> &Loots {
         &self.esp_loots
@@ -511,7 +510,7 @@ pub(crate) fn follow_game_state(
             .then_some(fresh_data.response_time);
         esp_system.last_data_traffic_time = esp_system
             .last_data_response_time
-            .and_then(|resp_time| Some(resp_time - fresh_data.request_time));
+            .map(|resp_time| resp_time - fresh_data.request_time);
 
         if esp_system.get_view_player().is_none() && esp_system.esp_data.view_player.is_some() {
             esp_system.set_view_teammate(None);
@@ -572,7 +571,7 @@ pub(crate) fn follow_game_state(
         *cam_trans.into_inner() = cam_transform.clone();
         *listener_trans.into_inner() = cam_transform;
 
-        cam_transform.compute_matrix()
+        cam_transform.to_matrix()
     });
 
     #[derive(Debug)]
@@ -690,6 +689,7 @@ pub(crate) fn follow_game_state(
         } else if target.info.is_npc {
             palettes::css::ORANGE_RED
         } else {
+            #[allow(clippy::if_same_then_else)]
             palettes::css::ORANGE_RED
         };
         let mut spawn_cmd = commands.spawn((
@@ -807,14 +807,12 @@ pub(crate) fn request_game_state(
                         })
                         .await,
                 );
-                if PRINT_LATENCY {
-                    if let Some(ref data) = new_esp_data {
-                        println!(
-                            "esp_client data latency {:.1}",
-                            crate::overlay::utils::get_unix_timestamp_in_millis() as f64
-                                - data.data_timestamp * 1000.0
-                        );
-                    }
+                if PRINT_LATENCY && let Some(ref data) = new_esp_data {
+                    println!(
+                        "esp_client data latency {:.1}",
+                        crate::overlay::utils::get_unix_timestamp_in_millis() as f64
+                            - data.data_timestamp * 1000.0
+                    );
                 }
                 let new_esp_loots = if update_loots {
                     unwrap_resp(

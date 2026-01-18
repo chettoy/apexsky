@@ -48,9 +48,10 @@ impl VoiceNavigator {
         }
 
         let esp_data = if self.dry_run {
-            let mut test_data = EspData::default();
-            test_data.ready = true;
-            test_data
+            EspData {
+                ready: true,
+                ..Default::default()
+            }
         } else {
             esp_data.clone()
         };
@@ -81,23 +82,19 @@ impl VoiceNavigator {
             return buf;
         }
 
-        if let Some(count) = state_diff.under_observation {
-            if count > 0 {
-                buf.push(SonicMessage::Voice(VoicePrompt::new(
-                    ContentId::UnderObservation,
-                    [-4.0, 1.0, 2.0],
-                )));
-            }
+        if state_diff.under_observation.is_some_and(|count| count > 0) {
+            buf.push(SonicMessage::Voice(VoicePrompt::new(
+                ContentId::UnderObservation,
+                [-4.0, 1.0, 2.0],
+            )));
         }
 
         if state.on_the_ground && !state.skydiving {
             if let Some(pos) = state_diff
                 .team_in_the_rear
-                .and_then(|_| state.team_in_the_rear)
-                .map(|team_id| state.nearby_teams.get(&team_id))
-                .flatten()
-                .map(|team| team.distance_to_self.first())
-                .flatten()
+                .and(state.team_in_the_rear)
+                .and_then(|team_id| state.nearby_teams.get(&team_id))
+                .and_then(|team| team.distance_to_self.first())
                 .map(|(_dist, pos)| (arr1(pos) - arr1(&state.local_pos)) / 40.0 / 20.0)
                 .map(|rel| [rel[0], rel[1], rel[2]])
                 .map(game_coords_to_engine_coords)

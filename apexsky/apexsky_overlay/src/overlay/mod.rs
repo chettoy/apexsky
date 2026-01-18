@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use bevy::window::{WindowLevel, WindowMode};
 use bevy::{color::palettes, window::CompositeAlphaMode};
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, winit::WinitSettings};
-use bevy_egui::{EguiContextPass, EguiPlugin};
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 use bevy_health_bar3d::prelude as hpbar;
 use model::{MyOverlayState, TokioRuntime};
 use obfstr::obfstr as s;
@@ -114,9 +114,7 @@ pub(crate) fn main() {
         )
         .add_plugins(embedded::EmbeddedAssetPlugin)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
-        .add_plugins(EguiPlugin {
-            enable_multipass_for_primary_context: true,
-        })
+        .add_plugins(EguiPlugin::default())
         .add_plugins((
             hpbar::HealthBarPlugin::<model::Health>::default(),
             hpbar::HealthBarPlugin::<model::Mana>::default(),
@@ -156,7 +154,7 @@ pub(crate) fn main() {
         )
         .add_systems(Update, ui::resize_canvas)
         .add_systems(
-            EguiContextPass,
+            EguiPrimaryContextPass,
             ui::ui_system.after(system::game_esp::follow_game_state),
         )
         .add_systems(Update, system::game_esp::despawn_dead_targets)
@@ -278,7 +276,7 @@ fn setup(
     // );
 
     // camera
-    commands.spawn((Camera2d::default(), IsDefaultUiCamera));
+    commands.spawn((Camera2d, IsDefaultUiCamera));
     commands.spawn((
         Camera3d::default(),
         Msaa::Sample4,
