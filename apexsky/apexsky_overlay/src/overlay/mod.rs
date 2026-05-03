@@ -1,7 +1,7 @@
+use bevy::color::palettes;
 use bevy::prelude::*;
 #[cfg(feature = "native")]
-use bevy::window::{WindowLevel, WindowMode};
-use bevy::{color::palettes, window::CompositeAlphaMode};
+use bevy::window::{CompositeAlphaMode, WindowLevel, WindowMode};
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, winit::WinitSettings};
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 use bevy_health_bar3d::prelude as hpbar;

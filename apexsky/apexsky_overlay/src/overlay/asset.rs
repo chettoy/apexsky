@@ -1,5 +1,5 @@
 use bevy::{
-    asset::{AssetLoader, LoadContext, io::Reader, ron},
+    asset::{AssetLoader, LoadContext, io::Reader},
     prelude::*,
     reflect::TypePath,
     tasks::ConditionalSendFuture,
@@ -14,7 +14,7 @@ struct CustomAsset {
 }
 
 #[allow(unused)]
-#[derive(Default)]
+#[derive(Default, TypePath)]
 struct CustomAssetLoader;
 
 /// Possible errors that can be produced by [`CustomAssetLoader`]
@@ -57,7 +57,7 @@ pub struct Blob {
     pub bytes: Vec<u8>,
 }
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct BlobAssetLoader;
 
 /// Possible errors that can be produced by [`CustomAssetLoader`]

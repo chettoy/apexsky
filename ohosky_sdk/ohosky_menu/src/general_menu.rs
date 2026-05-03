@@ -187,11 +187,9 @@ where
                     self.nav_index += 1;
                 }
             }
-            MouseEventKind::ScrollUp => {
-                if self.scroll_top > 0 && self.nav_index > 0 {
-                    self.scroll_top -= 1;
-                    self.nav_index -= 1;
-                }
+            MouseEventKind::ScrollUp if self.scroll_top > 0 && self.nav_index > 0 => {
+                self.scroll_top -= 1;
+                self.nav_index -= 1;
             }
             MouseEventKind::Moved => {
                 let max_index = self.items.len() - 1;

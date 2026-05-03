@@ -548,8 +548,8 @@ pub(crate) fn follow_game_state(
     .to_radians();
 
     let _cam_matrix = esp_system.get_view_player().map(|view_player| {
-        let cam_origin: [f32; 3] = view_player.camera_origin.clone().unwrap().into();
-        let cam_angles: [f32; 3] = view_player.camera_angles.clone().unwrap().into();
+        let cam_origin: [f32; 3] = view_player.camera_origin.unwrap().into();
+        let cam_angles: [f32; 3] = view_player.camera_angles.unwrap().into();
 
         let (cam_pitch, cam_yaw) = (cam_angles[0].to_radians(), cam_angles[1].to_radians());
         // pitch: top- bottom+, yaw: left+ right-
@@ -568,7 +568,7 @@ pub(crate) fn follow_game_state(
         };
         let cam_transform =
             Transform::from_translation(cam_position).looking_to(cam_direction, Vec3::Y);
-        *cam_trans.into_inner() = cam_transform.clone();
+        *cam_trans.into_inner() = cam_transform;
         *listener_trans.into_inner() = cam_transform;
 
         cam_transform.to_matrix()
@@ -591,7 +591,7 @@ pub(crate) fn follow_game_state(
             let convert = || {
                 let info = value.info.clone()?;
                 let data = value.data.clone()?;
-                let target_pos: [f32; 3] = data.head_position.clone()?.into();
+                let target_pos: [f32; 3] = data.head_position?.into();
                 Some(Self {
                     info,
                     data: Some(data.clone()),

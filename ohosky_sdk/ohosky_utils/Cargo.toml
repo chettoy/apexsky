@@ -9,5 +9,5 @@ itertools = "0.14.0"
 obfstr = "0.4.4"
 
 [target.'cfg(unix)'.dependencies]
-nix = { version = "0.30.1", features = ["user"] }
+nix = { version = "0.31.2", features = ["user"] }
 uzers = "0.12.2"

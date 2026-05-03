@@ -357,7 +357,7 @@ pub fn ui_system(
                 .to_string(),
             local_position: esp_system
                 .and_then(|v| v.get_view_player())
-                .and_then(|pl| pl.origin.clone())
+                .and_then(|pl| pl.origin)
                 .map(|pos| {
                     format!(
                         "{}{:.0}{}{:.0}{}{:.0}",
@@ -372,7 +372,7 @@ pub fn ui_system(
                 .unwrap_or_default(),
             local_angles: esp_system
                 .and_then(|v| v.get_view_player())
-                .and_then(|pl| pl.view_angles.clone())
+                .and_then(|pl| pl.view_angles)
                 .map(|angle| {
                     format!(
                         "{}{:.2}{}{:.2}{}{:.2}",
@@ -442,7 +442,7 @@ pub fn ui_system(
                 blur: 0,
             },
             fill: Color32::from_rgba_premultiplied(13, 13, 13, 138),
-            stroke: egui::Stroke::new(1.0, Color32::from_rgba_premultiplied(48, 48, 48, 74)),
+            stroke: egui::Stroke::new(1.0_f32, Color32::from_rgba_premultiplied(48, 48, 48, 74)),
         })
         .show(ctx, |ui| {
             {
@@ -618,13 +618,12 @@ pub fn ui_system(
                         ui_state.toggle_bar = DialogUiBar::InputAddr;
                     } else {
                         // validate input and override address
-                        if let Some(valid_input) = &ui_state.input_addr_valid {
-                            if esp_system
+                        if let Some(valid_input) = &ui_state.input_addr_valid
+                            && esp_system
                                 .as_ref()
                                 .is_none_or(|v| v.get_endpoint() != valid_input.get_addr())
-                            {
-                                overlay_state.override_esp_addr = ui_state.input_addr_valid.clone();
-                            }
+                        {
+                            overlay_state.override_esp_addr = ui_state.input_addr_valid.clone();
                         }
                         // clear and dismiss
                         ui_state.input_esp_addr.clear();
@@ -788,7 +787,7 @@ pub fn ui_system(
             && esp_settings.mini_map_radar
             && let Some((base_pos, base_yaw)) = view_player.map(|pl| {
                 (
-                    pl.origin.clone().unwrap().into(),
+                    pl.origin.unwrap().into(),
                     pl.view_angles.as_ref().map(|v| v.y).unwrap_or(pl.yaw),
                 )
             })
@@ -801,7 +800,7 @@ pub fn ui_system(
                 .iter()
                 .filter_map(|item| Some((item.info.as_ref()?, item.player_data.as_ref()?)))
                 .map(|(player_info, player_buf)| RadarTarget {
-                    pos: player_buf.origin.clone().unwrap().into(),
+                    pos: player_buf.origin.unwrap().into(),
                     yaw: player_buf
                         .view_angles
                         .as_ref()
@@ -998,8 +997,8 @@ fn esp_2d_ui(
     };
 
     let (box_color_viz, box_color_not_viz) = {
-        let color_viz: [f32; 3] = esp_settings.glow_color_viz.clone().unwrap().into();
-        let color_notviz: [f32; 3] = esp_settings.glow_color_notviz.clone().unwrap().into();
+        let color_viz: [f32; 3] = esp_settings.glow_color_viz.unwrap().into();
+        let color_notviz: [f32; 3] = esp_settings.glow_color_notviz.unwrap().into();
         let convert = |v: f32| -> u8 { (v.clamp(0.0, 1.0) * 255.0).round() as u8 };
         (
             (
@@ -1042,8 +1041,8 @@ fn esp_2d_ui(
             let alpha = (255.0 * alpha.clamp(0.0, 1.0)).round() as u8;
             let radar_distance = (target_info.distance / 39.62).round() as i32;
 
-            let head_position = target_data.head_position.clone().unwrap();
-            let target_origin = target_data.position.clone().unwrap();
+            let head_position = target_data.head_position.unwrap();
+            let target_origin = target_data.position.unwrap();
             let Some(head_screen_pos) = world_to_screen(
                 head_position.into(),
                 &view_matrix,
@@ -1232,7 +1231,7 @@ fn esp_2d_ui(
                         const HITGROUP_RIGHT_LEG: i32 = 7;
 
                         let find_top_bottom_bones = |l: &Vec<(i32, egui::Pos2)>| {
-                            let (mut start_bone, mut start_point) = l.first()?.clone();
+                            let (mut start_bone, mut start_point) = *l.first()?;
                             let (mut end_bone, mut end_point) = (start_bone, start_point);
                             for (bone, pos) in l {
                                 if pos.y < start_point.y {
@@ -1394,7 +1393,7 @@ fn esp_2d_ui(
     // Draw aim target indicator
     if esp_settings.show_aim_target
         && let Some(aim_pos) = (|| {
-            let pos: [f32; 3] = esp_data.aimbot.as_ref()?.target_position.clone()?.into();
+            let pos: [f32; 3] = esp_data.aimbot.as_ref()?.target_position?.into();
             Some(pos)
         })()
     {
@@ -1435,7 +1434,7 @@ fn esp_2d_ui(
         && !esp_loots.loots.is_empty()
         && let Some(bs_local) = world_to_screen(
             view_player
-                .and_then(|p| p.origin.clone())
+                .and_then(|p| p.origin)
                 .unwrap_or_default()
                 .into(),
             &view_matrix,
@@ -1444,7 +1443,7 @@ fn esp_2d_ui(
         )
     {
         for clue in &esp_loots.loots {
-            let Some(position) = clue.position.clone() else {
+            let Some(position) = clue.position else {
                 continue;
             };
             let Some(bs_loot) =

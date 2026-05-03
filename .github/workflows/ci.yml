@@ -55,7 +55,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
       - run: rustup default nightly
@@ -64,7 +64,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update
-          sudo apt install libusb-1.0-0-dev libzstd-dev pkg-config libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0 libwayland-dev libxkbcommon-dev
+          sudo apt install protobuf-compiler libusb-1.0-0-dev libzstd-dev pkgconf libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0 libwayland-dev libxkbcommon-dev
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -74,8 +74,9 @@ jobs:
           .\bootstrap-vcpkg.bat
           .\vcpkg integrate install
           .\vcpkg install zstd:x64-windows
-
+      
       - name: Install Protoc
+        if: matrix.os == 'windows-latest'
         uses: arduino/setup-protoc@v3
 
       - name: Set reusable strings
@@ -99,7 +100,7 @@ jobs:
       #   run: ctest --build-config ${{ matrix.build_type }}
 
       # - name: Archive output artifacts
-      #   uses: actions/upload-artifact@v4
+      #   uses: actions/upload-artifact@v7
       #   if: always()
       #   with:
       #     name: output-${{ matrix.arch-name }}
@@ -108,7 +109,7 @@ jobs:
       #     retention-days: 2
 
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: apexsky_dma_${{ steps.strings.outputs.sha_short }}_b${{ github.run_number }}-${{ matrix.arch-name }}
           path: |
@@ -122,25 +123,22 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: apexsky-artifact
           pattern: apexsky_dma_${{ needs.build.outputs.sha_short }}_b${{ github.run_number }}-*
           merge-multiple: true
       - run: ls -R apexsky-artifact
 
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v3
-
       - name: Build other modules
         run: |
           sudo apt update
-          sudo apt install libzstd-dev pkg-config gcc-multilib
+          sudo apt install protobuf-compiler libzstd-dev pkgconf gcc-multilib
           rustup default nightly
           rustup target add wasm32-wasip2
           cd apexsky/apex1_offsets_parser && cargo build --release --target wasm32-wasip2
@@ -155,7 +153,7 @@ jobs:
           ./ohosky_sdk/bin/x86_64-unknown-linux-gnu/ohosky_mod_packer apexsky-artifact/apex1_sg.spk apexsky/mods/apex1_sg/manifest.json
 
       - name: Archive mods
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mods_${{ needs.build.outputs.sha_short }}_b${{ github.run_number }}
           path: |

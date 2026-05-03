@@ -204,7 +204,7 @@ pub async fn aimbot_loop(
 
         // Update aimbot settings
         // Lower update frequency to reduce cpu usage
-        if state.get_frame_count() % 30 == 0
+        if state.get_frame_count().is_multiple_of(30)
             && let Some(aimbot_settings) = state.get_aimbot_settings().await
         {
             aimbot.settings(aimbot_settings);
@@ -588,13 +588,9 @@ impl BestAim for Aimbot {
                         None
                     }
                 });
-                let best_bone_pos = hitscan.nearest_bone_pos.and_then(|pos| {
-                    if pos[2] > lowest_aim_pos[2] {
-                        Some(pos)
-                    } else {
-                        None
-                    }
-                });
+                let best_bone_pos = hitscan
+                    .nearest_bone_pos
+                    .filter(|&pos| pos[2] > lowest_aim_pos[2]);
                 match (best_hitbox, best_bone_pos, hitscan.hit) {
                     (Some(hitbox), _, false) => {
                         let (bone_pos, (bbmin, bbmax)) = hitbox;

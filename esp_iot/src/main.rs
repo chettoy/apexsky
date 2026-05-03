@@ -1,20 +1,28 @@
 use std::time::Duration;
 
+use anyhow::Context as _;
 use apex1_common::pb::{
     apexlegends::EspDataOption, esp_service::esp_service_client::EspServiceClient,
 };
-use buttplug::{
-    client::{ButtplugClient, ScalarValueCommand},
-    core::{
-        connector::new_json_ws_client_connector, message::ClientGenericDeviceMessageAttributesV3,
-    },
+use buttplug_client::{
+    ButtplugClient, ButtplugClientDevice, ButtplugClientError, ButtplugClientEvent,
+    connector::ButtplugRemoteClientConnector, device::ClientDeviceOutputCommand,
+    serializer::ButtplugClientJSONSerializer,
 };
+use buttplug_core::message::OutputType;
+use buttplug_transport_websocket_tungstenite::ButtplugWebsocketClientTransport;
+use futures::stream::StreamExt;
 use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let esp_server_addr = "http://[::1]:50051";
-    let device_connector = new_json_ws_client_connector("ws://localhost:12345");
+    let connector = ButtplugRemoteClientConnector::<
+        ButtplugWebsocketClientTransport,
+        ButtplugClientJSONSerializer,
+    >::new(ButtplugWebsocketClientTransport::new_insecure_connector(
+        "ws://localhost:12345",
+    ));
 
     let (mut esp_client, device_client) = tokio::try_join!(
         async move {
@@ -26,19 +34,58 @@ async fn main() -> anyhow::Result<()> {
         },
         async move {
             let client = ButtplugClient::new("Default Client");
-            client.connect(device_connector).await?;
+
+            client
+                .connect(connector)
+                .await
+                .inspect_err(|e| match e {
+                    ButtplugClientError::ButtplugConnectorError(error) => {
+                        println!("ERROR: Could not connect to Intiface Central!");
+                        println!(
+                            "Make sure Intiface Central is running and the server is started."
+                        );
+                        println!("Default address: ws://127.0.0.1:12345");
+                        println!("Error: {}", error);
+                    }
+                    _ => (),
+                })
+                .context("Can't connect to Buttplug Server")?;
             anyhow::Ok(client)
         }
     )?;
 
-    println!("Connected!");
+    let mut events = device_client.event_stream();
+
+    tokio::spawn(async move {
+        while let Some(event) = events.next().await {
+            match event {
+                ButtplugClientEvent::DeviceAdded(device) => {
+                    println!("[+] Device connected: {}", device.name());
+                }
+                ButtplugClientEvent::DeviceRemoved(info) => {
+                    println!("[-] Device disconnected: {}", info.name());
+                }
+                ButtplugClientEvent::ServerDisconnect => {
+                    println!("[!] Server connection lost!");
+                }
+                ButtplugClientEvent::Error(err) => {
+                    println!("[!] Error: {}", err);
+                }
+                _ => {}
+            }
+        }
+    });
+
+    println!("Scanning for devices...");
+    println!("Turn on your Bluetooth/USB devices now.");
+    println!();
 
     device_client.start_scanning().await?;
     loop {
         sleep(Duration::from_secs(2)).await;
 
         println!("Client currently knows about these devices:");
-        for device in device_client.devices() {
+        for (_, device) in device_client.devices() {
             println!("- {}", device.name());
         }
         println!();
@@ -49,28 +96,15 @@ async fn main() -> anyhow::Result<()> {
     }
     device_client.stop_scanning().await?;
 
-    let device = &device_client.devices()[0];
+    // Display device capabilities
 
-    {
-        fn print_attrs(attrs: &Vec<ClientGenericDeviceMessageAttributesV3>) {
-            for attr in attrs {
-                println!(
-                    "{}: {} - Steps: {}",
-                    attr.actuator_type(),
-                    attr.feature_descriptor(),
-                    attr.step_count()
-                );
-            }
-        }
-        println!("{} supports these actions:", device.name());
-        if let Some(attrs) = device.message_attributes().scalar_cmd() {
-            print_attrs(attrs);
-        }
-        print_attrs(&device.rotate_attributes());
-        print_attrs(&device.linear_attributes());
-        println!("Battery: {}", device.has_battery_level());
-        println!("RSSI: {}", device.has_rssi_level());
+    let devices: Vec<ButtplugClientDevice> = device_client.devices().into_values().collect();
+
+    for device in &devices {
+        print_device_capabilities(device);
     }
+
+    let device = devices.first().unwrap();
 
     loop {
         let esp_data = esp_client
@@ -116,14 +150,65 @@ async fn main() -> anyhow::Result<()> {
             _ => 0.0,
         };
 
-        device
-            .vibrate(&ScalarValueCommand::ScalarValue(vibrate_level))
-            .await?;
+        // if !device.output_available(OutputType::Vibrate) {
+        match device
+            .run_output(&ClientDeviceOutputCommand::Vibrate(vibrate_level.into()))
+            .await
+        {
+            Ok(_) => println!(
+                "  {}: vibrating at {:.1}%",
+                device.name(),
+                vibrate_level * 100.0
+            ),
+            Err(e) => println!("  {}: error - {}", device.name(), e),
+        }
+        // }
 
         sleep(Duration::from_secs(1)).await;
     }
 
+    device_client.stop_all_devices().await?;
     device_client.disconnect().await?;
 
     Ok(())
+}
+
+fn print_device_capabilities(device: &ButtplugClientDevice) {
+    println!("  {}", device.name());
+
+    // Check output capabilities (things we can make the device do)
+    let mut outputs = Vec::new();
+    if device.output_available(OutputType::Vibrate) {
+        outputs.push("Vibrate");
+    }
+    /*
+    if !device.rotate_features().is_empty() {
+      outputs.push("Rotate");
+    }
+    if !device.oscillate_features().is_empty() {
+      outputs.push("Oscillate");
+    }
+    if !device.position_features().is_empty() {
+      outputs.push("Position");
+    }
+    */
+
+    if !outputs.is_empty() {
+        println!("    Outputs: {}", outputs.join(", "));
+    }
+
+    // Check input capabilities (sensors we can read)
+    let mut inputs = Vec::new();
+    if device.input_available(buttplug_core::message::InputType::Battery) {
+        inputs.push("Battery");
+    }
+    if device.input_available(buttplug_core::message::InputType::Rssi) {
+        inputs.push("RSSI");
+    }
+
+    if !inputs.is_empty() {
+        println!("    Inputs: {}", inputs.join(", "));
+    }
+
+    println!();
 }

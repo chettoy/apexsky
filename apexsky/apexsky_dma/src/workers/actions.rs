@@ -456,7 +456,7 @@ pub async fn actions_loop(
                             )
                         })
                         .collect();
-                    player_list.sort_by(|a, b| a.0.cmp(&b.0));
+                    player_list.sort_by_key(|a| a.0);
                     tracing::info!(?player_list, "{player_count}{}", s!(" players sorted"));
                     log_players = player_count;
                 }
@@ -478,7 +478,7 @@ pub async fn actions_loop(
                         .filter(|loot| !(loot.int == 0 && loot.model.is_empty()))
                         .collect::<HashSet<LootInt>>();
                     let mut item_namelist: Vec<LootInt> = item_namelist.into_iter().collect();
-                    item_namelist.sort_by(|a, b| a.int.cmp(&b.int));
+                    item_namelist.sort_by_key(|a| a.int);
                     tracing::info!("{loot_count}{}", s!(" items sorted"));
                     log_items = loot_count;
 
@@ -574,8 +574,8 @@ pub async fn actions_loop(
                         // apexsky::tick_yew(lplayer_ptr, yew);
 
                         let mut teammates: Vec<_> = players
-                            .iter()
-                            .filter_map(|(_, target_entity)| {
+                            .values()
+                            .filter_map(|target_entity| {
                                 let player_buf = target_entity.get_buf();
                                 if is_teammate(player_buf.team_num) {
                                     Some(player_buf.to_owned())
@@ -584,7 +584,7 @@ pub async fn actions_loop(
                                 }
                             })
                             .collect();
-                        teammates.sort_by(|a, b| a.team_member_index.cmp(&b.team_member_index));
+                        teammates.sort_by_key(|a| a.team_member_index);
 
                         // Update spectator checker
                         let tmp_specs: Vec<SpectatorInfo> = players

@@ -2,7 +2,7 @@ pub mod ext;
 pub mod ffi;
 mod skynade;
 
-use rand::Rng;
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::sync::Arc;

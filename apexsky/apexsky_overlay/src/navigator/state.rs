@@ -197,7 +197,7 @@ impl TeamInfo {
             team.distance_to_self
                 .sort_by(|(a_dist, _a_pos), (b_dist, _b_pos)| a_dist.partial_cmp(b_dist).unwrap());
             team.members
-                .sort_by(|a, b| a.team_member_index.cmp(&b.team_member_index));
+                .sort_by_key(|a| a.team_member_index);
         });
         teams.sort_by(|_, a, _, b| {
             let min_dist_a = a.distance_to_self.first().unwrap().0;

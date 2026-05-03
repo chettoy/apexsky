@@ -43,7 +43,7 @@ impl StudioModel {
         }
         // // Sometimes this pointer is garbage...
         // // Figure out why, this may cause triggerbot to fail!
-        if self.ptr.into_raw() % 8 != 0 {
+        if !self.ptr.into_raw().is_multiple_of(8) {
             //tracing::debug!("{}", s!("invalid CStudioHdr ptr"));
             return false;
         }

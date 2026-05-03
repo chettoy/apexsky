@@ -171,7 +171,7 @@ impl UpdateContext {
         if rate <= 1 {
             return true;
         }
-        (self.tickcount.wrapping_add(offset)) % rate == 0
+        (self.tickcount.wrapping_add(offset)).is_multiple_of(rate)
     }
 }
 
